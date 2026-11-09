@@ -1,0 +1,107 @@
+{
+  "kind": "project",
+  "name": "fill-shader-custom",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "fill-shader-custom",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 360,
+              "height": 240,
+              "cornerRadius": 20,
+              "clip": true,
+              "fill": [
+                "card",
+                [
+                  {
+                    "type": "shader",
+                    "source": "\nstruct Params { amount: f32 }\n\nfn fill(in: FillIn) -> vec4f {\n    // Square up the horizontal axis, so the ring is a circle on a 3:2 card.\n    let aspect = in.size.x / in.size.y;\n    let p = vec2f((in.uv.x - 0.5) * aspect, in.uv.y - 0.5);\n    let r = 0.06 + u.amount * 0.30;\n    let d = abs(length(p) - r);\n    let a = 1.0 - smoothstep(0.012, 0.030, d);\n    // Premultiplied, and without folding the layer's opacity in.\n    let c = vec3f(0.41, 0.56, 0.87);\n    return vec4f(c * a, a);\n}",
+                    "language": "wgsl",
+                    "uniforms": {
+                      "amount": 0
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "fill": [
+                "card",
+                [
+                  {
+                    "type": "shader",
+                    "source": "\nstruct Params { amount: f32 }\n\nfn fill(in: FillIn) -> vec4f {\n    // Square up the horizontal axis, so the ring is a circle on a 3:2 card.\n    let aspect = in.size.x / in.size.y;\n    let p = vec2f((in.uv.x - 0.5) * aspect, in.uv.y - 0.5);\n    let r = 0.06 + u.amount * 0.30;\n    let d = abs(length(p) - r);\n    let a = 1.0 - smoothstep(0.012, 0.030, d);\n    // Premultiplied, and without folding the layer's opacity in.\n    let c = vec3f(0.41, 0.56, 0.87);\n    return vec4f(c * a, a);\n}",
+                    "language": "wgsl",
+                    "uniforms": {
+                      "amount": 1
+                    }
+                  }
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

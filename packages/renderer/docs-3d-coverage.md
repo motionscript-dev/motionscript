@@ -1,0 +1,52 @@
+# 3D conventions: what ms-render3d reproduces
+
+Before the WebGPU renderer, the engine drew `Scene3D` by replaying it into
+three.js r185. That backend is gone; ms-render3d (`crates/render3d`) draws the
+same scenes and keeps three's conventions, so a scene authored then looks the
+same now. This is the record of those conventions, and of what parity rested on.
+
+## How the engine set three up (what ms-render3d reproduces)
+
+- **Renderer**: `WebGLRenderer({ antialias: scene.antialias (default true), alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: true })`, `setClearColor(0x000000, 0)`, pixel ratio 1. **No `outputColorSpace` / `colorManagement` change: three's defaults** (sRGB output, linear working space, `ColorManagement.enabled`). **No scene background**: the 3D buffer is transparent where nothing is drawn; the viewport's 2D fill (and `Fills`) sit underneath.
+- **Tone mapping is ACES Filmic, exposure 1, unless the scene says otherwise.** `toneMapping(undefined)` falls through to `ACESFilmicToneMapping` (`handlers/constants.ts`) and the reconciler always calls `applySettings`, so every scene without `tone` is ACES-mapped. `tone: "none"` is the only way to turn it off. `toneMapped: false` on a material opts out (the viewport grid does). *This is the single most surprising default.*
+- **Colours** go through core's `parseColor` (gamma-encoded sRGB 0-1) and are written with `SRGBColorSpace`, i.e. three converts to linear. Image/surface textures are `SRGBColorSpace` by default, `linear` is opt-in per texture. Vertex colours are uploaded as given (no conversion).
+- **Output**: the canvas is un-premultiplied when the engine uploads it (`srcIsPremul` false).
+- **Buffer**: the engine renders into a buffer rounded **up to a multiple of 64** (grow-only) and stretches it onto the shape bounds, with the camera framed at the *unquantized* aspect. The oracle renders at exactly `w × h` with the same framing, so there is no resample; the wgpu side should do the same. Device scale: buffer = `ceil(size · min(maxPixelRatio ?? 2, max(deviceScale, 1)))`.
+- **Camera**: `aspect = w/h` always (never authored). Perspective `fov` default 50 (descriptor), zoom 1; orthographic `frustumHeight` default 10, width from aspect. Polar form (`orbit`, `elevation`, `distance`, `target`) wins over `position`/`lookAt`: position = target + (sin(az)·cos(el), sin(el), cos(az)·cos(el))·distance, elevation clamped ±89.9, orbit measured from +Z. A camera with only `position` still aims at `target` (default none → three's default -Z). **Clip planes are derived from the scene's world bounds** unless set: `span = max(bounds extent)`, `distance = descriptor.distance ?? max(span,1)·2`, `reach = max(span, distance, 1)`, `near = max(0.01, reach/1000)`, `far = reach·10`. A scene with no camera gets perspective fov 50, near 0.1, far 1000, at (0,0,5) looking at the origin. Camera is parented under the node group that recorded it. Canvas3D's *default* camera (no camera node): `perspective({ fov: 45, orbit: 90 − 35, elevation: 20, distance: 12 })`.
+- **Default light rig** (only when the scene records no light): ambient 0.45, directional 2.4 at (4,6,3), directional 0.84 (= 2.4·0.35) at (-5,-2,-4). Reproduced by `withViewDefaults` in `scenes3d/_view.ts`.
+- **Light intensities**: ambient/hemisphere/directional are three's intensity as given. **Point and spot are multiplied by 4π** (`OMNI_INTENSITY_SCALE`). Spot `angle` is degrees in core (→ radians), cone is `angle`, `penumbra`, `distance` (0 = infinite), `decay` (three default 2). Directional/spot aim at a world-space `target` (default origin).
+- **Shadows**: off unless the scene turns them on (`shadows: true | { quality }`). Lights default to *not* casting (`shadow` must be set on the light); meshes default to casting and receiving. `quality` low/medium/high = 512/2048/4096 map. Type is `PCFSoftShadowMap` for medium/high, `PCFShadowMap` for low — **but three 0.185 deprecates PCFSoft and logs "Using PCFShadowMap instead"**, so effectively every scene gets plain PCF with `shadow.radius = 1 + softness·8` (softness default 0.5 → radius 5; PCF ignores radius in some paths, so compare visually). **Directional shadow frustum** is a square of half-size `extent = options.extent ?? max(1, 0.75·span(scene bounds))` (ortho left/right/top/bottom ±extent), `near = max(0.05, 0.05·extent)`, `far = max(near+1, 8·extent)`, `bias = -(far−near)/(mapSize·512)`, `normalBias = 0.01·extent`. Spot/point use three's perspective shadow camera with the same near/far/bias/normalBias rules (point = 6 faces).
+- **Materials** map 1:1 to three classes (`basic`→MeshBasic, `standard`→MeshStandard, `physical`, `phong`, `lambert`, `toon`, `normal`, `depth`, `matcap`, `points`, `lineBasic`, `lineDashed`, `sprite`, `shadow`, `shader`). The mesh shorthand `fill: color` + `roughness`/`metalness` → `standard` (`unlit: true` → `basic`); three's defaults apply to anything unset (standard: roughness 1, metalness 0). `transparent` is derived and *latched on* when opacity < 1 / colour alpha / alphaMap / transmission / explicit; `depthWrite = !blends` unless stated. `faces` front/back/both → three Side. `shading: "flat"` → `flatShading`.
+- **Environment**: only `preset: "studio"` renders. It is a PMREM of a plain `0xbbbbbb` background scene (`PMREMGenerator.fromScene(scene, 0.04)`), i.e. a **uniform grey light-field**, not a RoomEnvironment — so metals reflect flat grey. `scene.environmentIntensity = intensity`; `background: true` shows it (`backgroundBlurriness = blur`, `backgroundIntensity = intensity`) so the "background" is a flat grey (0xbbbbbb tone-mapped), not an image. `src`/`faces` are inert. Without an environment, `metalness: 1` renders black except for direct specular.
+- **Fog**: `density` set → `FogExp2`, else `Fog(near ?? 1, far ?? 1000)`. Fog with no colour takes the viewport's first solid fill (the oracle's `withViewDefaults({ fill })` does that). Fog is applied in materials (also on lines/points unless `fog:false` params), not on the background.
+- **Not applied** (recorded and ignored): `post` chain, environment `src`/`faces`/`params`, OBJ, shader `extends`.
+- **Instancing**: `InstancedMesh` with per-instance matrix and optional per-instance colour. **Models**: glTF/GLB via GLTFLoader, `SkeletonUtils.clone` per instance, animation seeked (not advanced). No model scene exists in the oracle (needs an asset + loader; the harness' `images` seam only covers image textures — see "Not reproducible").
+
+## Prioritized feature list for the wgpu renderer
+
+By how much of the engine's own e2e + realistic scenes depend on it:
+
+1. **Perspective camera** with position/target/fov and the polar form, aspect from the buffer, **bounds-derived near/far**. (every scene)
+2. **Meshes with transforms** (position, Euler XYZ degrees, scale; nested groups from `push`/`pop`): box (incl. rounded `cornerRadius`), sphere, plane.
+3. **`standard` PBR (MeshStandardMaterial)** with colour/roughness/metalness, three's exact BRDF (GGX, Smith, Schlick; three's default specular F0 0.04), sRGB→linear colour input, **ACES Filmic tone mapping at exposure 1 as the default**, sRGB output encode. Plus **`basic`** (unlit; still tone-mapped and sRGB-encoded).
+4. **Ambient + directional lights** (intensity semantics as three: lux-style directional, π-scaling inside the BRDF as three does), default viewport light rig.
+5. **Alpha**: `opacity`, derived `transparent`, `faces` front/back/both, `depthWrite`, sorted transparent pass; output stored as straight-alpha-compatible (premultiplied internally like three, un-premultiplied on readback). (translucent scene has a hard numeric target: composite = (59,79,95).)
+6. **Image textures** on `map` (sRGB, mipmapped, trilinear/aniso as three defaults, `flipY` three-style UV orientation) and **surface/data textures** (RGBA8 upload, same sampler rules).
+7. **Shadows**: directional with ortho frustum from scene bounds, derived bias/normalBias, PCF; then spot/point (cube) shadows.
+8. **Point/spot lights** (×4π intensity, decay 2, penumbra smoothstep, distance cutoff) and hemisphere.
+9. **Remaining geometries** (cylinder, cone, torus, torusKnot, capsule, circle, ring, polyhedron, lathe, tube; extrude/parametric/buffer/edges/wireframe) with three's exact tessellation and UV/normal conventions — scenes only look the same if vertex counts/segment defaults match three's.
+10. **Fog** (linear + exp2, colour from viewport fill), **environment studio** (uniform 0xbbbbbb PMREM → image-based diffuse+specular; `environmentIntensity`; background mode), **tone mapping modes** (none, linear, reinhard, cineon, aces, agx, neutral) + exposure.
+11. **Other materials**: physical (clearcoat, transmission, ior, sheen, iridescence…), phong, lambert, toon, normal, depth, matcap, emission.
+12. **Instancing**, points/lines/sprites, line dash.
+13. **Area light** (RectAreaLight/LTC), models (glTF + skeletal clips), shader materials (GLSL — only a WGSL re-port makes sense), `post` (not applied by the engine, so skip).
+14. **MSAA** (antialias default true: 4× MSAA in three on the default framebuffer).
+
+## Parity notes from the gap work (ms-render3d, 3d-gaps)
+
+The oracle scenes matched at SSIM 0.994-1.000 (residue is MSAA edge coverage). What parity rests on, beyond a straight port:
+
+- **Area light**: as above, only the diffuse term exists in the engine's three setup. If the engine ever inits `RectAreaLightUniformsLib`, the renderer needs three's 64×64 `LTC_FLOAT_1/2` tables and the specular term.
+- **Lambert and Phong take `scene.environment`** in r185 (`irradiance += iblIrradiance`); toon, basic and the rest do not.
+- **Transmission** follows `renderTransmissionPass`: opaque list only, into a half-float 4× MSAA target cleared to (0.5, 0.5, 0.5, 0.5) premultiplied (three swaps a transparent clear for white at half alpha), no tone mapping, linear output, mip chain; the transmissive list draws after opaque, before transparent. Not reproduced: three's extra back-face render of a *double-sided* transmissive mesh into the target (only when `WEBGL_multisampled_render_to_texture` is missing, i.e. on most desktop GL), and odd-size mip levels, whose box filter is the driver's.
+- **Dashed lines** need non-indexed geometry, as three's `computeLineDistances`; an indexed line draws solid in both.
+- **Toon `gradientMap`** is sampled at lod 0 (three samples with derivatives; a gradient ramp is not minified in practice).

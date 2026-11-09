@@ -1,0 +1,66 @@
+{
+  "name": "@motionscript/sdk",
+  "version": "0.1.0-alpha.7",
+  "type": "module",
+  "description": "The Motion Script authoring surface behind one import: document types, components and their modules, commands, styling, and the machinery component kits build on.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionscript-dev/motionscript.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://motionscript.dev",
+  "bugs": {
+    "url": "https://github.com/motionscript-dev/motionscript/issues"
+  },
+  "keywords": [
+    "motion-script",
+    "motion script",
+    "animation"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "NOTICE",
+    "dist",
+    "CHANGELOG.md",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./component": {
+      "types": "./dist/component.d.ts",
+      "default": "./dist/component.js"
+    }
+  },
+  "scripts": {
+    "build": "eslint . && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node ../../scripts/build-browser.mjs",
+    "dev": "concurrently \"tsc -p tsconfig.build.json --watch\" \"tsc-alias -p tsconfig.build.json -w\"",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "test": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@motionscript/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@motionscript/core": "workspace:*",
+    "@types/node": "catalog:",
+    "concurrently": "catalog:",
+    "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "tsc-alias": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

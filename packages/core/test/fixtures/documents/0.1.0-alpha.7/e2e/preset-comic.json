@@ -1,0 +1,127 @@
+{
+  "kind": "project",
+  "name": "preset-comic",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "preset-comic",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 480,
+              "height": 320,
+              "cornerRadius": 20,
+              "clip": true,
+              "flow": "freeform"
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "./cat.jpg",
+                  "fit": "fill"
+                }
+              ],
+              "width": "fill",
+              "height": "fill",
+              "effects": [
+                {
+                  "type": "halftone",
+                  "size": 0.5,
+                  "angle": 15,
+                  "shape": "dot",
+                  "separation": "cmyk"
+                },
+                {
+                  "type": "colorAdjustment",
+                  "saturation": 1,
+                  "contrast": 1
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect2",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "halftone",
+                  "size": 7,
+                  "angle": 15,
+                  "shape": "dot",
+                  "separation": "cmyk"
+                },
+                {
+                  "type": "colorAdjustment",
+                  "saturation": 1.35,
+                  "contrast": 1.15
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

@@ -1,0 +1,280 @@
+{
+  "kind": "project",
+  "name": "effect-bulge-barrel",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "effect-bulge-barrel",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "flow": "grid",
+              "width": 320,
+              "height": 320,
+              "cornerRadius": 20,
+              "fill": "card",
+              "columns": 4,
+              "gap": 2,
+              "effects": [
+                {
+                  "type": "bulge",
+                  "strength": 0,
+                  "center": {
+                    "x": 0.5,
+                    "y": 0.5
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 2,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect5",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 3,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect6",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 4,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect7",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 5,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect8",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 6,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect9",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 7,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect10",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 8,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect11",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 9,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect12",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 10,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect13",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 11,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect14",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 12,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect15",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 13,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect16",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 14,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect17",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 15,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "bulge",
+                  "strength": 0.9,
+                  "center": {
+                    "x": 0.5,
+                    "y": 0.5
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

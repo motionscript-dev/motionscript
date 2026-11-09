@@ -1,0 +1,136 @@
+{
+  "kind": "project",
+  "name": "effect-duotone",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "effect-duotone",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 420,
+              "height": 280,
+              "cornerRadius": 20,
+              "fill": "card",
+              "flow": "horizontal",
+              "gap": 16,
+              "padding": 20,
+              "effects": [
+                {
+                  "type": "duotone",
+                  "amount": 0,
+                  "shadows": "#12184a",
+                  "highlights": "#ffd166"
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 2,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#f2c94c"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "duotone",
+                  "amount": 1,
+                  "shadows": "#12184a",
+                  "highlights": "#ffd166"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

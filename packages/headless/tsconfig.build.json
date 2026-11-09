@@ -1,0 +1,17 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        // Co-locate buildinfo in dist/ so turbo caches it with the emitted
+        // output (avoids stale-declaration bugs on cache restore).
+        "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo"
+    },
+    "exclude": [
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "src/**/*.fixtures.ts",
+        "src/**/tests",
+        // Browser code; see tsconfig.page.json. esbuild compiles it into the
+        // page bundle, so tsc must not emit it into the Node output.
+        "src/page/**/*"
+    ]
+}

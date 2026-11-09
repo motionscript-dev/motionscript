@@ -1,0 +1,90 @@
+{
+  "kind": "project",
+  "name": "stroke-align-outside",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "stroke-align-outside",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 350,
+              "height": 350,
+              "fill": "card",
+              "stroke": {
+                "weight": 4,
+                "fill": "primary",
+                "align": "outside"
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "strokeTo",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "stroke": {
+                "weight": 48,
+                "fill": "primary",
+                "align": "outside"
+              }
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

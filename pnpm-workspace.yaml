@@ -1,0 +1,64 @@
+packages:
+  - "apps/engine"
+  - "apps/react"
+  - "apps/shaders"
+  - "packages/core"
+  - "packages/headless"
+  - "packages/react"
+  - "packages/browser"
+  - "packages/e2e"
+  - "packages/cli"
+  - "packages/components/charts"
+  - "packages/components/geography"
+  - "packages/components/audio"
+  - "packages/components/code"
+  - "packages/components/math"
+  - "packages/components/grids"
+  - "packages/components/patterns"
+  - "packages/sdk"
+  - "packages/renderer"
+
+allowBuilds:
+  '@swc/core': false
+  core-js: false
+  esbuild: false
+  sharp: false
+  unrs-resolver: false
+
+catalog:
+  react: ^19.2.3
+  react-dom: ^19.2.3
+  "@types/react-dom": ^19.2.3
+  "@types/react": ^19.2.3
+  "@eslint/js": ^9.39.1
+  typescript: ^6.0.3
+  concurrently: ^9.0.0
+  vite: ^8.0.11
+  # The bundler Vite 8 runs, pinned to the version it pins. `browser` bundles a
+  # consumer with it to check what survives tree-shaking.
+  rolldown: 1.0.3
+  esbuild: ^0.28.1
+  esbuild-wasm: ^0.28.1
+  playwright: ^1.61.0
+  tsc-alias: ^1.8.16
+  shiki: ^4.0.2
+  mediabunny: ^1.40.1
+  "@mediabunny/mp3-encoder": ^1.49.0
+  vitest: ^4.1.5
+  eslint: ^9.39.4
+  globals: ^16.5.0
+  eslint-plugin-react-hooks: ^7.0.1
+  eslint-plugin-react-refresh: ^0.4.24
+  typescript-eslint: ^8.48.0
+  eslint-import-resolver-typescript: ^4.4.4
+  eslint-plugin-import-x: ^4.16.1
+  "@vitejs/plugin-react": ^6.0.1
+  vite-plugin-dts: 5.0.0
+  "@types/node": ^25.6.2
+  "@vitest/browser": 4.1.7
+  "@vitest/browser-playwright": ^4.1.7
+  # three ships no bundled types and @types/three tracks its version exactly, so
+  # both are pinned to the same exact version rather than a caret range — a range
+  # would let the runtime and its types drift apart across installs.
+  three: 0.185.1
+  "@types/three": 0.185.1

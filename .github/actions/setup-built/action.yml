@@ -1,0 +1,44 @@
+# Node, pnpm, a frozen install and the CI run's built libraries (every
+# package's dist/ and the renderer's web/pkg), unpacked in place. Used by every
+# job after `build`, so none of them needs Rust or builds anything.
+name: Set up with the build
+description: Install dependencies and unpack the build artifact from this run (or another run's, given run-id).
+
+inputs:
+  run-id:
+    description: The workflow run whose `build` artifact to use; this run when empty.
+    required: false
+    default: ""
+  github-token:
+    description: Needed only with run-id.
+    required: false
+    default: ""
+  registry-url:
+    description: Passed to setup-node; the release job sets npm's registry.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version: 22
+        cache: pnpm
+        registry-url: ${{ inputs.registry-url }}
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: build
+        run-id: ${{ inputs.run-id || github.run_id }}
+        github-token: ${{ inputs.github-token || github.token }}
+
+    - name: Unpack the build
+      shell: bash
+      run: tar -I zstd -xf build.tar.zst && rm build.tar.zst && echo "built from $(cat build-sha.txt)"

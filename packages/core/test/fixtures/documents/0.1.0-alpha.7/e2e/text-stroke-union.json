@@ -1,0 +1,73 @@
+{
+  "kind": "project",
+  "name": "text-stroke-union",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "text-stroke-union",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "text0",
+            "type": "text",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "text": "efwa",
+              "fontFamily": "Inter",
+              "fontWeight": 800,
+              "fontSize": 190,
+              "letterSpacing": 0,
+              "stroke": {
+                "weight": 10,
+                "fill": "accent",
+                "align": "outside"
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "text0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "letterSpacing": -46
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

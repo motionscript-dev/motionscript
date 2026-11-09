@@ -1,0 +1,6 @@
+{
+  "kit": { "barrel": "src/engine.ts", "specifier": "@motionscript/code" },
+  "items": [
+    { "name": "code", "root": "src", "files": ["node.ts"], "flatten": true }
+  ]
+}

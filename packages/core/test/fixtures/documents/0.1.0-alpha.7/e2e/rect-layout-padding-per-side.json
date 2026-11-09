@@ -1,0 +1,90 @@
+{
+  "kind": "project",
+  "name": "rect-layout-padding-per-side",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "rect-layout-padding-per-side",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 500,
+              "height": 360,
+              "fill": "card",
+              "cornerRadius": 16,
+              "padding": {
+                "left": 20,
+                "right": 20,
+                "top": 20,
+                "bottom": 20
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "accent",
+              "cornerRadius": 8
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "padding": {
+                "left": 16,
+                "right": 120,
+                "top": 100,
+                "bottom": 16
+              }
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

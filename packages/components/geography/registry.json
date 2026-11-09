@@ -1,0 +1,16 @@
+{
+  "kit": {
+    "barrel": "src/index.ts",
+    "specifier": "@motionscript/geography"
+  },
+  "items": [
+    {
+      "name": "geo-border",
+      "description": "Country and state outlines by ISO 3166 code, with adjustable detail.",
+      "root": "src/border",
+      "files": [
+        "geo-border.ts"
+      ]
+    }
+  ]
+}

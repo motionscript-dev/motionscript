@@ -1,0 +1,37 @@
+{
+  "$kind": "motionscript/shader@1",
+  "id": "shaderLab.prism",
+  "scope": "fill",
+  "name": "Prism",
+  "description": "A spinning spectrum sweep radiating from the shape's centre.",
+  "source": "\nstruct Params { hue: f32, spin: f32, bands: f32 }\n\nfn hue2rgb(h: f32) -> vec3f {\n    let p = abs((h * 6.0 + vec3f(5.0, 3.0, 1.0)) % 6.0 - 3.0);\n    return clamp(p - 1.0, vec3f(0.0), vec3f(1.0));\n}\n\nfn fill(in: FillIn) -> vec4f {\n    let p = vec2f((in.uv.x - 0.5) * in.size.x / in.size.y, 0.5 - in.uv.y);\n    let angle = atan2(p.y, p.x) / 6.2831853 + 0.5;\n    let h = fract(u.hue / 360.0 + angle * u.bands + in.time * u.spin * 0.15);\n    let vignette = 1.0 - smoothstep(0.0, 0.75, length(p));\n    return vec4f(hue2rgb(h) * vignette, 1.0);\n}\n",
+  "properties": {
+    "hue": {
+      "kind": "hue",
+      "default": 0,
+      "inputs": {
+        "value": "hue"
+      }
+    },
+    "spin": {
+      "kind": "slider",
+      "default": 1,
+      "min": 0,
+      "max": 4,
+      "step": 0.1,
+      "inputs": {
+        "value": "spin"
+      }
+    },
+    "bands": {
+      "kind": "slider",
+      "default": 6,
+      "min": 2,
+      "max": 16,
+      "step": 1,
+      "inputs": {
+        "value": "bands"
+      }
+    }
+  }
+}

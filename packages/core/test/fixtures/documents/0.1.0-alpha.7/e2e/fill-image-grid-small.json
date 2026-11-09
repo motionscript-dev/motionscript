@@ -1,0 +1,501 @@
+{
+  "kind": "project",
+  "name": "fill-image-grid-small",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "fill-image-grid-small",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "flow": "grid",
+              "width": 720,
+              "height": 400,
+              "columns": 6,
+              "gap": 12,
+              "scale": 0.85
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 1,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.25
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 2,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 3,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.75
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect5",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 4,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect6",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 5,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.25
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect7",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 6,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect8",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 7,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.75
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect9",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 8,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect10",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 9,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.25
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect11",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 10,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect12",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 11,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.75
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect13",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 12,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect14",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 13,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.25
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect15",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 14,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect16",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 15,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.75
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect17",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 16,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect18",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 17,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.25
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect19",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 18,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect20",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 19,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.75
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect21",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 20,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect22",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 21,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.25
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect23",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 22,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "cat.jpg",
+                  "fit": "fill",
+                  "zoom": 1.5
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect24",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 23,
+            "props": {
+              "height": "fill",
+              "cornerRadius": 8,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "zoom": 1.75
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect0",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "scale": 1
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

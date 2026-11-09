@@ -1,0 +1,26 @@
+{
+  "kit": {
+    "barrel": "src/engine.ts",
+    "specifier": "@motionscript/patterns/kit"
+  },
+  "items": [
+    {
+      "name": "line-grid-pattern",
+      "description": "A rectangular grid of lines in a fixed box, with minor lines between the major ones and an offset that scrolls it.",
+      "root": "src/line-grid-pattern",
+      "files": ["index.ts", "line-grid-pattern.ts"]
+    },
+    {
+      "name": "dot-grid-pattern",
+      "description": "A field of dots on the same divisions and offset as a line grid, so one laid over the other lines up.",
+      "root": "src/dot-grid-pattern",
+      "files": ["index.ts", "dot-grid-pattern.ts"]
+    },
+    {
+      "name": "grid-pattern",
+      "description": "An infinite world-anchored line grid that fills whatever the camera can see, with dashes locked to the world.",
+      "root": "src/grid-pattern",
+      "files": ["index.ts", "grid-pattern.ts"]
+    }
+  ]
+}

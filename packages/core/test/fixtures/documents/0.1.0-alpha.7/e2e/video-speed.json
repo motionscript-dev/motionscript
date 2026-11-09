@@ -1,0 +1,55 @@
+{
+  "kind": "project",
+  "name": "video-speed",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "video-speed",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "video0",
+            "type": "video",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "src": "video.mp4",
+              "width": 480,
+              "height": 270,
+              "fit": "fill",
+              "trimStart": 0,
+              "speed": 2,
+              "muted": true
+            }
+          }
+        ],
+        "commands": []
+      },
+      "duration": 2
+    }
+  ]
+}

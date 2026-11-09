@@ -1,0 +1,106 @@
+{
+  "kind": "project",
+  "name": "fill-stripe",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "fill-stripe",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 360,
+              "height": 240,
+              "cornerRadius": 20,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "card"
+                },
+                {
+                  "type": "stripe",
+                  "gap": 10,
+                  "strokeWidth": 4,
+                  "angle": -45,
+                  "color": "primary"
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "card"
+                },
+                {
+                  "type": "stripe",
+                  "gap": 10,
+                  "strokeWidth": 4,
+                  "angle": 90,
+                  "color": "primary"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

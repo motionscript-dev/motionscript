@@ -1,0 +1,148 @@
+{
+  "kind": "project",
+  "name": "audio",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "audio-0",
+      "clip": {
+        "kind": "audio",
+        "duration": 2,
+        "nodes": [
+          {
+            "id": "",
+            "type": "audioBus",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {}
+          },
+          {
+            "id": "audioBus-61",
+            "type": "audioBus",
+            "parentId": null,
+            "layerOrder": 62,
+            "props": {
+              "volume": 0.8
+            }
+          },
+          {
+            "id": "sound-62",
+            "type": "sound",
+            "parentId": "audioBus-61",
+            "layerOrder": 63,
+            "props": {
+              "src": "music.mp3",
+              "volume": {
+                "keys": [
+                  {
+                    "at": 0,
+                    "value": 0
+                  },
+                  {
+                    "at": 1,
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "startAt": 0.5
+          }
+        ],
+        "commands": [
+          {
+            "id": "c36",
+            "type": "to",
+            "targetId": "audioBus-61",
+            "at": 1,
+            "duration": 0,
+            "args": {
+              "mute": true
+            }
+          }
+        ]
+      },
+      "startAt": 0,
+      "duration": 2
+    },
+    {
+      "id": "audio-1",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {}
+          },
+          {
+            "id": "audioBus-63",
+            "type": "audioBus",
+            "parentId": null,
+            "layerOrder": 64,
+            "props": {
+              "pan": -0.2
+            }
+          },
+          {
+            "id": "sound-64",
+            "type": "sound",
+            "parentId": "audioBus-63",
+            "layerOrder": 65,
+            "props": {
+              "src": "click.wav"
+            }
+          },
+          {
+            "id": "video-65",
+            "type": "video",
+            "parentId": null,
+            "layerOrder": 66,
+            "props": {
+              "src": "clip.mp4",
+              "width": 320,
+              "height": 180
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "c37",
+            "type": "play",
+            "targetId": "sound-64",
+            "at": 0.5,
+            "duration": 0.5,
+            "args": {}
+          },
+          {
+            "id": "c38",
+            "type": "play",
+            "targetId": "video-65",
+            "at": 0,
+            "duration": 2,
+            "args": {
+              "from": 0,
+              "volume": 0.5
+            }
+          }
+        ]
+      },
+      "startAt": 0.5,
+      "duration": 2
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "kind": "project",
+  "name": "camera-zoom",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "camera-zoom",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "camera0",
+            "type": "camera",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "zoom": 1
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "camera0",
+            "layerOrder": 0,
+            "props": {
+              "width": 160,
+              "height": 160,
+              "cornerRadius": 16,
+              "fill": "primary",
+              "x": -120
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "camera0",
+            "layerOrder": 1,
+            "props": {
+              "width": 140,
+              "height": 140,
+              "fill": "accent",
+              "x": 120
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "camera0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "zoom": 2.4,
+              "lookAt": {
+                "x": 120,
+                "y": 0
+              }
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

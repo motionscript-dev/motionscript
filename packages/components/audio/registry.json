@@ -1,0 +1,28 @@
+{
+  "kit": {
+    "barrel": "src/kit.ts",
+    "specifier": "@motionscript/audio/kit"
+  },
+  "items": [
+    {
+      "name": "full-waveform",
+      "description": "A whole recording drawn as bars, with a played portion that advances.",
+      "root": "src/waveform",
+      "files": [
+        "envelope.ts",
+        "full-waveform.ts",
+        "shared.ts"
+      ]
+    },
+    {
+      "name": "live-waveform",
+      "description": "A visualiser whose bars move with the recording as it plays, coloured by voice.",
+      "root": "src/waveform",
+      "files": [
+        "envelope.ts",
+        "live-waveform.ts",
+        "shared.ts"
+      ]
+    }
+  ]
+}

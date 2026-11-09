@@ -1,0 +1,70 @@
+{
+  "kind": "project",
+  "name": "polygon-pentagon",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "polygon-pentagon",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "polygon0",
+            "type": "polygon",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 300,
+              "height": 300,
+              "sides": 5,
+              "fill": "accent",
+              "rotation": -90,
+              "scale": 0.6
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "polygon0",
+            "at": 0,
+            "duration": 1.3,
+            "easing": {
+              "kind": "inOut",
+              "args": "back"
+            },
+            "args": {
+              "rotation": 0,
+              "scale": 1
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

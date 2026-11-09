@@ -1,0 +1,210 @@
+{
+  "kind": "project",
+  "name": "space3d-carousel",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "space3d-carousel",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "#0f1218",
+              "space3D": true,
+              "perspective": 1200,
+              "elevation": 8
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 1000,
+              "height": 1000,
+              "y": -130,
+              "rotationX": 90,
+              "cornerRadius": 500,
+              "fill": "#171c26"
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 1,
+            "props": {
+              "width": 10,
+              "height": 10
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "width": 140,
+              "height": 200,
+              "cornerRadius": 18,
+              "fill": "#e0533d",
+              "stroke": {
+                "weight": 4,
+                "fill": "white/40"
+              },
+              "x": 0,
+              "depth": 240,
+              "rotationY": 0
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "width": 140,
+              "height": 200,
+              "cornerRadius": 18,
+              "fill": "#f2c14e",
+              "stroke": {
+                "weight": 4,
+                "fill": "white/40"
+              },
+              "x": 207.84609690826525,
+              "depth": 120.00000000000003,
+              "rotationY": 60
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 2,
+            "props": {
+              "width": 140,
+              "height": 200,
+              "cornerRadius": 18,
+              "fill": "#4fb286",
+              "stroke": {
+                "weight": 4,
+                "fill": "white/40"
+              },
+              "x": 207.84609690826528,
+              "depth": -119.99999999999994,
+              "rotationY": 120
+            }
+          },
+          {
+            "id": "rect5",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 3,
+            "props": {
+              "width": 140,
+              "height": 200,
+              "cornerRadius": 18,
+              "fill": "#3d6fe0",
+              "stroke": {
+                "weight": 4,
+                "fill": "white/40"
+              },
+              "x": 2.939152317953648e-14,
+              "depth": -240,
+              "rotationY": 180
+            }
+          },
+          {
+            "id": "rect6",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 4,
+            "props": {
+              "width": 140,
+              "height": 200,
+              "cornerRadius": 18,
+              "fill": "#9b5de5",
+              "stroke": {
+                "weight": 4,
+                "fill": "white/40"
+              },
+              "x": -207.84609690826522,
+              "depth": -120.00000000000011,
+              "rotationY": 240
+            }
+          },
+          {
+            "id": "rect7",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 5,
+            "props": {
+              "width": 140,
+              "height": 200,
+              "cornerRadius": 18,
+              "fill": "#f15bb5",
+              "stroke": {
+                "weight": 4,
+                "fill": "white/40"
+              },
+              "x": -207.84609690826525,
+              "depth": 120.00000000000003,
+              "rotationY": 300
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "cubic"
+            },
+            "args": {
+              "rotationY": 120
+            }
+          },
+          {
+            "id": "step1",
+            "type": "orbitTo",
+            "targetId": null,
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "elevation": 24
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

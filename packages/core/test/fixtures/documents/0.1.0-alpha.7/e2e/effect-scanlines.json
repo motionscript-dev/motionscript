@@ -1,0 +1,109 @@
+{
+  "kind": "project",
+  "name": "effect-scanlines",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "effect-scanlines",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 420,
+              "height": 280,
+              "cornerRadius": 20,
+              "fill": [
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#7ad9ff",
+                    "#f4f6ff"
+                  ]
+                }
+              ],
+              "effects": [
+                {
+                  "type": "scanlines",
+                  "spacing": 8,
+                  "thickness": 0.5,
+                  "darkness": 0,
+                  "offset": 0,
+                  "angle": 0
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "scanlines",
+                  "spacing": 8,
+                  "thickness": 0.5,
+                  "darkness": 0.9,
+                  "offset": 0,
+                  "angle": 0
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

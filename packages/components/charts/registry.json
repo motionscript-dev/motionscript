@@ -1,0 +1,23 @@
+{
+  "kit": { "barrel": "src/engine.ts", "specifier": "@motionscript/charts" },
+  "items": [
+    {
+      "name": "line-chart",
+      "description": "A cartesian line chart with a traced polyline, spotlit regions and a staggered entrance.",
+      "root": "src/line-chart",
+      "files": ["index.ts", "line-chart.ts", "chart-line.ts", "chart-region.ts", "horizontal-axis.ts", "shared.ts", "x-scale.ts"]
+    },
+    {
+      "name": "bar-chart",
+      "description": "A bar chart with grouped or stacked columns off a category axis.",
+      "root": "src/bar-chart",
+      "files": ["index.ts", "bar-chart.ts", "chart-bars.ts", "category-axis.ts", "shared.ts"]
+    },
+    {
+      "name": "pie-chart",
+      "description": "A pie or donut chart with relaxed labels and a revealable centre.",
+      "root": "src/pie-chart",
+      "files": ["index.ts", "pie-chart.ts", "pie-ring.ts", "pie-legend.ts", "shared.ts"]
+    }
+  ]
+}

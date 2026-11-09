@@ -1,0 +1,41 @@
+import { Camera, Rect, Fills } from '@motionscript/sdk';
+import { GridPattern } from '@motionscript/patterns';
+import { createRef, easeInOut, el, scene } from '../doc';
+import { holdTail } from './_lib';
+
+/**
+ * Basic {@link GridPattern}: a world-anchored infinite grid viewed through a
+ * {@link Camera}. Unlike a fixed {@link LineGridPattern}, the pattern is regenerated
+ * each frame for exactly the camera's visible region, so panning the camera
+ * scrolls the grid past while it always stays full — never revealing an empty
+ * edge. A red marker rect sits at the world origin as a fixed reference the
+ * grid slides relative to.
+ */
+const camera = createRef<Camera>();
+export default scene((stage) => {
+    stage.set({ fill: 'bg' });
+
+    stage.add(
+        el(Camera, {
+            ref: camera,
+            width: 720,
+            height: 460,
+            fill: 'card',
+            cornerRadius: 12,
+            stroke: { weight: 3, fill: '#2c3344' },
+            children: [
+                el(GridPattern, {
+                    cellSize: 80,
+                    fill: Fills.color('card'),
+                    stroke: { weight: 3, fill: 'primary' },
+                }),
+                el(Rect, { width: 56, height: 56, cornerRadius: 10, fill: 'accent' }),
+            ],
+        }),
+    );
+}, [
+    // Pan the camera across the world; the world-anchored grid scrolls past and
+    // stays full, regenerating only the lines currently on screen.
+    () => camera().to({ data: { lookAt: { x: 240, y: 120 } }, duration: 1.4, easing: easeInOut('quad') }),
+    holdTail(1.4),
+]);

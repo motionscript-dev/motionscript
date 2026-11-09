@@ -1,0 +1,119 @@
+{
+  "kind": "project",
+  "name": "space3d-flip",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "space3d-flip",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "#10131a",
+              "space3D": true,
+              "perspective": 900
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 700,
+              "height": 50,
+              "y": -170,
+              "cornerRadius": 25,
+              "fill": "#2a3345",
+              "depth": -240
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 1,
+            "props": {
+              "width": 300,
+              "height": 420
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "width": 300,
+              "height": 420,
+              "cornerRadius": 24,
+              "fill": "#3d6fe0",
+              "backfaceVisible": false
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "width": 300,
+              "height": 420,
+              "cornerRadius": 24,
+              "fill": "#e0533d",
+              "rotationY": 180,
+              "backfaceVisible": false
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "rect3",
+            "layerOrder": 0,
+            "props": {
+              "width": 120,
+              "height": 120,
+              "fill": "white"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "orbitTo",
+            "targetId": null,
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "cubic"
+            },
+            "args": {
+              "orbit": 180
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

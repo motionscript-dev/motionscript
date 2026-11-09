@@ -1,0 +1,349 @@
+# Main CI gate for Motion Script, on every push to alpha and main and every
+# pull request into them. Release (npm-publish.yml) waits for it and publishes
+# the build this run made, so nothing is built twice.
+#
+#   gate            whether this code already passed (scripts/ci-tested.mjs):
+#                   a fast-forward to main, or a release commit, is skipped
+#   build           build:lib once, uploaded as the `build` artifact; the
+#                   renderer's WASM comes from a cache keyed on every Rust input
+#   lint-typecheck, test-node, test-browser (2), e2e (2)
+#                   in parallel on that artifact, with no Rust
+#   rust            the crates' tests, notices, the text and 3D WASM and the
+#                   committed .d.ts, skipped when these Rust inputs passed before
+#
+# A dispatch with `full` runs everything regardless.
+name: CI
+
+on:
+  pull_request:
+    branches: [alpha, main]
+  push:
+    branches: [alpha, main]
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "Run every test even if this code passed before"
+        type: boolean
+        default: false
+
+concurrency:
+  # One run per ref; a new push cancels an in-flight run for the same branch.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  # Every Rust input of the WASM build. web/src/user-shaders.ts is read by a
+  # crate's include_str!.
+  WASM_KEY: wasm-${{ hashFiles('packages/renderer/crates/**', 'packages/renderer/Cargo.toml', 'packages/renderer/Cargo.lock', 'packages/renderer/rust-toolchain.toml', 'packages/renderer/web/src/user-shaders.ts', 'packages/renderer/scripts/build-wasm.sh', 'packages/renderer/scripts/wasm-env.sh') }}
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tested: ${{ steps.decide.outputs.tested }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci-tested.mjs ${{ inputs.full && '--full' || '' }}
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - id: wasm
+        uses: actions/cache/restore@v4
+        with:
+          path: packages/renderer/web/pkg
+          key: ${{ env.WASM_KEY }}
+
+      # rustup reads packages/renderer/rust-toolchain.toml: the pinned
+      # toolchain and the wasm32 target.
+      - name: Install the pinned Rust toolchain
+        if: steps.wasm.outputs.cache-hit != 'true'
+        working-directory: packages/renderer
+        run: rustup toolchain install && rustc --version
+
+      - name: Cache cargo
+        if: steps.wasm.outputs.cache-hit != 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/renderer
+          key: wasm
+
+      # wasm-bindgen-cli must match the wasm-bindgen crate exactly.
+      - name: Read tool versions
+        if: steps.wasm.outputs.cache-hit != 'true'
+        id: pins
+        working-directory: packages/renderer
+        run: echo "wasm-bindgen=$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\(.*\)"$/\1/p;}' Cargo.lock)" >> "$GITHUB_OUTPUT"
+
+      - name: Install wasm-bindgen-cli
+        if: steps.wasm.outputs.cache-hit != 'true'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@${{ steps.pins.outputs.wasm-bindgen }}
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build libraries
+        env:
+          MS_WASM_CACHED: ${{ steps.wasm.outputs.cache-hit == 'true' && '1' || '0' }}
+        run: pnpm build:lib
+
+      - name: Cache the WASM
+        if: steps.wasm.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: packages/renderer/web/pkg
+          key: ${{ env.WASM_KEY }}
+
+      # Every build output is a dist/ folder, plus the renderer's web/pkg.
+      - name: Pack the build
+        run: |
+          echo "$GITHUB_SHA" > build-sha.txt
+          find packages -name node_modules -prune -o -type d -name dist -print > build-files.txt
+          echo packages/renderer/web/pkg >> build-files.txt
+          echo build-sha.txt >> build-files.txt
+          tar -I zstd -cf build.tar.zst -T build-files.txt
+          ls -lh build.tar.zst
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: build.tar.zst
+          retention-days: 7
+          compression-level: 0
+
+  lint-typecheck:
+    needs: [gate, build]
+    if: needs.gate.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-built
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Every published package carries the root NOTICE
+        run: node scripts/sync-notice.mjs --check
+
+      - name: Breaking changesets say so and give a migration
+        run: node scripts/check-changesets.mjs
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Script tests
+        run: node --test scripts/*.test.mjs
+
+  test-node:
+    needs: [gate, build]
+    if: needs.gate.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-built
+
+      # Everything but the three packages that drive a real Chromium.
+      - name: Unit tests
+        env:
+          CI: "true"
+        run: pnpm -r --filter '!@motionscript/browser' --filter '!@motionscript/react' --filter '!@motionscript/headless' test
+
+  test-browser:
+    needs: [gate, build]
+    if: needs.gate.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            also: "@motionscript/react"
+          - shard: 2
+            also: "@motionscript/headless"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-built
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-
+
+      # Each package may pin its own Playwright, and so its own Chromium.
+      - name: Install Playwright Chromium
+        run: pnpm --filter @motionscript/browser --filter ${{ matrix.also }} exec playwright install --with-deps chromium
+
+      # Headed under Xvfb: the tests draw through WebGPU on SwiftShader, and
+      # headless Chromium on Linux reads a WebGPU canvas back empty.
+      - name: "@motionscript/browser, shard ${{ matrix.shard }}/2"
+        env:
+          HEADED: "1"
+          CI: "true"
+        run: xvfb-run -a pnpm --filter @motionscript/browser exec vitest run --shard=${{ matrix.shard }}/2
+
+      - name: ${{ matrix.also }}
+        env:
+          HEADED: "1"
+          CI: "true"
+        run: xvfb-run -a pnpm --filter ${{ matrix.also }} test
+
+  e2e:
+    needs: [gate, build]
+    if: needs.gate.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup-built
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: playwright-
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @motionscript/headless exec playwright install --with-deps chromium
+
+      # Headed under Xvfb: headless Chromium on Linux reads a SwiftShader
+      # WebGPU canvas back empty (packages/headless README, `headed`).
+      - name: e2e (wgpu lane), shard ${{ matrix.shard }}/2
+        run: xvfb-run -a pnpm --filter @motionscript/e2e exec tsx scripts/wgpu-lane.ts --shard ${{ matrix.shard }}/2
+
+      - name: Upload wgpu lane report
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: wgpu-lane-report-${{ matrix.shard }}
+          path: |
+            packages/e2e/out/wgpu
+            packages/e2e/out/wgpu-diff
+            packages/e2e/out/wgpu-summary.json
+          if-no-files-found: warn
+          retention-days: 5
+
+  rust:
+    # @motionscript/renderer's Rust half: the crates' tests (with naga
+    # validating every WGSL module it ships), the crate licence notices, the
+    # text and 3D WASM builds and the committed wasm-bindgen .d.ts files. A
+    # marker cached under the hash of all of it skips the job when exactly
+    # these inputs passed before.
+    needs: gate
+    if: needs.gate.outputs.tested != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PASSED_KEY: rust-passed-${{ hashFiles('packages/renderer/crates/**', 'packages/renderer/Cargo.toml', 'packages/renderer/Cargo.lock', 'packages/renderer/rust-toolchain.toml', 'packages/renderer/about.toml', 'packages/renderer/THIRD_PARTY_NOTICES.txt', 'packages/renderer/scripts/**', 'packages/renderer/web/src/user-shaders.ts', 'packages/renderer/web/pkg*/*.d.ts') }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: passed
+        uses: actions/cache/restore@v4
+        with:
+          path: .rust-passed
+          key: ${{ env.PASSED_KEY }}
+          lookup-only: ${{ !inputs.full }}
+
+      - name: Already passed
+        if: steps.passed.outputs.cache-hit == 'true' && !inputs.full
+        run: echo "These Rust inputs passed in an earlier run; nothing to do."
+
+      - if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        uses: pnpm/action-setup@v6
+
+      - if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install the pinned Rust toolchain
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        working-directory: packages/renderer
+        run: rustup toolchain install && rustc --version
+
+      - if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/renderer
+          key: rust
+
+      - name: Read tool versions
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        id: pins
+        working-directory: packages/renderer
+        run: echo "wasm-bindgen=$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\(.*\)"$/\1/p;}' Cargo.lock)" >> "$GITHUB_OUTPUT"
+
+      - name: Install wasm-bindgen-cli and cargo-about
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@${{ steps.pins.outputs.wasm-bindgen }},cargo-about@0.9.3
+
+      - name: Install dependencies
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        run: pnpm install --frozen-lockfile
+
+      - name: Rust tests (and WGSL validation)
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        working-directory: packages/renderer
+        run: cargo test --locked --workspace
+
+      - name: THIRD_PARTY_NOTICES.txt is current
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        run: pnpm --filter @motionscript/renderer notices:check
+
+      - name: Effect parameter generator
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        run: pnpm --filter @motionscript/renderer test:effects
+
+      - name: Build the renderer, text and 3D WASM
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        working-directory: packages/renderer
+        run: sh scripts/build-wasm.sh && sh scripts/build-wasm-text.sh && sh scripts/build-wasm-r3d.sh
+
+      - name: Committed wasm-bindgen declarations are current
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        run: git diff --exit-code -- 'packages/renderer/web/pkg*/*.d.ts'
+
+      - name: Record the pass
+        if: steps.passed.outputs.cache-hit != 'true'
+        run: mkdir -p .rust-passed && echo "$GITHUB_SHA" > .rust-passed/sha
+
+      - if: steps.passed.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .rust-passed
+          key: ${{ env.PASSED_KEY }}

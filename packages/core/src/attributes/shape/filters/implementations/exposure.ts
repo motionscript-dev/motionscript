@@ -1,0 +1,14 @@
+import type { FilterData } from "../registry";
+import { lerpNumber } from "@/tween/lerp";
+
+/** Scales the overall luminance of the media layer. */
+export interface ExposureFilter {
+    type: 'exposure';
+    /** Exposure multiplier. 1 = unchanged, >1 brighter, <1 darker. */
+    amount: number;
+}
+
+export const exposureFilter: FilterData<ExposureFilter> = {
+    lerp: (from, to, t) => ({ type: "exposure", amount: lerpNumber(from.amount, to.amount, t) }),
+    equals: (a, b) => a.amount === b.amount,
+};

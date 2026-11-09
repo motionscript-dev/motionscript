@@ -1,0 +1,132 @@
+{
+  "kind": "project",
+  "name": "component2d-styled-class",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "component2d-styled-class",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform"
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 600,
+              "height": 300,
+              "fill": "card",
+              "overlay": "white/5",
+              "stroke": {
+                "weight": 8,
+                "fill": "primary"
+              },
+              "shadow": {
+                "blur": 24,
+                "fill": "black/60"
+              },
+              "cornerRadius": 36,
+              "cornerStyle": "angled",
+              "flow": "horizontal",
+              "gap": 24,
+              "padding": 32,
+              "align": "center",
+              "clip": true,
+              "end": 0.15
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "width": 120,
+              "height": 120,
+              "cornerRadius": 20,
+              "fill": "primary"
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "width": 120,
+              "height": 160,
+              "cornerRadius": {
+                "topLeft": 40,
+                "bottomRight": 40
+              },
+              "fill": "accent"
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "rect1",
+            "layerOrder": 2,
+            "props": {
+              "width": 260,
+              "height": 260,
+              "fill": "white/20"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "progressTo",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "end": 1
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

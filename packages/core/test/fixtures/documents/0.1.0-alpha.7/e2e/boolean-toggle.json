@@ -1,0 +1,79 @@
+{
+  "kind": "project",
+  "name": "boolean-toggle",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "boolean-toggle",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "boolean0",
+            "type": "boolean",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "op": "union",
+              "fill": "primary"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "boolean0",
+            "layerOrder": 0,
+            "props": {
+              "width": 280,
+              "height": 200,
+              "cornerRadius": 20,
+              "center": {
+                "x": -40,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "boolean0",
+            "layerOrder": 1,
+            "props": {
+              "width": 200,
+              "height": 200,
+              "center": {
+                "x": 80,
+                "y": 0
+              }
+            }
+          }
+        ],
+        "commands": []
+      },
+      "duration": 2
+    }
+  ]
+}

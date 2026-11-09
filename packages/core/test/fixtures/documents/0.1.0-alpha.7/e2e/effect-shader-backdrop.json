@@ -1,0 +1,259 @@
+{
+  "kind": "project",
+  "name": "effect-shader-backdrop",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "effect-shader-backdrop",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "flow": "grid",
+              "width": "fill",
+              "height": "fill",
+              "columns": 6,
+              "gap": 2,
+              "padding": 20
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 1,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 2,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 3,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect5",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 4,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect6",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 5,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect7",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 6,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect8",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 7,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect9",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 8,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect10",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 9,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect11",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 10,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect12",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 11,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect13",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 1,
+            "props": {
+              "width": 300,
+              "height": 220,
+              "cornerRadius": 20,
+              "stroke": {
+                "weight": 4,
+                "fill": "#f4f6ff"
+              },
+              "effects": [
+                {
+                  "type": "shader",
+                  "source": "\nstruct Params { resolution: vec2f, amount: f32 }\n\nfn effect(in: EffectIn) -> vec4f {\n    let uv = in.px / u.resolution;\n    let wave = sin(uv.y * 30.0) * u.amount;\n    return sample_src_px(in.px + vec2f(wave, 0.0));\n}\n",
+                  "language": "wgsl",
+                  "reach": 24,
+                  "uniforms": [
+                    {
+                      "name": "resolution",
+                      "value": [
+                        300,
+                        220
+                      ]
+                    },
+                    {
+                      "name": "amount",
+                      "value": 0
+                    }
+                  ],
+                  "mode": "backdrop"
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect13",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "shader",
+                  "source": "\nstruct Params { resolution: vec2f, amount: f32 }\n\nfn effect(in: EffectIn) -> vec4f {\n    let uv = in.px / u.resolution;\n    let wave = sin(uv.y * 30.0) * u.amount;\n    return sample_src_px(in.px + vec2f(wave, 0.0));\n}\n",
+                  "language": "wgsl",
+                  "reach": 24,
+                  "uniforms": [
+                    {
+                      "name": "resolution",
+                      "value": [
+                        300,
+                        220
+                      ]
+                    },
+                    {
+                      "name": "amount",
+                      "value": 18
+                    }
+                  ],
+                  "mode": "backdrop"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

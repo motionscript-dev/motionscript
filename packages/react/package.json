@@ -1,0 +1,71 @@
+{
+  "name": "@motionscript/react",
+  "version": "0.1.0-alpha.7",
+  "type": "module",
+  "description": "React bindings for Motion Script.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionscript-dev/motionscript.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://motionscript.dev",
+  "bugs": {
+    "url": "https://github.com/motionscript-dev/motionscript/issues"
+  },
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "eslint . && tsc -p tsconfig.build.json && vite build && node ../../scripts/build-browser.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc -b --noEmit",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "files": [
+    "NOTICE",
+    "dist",
+    "CHANGELOG.md",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "module": "./dist/motionscript-react.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/motionscript-react.js"
+    }
+  },
+  "peerDependencies": {
+    "@motionscript/core": "workspace:^",
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@motionscript/core": "workspace:*",
+    "@motionscript/browser": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "eslint-plugin-react-refresh": "catalog:",
+    "react": "catalog:",
+    "globals": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "playwright": "^1.60.0",
+    "typescript-eslint": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  }
+}

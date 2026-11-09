@@ -1,0 +1,23 @@
+[package]
+name = "ms-text"
+version = "0.0.1"
+edition = "2024"
+publish = false
+description = "Text shaping, layout, measurement and glyph outlines for the Motion Script renderer (no GPU)."
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+harfrust = "0.15"
+read-fonts = "0.46"
+unicode-linebreak = "0.1.5"
+wasm-bindgen = { version = "=0.2.130", optional = true }
+
+[features]
+# wasm-bindgen API for the web parity harness (web/pkg-text).
+wasm = ["dep:wasm-bindgen"]
+
+[dev-dependencies]
+serde_json = "1"

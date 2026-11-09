@@ -1,0 +1,107 @@
+{
+  "kind": "project",
+  "name": "effect-shader-custom",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "effect-shader-custom",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 360,
+              "height": 240,
+              "cornerRadius": 20,
+              "fill": "card",
+              "effects": [
+                {
+                  "type": "shader",
+                  "source": "\nstruct Params { amount: f32 }\n\nfn effect(in: EffectIn) -> vec4f {\n    // Centred on the card's bottom-right corner.\n    let uv = in.uv - 1.0;\n    let glow = (1.0 - smoothstep(0.0, 0.6, length(uv))) * u.amount;\n    return vec4f(glow, glow * 0.6, glow * 0.9, glow);\n}\n",
+                  "language": "wgsl",
+                  "reach": 240,
+                  "uniforms": {
+                    "amount": 0
+                  },
+                  "blendMode": "screen",
+                  "mode": "foreground"
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "shader",
+                  "source": "\nstruct Params { amount: f32 }\n\nfn effect(in: EffectIn) -> vec4f {\n    // Centred on the card's bottom-right corner.\n    let uv = in.uv - 1.0;\n    let glow = (1.0 - smoothstep(0.0, 0.6, length(uv))) * u.amount;\n    return vec4f(glow, glow * 0.6, glow * 0.9, glow);\n}\n",
+                  "language": "wgsl",
+                  "reach": 240,
+                  "uniforms": {
+                    "amount": 1.2
+                  },
+                  "blendMode": "screen",
+                  "mode": "foreground"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

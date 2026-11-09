@@ -1,0 +1,70 @@
+{
+  "name": "@motionscript/core",
+  "version": "0.1.0-alpha.7",
+  "type": "module",
+  "description": "Engine-agnostic animation library for Motion Script: scenes, nodes, props, tweens and layout.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionscript-dev/motionscript.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://motionscript.dev",
+  "bugs": {
+    "url": "https://github.com/motionscript-dev/motionscript/issues"
+  },
+  "keywords": [
+    "motion-script",
+    "motion script",
+    "animation"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "NOTICE",
+    "dist",
+    "CHANGELOG.md",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./experimental": {
+      "types": "./dist/experimental.d.ts",
+      "default": "./dist/experimental.js"
+    },
+    "./component": {
+      "types": "./dist/component.d.ts",
+      "default": "./dist/component.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "default": "./dist/sdk/index.js"
+    }
+  },
+  "scripts": {
+    "build": "eslint . && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json --resolve-full-paths && node ../../scripts/build-browser.mjs",
+    "dev": "concurrently \"tsc -p tsconfig.build.json --watch\" \"tsc-alias -p tsconfig.build.json -w\"",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "test": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "concurrently": "catalog:",
+    "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "tsc-alias": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

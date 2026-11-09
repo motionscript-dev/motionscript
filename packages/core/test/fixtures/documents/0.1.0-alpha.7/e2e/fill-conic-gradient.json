@@ -1,0 +1,104 @@
+{
+  "kind": "project",
+  "name": "fill-conic-gradient",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "fill-conic-gradient",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 320,
+              "height": 320,
+              "cornerRadius": 160,
+              "fill": [
+                {
+                  "type": "conic-gradient",
+                  "colors": [
+                    "#6990dd",
+                    "#e8617c",
+                    "#f2c94c",
+                    "#6990dd"
+                  ],
+                  "startAngle": 0
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "fill": [
+                {
+                  "type": "conic-gradient",
+                  "colors": [
+                    "#6990dd",
+                    "#e8617c",
+                    "#f2c94c",
+                    "#6990dd"
+                  ],
+                  "startAngle": 360
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

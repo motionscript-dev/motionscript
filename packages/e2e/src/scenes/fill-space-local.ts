@@ -1,0 +1,28 @@
+import { Rect, Fills } from '@motionscript/sdk';
+import { createRef, easeInOut, el, scene } from '../doc';
+import { holdTail } from './_lib';
+
+/**
+ * `space: 'local'` (the default): the gradient is pinned to the shape's own
+ * bounds, so moving the node around does not change its appearance — the
+ * gradient rides along with it.
+ */
+const rect = createRef<Rect>();
+export default scene((stage) => {
+    stage.set({ fill: 'bg' });
+    stage.add(
+        el(Rect, { width: 'fill', height: 'fill', flow: 'freeform', align: { x: 0, y: 0 }, children: [
+            el(Rect, {
+                ref: rect,
+                width: 200,
+                height: 200,
+                cornerRadius: 20,
+                x: -260,
+                fill: Fills.linearGradient(['#6990dd', '#e8617c'], { space: 'local' }),
+            }),
+        ] }),
+    );
+}, [
+    () => rect().to({ data: { x: 260 }, duration: 1.4, easing: easeInOut('quad') }),
+    holdTail(1.4),
+]);

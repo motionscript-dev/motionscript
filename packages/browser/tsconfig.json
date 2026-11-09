@@ -1,0 +1,26 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "composite": true,
+        "outDir": "dist",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        }
+    },
+    // Test-inclusive, per the two-tsconfig convention: this is what the editor
+    // and `typecheck` read, and `tsconfig.build.json` excludes `test/` again.
+    // `test/` sits beside `src/` here rather than inside it (every other package
+    // co-locates), so leaving it out of `include` left it type-checked by
+    // nothing at all — which is how a two-argument call to a one-argument
+    // `to()` sat in the parity test until it started failing on pixels.
+    "include": [
+        "src/**/*",
+        "src/**/*.json",
+        "test/**/*"
+    ],
+    "references": [
+        { "path": "../core/tsconfig.build.json" }
+    ]
+}

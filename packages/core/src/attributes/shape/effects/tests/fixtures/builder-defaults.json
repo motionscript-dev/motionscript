@@ -1,0 +1,1372 @@
+{
+  "blur": [
+    {
+      "type": "blur",
+      "radius": 0
+    },
+    {
+      "type": "blur",
+      "radius": 3
+    },
+    {
+      "type": "blur",
+      "radius": 2,
+      "mode": "backdrop",
+      "clip": true
+    }
+  ],
+  "directionalBlur": [
+    {
+      "type": "directionalBlur",
+      "radius": 5,
+      "angle": 0
+    },
+    {
+      "type": "directionalBlur",
+      "radius": 7,
+      "angle": 0
+    }
+  ],
+  "pixelate": [
+    {
+      "type": "pixelate",
+      "blocks": {
+        "x": 8,
+        "y": 8
+      },
+      "sharpColors": true
+    },
+    {
+      "type": "pixelate",
+      "blocks": {
+        "x": 3,
+        "y": 4
+      },
+      "sharpColors": true
+    }
+  ],
+  "grayscale": [
+    {
+      "type": "grayscale",
+      "amount": 0.5
+    },
+    {
+      "type": "grayscale",
+      "amount": 1
+    }
+  ],
+  "bulge": [
+    {
+      "type": "bulge",
+      "strength": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    {
+      "type": "bulge",
+      "strength": 3,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    {
+      "type": "bulge",
+      "strength": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "backdrop"
+    },
+    {
+      "type": "bulge",
+      "strength": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "magnify": [
+    {
+      "type": "magnify",
+      "scale": 2,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "backdrop"
+    },
+    {
+      "type": "magnify",
+      "scale": 3,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "backdrop"
+    },
+    {
+      "type": "magnify",
+      "scale": 2,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "backdrop"
+    },
+    {
+      "type": "magnify",
+      "scale": 2,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "bloom": [
+    {
+      "type": "bloom",
+      "threshold": 0.7,
+      "radius": 12,
+      "intensity": 1
+    },
+    {
+      "type": "bloom",
+      "threshold": 0.7,
+      "radius": 12,
+      "intensity": 3
+    },
+    {
+      "type": "bloom",
+      "threshold": 0.7,
+      "radius": 12,
+      "intensity": 1,
+      "mode": "backdrop"
+    },
+    {
+      "type": "bloom",
+      "threshold": 0.7,
+      "radius": 12,
+      "intensity": 1,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "vintage": [
+    {
+      "type": "vintage",
+      "amount": 1,
+      "warmth": 0.2
+    },
+    {
+      "type": "vintage",
+      "amount": 3,
+      "warmth": 0.2
+    },
+    {
+      "type": "vintage",
+      "amount": 1,
+      "warmth": 0.2,
+      "mode": "backdrop"
+    },
+    {
+      "type": "vintage",
+      "amount": 1,
+      "warmth": 0.2,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "chromaticAberration": [
+    {
+      "type": "chromaticAberration",
+      "amount": 4,
+      "angle": 0
+    },
+    {
+      "type": "chromaticAberration",
+      "amount": 3,
+      "angle": 0
+    },
+    {
+      "type": "chromaticAberration",
+      "amount": 4,
+      "angle": 0,
+      "mode": "backdrop"
+    },
+    {
+      "type": "chromaticAberration",
+      "amount": 4,
+      "angle": 0,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "invert": [
+    {
+      "type": "invert",
+      "channel": "rgba",
+      "strength": 1
+    },
+    {
+      "type": "invert",
+      "channel": "rgba",
+      "strength": 3
+    },
+    {
+      "type": "invert",
+      "channel": "rgba",
+      "strength": 1,
+      "mode": "backdrop"
+    },
+    {
+      "type": "invert",
+      "channel": "rgba",
+      "strength": 1,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "scatter": [
+    {
+      "type": "scatter",
+      "strength": 10,
+      "axis": "both"
+    },
+    {
+      "type": "scatter",
+      "strength": 3,
+      "axis": "both"
+    },
+    {
+      "type": "scatter",
+      "strength": 10,
+      "axis": "both",
+      "mode": "backdrop"
+    },
+    {
+      "type": "scatter",
+      "strength": 10,
+      "axis": "both",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "posterize": [
+    {
+      "type": "posterize",
+      "levels": 4
+    },
+    {
+      "type": "posterize",
+      "levels": 3
+    },
+    {
+      "type": "posterize",
+      "levels": 4,
+      "mode": "backdrop"
+    },
+    {
+      "type": "posterize",
+      "levels": 4,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "motionBlur": [
+    {
+      "type": "motionBlur",
+      "length": 50,
+      "alignment": "centered",
+      "samples": 16,
+      "strength": 1,
+      "axis": "both"
+    },
+    {
+      "type": "motionBlur",
+      "length": 3,
+      "alignment": "centered",
+      "samples": 16,
+      "strength": 1,
+      "axis": "both"
+    },
+    {
+      "type": "motionBlur",
+      "length": 50,
+      "alignment": "centered",
+      "samples": 16,
+      "strength": 1,
+      "axis": "both",
+      "mode": "backdrop"
+    },
+    {
+      "type": "motionBlur",
+      "length": 50,
+      "alignment": "centered",
+      "samples": 16,
+      "strength": 1,
+      "axis": "both",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "outline": [
+    {
+      "type": "outline",
+      "width": 4,
+      "color": "black",
+      "position": "outside"
+    },
+    {
+      "type": "outline",
+      "width": 3,
+      "color": "black",
+      "position": "outside"
+    },
+    {
+      "type": "outline",
+      "width": 4,
+      "color": "black",
+      "position": "outside",
+      "mode": "backdrop"
+    },
+    {
+      "type": "outline",
+      "width": 4,
+      "color": "black",
+      "position": "outside",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "dropShadow": [
+    {
+      "type": "dropShadow",
+      "offsetX": 0,
+      "offsetY": -8,
+      "blur": 16,
+      "spread": 0,
+      "color": "black"
+    },
+    {
+      "type": "dropShadow",
+      "offsetX": 0,
+      "offsetY": -8,
+      "blur": 3,
+      "spread": 0,
+      "color": "black"
+    },
+    {
+      "type": "dropShadow",
+      "offsetX": 0,
+      "offsetY": -8,
+      "blur": 16,
+      "spread": 0,
+      "color": "black",
+      "mode": "backdrop"
+    },
+    {
+      "type": "dropShadow",
+      "offsetX": 0,
+      "offsetY": -8,
+      "blur": 16,
+      "spread": 0,
+      "color": "black",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "vignette": [
+    {
+      "type": "vignette",
+      "amount": 0.5,
+      "radius": 0.75,
+      "softness": 0.5,
+      "color": "black"
+    },
+    {
+      "type": "vignette",
+      "amount": 3,
+      "radius": 0.75,
+      "softness": 0.5,
+      "color": "black"
+    },
+    {
+      "type": "vignette",
+      "amount": 0.5,
+      "radius": 0.75,
+      "softness": 0.5,
+      "color": "black",
+      "mode": "backdrop"
+    },
+    {
+      "type": "vignette",
+      "amount": 0.5,
+      "radius": 0.75,
+      "softness": 0.5,
+      "color": "black",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "lut": [
+    {
+      "type": "lut",
+      "table": [
+        0,
+        0,
+        0
+      ],
+      "size": 2,
+      "amount": 1
+    }
+  ],
+  "grain": [
+    {
+      "type": "grain",
+      "amount": 0.25,
+      "size": 1,
+      "seed": 0,
+      "animated": false,
+      "colored": false
+    },
+    {
+      "type": "grain",
+      "amount": 3,
+      "size": 1,
+      "seed": 0,
+      "animated": false,
+      "colored": false
+    },
+    {
+      "type": "grain",
+      "amount": 0.25,
+      "size": 1,
+      "seed": 0,
+      "animated": false,
+      "colored": false,
+      "mode": "backdrop"
+    },
+    {
+      "type": "grain",
+      "amount": 0.25,
+      "size": 1,
+      "seed": 0,
+      "animated": false,
+      "colored": false,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "sharpen": [
+    {
+      "type": "sharpen",
+      "amount": 1,
+      "radius": 1
+    },
+    {
+      "type": "sharpen",
+      "amount": 3,
+      "radius": 1
+    },
+    {
+      "type": "sharpen",
+      "amount": 1,
+      "radius": 1,
+      "mode": "backdrop"
+    },
+    {
+      "type": "sharpen",
+      "amount": 1,
+      "radius": 1,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "edges": [
+    {
+      "type": "edges",
+      "strength": 1,
+      "kernel": "sobel",
+      "colored": false
+    },
+    {
+      "type": "edges",
+      "strength": 3,
+      "kernel": "sobel",
+      "colored": false
+    },
+    {
+      "type": "edges",
+      "strength": 1,
+      "kernel": "sobel",
+      "colored": false,
+      "mode": "backdrop"
+    },
+    {
+      "type": "edges",
+      "strength": 1,
+      "kernel": "sobel",
+      "colored": false,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "threshold": [
+    {
+      "type": "threshold",
+      "level": 0.5,
+      "smoothness": 0.05
+    },
+    {
+      "type": "threshold",
+      "level": 3,
+      "smoothness": 0.05
+    },
+    {
+      "type": "threshold",
+      "level": 0.5,
+      "smoothness": 0.05,
+      "mode": "backdrop"
+    },
+    {
+      "type": "threshold",
+      "level": 0.5,
+      "smoothness": 0.05,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "radialBlur": [
+    {
+      "type": "radialBlur",
+      "amount": 0.5,
+      "style": "zoom",
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "samples": 16
+    },
+    {
+      "type": "radialBlur",
+      "amount": 3,
+      "style": "zoom",
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "samples": 16
+    },
+    {
+      "type": "radialBlur",
+      "amount": 0.5,
+      "style": "zoom",
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "samples": 16,
+      "mode": "backdrop"
+    },
+    {
+      "type": "radialBlur",
+      "amount": 0.5,
+      "style": "zoom",
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "samples": 16,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "halftone": [
+    {
+      "type": "halftone",
+      "size": 8,
+      "angle": 45,
+      "shape": "dot",
+      "separation": "mono"
+    },
+    {
+      "type": "halftone",
+      "size": 3,
+      "angle": 45,
+      "shape": "dot",
+      "separation": "mono"
+    },
+    {
+      "type": "halftone",
+      "size": 8,
+      "angle": 45,
+      "shape": "dot",
+      "separation": "mono",
+      "mode": "backdrop"
+    },
+    {
+      "type": "halftone",
+      "size": 8,
+      "angle": 45,
+      "shape": "dot",
+      "separation": "mono",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "dither": [
+    {
+      "type": "dither",
+      "levels": 2,
+      "matrix": 4,
+      "scale": 1,
+      "monochrome": false,
+      "noise": "bayer"
+    },
+    {
+      "type": "dither",
+      "levels": 3,
+      "matrix": 4,
+      "scale": 1,
+      "monochrome": false,
+      "noise": "bayer"
+    },
+    {
+      "type": "dither",
+      "levels": 2,
+      "matrix": 4,
+      "scale": 1,
+      "monochrome": false,
+      "noise": "bayer",
+      "mode": "backdrop"
+    },
+    {
+      "type": "dither",
+      "levels": 2,
+      "matrix": 4,
+      "scale": 1,
+      "monochrome": false,
+      "noise": "bayer",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "duotone": [
+    {
+      "type": "duotone",
+      "amount": 1,
+      "shadows": "black",
+      "highlights": "white"
+    },
+    {
+      "type": "duotone",
+      "amount": 3,
+      "shadows": "black",
+      "highlights": "white"
+    },
+    {
+      "type": "duotone",
+      "amount": 1,
+      "shadows": "black",
+      "highlights": "white",
+      "mode": "backdrop"
+    },
+    {
+      "type": "duotone",
+      "amount": 1,
+      "shadows": "black",
+      "highlights": "white",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "curves": [
+    {
+      "type": "curves",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "channel": "rgb"
+    },
+    {
+      "type": "curves",
+      "points": [
+        [
+          0,
+          0.1
+        ]
+      ],
+      "channel": "red"
+    }
+  ],
+  "colorAdjustment": [
+    {
+      "type": "colorAdjustment"
+    },
+    {
+      "type": "colorAdjustment",
+      "brightness": 0.2,
+      "mode": "backdrop"
+    }
+  ],
+  "rgbShift": [
+    {
+      "type": "rgbShift",
+      "red": {
+        "x": 4,
+        "y": 0
+      },
+      "green": {
+        "x": 0,
+        "y": 0
+      },
+      "blue": {
+        "x": -4,
+        "y": 0
+      }
+    },
+    {
+      "type": "rgbShift",
+      "red": {
+        "x": 3,
+        "y": 0
+      },
+      "green": {
+        "x": 0,
+        "y": 0
+      },
+      "blue": {
+        "x": -3,
+        "y": 0
+      }
+    },
+    {
+      "type": "rgbShift",
+      "red": {
+        "x": 4,
+        "y": 0
+      },
+      "green": {
+        "x": 0,
+        "y": 0
+      },
+      "blue": {
+        "x": -4,
+        "y": 0
+      },
+      "mode": "backdrop"
+    },
+    {
+      "type": "rgbShift",
+      "red": {
+        "x": 4,
+        "y": 0
+      },
+      "green": {
+        "x": 0,
+        "y": 0
+      },
+      "blue": {
+        "x": -4,
+        "y": 0
+      },
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "scanlines": [
+    {
+      "type": "scanlines",
+      "spacing": 4,
+      "thickness": 0.5,
+      "darkness": 0.5,
+      "offset": 0,
+      "angle": 0
+    },
+    {
+      "type": "scanlines",
+      "spacing": 4,
+      "thickness": 0.5,
+      "darkness": 3,
+      "offset": 0,
+      "angle": 0
+    },
+    {
+      "type": "scanlines",
+      "spacing": 4,
+      "thickness": 0.5,
+      "darkness": 0.5,
+      "offset": 0,
+      "angle": 0,
+      "mode": "backdrop"
+    },
+    {
+      "type": "scanlines",
+      "spacing": 4,
+      "thickness": 0.5,
+      "darkness": 0.5,
+      "offset": 0,
+      "angle": 0,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "blockDisplace": [
+    {
+      "type": "blockDisplace",
+      "amount": 20,
+      "size": 16,
+      "density": 0.3,
+      "seed": 0,
+      "axis": "x"
+    },
+    {
+      "type": "blockDisplace",
+      "amount": 3,
+      "size": 16,
+      "density": 0.3,
+      "seed": 0,
+      "axis": "x"
+    },
+    {
+      "type": "blockDisplace",
+      "amount": 20,
+      "size": 16,
+      "density": 0.3,
+      "seed": 0,
+      "axis": "x",
+      "mode": "backdrop"
+    },
+    {
+      "type": "blockDisplace",
+      "amount": 20,
+      "size": 16,
+      "density": 0.3,
+      "seed": 0,
+      "axis": "x",
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "bitCrush": [
+    {
+      "type": "bitCrush",
+      "bits": 3,
+      "palette": "none",
+      "amount": 1
+    },
+    {
+      "type": "bitCrush",
+      "bits": 3,
+      "palette": "none",
+      "amount": 1
+    },
+    {
+      "type": "bitCrush",
+      "bits": 3,
+      "palette": "none",
+      "amount": 1,
+      "mode": "backdrop"
+    },
+    {
+      "type": "bitCrush",
+      "bits": 3,
+      "palette": "none",
+      "amount": 1,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "ascii": [
+    {
+      "type": "ascii",
+      "size": 12,
+      "charset": "standard",
+      "fontFamily": "monospace",
+      "ink": "white",
+      "background": "black",
+      "colored": false
+    },
+    {
+      "type": "ascii",
+      "size": 3,
+      "charset": "standard",
+      "fontFamily": "monospace",
+      "ink": "white",
+      "background": "black",
+      "colored": false
+    },
+    {
+      "type": "ascii",
+      "size": 12,
+      "charset": "standard",
+      "fontFamily": "monospace",
+      "ink": "white",
+      "background": "black",
+      "colored": false,
+      "mode": "backdrop"
+    },
+    {
+      "type": "ascii",
+      "size": 12,
+      "charset": "standard",
+      "fontFamily": "monospace",
+      "ink": "white",
+      "background": "black",
+      "colored": false,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "oilPaint": [
+    {
+      "type": "oilPaint",
+      "radius": 3
+    },
+    {
+      "type": "oilPaint",
+      "radius": 3
+    },
+    {
+      "type": "oilPaint",
+      "radius": 3,
+      "mode": "backdrop"
+    },
+    {
+      "type": "oilPaint",
+      "radius": 3,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "streak": [
+    {
+      "type": "streak",
+      "intensity": 1,
+      "threshold": 0.7,
+      "length": 120,
+      "angle": 0
+    },
+    {
+      "type": "streak",
+      "intensity": 3,
+      "threshold": 0.7,
+      "length": 120,
+      "angle": 0
+    },
+    {
+      "type": "streak",
+      "intensity": 1,
+      "threshold": 0.7,
+      "length": 120,
+      "angle": 0,
+      "mode": "backdrop"
+    },
+    {
+      "type": "streak",
+      "intensity": 1,
+      "threshold": 0.7,
+      "length": 120,
+      "angle": 0,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "glow": [
+    {
+      "type": "glow",
+      "channel": "luminance",
+      "threshold": 0.5,
+      "radius": 25,
+      "spread": 0,
+      "intensity": 1,
+      "axis": "both",
+      "original": "behind",
+      "blend": "screen",
+      "tint": "none",
+      "color": "white",
+      "colors": [
+        "white",
+        "#ffa640"
+      ],
+      "stops": [
+        0,
+        1
+      ],
+      "loopStyle": "mirror",
+      "cycles": 1,
+      "phase": 0
+    },
+    {
+      "type": "glow",
+      "channel": "luminance",
+      "threshold": 0.5,
+      "radius": 25,
+      "spread": 0,
+      "intensity": 3,
+      "axis": "both",
+      "original": "behind",
+      "blend": "screen",
+      "tint": "none",
+      "color": "white",
+      "colors": [
+        "white",
+        "#ffa640"
+      ],
+      "stops": [
+        0,
+        1
+      ],
+      "loopStyle": "mirror",
+      "cycles": 1,
+      "phase": 0
+    },
+    {
+      "type": "glow",
+      "channel": "luminance",
+      "threshold": 0.5,
+      "radius": 25,
+      "spread": 0,
+      "intensity": 1,
+      "axis": "both",
+      "original": "behind",
+      "blend": "screen",
+      "tint": "none",
+      "color": "white",
+      "colors": [
+        "white",
+        "#ffa640"
+      ],
+      "stops": [
+        0,
+        1
+      ],
+      "loopStyle": "mirror",
+      "cycles": 1,
+      "phase": 0,
+      "mode": "backdrop"
+    },
+    {
+      "type": "glow",
+      "channel": "luminance",
+      "threshold": 0.5,
+      "radius": 25,
+      "spread": 0,
+      "intensity": 1,
+      "axis": "both",
+      "original": "behind",
+      "blend": "screen",
+      "tint": "none",
+      "color": "white",
+      "colors": [
+        "white",
+        "#ffa640"
+      ],
+      "stops": [
+        0,
+        1
+      ],
+      "loopStyle": "mirror",
+      "cycles": 1,
+      "phase": 0,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "shader": [
+    {
+      "type": "shader",
+      "source": "fn effect(p: vec2f) -> vec4f { return src(p); }",
+      "language": "wgsl",
+      "uniforms": {},
+      "mode": "foreground"
+    },
+    {
+      "type": "shader",
+      "source": "fn effect(in: EffectIn) -> vec4f { return vec4f(1.0); }",
+      "language": "wgsl",
+      "uniforms": {},
+      "blendMode": "screen",
+      "mode": "foreground"
+    }
+  ],
+  "wave": [
+    {
+      "type": "wave",
+      "amplitude": {
+        "x": 0,
+        "y": 20
+      },
+      "wavelength": 120,
+      "phase": 0,
+      "shape": "linear",
+      "angle": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    {
+      "type": "wave",
+      "amplitude": {
+        "x": 0,
+        "y": 3
+      },
+      "wavelength": 120,
+      "phase": 0,
+      "shape": "linear",
+      "angle": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    {
+      "type": "wave",
+      "amplitude": {
+        "x": 0,
+        "y": 20
+      },
+      "wavelength": 120,
+      "phase": 0,
+      "shape": "linear",
+      "angle": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "backdrop"
+    },
+    {
+      "type": "wave",
+      "amplitude": {
+        "x": 0,
+        "y": 20
+      },
+      "wavelength": 120,
+      "phase": 0,
+      "shape": "linear",
+      "angle": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "twirl": [
+    {
+      "type": "twirl",
+      "angle": 180,
+      "radius": 1,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    {
+      "type": "twirl",
+      "angle": 3,
+      "radius": 1,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    {
+      "type": "twirl",
+      "angle": 180,
+      "radius": 1,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "backdrop"
+    },
+    {
+      "type": "twirl",
+      "angle": 180,
+      "radius": 1,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "progressiveBlur": [
+    {
+      "type": "progressiveBlur",
+      "radius": 24,
+      "startRadius": 0,
+      "shape": "linear",
+      "start": 0,
+      "end": 1,
+      "angle": 90,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "samples": 20
+    },
+    {
+      "type": "progressiveBlur",
+      "radius": 3,
+      "startRadius": 0,
+      "shape": "linear",
+      "start": 0,
+      "end": 1,
+      "angle": 90,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "samples": 20
+    },
+    {
+      "type": "progressiveBlur",
+      "radius": 24,
+      "startRadius": 0,
+      "shape": "linear",
+      "start": 0,
+      "end": 1,
+      "angle": 90,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "samples": 20,
+      "mode": "backdrop"
+    },
+    {
+      "type": "progressiveBlur",
+      "radius": 24,
+      "startRadius": 0,
+      "shape": "linear",
+      "start": 0,
+      "end": 1,
+      "angle": 90,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "samples": 20,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "kaleidoscope": [
+    {
+      "type": "kaleidoscope",
+      "segments": 6,
+      "angle": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "offset": 0,
+      "amount": 1
+    },
+    {
+      "type": "kaleidoscope",
+      "segments": 3,
+      "angle": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "offset": 0,
+      "amount": 1
+    },
+    {
+      "type": "kaleidoscope",
+      "segments": 6,
+      "angle": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "offset": 0,
+      "amount": 1,
+      "mode": "backdrop"
+    },
+    {
+      "type": "kaleidoscope",
+      "segments": 6,
+      "angle": 0,
+      "center": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "offset": 0,
+      "amount": 1,
+      "mode": "foreground",
+      "clip": true
+    }
+  ],
+  "glass": [
+    {
+      "type": "glass",
+      "lightAngle": -45,
+      "lightIntensity": 80,
+      "refraction": 80,
+      "depth": 20,
+      "dispersion": 50,
+      "frost": 4,
+      "splay": 0,
+      "mode": "backdrop"
+    },
+    {
+      "type": "glass",
+      "lightAngle": -45,
+      "lightIntensity": 80,
+      "refraction": 3,
+      "depth": 20,
+      "dispersion": 50,
+      "frost": 4,
+      "splay": 0,
+      "mode": "backdrop"
+    },
+    {
+      "type": "glass",
+      "lightAngle": -45,
+      "lightIntensity": 80,
+      "refraction": 80,
+      "depth": 20,
+      "dispersion": 50,
+      "frost": 4,
+      "splay": 0,
+      "mode": "backdrop"
+    },
+    {
+      "type": "glass",
+      "lightAngle": -45,
+      "lightIntensity": 80,
+      "refraction": 80,
+      "depth": 20,
+      "dispersion": 50,
+      "frost": 4,
+      "splay": 0,
+      "mode": "foreground",
+      "clip": true
+    }
+  ]
+}

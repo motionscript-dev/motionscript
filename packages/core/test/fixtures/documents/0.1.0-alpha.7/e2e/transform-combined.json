@@ -1,0 +1,76 @@
+{
+  "kind": "project",
+  "name": "transform-combined",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "transform-combined",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 160,
+              "height": 160,
+              "cornerRadius": 20,
+              "fill": "primary",
+              "center": {
+                "x": -260,
+                "y": 100
+              },
+              "rotation": 0,
+              "scale": 0.6
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect0",
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "x": 260,
+              "y": -100,
+              "rotation": 270,
+              "scale": 1.4
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+[package]
+name = "ms-renderer"
+version = "0.0.1"
+edition = "2024"
+publish = false
+description = "Experimental retained-mode wgpu 2D renderer for Motion Script (WebGPU only)."
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wgpu = { version = "30", default-features = false, features = ["std", "webgpu", "wgsl"] }
+kurbo = "0.13"
+ms-text = { path = "../text", features = ["wasm"] }
+ms-render3d = { path = "../render3d" }
+i_overlay = { version = "9", default-features = false }
+bytemuck = { version = "1", features = ["derive"] }
+# User WGSL: validation and Params reflection in the WASM (wgpu on WebGPU has no naga of its own).
+naga = { version = "30", features = ["wgsl-in"] }
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement", "OffscreenCanvas", "console", "ImageBitmap", "VideoFrame", "HtmlImageElement", "HtmlVideoElement"] }
+console_error_panic_hook = "0.1"

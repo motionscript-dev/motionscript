@@ -1,0 +1,124 @@
+{
+  "kind": "project",
+  "name": "blend-shadow-color-dodge",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "blend-shadow-color-dodge",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "#0d0f15"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 360,
+              "height": 360,
+              "fill": "#1f5f8b",
+              "center": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 1,
+            "props": {
+              "width": 200,
+              "height": 140,
+              "cornerRadius": 16,
+              "fill": "#0d0f15",
+              "center": {
+                "x": 0,
+                "y": 0
+              },
+              "shadow": {
+                "offset": {
+                  "x": 40,
+                  "y": 40
+                },
+                "blur": 30,
+                "fill": [
+                  {
+                    "type": "solid",
+                    "color": "#8b1f5f",
+                    "blend": "normal"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect2",
+            "at": 0.3,
+            "duration": 0.9,
+            "args": {
+              "shadow": {
+                "offset": {
+                  "x": 40,
+                  "y": 40
+                },
+                "blur": 30,
+                "fill": [
+                  {
+                    "type": "solid",
+                    "color": "#8b1f5f",
+                    "blend": "color-dodge"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

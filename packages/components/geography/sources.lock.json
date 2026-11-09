@@ -1,0 +1,20 @@
+{
+  "tag": "v5.1.2",
+  "files": {
+    "ne_10m_admin_0_countries_lakes.geojson": {
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_0_countries_lakes.geojson",
+      "sha256": "4caf607838c3cfd211a52edda259e315513390a717a11067c5eb280f766cfb78",
+      "bytes": 13581824
+    },
+    "ne_10m_admin_0_countries_iso.geojson": {
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_0_countries_iso.geojson",
+      "sha256": "60eb10aa951f5872507c9436937508b09be4b43dc9fa7aad7644f23ef12e1cad",
+      "bytes": 13171050
+    },
+    "ne_10m_admin_1_states_provinces_lakes.geojson": {
+      "url": "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_admin_1_states_provinces_lakes.geojson",
+      "sha256": "ff5e330cf097a639cc413ab849814d605ba76307235e3a9eba5d1aa0491beba1",
+      "bytes": 41037472
+    }
+  }
+}

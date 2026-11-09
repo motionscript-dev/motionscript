@@ -1,0 +1,65 @@
+{
+  "name": "@motionscript/headless",
+  "version": "0.1.0-alpha.7",
+  "description": "Render Motion Script projects to images and video from Node, through the browser engine in a headless Chromium page.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionscript-dev/motionscript.git",
+    "directory": "packages/headless"
+  },
+  "homepage": "https://motionscript.dev",
+  "bugs": {
+    "url": "https://github.com/motionscript-dev/motionscript/issues"
+  },
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "NOTICE",
+    "dist",
+    "src/page",
+    "src/page-bridge.ts",
+    "CHANGELOG.md",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.page.json",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@motionscript/browser": "workspace:^",
+    "@motionscript/renderer": "workspace:^",
+    "esbuild": "catalog:",
+    "esbuild-wasm": "catalog:",
+    "playwright": "catalog:"
+  },
+  "peerDependencies": {
+    "@motionscript/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@motionscript/core": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "rimraf": "^6.1.3",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

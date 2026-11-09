@@ -1,0 +1,82 @@
+{
+  "kind": "project",
+  "name": "image-fit-fit",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "image-fit-fit",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 600,
+              "height": 300,
+              "cornerRadius": 20,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "card"
+                },
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fit"
+                }
+              ],
+              "stroke": {
+                "weight": 3,
+                "fill": "primary"
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "cubic"
+            },
+            "args": {
+              "width": 300,
+              "height": 460
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

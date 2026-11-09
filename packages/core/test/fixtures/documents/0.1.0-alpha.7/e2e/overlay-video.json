@@ -1,0 +1,146 @@
+{
+  "kind": "project",
+  "name": "overlay-video",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "overlay-video",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 400,
+              "height": 260,
+              "cornerRadius": 20,
+              "fill": "card",
+              "stroke": {
+                "weight": 4,
+                "fill": "primary"
+              },
+              "overlay": [
+                {
+                  "type": "video",
+                  "src": "video.mp4",
+                  "fit": "fill",
+                  "playing": true,
+                  "opacity": 0
+                }
+              ],
+              "flow": "horizontal",
+              "gap": 16,
+              "padding": 20,
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 2,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#6990dd"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "overlayTo",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "overlay": [
+                {
+                  "type": "video",
+                  "src": "video.mp4",
+                  "fit": "fill",
+                  "playing": true,
+                  "opacity": 0.7
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

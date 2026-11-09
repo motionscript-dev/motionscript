@@ -1,0 +1,32 @@
+{
+  "kit": {
+    "barrel": "src/engine.ts",
+    "specifier": "@motionscript/grids/kit"
+  },
+  "items": [
+    {
+      "name": "rectangular-grid",
+      "description": "Children in rows and columns, with brick offsets and cells that fit, fix or fill.",
+      "root": "src/rectangular-grid",
+      "files": ["index.ts", "rectangular-grid.ts"]
+    },
+    {
+      "name": "radial-grid",
+      "description": "Children round a circle or along an arc, turned to face out if you like.",
+      "root": "src/radial-grid",
+      "files": ["index.ts", "radial-grid.ts"]
+    },
+    {
+      "name": "path-grid",
+      "description": "Children spaced along a template, a path of their own, or a Path node in the scene.",
+      "root": "src/path-grid",
+      "files": ["index.ts", "path-grid.ts"]
+    },
+    {
+      "name": "sphere-grid",
+      "description": "Children spread evenly over a sphere, seen through a camera of its own.",
+      "root": "src/sphere-grid",
+      "files": ["index.ts", "sphere-grid.ts"]
+    }
+  ]
+}

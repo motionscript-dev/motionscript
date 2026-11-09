@@ -1,0 +1,85 @@
+# Publishes the engine once CI passes on a release branch:
+#   alpha  prereleases, 0.1.0-alpha.N under the `alpha` npm tag
+#   main   stable versions under `latest` (`pnpm promote` fast-forwards alpha)
+#
+# It publishes the commit CI tested, with the build CI made: it downloads that
+# run's `build` artifact and runs `node scripts/release.mjs --ci --prebuilt`,
+# so no Rust and no rebuild here. The script, the same one a maintainer runs by
+# hand: with pending changesets it versions them and commits that, publishes
+# every public package not yet on npm, snapshots the release's documents for
+# core's fixture corpus, pushes the commits and tags back to the branch and cuts
+# one GitHub release. With nothing pending and everything on npm it does
+# nothing. Its pushes use GITHUB_TOKEN, which starts no further workflow runs.
+#
+# npm signs in by Trusted Publishing: no NPM_TOKEN exists, and a stored npm
+# secret would be a defect. Each package needs a Trusted Publisher on
+# npmjs.com naming this repository and this file, so renaming the file breaks
+# publishing. npm only lets a package that already exists have one, so a new
+# package's first version goes out by hand (`pnpm release`).
+name: Release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [alpha, main]
+
+concurrency:
+  group: release-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # commit, push and tag the release, create the GitHub release
+      id-token: write # the OIDC token npm's Trusted Publishing exchanges
+      actions: read # the CI run's build artifact
+    env:
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+      TESTED: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Checkout the tested commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      # A newer push has its own CI run, which releases it; publishing this
+      # one would release code that newer run may still fail. Under
+      # workflow_run GITHUB_REF_NAME is the default branch, so the release
+      # branch is named here for release.mjs.
+      - name: Still the branch tip
+        id: tip
+        run: |
+          tip=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
+          if [ "$tip" != "$TESTED" ]; then
+            echo "$BRANCH has moved on to $tip; its own CI run releases it."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          else
+            git checkout -B "$BRANCH"
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.tip.outputs.current == 'true'
+        uses: ./.github/actions/setup-built
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          registry-url: https://registry.npmjs.org/
+
+      # Trusted Publishing needs npm 11.5.1 or newer.
+      - name: Upgrade npm
+        if: steps.tip.outputs.current == 'true'
+        run: npm install -g npm@latest
+
+      - name: Release
+        if: steps.tip.outputs.current == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          node scripts/release.mjs --ci --prebuilt

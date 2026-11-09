@@ -1,0 +1,26 @@
+[package]
+name = "ms-render3d"
+version = "0.0.1"
+edition = "2024"
+publish = false
+description = "Experimental wgpu 3D renderer for Motion Script's Scene3D data (WebGPU only)."
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# The wasm-bindgen test entry (create(canvas), set_scene, resize, render,
+# read_pixels). The core renderer takes a Device/Queue and a target view and
+# needs none of this.
+wasm = ["dep:wasm-bindgen", "dep:wasm-bindgen-futures", "dep:js-sys", "dep:web-sys", "dep:console_error_panic_hook"]
+
+[dependencies]
+wgpu = { version = "30", default-features = false, features = ["std", "webgpu", "wgsl"] }
+glam = { version = "0.30", default-features = false, features = ["std"] }
+bytemuck = { version = "1", features = ["derive"] }
+wasm-bindgen = { version = "=0.2.130", optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
+js-sys = { version = "0.3", optional = true }
+web-sys = { version = "0.3", features = ["HtmlCanvasElement", "OffscreenCanvas", "console"], optional = true }
+console_error_panic_hook = { version = "0.1", optional = true }

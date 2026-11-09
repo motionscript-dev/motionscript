@@ -1,0 +1,68 @@
+{
+  "name": "@motionscript/cli",
+  "version": "0.1.0-alpha.7",
+  "type": "module",
+  "description": "Copy Motion Script component source into your project: ms init, ms add, ms list, ms diff.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionscript-dev/motionscript.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://motionscript.dev",
+  "bugs": {
+    "url": "https://github.com/motionscript-dev/motionscript/issues"
+  },
+  "bin": {
+    "ms": "dist/cli.js",
+    "motion-script": "dist/cli.js",
+    "motionscript": "dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "types": "dist/cli.d.ts",
+  "files": [
+    "NOTICE",
+    "dist",
+    "CHANGELOG.md",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch & tsc-alias -p tsconfig.build.json -w",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "test": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "motion-script",
+    "motion script",
+    "cli",
+    "components",
+    "registry"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "jsonc-parser": "^3.3.1",
+    "kleur": "^4.1.5",
+    "minimist": "^1.2.8",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/minimist": "^1.2.5",
+    "@types/node": "catalog:",
+    "@types/prompts": "^2.4.9",
+    "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "tsc-alias": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

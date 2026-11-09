@@ -1,0 +1,88 @@
+{
+  "kind": "project",
+  "name": "richtext-basic",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "richtext-basic",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "richtext0",
+            "type": "richtext",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fontFamily": "Inter",
+              "fontSize": 44,
+              "fill": "#f4f6ff",
+              "opacity": 0,
+              "spans": [
+                {
+                  "text": "Motion Script makes "
+                },
+                {
+                  "text": "rich text",
+                  "fontWeight": 800,
+                  "fill": "accent"
+                },
+                {
+                  "text": " easy with "
+                },
+                {
+                  "text": "styled spans",
+                  "fontStyle": "italic",
+                  "fill": "primary"
+                },
+                {
+                  "text": "."
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "richtext0",
+            "at": 0,
+            "duration": 0.8,
+            "easing": {
+              "kind": "out",
+              "args": "quad"
+            },
+            "args": {
+              "opacity": 1
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

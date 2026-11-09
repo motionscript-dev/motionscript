@@ -1,0 +1,39 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
+  "changelog": "@changesets/changelog-git",
+  "commit": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/motionscript-dev/motionscript/"
+  },
+  "fixed": [
+    [
+      "@motionscript/core",
+      "@motionscript/browser",
+      "@motionscript/renderer",
+      "@motionscript/react",
+      "@motionscript/headless",
+      "@motionscript/cli",
+      "@motionscript/audio",
+      "@motionscript/charts",
+      "@motionscript/code",
+      "@motionscript/geography",
+      "@motionscript/grids",
+      "@motionscript/math",
+      "@motionscript/patterns",
+      "@motionscript/sdk"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [],
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  },
+  "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
+    "onlyUpdatePeerDependentsWhenOutOfRange": true
+  }
+}

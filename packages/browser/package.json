@@ -1,0 +1,77 @@
+{
+  "name": "@motionscript/browser",
+  "version": "0.1.0-alpha.7",
+  "type": "module",
+  "description": "Motion Script in the browser: WebGPU rendering through @motionscript/renderer, video and still export, audio playback.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionscript-dev/motionscript.git",
+    "directory": "packages/browser"
+  },
+  "homepage": "https://motionscript.dev",
+  "bugs": {
+    "url": "https://github.com/motionscript-dev/motionscript/issues"
+  },
+  "sideEffects": false,
+  "keywords": [],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "NOTICE",
+    "dist",
+    "CHANGELOG.md",
+    "!dist/**/*.tsbuildinfo"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./audio": {
+      "types": "./dist/audio/index.d.ts",
+      "default": "./dist/audio/index.js"
+    }
+  },
+  "scripts": {
+    "build": "eslint . && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node ../../scripts/build-browser.mjs",
+    "dev": "concurrently \"tsc -p tsconfig.build.json --watch\" \"tsc-alias -p tsconfig.build.json -w\"",
+    "clean": "rimraf --glob dist .turbo *.tsbuildinfo",
+    "test": "vitest",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@motionscript/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@motionscript/core": "workspace:*",
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "concurrently": "catalog:",
+    "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "catalog:",
+    "eslint-plugin-import-x": "catalog:",
+    "playwright": "^1.60.0",
+    "rolldown": "catalog:",
+    "tsc-alias": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@mediabunny/mp3-encoder": "catalog:",
+    "@motionscript/renderer": "workspace:^",
+    "esbuild-wasm": "catalog:",
+    "mediabunny": "catalog:"
+  },
+  "motionscriptBrowser": {
+    "assets": {
+      "esbuild.wasm": "esbuild-wasm/esbuild.wasm",
+      "ms_renderer_bg.wasm": "@motionscript/renderer/ms_renderer_bg.wasm"
+    }
+  }
+}

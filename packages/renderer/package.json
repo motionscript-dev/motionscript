@@ -1,0 +1,73 @@
+{
+  "name": "@motionscript/renderer",
+  "version": "0.1.0-alpha.7",
+  "type": "module",
+  "description": "The WebGPU renderer behind @motionscript/browser: a Rust/wgpu renderer compiled to WebAssembly.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionscript-dev/motionscript.git",
+    "directory": "packages/renderer"
+  },
+  "homepage": "https://motionscript.dev",
+  "bugs": {
+    "url": "https://github.com/motionscript-dev/motionscript/issues"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "webgpu",
+    "wgpu"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY_NOTICES.txt",
+    "dist",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./ms_renderer_bg.wasm": "./dist/ms_renderer_bg.wasm",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "sh scripts/build-wasm.sh && vite build --config web/vite.lib.config.ts && node ../../scripts/build-browser.mjs",
+    "build:wasm": "sh scripts/build-wasm.sh && sh scripts/build-wasm-text.sh && sh scripts/build-wasm-r3d.sh",
+    "prepack": "node scripts/check-package.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc -p web --noEmit",
+    "test:rust": "cargo test --locked --workspace",
+    "notices": "node scripts/third-party-notices.mjs",
+    "notices:check": "node scripts/third-party-notices.mjs --check",
+    "dev": "pnpm build:wasm && vite web",
+    "web:build": "pnpm build:wasm && vite build web",
+    "effects:gen": "node scripts/gen-effect-params.mjs",
+    "test:effects": "node --test scripts/effect-params.test.mjs"
+  },
+  "dependencies": {
+    "mediabunny": "catalog:"
+  },
+  "peerDependencies": {
+    "@motionscript/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@motionscript/core": "workspace:*",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vite": "catalog:"
+  },
+  "motionscriptBrowser": {
+    "assets": {
+      "ms_renderer_bg.wasm": "./dist/ms_renderer_bg.wasm"
+    }
+  }
+}

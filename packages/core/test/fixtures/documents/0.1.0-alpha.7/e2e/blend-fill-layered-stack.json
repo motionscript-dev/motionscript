@@ -1,0 +1,109 @@
+{
+  "kind": "project",
+  "name": "blend-fill-layered-stack",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "blend-fill-layered-stack",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 360,
+              "height": 240,
+              "cornerRadius": 20,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#3a4a6b"
+                },
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#e8617c",
+                    "#f2c94c"
+                  ],
+                  "opacity": 0,
+                  "blend": "multiply"
+                },
+                {
+                  "type": "noise",
+                  "density": 0.4,
+                  "color": "#ffffff",
+                  "opacity": 0,
+                  "blend": "screen"
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect0",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#3a4a6b"
+                },
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#e8617c",
+                    "#f2c94c"
+                  ],
+                  "opacity": 0.9,
+                  "blend": "multiply"
+                },
+                {
+                  "type": "noise",
+                  "density": 0.4,
+                  "color": "#ffffff",
+                  "opacity": 0.3,
+                  "blend": "screen"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

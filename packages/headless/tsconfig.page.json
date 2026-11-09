@@ -1,0 +1,23 @@
+{
+    // The page harness is browser code that happens to live in a Node package:
+    // esbuild bundles it into the headless page, so it never passes through this
+    // package's own build. It needs the DOM lib and `@motionscript/browser`, neither
+    // of which the Node half may have — a `window` typo must not compile there.
+    //
+    // Separate rather than excluded from everything: a directory in no tsconfig
+    // is type-checked by nothing, which is the trap CLAUDE.md records `browser`'s
+    // sibling `test/` falling into.
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "lib": ["ES2023", "DOM"],
+        "types": []
+    },
+    "include": ["src/page/**/*", "src/page-bridge.ts"],
+    "references": [
+        { "path": "../core/tsconfig.build.json" },
+        { "path": "../browser/tsconfig.build.json" }
+    ]
+}

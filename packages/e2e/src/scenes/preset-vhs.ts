@@ -1,0 +1,48 @@
+import { Rect, Effects, EffectChain, Fills } from '@motionscript/sdk';
+import { createRef, easeInOut, el, scene } from '../doc';
+import { holdTail } from './_lib';
+
+/**
+ * Regression guard: a chain spanning **both effect surfaces** composes correctly.
+ *
+ * `effect-chain-order` covers author order among shader effects. This covers the
+ * other axis — filter-surface effects (`vintage` here) run after every
+ * shader-surface one whatever the chain says, so a five-effect chain mixing the
+ * two must still resolve to one stable image at every point of the tween.
+ *
+ * Written as a local `vhs(amount)` recipe because that is how a project composes
+ * a named look: ramping every ingredient from its neutral setting, so `0` is a
+ * no-op and `1` is the full look.
+ */
+const at = (t: number, neutral: number, full: number) => neutral + (full - neutral) * t;
+
+/** Tape damage read back through a warm, soft tube — damage, separate, then screen. */
+const vhs = (amount: number): EffectChain => Effects
+    .blockDisplace({ amount: at(amount, 0, 40), size: 20, density: 0.4, seed: 7 })
+    .rgbShift({
+        red: { x: at(amount, 0, 7), y: 0 },
+        blue: { x: at(amount, 0, -5), y: at(amount, 0, 2) } })
+    .scanlines({ darkness: at(amount, 0, 0.55), spacing: 5 })
+    .grain({ amount: at(amount, 0, 0.22), animated: true })
+    .vintage({ amount: at(amount, 0, 0.5), warmth: at(amount, 0, -0.2) });
+
+const card = createRef<Rect>();
+export default scene((stage) => {
+    stage.set({ fill: 'bg' });
+    stage.add(
+        el(Rect, { width: 'fill', height: 'fill', flow: 'freeform', align: { x: 0, y: 0 }, children: [
+            el(Rect, { width: 480, height: 320, cornerRadius: 20, clip: true, flow: 'freeform', children: [
+                el(Rect, {
+                    ref: card,
+                    fill: Fills.image('./cat.jpg', { fit: 'fill' }),
+                    width: 'fill',
+                    height: 'fill',
+                    effects: vhs(0),
+                }),
+            ] }),
+        ] }),
+    );
+}, [
+    () => card().to({ data: { effects: vhs(1) }, duration: 1.2, easing: easeInOut('quad') }),
+    holdTail(1.2),
+]);

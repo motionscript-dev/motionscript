@@ -1,0 +1,23 @@
+[workspace]
+resolver = "3"
+members = ["crates/renderer", "crates/text", "crates/render3d"]
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = false
+
+# Text is size-sensitive (it also ships in the main-thread WASM) and not on
+# the per-frame GPU path. "s" saves 53 KB gz over 3 for 1.4x the layout time
+# (DESIGN.md §5.2).
+[profile.release.package.ms-text]
+opt-level = "s"
+[profile.release.package.harfrust]
+opt-level = "s"
+[profile.release.package.read-fonts]
+opt-level = "s"
+# User-shader validation (naga) runs once per program, not per frame.
+[profile.release.package.naga]
+opt-level = "s"

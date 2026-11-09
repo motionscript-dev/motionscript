@@ -1,0 +1,122 @@
+{
+  "kind": "project",
+  "name": "texture3d-zoom",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "texture3d-zoom",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [
+          {
+            "id": "fov",
+            "value": 60
+          }
+        ],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "canvas3d0",
+            "type": "canvas3d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 480,
+              "height": 320,
+              "cornerRadius": 16
+            }
+          },
+          {
+            "id": "camera3d0",
+            "type": "camera3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 0,
+            "props": {
+              "position": [
+                0,
+                0,
+                5
+              ],
+              "target": 0,
+              "fov": "=[fov]"
+            }
+          },
+          {
+            "id": "ambient-light3d0",
+            "type": "ambient-light3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 1,
+            "props": {
+              "intensity": 1.2
+            }
+          },
+          {
+            "id": "directional-light3d0",
+            "type": "directional-light3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 2,
+            "props": {
+              "intensity": 0.8,
+              "position": [
+                1,
+                2,
+                4
+              ]
+            }
+          },
+          {
+            "id": "box3d0",
+            "type": "box3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 3,
+            "props": {
+              "width": 3,
+              "height": 2,
+              "depth": 0.05,
+              "fill": "kingfisher.jpg",
+              "roughness": 1
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "variableTo",
+            "targetId": "fov",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "value": 8
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

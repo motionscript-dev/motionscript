@@ -1,0 +1,129 @@
+{
+  "kind": "project",
+  "name": "mask-luminance",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "mask-luminance",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "mask0",
+            "type": "mask",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "mode": "luminance",
+              "width": "fill",
+              "height": "fill"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "mask0",
+            "layerOrder": 0,
+            "props": {
+              "width": 500,
+              "height": 300,
+              "fill": [
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#000000",
+                    "#ffffff"
+                  ],
+                  "start": {
+                    "x": -250,
+                    "y": 0
+                  },
+                  "end": {
+                    "x": 250,
+                    "y": 0
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "mask0",
+            "layerOrder": 1,
+            "props": {
+              "width": 500,
+              "height": 300,
+              "cornerRadius": 20,
+              "fill": [
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#28d6c8",
+                    "#e83fd6"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "fill": [
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#ffffff",
+                    "#000000"
+                  ],
+                  "start": {
+                    "x": -250,
+                    "y": 0
+                  },
+                  "end": {
+                    "x": 250,
+                    "y": 0
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ]
+}

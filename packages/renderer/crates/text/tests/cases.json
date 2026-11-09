@@ -1,0 +1,684 @@
+[
+ {
+  "name": "basic",
+  "source": "text-basic",
+  "runs": [
+   {
+    "text": "Motion Script",
+    "family": "Inter",
+    "size": 84,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "weight-200",
+  "source": "text-font-weight",
+  "runs": [
+   {
+    "text": "Weight",
+    "family": "Inter",
+    "size": 84,
+    "weight": 200,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "weight-400",
+  "source": "text-font-weight",
+  "runs": [
+   {
+    "text": "Weight",
+    "family": "Inter",
+    "size": 84,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "weight-650",
+  "source": "text-font-weight",
+  "runs": [
+   {
+    "text": "Weight",
+    "family": "Inter",
+    "size": 84,
+    "weight": 650,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "weight-900",
+  "source": "text-font-weight",
+  "runs": [
+   {
+    "text": "Weight",
+    "family": "Inter",
+    "size": 84,
+    "weight": 900,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "spacing-0",
+  "source": "text-letter-spacing",
+  "runs": [
+   {
+    "text": "SPACING",
+    "family": "Inter",
+    "size": 64,
+    "weight": 700,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "spacing-7.5",
+  "source": "text-letter-spacing",
+  "runs": [
+   {
+    "text": "SPACING",
+    "family": "Inter",
+    "size": 64,
+    "weight": 700,
+    "style": "normal",
+    "letterSpacing": 7.5
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "spacing-16",
+  "source": "text-letter-spacing",
+  "runs": [
+   {
+    "text": "SPACING",
+    "family": "Inter",
+    "size": 64,
+    "weight": 700,
+    "style": "normal",
+    "letterSpacing": 16
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "line-height-0.9",
+  "source": "text-line-height",
+  "runs": [
+   {
+    "text": "Line height controls the vertical rhythm between wrapped rows of text.",
+    "family": "Inter",
+    "size": 32,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0.9,
+  "align": "center",
+  "maxWidth": 520,
+  "boxWidth": 520
+ },
+ {
+  "name": "line-height-1.45",
+  "source": "text-line-height",
+  "runs": [
+   {
+    "text": "Line height controls the vertical rhythm between wrapped rows of text.",
+    "family": "Inter",
+    "size": 32,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 1.45,
+  "align": "center",
+  "maxWidth": 520,
+  "boxWidth": 520
+ },
+ {
+  "name": "line-height-2",
+  "source": "text-line-height",
+  "runs": [
+   {
+    "text": "Line height controls the vertical rhythm between wrapped rows of text.",
+    "family": "Inter",
+    "size": 32,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 2,
+  "align": "center",
+  "maxWidth": 520,
+  "boxWidth": 520
+ },
+ {
+  "name": "wrap-540",
+  "source": "text-multiline-wrap",
+  "runs": [
+   {
+    "text": "Motion Script lays out wrapped text one line at a time, breaking on word boundaries to fit the box.",
+    "family": "Inter",
+    "size": 40,
+    "weight": 500,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "start",
+  "maxWidth": 540,
+  "boxWidth": 540
+ },
+ {
+  "name": "wrap-400",
+  "source": "text-multiline-wrap",
+  "runs": [
+   {
+    "text": "Motion Script lays out wrapped text one line at a time, breaking on word boundaries to fit the box.",
+    "family": "Inter",
+    "size": 40,
+    "weight": 500,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "start",
+  "maxWidth": 400,
+  "boxWidth": 400
+ },
+ {
+  "name": "wrap-240",
+  "source": "text-multiline-wrap",
+  "runs": [
+   {
+    "text": "Motion Script lays out wrapped text one line at a time, breaking on word boundaries to fit the box.",
+    "family": "Inter",
+    "size": 40,
+    "weight": 500,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "start",
+  "maxWidth": 240,
+  "boxWidth": 240
+ },
+ {
+  "name": "align-start",
+  "source": "text-align-variants",
+  "runs": [
+   {
+    "text": "Each line of this wrapped paragraph sits inside the box according to the current textAlign mode.",
+    "family": "Inter",
+    "size": 36,
+    "weight": 500,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "start",
+  "maxWidth": 600,
+  "boxWidth": 600
+ },
+ {
+  "name": "align-center",
+  "source": "text-align-variants",
+  "runs": [
+   {
+    "text": "Each line of this wrapped paragraph sits inside the box according to the current textAlign mode.",
+    "family": "Inter",
+    "size": 36,
+    "weight": 500,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 600,
+  "boxWidth": 600
+ },
+ {
+  "name": "align-end",
+  "source": "text-align-variants",
+  "runs": [
+   {
+    "text": "Each line of this wrapped paragraph sits inside the box according to the current textAlign mode.",
+    "family": "Inter",
+    "size": 36,
+    "weight": 500,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "end",
+  "maxWidth": 600,
+  "boxWidth": 600
+ },
+ {
+  "name": "align-justify",
+  "source": "text-align-variants",
+  "runs": [
+   {
+    "text": "Each line of this wrapped paragraph sits inside the box according to the current textAlign mode.",
+    "family": "Inter",
+    "size": 36,
+    "weight": 500,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "justify",
+  "maxWidth": 600,
+  "boxWidth": 600
+ },
+ {
+  "name": "align-label",
+  "source": "text-align-variants",
+  "runs": [
+   {
+    "text": "justify",
+    "family": "Inter",
+    "size": 28,
+    "weight": 700,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "start",
+  "maxWidth": 0,
+  "boxWidth": 600
+ },
+ {
+  "name": "richtext",
+  "source": "richtext-basic",
+  "lineHeight": 1.2,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0,
+  "runs": [
+   {
+    "text": "Motion Script makes ",
+    "family": "Inter",
+    "size": 44,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   },
+   {
+    "text": "rich text",
+    "family": "Inter",
+    "size": 44,
+    "weight": 800,
+    "style": "normal",
+    "letterSpacing": 0
+   },
+   {
+    "text": " easy with ",
+    "family": "Inter",
+    "size": 44,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   },
+   {
+    "text": "styled spans",
+    "family": "Inter",
+    "size": 44,
+    "weight": 400,
+    "style": "italic",
+    "letterSpacing": 0
+   },
+   {
+    "text": ".",
+    "family": "Inter",
+    "size": 44,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ]
+ },
+ {
+  "name": "richtext-wrap",
+  "source": "richtext-basic",
+  "lineHeight": 1.2,
+  "align": "left",
+  "maxWidth": 420,
+  "boxWidth": 420,
+  "runs": [
+   {
+    "text": "Motion Script makes ",
+    "family": "Inter",
+    "size": 44,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   },
+   {
+    "text": "rich text",
+    "family": "Inter",
+    "size": 44,
+    "weight": 800,
+    "style": "normal",
+    "letterSpacing": 0
+   },
+   {
+    "text": " easy with ",
+    "family": "Inter",
+    "size": 44,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   },
+   {
+    "text": "styled spans",
+    "family": "Inter",
+    "size": 44,
+    "weight": 400,
+    "style": "italic",
+    "letterSpacing": 0
+   },
+   {
+    "text": ".",
+    "family": "Inter",
+    "size": 44,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ]
+ },
+ {
+  "name": "inherits",
+  "source": "default-text-style",
+  "runs": [
+   {
+    "text": "Inherits Inter",
+    "family": "Inter",
+    "size": 42,
+    "weight": 700,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "fira",
+  "source": "default-text-style",
+  "runs": [
+   {
+    "text": "Overrides to Fira Mono",
+    "family": "Fira Mono",
+    "size": 42,
+    "weight": 700,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "on-path",
+  "source": "text-on-path",
+  "runs": [
+   {
+    "text": "Curving Along the Arc",
+    "family": "Inter",
+    "size": 40,
+    "weight": 700,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "left",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "autofit-probe",
+  "source": "text-autofit",
+  "runs": [
+   {
+    "text": "Autofit",
+    "family": "Inter",
+    "size": 100,
+    "weight": 800,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "hard-breaks",
+  "source": "edge",
+  "runs": [
+   {
+    "text": "First line\nSecond\n\nAfter blank\n",
+    "family": "Inter",
+    "size": 30,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "left",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "trailing-spaces",
+  "source": "edge",
+  "runs": [
+   {
+    "text": "soft   wrap   with   wide   gaps   between   words",
+    "family": "Inter",
+    "size": 30,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "right",
+  "maxWidth": 260,
+  "boxWidth": 260
+ },
+ {
+  "name": "long-word",
+  "source": "edge",
+  "runs": [
+   {
+    "text": "Supercalifragilisticexpialidocious fits nowhere",
+    "family": "Inter",
+    "size": 40,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "left",
+  "maxWidth": 300,
+  "boxWidth": 300
+ },
+ {
+  "name": "kerning",
+  "source": "edge",
+  "runs": [
+   {
+    "text": "AVATAR To Ty Wa Yo LT",
+    "family": "Inter",
+    "size": 60,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "punctuation",
+  "source": "edge",
+  "runs": [
+   {
+    "text": "state-of-the-art, multi/path (layout) — en–dash: 1,234.56%",
+    "family": "Inter",
+    "size": 28,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "left",
+  "maxWidth": 330,
+  "boxWidth": 330
+ },
+ {
+  "name": "ligatures",
+  "source": "edge",
+  "runs": [
+   {
+    "text": "office affine fifty -> != ===",
+    "family": "Fira Mono",
+    "size": 36,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 0,
+  "boxWidth": 0
+ },
+ {
+  "name": "small",
+  "source": "edge",
+  "runs": [
+   {
+    "text": "The quick brown fox jumps over the lazy dog.",
+    "family": "Inter",
+    "size": 11,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ],
+  "lineHeight": 0,
+  "align": "left",
+  "maxWidth": 120,
+  "boxWidth": 120
+ },
+ {
+  "name": "mixed-sizes",
+  "source": "edge",
+  "lineHeight": 0,
+  "align": "center",
+  "maxWidth": 500,
+  "boxWidth": 500,
+  "runs": [
+   {
+    "text": "Tiny ",
+    "family": "Inter",
+    "size": 18,
+    "weight": 400,
+    "style": "normal",
+    "letterSpacing": 0
+   },
+   {
+    "text": "Huge ",
+    "family": "Inter",
+    "size": 72,
+    "weight": 900,
+    "style": "normal",
+    "letterSpacing": 0
+   },
+   {
+    "text": "medium words wrap ",
+    "family": "Inter",
+    "size": 32,
+    "weight": 300,
+    "style": "normal",
+    "letterSpacing": 2
+   },
+   {
+    "text": "again and again",
+    "family": "Inter",
+    "size": 24,
+    "weight": 600,
+    "style": "normal",
+    "letterSpacing": 0
+   }
+  ]
+ }
+]

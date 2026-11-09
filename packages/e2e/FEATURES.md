@@ -1,0 +1,423 @@
+# Motion Script Visual Test Scenes
+
+Project: 960×540 (Quarter HD), 30 fps
+Screenshots: first, mid, and last frame of each scene.
+
+---
+
+## Nodes
+
+### Geometry
+
+- [ ] `rect-basic`: Rect with fixed width/height, solid fill
+- [ ] `rect-corner-radius`: Rect with uniform corner radius (rounded style)
+- [ ] `rect-corner-radius-per-corner`: Rect with 4 different corner radii
+- [ ] `rect-corner-style-angled`: Rect with angled/chamfer corner style
+- [ ] `ellipse-circle`: Ellipse at 1:1 ratio (circle)
+- [ ] `ellipse-arc`: Ellipse with partial sweep and startAngle
+- [ ] `ellipse-pie`: Ellipse sweep creating a pie/wedge shape
+- [ ] `ellipse-ratio`: Ellipse with non-1 ratio (ring/donut)
+- [ ] `polygon-triangle`: 3-sided polygon
+- [ ] `polygon-pentagon`: 5-sided polygon
+- [ ] `polygon-hexagon`: 6-sided polygon
+- [ ] `polygon-corner-radius`: Polygon with rounded corners
+- [ ] `polygon-corner-angled`: Polygon with angled corners
+- [ ] `polygram-star-5`: 5-point star (polygram, default ratio)
+- [ ] `polygram-star-6`: 6-point star
+- [ ] `polygram-star-ratio`: Star with low ratio (sharper points)
+- [ ] `polygram-rounded`: Star with rounded inner/outer corners
+- [ ] `path-svg-string`: Path from SVG `d` string
+- [ ] `path-morph`: Animated path morph between two shapes
+
+### Layout
+
+- [ ] `rect-layout-row`: Rect in row layout mode with child rects
+- [ ] `rect-layout-column`: Rect in column layout mode with child rects
+- [ ] `rect-layout-stack`: Rect in stack layout mode (overlapping children)
+- [ ] `rect-layout-gap`: Row/column with explicit gap
+- [ ] `rect-layout-padding`: Rect with uniform padding around children
+- [ ] `rect-layout-padding-per-side`: Rect with different padding on each side
+- [ ] `rect-size-fill`: Child using `"fill"` size inside parent
+- [ ] `rect-size-hug`: Parent using `"hug"` size around children
+- [ ] `rect-size-max-constraints`: Child constrained by `maxWidth`/`maxHeight`
+- [ ] `flex-align`: Flex container with various alignment combinations
+- [ ] `flex-main-flex`: Children with different `mainFlex` weights distributing free space
+- [ ] `grid-basic`: Grid with explicit columns and uniform children
+- [ ] `grid-colspan`: Grid with colSpan and rowSpan variants
+
+### Text
+
+- [ ] `text-basic`: Single-line text, default style
+- [ ] `text-multiline-wrap`: Text with wrap and constrained width
+- [ ] `text-align-variants`: Left/center/right/justify alignment in one scene
+- [ ] `text-font-weight`: Multiple weights of same font family
+- [ ] `text-letter-spacing`: Positive and negative letterSpacing
+- [ ] `text-line-height`: Multiline text with custom lineHeight
+- [ ] `text-autofit`: Text with `"autofit"` size scaling to bounds
+- [ ] `text-on-path`: Text laid along a circular/curved SVG path
+- [ ] `text-fill-gradient`: Text with a gradient fill instead of solid color
+- [ ] `richtext-basic`: RichText with nested spans, each a different style
+- [ ] `richtext-inline-stroke`: RichText span with stroke applied to one word
+- [ ] `number-node-integer`: NumberNode counting from 0 to 1000
+- [ ] `number-node-currency`: NumberNode formatted as currency
+- [ ] `number-node-percent`: NumberNode formatted as percentage
+
+### Media
+
+- [ ] `image-fit-fill`: Image with `fill` fit mode
+- [ ] `image-fit-fit`: Image with `fit` fit mode
+- [ ] `image-fit-tile`: Image with `tile` fit mode
+- [ ] `image-fit-stretch`: Image with `stretch` fit mode
+- [ ] `video-playback`: Video node playing, with trim start/end
+- [ ] `video-speed`: Video node at 2× speed
+- [ ] `video-loop`: Video node looping over a short clip
+
+### Camera
+
+- [ ] `camera-zoom`: Camera zooming in on a scene
+- [ ] `camera-pan`: Camera panning (lookAt offset) across objects
+- [ ] `camera-heading`: Camera rotating (heading) around viewport center
+- [ ] `camera-combined`: Zoom + pan + heading all animated together
+
+### Control Nodes
+
+- [ ] `mask-alpha`: Mask in alpha mode (soft edge via gradient)
+- [ ] `mask-vector`: Mask in vector mode (hard geometric clip)
+- [ ] `mask-luminance`: Mask in luminance mode (grayscale as transparency)
+- [ ] `mask-invert`: Inverted mask (shows where mask is NOT)
+- [ ] `mask-apply-fill`: Mask with `apply: "fill"` (only fill layer is masked, stroke shows through)
+- [ ] `mask-apply-stroke`: Mask with `apply: "stroke"` (only stroke layer is masked)
+- [ ] `boolean-toggle`: Boolean node toggling child visibility at midpoint
+- [ ] `provider-theme`: Provider + ThemeProvider supplying custom theme colors
+- [ ] `default-text-style`: DefaultTextStyle node overriding font family for subtree
+- [ ] `default-text-style-graphics`: DefaultTextStyle reaching a custom node's raw `Graphics2D().text()` op (no `fontFamily` on the op), plus a `Code` block under the same provider keeping its own face
+
+### Grid / Pattern
+
+- [ ] `line-grid-basic`: LineGridPattern with major divisions only
+- [ ] `line-grid-subdivisions`: LineGridPattern with major and minor subdivisions
+- [ ] `grid-pattern-basic`: GridPattern (infinite world-space) with default cell size
+- [ ] `grid-pattern-subdivisions`: GridPattern with sub-grid lines
+
+### Component Nodes
+
+- [ ] `code-basic`: Code node with TypeScript snippet, default theme
+- [ ] `code-theme-github-dark`: Code node with `github-dark` theme
+- [ ] `code-theme-github-light`: Code node with `github-light` theme
+- [ ] `code-theme-vscode-dark`: Code node with `vscode-dark` theme
+- [ ] `code-theme-vscode-light`: Code node with `vscode-light` theme
+- [ ] `code-line-numbers`: Code node with `showLineNumbers: true`
+- [ ] `code-padding`: Code node with explicit padding on all sides
+- [ ] `code-append`: Code node using `append()` to add lines with animated height reveal
+- [ ] `code-prepend`: Code node using `prepend()` to insert lines at top
+- [ ] `code-insert`: Code node using `insert()` at a specific line/column
+- [ ] `code-remove`: Code node using `remove()` on a range of lines
+- [ ] `code-replace`: Code node using `replace()` swapping one token for another
+- [ ] `code-highlight`: Code node using `highlight()` to dim non-highlighted tokens
+- [ ] `code-highlight-reset`: Code node calling `resetHighlight()` to un-dim all tokens
+- [ ] `latex-basic`: Latex node rendering a simple formula (e.g. `E = mc^2`)
+- [ ] `latex-complex`: Latex node rendering a complex expression (fraction, sum, integral)
+- [ ] `latex-morph`: Latex node morphing between two formulas via `to()`
+- [ ] `latex-fill-gradient`: Latex node with a gradient fill applied to glyphs
+- [ ] `latex-stroke`: Latex node with stroke outline on glyphs
+
+---
+
+## Fills
+
+- [ ] `fill-solid`: Solid color fill (static and animated color)
+- [ ] `fill-linear-gradient`: Linear gradient, horizontal then animated angle
+- [ ] `fill-radial-gradient`: Radial gradient centered on shape
+- [ ] `fill-conic-gradient`: Conic gradient full sweep
+- [ ] `fill-image`: Image fill on a rect
+- [ ] `fill-video`: Video fill on a rect
+- [ ] `fill-noise`: Noise fill, varying density and size
+- [ ] `fill-shader-custom`: Custom WGSL shader fill, ring radius driven by a tweened uniform (wgpu lane)
+- [ ] `fill-stripe`: Stripe fill, varying angle and gap
+- [ ] `fill-space-local`: Fill pinned to shape's own bounds (default)
+- [ ] `fill-space-parent`: Fill mapped to parent bounds; shape moves across it
+- [ ] `fill-space-global`: Fill anchored to viewport; node moves over it
+- [ ] `fill-layered`: Multiple fill layers stacked on one shape (solid + gradient + noise)
+- [ ] `overlay-basic`: Overlay fill painted over children but under stroke (grain texture over a rect with child rects)
+- [ ] `overlay-video`: Video overlay across an entire subtree
+
+---
+
+## Strokes
+
+- [ ] `stroke-align-inside`: Stroke aligned inside shape boundary
+- [ ] `stroke-align-center`: Stroke centered on shape boundary
+- [ ] `stroke-align-outside`: Stroke aligned outside shape boundary
+- [ ] `stroke-cap-butt`: An open path's ends with butt cap
+- [ ] `stroke-cap-round`: An open path's ends with round cap
+- [ ] `stroke-cap-square`: An open path's ends with square cap
+- [ ] `stroke-end-caps`: Different start and end caps, apart from the dash cap
+- [ ] `stroke-end-markers`: Arrowheads and other markers on a stroke's ends
+- [ ] `stroke-join-miter`: Corner joins with miter style
+- [ ] `stroke-join-round`: Corner joins with round style
+- [ ] `stroke-join-bevel`: Corner joins with bevel style
+- [ ] `stroke-dash-uniform`: Stroke with uniform dash pattern
+- [ ] `stroke-dash-pair`: Stroke with `[on, off]` dash pair
+- [ ] `stroke-dash-animated`: Animated dashOffset (marching ants)
+- [ ] `stroke-gradient-fill`: Stroke using a linear gradient fill
+- [ ] `stroke-layered`: Multiple strokes stacked on one shape
+- [ ] `stroke-miter-limit`: High miterLimit vs low miterLimit on a sharp-angle polygon
+
+---
+
+## Shadows
+
+- [ ] `shadow-drop-basic`: Basic drop shadow (blur + offset)
+- [ ] `shadow-drop-offset`: Shadow with large x/y offset
+- [ ] `shadow-drop-blur`: Shadow with high blur, zero offset (glow-like)
+- [ ] `shadow-inner`: Inner shadow on rect
+- [ ] `shadow-spread-positive`: Shadow with positive spread (expanded)
+- [ ] `shadow-spread-negative`: Shadow with negative spread (contracted)
+- [ ] `shadow-fill-gradient`: Shadow using a gradient fill color
+- [ ] `shadow-layered`: Multiple shadows stacked (inner + outer)
+
+---
+
+## Effects
+
+- [ ] `effect-blur`: Gaussian blur on a rect
+- [ ] `effect-blur-backdrop`: Gaussian blur reading backdrop (frosted glass)
+- [ ] `effect-directional-blur`: Motion blur along 45° axis
+- [ ] `effect-directional-blur-backdrop`: Directional blur on backdrop
+- [ ] `effect-grayscale`: Full desaturation of shape
+- [ ] `effect-grayscale-backdrop`: Desaturate backdrop content beneath shape
+- [ ] `effect-pixelate`: Mosaic pixelation on a shape (`sharpColors: false`, smooth blocks)
+- [ ] `effect-pixelate-sharp`: Pixelate with `sharpColors: true` (solid-color blocks)
+- [ ] `effect-pixelate-backdrop`: Pixelate backdrop (censoring effect)
+- [ ] `effect-bulge-barrel`: Barrel distortion (positive strength)
+- [ ] `effect-bulge-pincushion`: Pincushion distortion (negative strength)
+- [ ] `effect-bulge-backdrop`: Bulge the backdrop beneath a shape (glass dome)
+- [ ] `effect-magnify`: Magnify a portion of backdrop
+- [ ] `effect-bloom`: Bloom/glow from bright regions
+- [ ] `effect-glow`: Colourised glow spread past the layer's box
+- [ ] `effect-vintage`: Sepia + warmth tone
+- [ ] `effect-chromatic-aberration`: RGB channel fringing
+- [ ] `effect-invert`: RGB inversion
+- [ ] `effect-scatter-horizontal`: Scatter with `direction: "horizontal"`
+- [ ] `effect-scatter-vertical`: Scatter with `direction: "vertical"`
+- [ ] `effect-scatter-both`: Scatter with `direction: "both"`
+- [ ] `effect-posterize`: Color banding at low level count
+- [ ] `effect-outline`: Outline band growing outside a text silhouette
+- [ ] `effect-outline-inside`: Outline with `position: "inside"` on a filled disc
+- [ ] `effect-vignette`: Corner falloff darkening a bright card
+- [ ] `effect-grain`: Static (unanimated) film grain over a gradient
+- [ ] `effect-sharpen`: Unsharp mask raising edge contrast
+- [ ] `effect-edges`: Sobel edge detection on flat colour blocks
+- [ ] `effect-threshold`: Two-tone luminance cut sweeping across a gradient
+- [ ] `effect-radial-blur`: Zoom-style radial blur about the centre
+- [ ] `effect-radial-blur-spin`: Spin-style radial blur about the centre
+- [ ] `effect-halftone`: 45° dot screen at increasing cell size
+- [ ] `effect-dither`: Bayer 8×8 ordered dither down to 1-bit
+- [ ] `effect-duotone`: Luminance remapped onto a two-colour ramp
+- [ ] `effect-curves`: Tone curve lifting shadows on a node (not an image fill)
+- [ ] `effect-color-adjustment`: Contrast/saturation/temperature on a group of shapes
+- [ ] `effect-rgb-shift`: Red/blue planes pulled apart on a text silhouette
+- [ ] `effect-scanlines`: CRT bands darkening a bright card
+- [ ] `effect-block-displace`: Horizontal band tearing at a fixed seed
+- [ ] `effect-bit-crush`: Gradient snapped to the Game Boy palette
+- [ ] `effect-streak`: Anamorphic glare smeared along one axis
+- [ ] `effect-oil-paint`: Kuwahara brushwork — flat strokes with edges intact
+- [ ] `effect-ascii`: Image resolving into an ASCII glyph grid as the cell grows
+- [ ] `effect-chain-order`: Two shader effects in opposite orders must differ (author-order guard)
+- [ ] `effect-shader-custom`: Custom WGSL shader as layer effect (wgpu lane)
+- [ ] `effect-shader-backdrop`: Custom WGSL shader processing backdrop (wgpu lane)
+- [ ] `preset-vhs`: A five-effect chain spanning both effect surfaces (shader/filter partition guard)
+- [ ] `preset-comic`: halftone `separation: 'cmyk'` on a process screen
+
+---
+
+## Image Filters
+
+Applied to Image nodes and image fills.
+
+- [ ] `filter-exposure`: Exposure boost and reduction
+- [ ] `filter-blur-image`: Gaussian blur on an image
+- [ ] `filter-grayscale-image`: Desaturation of an image
+- [ ] `filter-alpha-image`: Alpha multiplier fading an image out
+- [ ] `filter-color-matrix`: Arbitrary 4×5 color matrix transform
+- [ ] `filter-curves`: Tone curve on RGB channel
+- [ ] `filter-curves-per-channel`: Separate tone curves for R, G, B
+- [ ] `filter-color-adjustment`: Brightness, contrast, saturation, vibrance, shadows, highlights, temperature, tint, vignette all animated
+
+---
+
+## Video Filters
+
+Applied to Video nodes and video fills.
+
+- [ ] `filter-video-exposure`: Exposure on video
+- [ ] `filter-video-grayscale`: Grayscale on video
+- [ ] `filter-video-color-adjustment`: Color adjustment on video
+- [ ] `filter-video-posterize-time`: Frame rate reduction (posterize time)
+- [ ] `filter-video-echo`: Multi-frame echo/trail effect
+
+---
+
+## Blend Modes
+
+### Node Blend Modes
+
+Node-level blend composites the entire node (fills + children + stroke) against what's beneath it.
+
+- [ ] `blend-node-multiply`
+- [ ] `blend-node-screen`
+- [ ] `blend-node-overlay`
+- [ ] `blend-node-darken`
+- [ ] `blend-node-lighten`
+- [ ] `blend-node-color-dodge`
+- [ ] `blend-node-color-burn`
+- [ ] `blend-node-hard-light`
+- [ ] `blend-node-soft-light`
+- [ ] `blend-node-difference`
+- [ ] `blend-node-exclusion`
+- [ ] `blend-node-hue`
+- [ ] `blend-node-saturation`
+- [ ] `blend-node-color`
+- [ ] `blend-node-luminosity`
+- [ ] `blend-node-pass-through`: `"pass-through"` vs `"normal"` isolation with semi-transparent children
+
+### Fill Blend Modes
+
+Fill-level blend composites each fill layer against the layers beneath it within the same shape.
+
+- [ ] `blend-fill-multiply`: Second fill layer blending with `"multiply"` over first
+- [ ] `blend-fill-screen`: Screen blend between two fill layers
+- [ ] `blend-fill-overlay`: Overlay blend between two fill layers
+- [ ] `blend-fill-difference`: Difference blend to invert where fills overlap
+- [ ] `blend-fill-color-dodge`: Color-dodge brightening effect between fill layers
+- [ ] `blend-fill-luminosity`: Luminosity blend preserving luma from top fill
+- [ ] `blend-fill-layered-stack`: Three fill layers each with different blend modes stacked
+
+### Stroke Blend Modes
+
+Stroke has its own `fill` which also carries a `blend` property, compositing the stroke paint against the shape beneath.
+
+- [ ] `blend-stroke-screen`: Stroke fill using `"screen"` blend over the shape fill
+- [ ] `blend-stroke-multiply`: Stroke fill using `"multiply"` blend
+- [ ] `blend-stroke-difference`: Stroke fill using `"difference"` blend (inverts where stroke crosses fill)
+
+### Shadow Blend Modes
+
+Shadow `fill` also carries `blend`, compositing the shadow color against the backdrop.
+
+- [ ] `blend-shadow-screen`: Drop shadow using `"screen"` blend (lightening glow)
+- [ ] `blend-shadow-multiply`: Drop shadow using `"multiply"` blend (darkening shadow)
+- [ ] `blend-shadow-color-dodge`: Drop shadow using `"color-dodge"` (bloom-like outer glow)
+
+---
+
+## Transforms
+
+- [ ] `transform-position`: Rect animating x, y position
+- [ ] `transform-rotation`: Shape spinning full rotation
+- [ ] `transform-scale-uniform`: Uniform scale animation
+- [ ] `transform-scale-xy`: Independent scaleX and scaleY (squash and stretch)
+- [ ] `transform-opacity`: Opacity fade in/out
+- [ ] `transform-pivot-center`: Rotation around center pivot
+- [ ] `transform-pivot-corner`: Rotation around top-left corner pivot
+- [ ] `transform-pivot-custom`: Rotation around arbitrary custom pivot point
+- [ ] `transform-combined`: Position + rotation + scale all animated simultaneously
+
+### 2.5D Space
+
+- [ ] `space3d-parallax`: Layers at depths under the stage camera; pan and dolly give parallax, authored near-first
+- [ ] `space3d-carousel`: A ring of cards turning as one group while the camera rises; front over back
+- [ ] `space3d-flip`: A card's back revealed by orbiting the camera half way round
+- [ ] `space3d-flythrough`: lookAt flies through frames in depth; passed frames stop, the floor is cut at the lens
+- [ ] `space3d-isometric`: `perspective: 0` with isometric orbit and elevation; tiles re-sort as the view turns
+
+---
+
+## Easing Functions
+
+Each shows a ball moving across the screen with that easing, easeIn/easeOut/easeInOut.
+
+- [ ] `ease-sine`
+- [ ] `ease-quad`
+- [ ] `ease-cubic`
+- [ ] `ease-quart`
+- [ ] `ease-quint`
+- [ ] `ease-expo`
+- [ ] `ease-circ`
+- [ ] `ease-back`
+- [ ] `ease-elastic`
+- [ ] `ease-bounce`
+
+---
+
+## Cardinal Coordinates
+
+- [ ] `cardinal-node-topleft`: Anchoring/measuring from topLeft of a node
+- [ ] `cardinal-node-topcenter`: topCenter
+- [ ] `cardinal-node-topright`: topRight
+- [ ] `cardinal-node-leftcenter`: centerLeft
+- [ ] `cardinal-node-center`: center
+- [ ] `cardinal-node-rightcenter`: centerRight
+- [ ] `cardinal-node-bottomleft`: bottomLeft
+- [ ] `cardinal-node-bottomcenter`: bottomCenter
+- [ ] `cardinal-node-bottomright`: bottomRight
+- [ ] `cardinal-graphics-points`: Cardinal points used in a graphics/drawable context
+- [ ] `cardinal-graphics-rect`: `Graphics2D().rect({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-text`: `Graphics2D().text({ pivot, x, y })` for all nine named anchors, no authored box, animating rotation/scale
+- [ ] `cardinal-graphics-ellipse`: `Graphics2D().ellipse({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-polygon`: `Graphics2D().polygon({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+- [ ] `cardinal-graphics-polygram`: `Graphics2D().polygram({ pivot, x, y })` for all nine named anchors, animating rotation/scale
+
+---
+
+## Shape Start / End
+
+`start` and `end` (0–1) partially reveal any shape's path outline.
+
+- [ ] `shape-start-end-rect`: Rect animated from `start=0,end=0` to `end=1` (draws itself in)
+- [ ] `shape-start-end-ellipse`: Ellipse revealing arc from start to end
+- [ ] `shape-start-end-polygon`: Polygon drawing its perimeter progressively
+
+---
+
+## Path Morphing
+
+- [ ] `morph-triangle-to-star`: Triangle shape morphing into 5-point star
+- [ ] `morph-circle-to-rect`: Ellipse morphing into rectangle path
+- [ ] `morph-complex-shapes`: Two arbitrary SVG paths morphing together
+
+---
+
+## Opacity & Visibility
+
+- [ ] `opacity-node`: Node-level opacity animated
+- [ ] `opacity-fill`: Fill-level opacity animated independently of node
+- [ ] `opacity-stroke`: Stroke-level opacity animated
+- [ ] `opacity-passthrough-vs-normal`: Pass-through vs normal node blend isolation with semi-transparent children
+
+---
+
+## Math
+
+Coordinate systems, plots and marks from `@motionscript/math`; the gallery scenes are Manim's, rebuilt as documents.
+
+- [ ] `math-axes-plot`: Axes with function plots and children placed in graph coordinates, panned and zoomed
+- [ ] `math-sin-cos`: Sine and cosine on axes with a guide at 2π (Manim's SinAndCosFunctionPlot)
+- [ ] `math-arg-min`: A dot riding a parabola to its minimum, driven by a variable (Manim's ArgMinExample)
+- [ ] `math-graph-area`: Area between two curves, guides and narrowing Riemann rectangles (Manim's GraphAreaPlot)
+- [ ] `math-polygon-on-axes`: A rectangle under a hyperbola whose corners are formulas of one variable (Manim's PolygonOnAxes)
+- [ ] `math-heat-diagram`: A line through data points on labelled axes (Manim's HeatDiagramPlot)
+- [ ] `math-vector-arrow`: An arrow on a number plane with labelled points (Manim's VectorArrow)
+- [ ] `math-tangent`: A tangent and a secant riding a curve, with a number line following the same variable
+- [ ] `math-latex-parts`: A formula written on glyph by glyph, with parts coloured by their source and carried through a morph
+- [ ] `math-moving-frame-box`: A box drawn on one term of a formula, then slid to another, with a brace and its label (Manim's MovingFrameBox and BraceAnnotation)
+- [ ] `math-moving-angle`: A line turning about a point with the angle marked and measured as it opens (Manim's MovingAngle)
+- [ ] `math-surface-plot`: A surface over 3D axes coloured by height, with a point riding it, morphing as the view swings (Manim's ThreeDSurfacePlot)
+- [ ] `math-camera-rotation`: 3D axes and a circle as the camera circles them, then a helix drawn on (Manim's ThreeDCameraRotation)
+- [ ] `math-plane-transform`: A number plane with basis arrows and a circle, sheared by a matrix over its ghost and then bent by a function (Manim's linear transformations and OpeningManim)
+- [ ] `math-vector-field`: Arrows of a vector field coloured by strength, morphing, over flowing stream lines (Manim's ArrowVectorField and StreamLines)
+- [ ] `math-polar-plane`: A rose on a polar plane and the trail a point leaves along a spiral (Manim's PolarPlane and TracedPath)
+- [ ] `math-following-camera`: A camera following a dot along a sine curve, moving in and back out (Manim's FollowingGraphCamera)
+- [ ] `math-network-graph`: A graph in a circle rearranged as a tree and by springs, with a path coloured in (Manim's Graph and change_layout)
+- [ ] `math-sample-space`: A probability split into parts by two conditions, each part's area its probability, the cuts moving (Manim's SampleSpace)
+

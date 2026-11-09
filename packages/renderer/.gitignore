@@ -1,0 +1,13 @@
+target/
+node_modules/
+dist/
+# wasm-bindgen output, but its type declarations are committed so the root
+# typecheck needs no Rust; the renderer CI job checks they are current.
+web/pkg/*
+!web/pkg/ms_renderer.d.ts
+web/pkg-text/*
+!web/pkg-text/ms_text.d.ts
+web/pkg-r3d/*
+!web/pkg-r3d/ms_render3d.d.ts
+web/dist/
+.DS_Store

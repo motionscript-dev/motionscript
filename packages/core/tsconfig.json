@@ -1,0 +1,24 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "dist",
+        "resolveJsonModule": true,
+        // ES2022 only — DOM/DOM.Iterable are intentionally excluded so web
+        // globals (Node, Element, AudioNode, HTMLElement, ...) never leak into
+        // this package's intellisense or public API.
+        "lib": ["ES2022"],
+        // Only Node ambient types — prevents stray @types packages from
+        // re-introducing DOM globals.
+        "types": ["node"],
+        "paths": {
+            "@/*": [
+                "./src/*" // 2. Add "./" to make the path relative
+            ]
+        }
+    },
+    "include": [
+        "src/**/*",
+        "src/**/*.json"
+    ]
+}

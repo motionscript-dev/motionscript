@@ -1,0 +1,251 @@
+{
+  "kit": {
+    "barrel": "src/engine.ts",
+    "specifier": "@motionscript/math"
+  },
+  "items": [
+    {
+      "name": "latex",
+      "description": "A LaTeX formula drawn as glyph paths, morphing token by token between formulas.",
+      "root": "src/tex",
+      "files": [
+        "node.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "latex-matrix",
+      "description": "A matrix typeset from its entries, each one addressable as a part.",
+      "root": "src/tex",
+      "files": [
+        "matrix.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "number-line",
+      "description": "One axis with ticks and numbers; children sit at a value along it.",
+      "root": "src/systems",
+      "files": [
+        "number-line.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "axes2d",
+      "description": "An x and a y axis whose children sit in graph coordinates.",
+      "root": "src/systems",
+      "files": [
+        "axes2d.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "number-plane",
+      "description": "Axes over a full grid with square units.",
+      "root": "src/systems",
+      "files": [
+        "number-plane.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "function-plot",
+      "description": "The curve of an equation: a function, a polar or a parametric one.",
+      "root": "src/plots",
+      "files": [
+        "function-plot.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "points-plot",
+      "description": "A line or closed shape through listed graph points.",
+      "root": "src/plots",
+      "files": [
+        "points-plot.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "plot-point",
+      "description": "A labelled dot at graph coordinates, or riding a plot.",
+      "root": "src/marks",
+      "files": [
+        "plot-point.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "vector-arrow",
+      "description": "An arrow between two graph points.",
+      "root": "src/marks",
+      "files": [
+        "vector-arrow.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "curve-area",
+      "description": "The region under a plot or between two.",
+      "root": "src/marks",
+      "files": [
+        "curve-area.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "riemann-sum",
+      "description": "Rectangles approximating the area under a plot.",
+      "root": "src/marks",
+      "files": [
+        "riemann-sum.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "tangent-line",
+      "description": "The tangent or a secant to a plot.",
+      "root": "src/marks",
+      "files": [
+        "tangent-line.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "drop-lines",
+      "description": "Guide lines from a graph point to the axes.",
+      "root": "src/marks",
+      "files": [
+        "drop-lines.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "curly-brace",
+      "description": "A curly brace along a node, a part of a formula, or two points.",
+      "root": "src/annotate",
+      "files": [
+        "curly-brace.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "angle-mark",
+      "description": "The arc or square of an angle, with its label.",
+      "root": "src/annotate",
+      "files": [
+        "angle-mark.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "emphasis-mark",
+      "description": "A box, circle, underline or cross drawn on a node or a part of a formula.",
+      "root": "src/annotate",
+      "files": [
+        "emphasis-mark.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "axes3d",
+      "description": "A 3D graph with its own camera: three axes through a box of graph coordinates, z up, whose children sit in graph units.",
+      "root": "src/three",
+      "files": [
+        "axes3d.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "surface-plot3d",
+      "description": "A surface in a 3D graph: a height over x and y, or three parts in u and v.",
+      "root": "src/three",
+      "files": [
+        "surface-plot3d.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "curve-plot3d",
+      "description": "A curve through a 3D graph, three parts in t, drawn as a tube.",
+      "root": "src/three",
+      "files": [
+        "curve-plot3d.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "plot-point3d",
+      "description": "A labelled dot at 3D graph coordinates, riding a surface it is put inside.",
+      "root": "src/three",
+      "files": [
+        "plot-point3d.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "vector-arrow3d",
+      "description": "An arrow between two points of a 3D graph.",
+      "root": "src/three",
+      "files": [
+        "vector-arrow3d.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "polar-plane",
+      "description": "Rings and spokes about an origin, whose children sit in graph coordinates.",
+      "root": "src/systems",
+      "files": [
+        "polar-plane.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "vector-field",
+      "description": "A grid of arrows showing a vector field, coloured by its strength.",
+      "root": "src/plots",
+      "files": [
+        "vector-field.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "stream-lines",
+      "description": "The lines a vector field carries a point along, which can be sent flowing.",
+      "root": "src/plots",
+      "files": [
+        "stream-lines.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "traced-path",
+      "description": "The trail a point leaves as a value changes.",
+      "root": "src/plots",
+      "files": [
+        "traced-path.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "network-graph",
+      "description": "Vertices and edges arranged in a circle, by springs, as a tree or in a grid.",
+      "root": "src/structures",
+      "files": [
+        "network-graph.ts"
+      ],
+      "flatten": true
+    },
+    {
+      "name": "sample-space",
+      "description": "A probability's whole cut into parts whose areas are their probabilities.",
+      "root": "src/structures",
+      "files": [
+        "sample-space.ts"
+      ],
+      "flatten": true
+    }
+  ]
+}

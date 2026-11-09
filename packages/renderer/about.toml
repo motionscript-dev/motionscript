@@ -1,0 +1,17 @@
+# cargo-about: the crates compiled into ms_renderer_bg.wasm, for
+# THIRD_PARTY_NOTICES.txt (scripts/third-party-notices.mjs). A crate under a
+# licence missing here fails the generation; add one only once it is checked
+# to be permissive and compatible with shipping inside an Apache-2.0 package.
+targets = ["wasm32-unknown-unknown"]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+private = { ignore = true }
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "Zlib",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Unicode-3.0",
+    "Unlicense",
+]

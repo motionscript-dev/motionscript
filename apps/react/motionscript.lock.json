@@ -1,0 +1,20 @@
+{
+  "$schema": "https://motionscript.dev/schema/motionscript.lock.json",
+  "lockfileVersion": 1,
+  "components": {
+    "pulse-ring": {
+      "registry": "default",
+      "url": "https://motionscript.dev/r/pulse-ring.json",
+      "item": "pulse-ring",
+      "version": "0.0.0",
+      "kit": "@motionscript/shaders@0.0.0",
+      "installedAt": "2026-09-10T04:01:15.534Z",
+      "files": {
+        "pulse-ring.ts": {
+          "target": "src/components/pulse-ring.ts",
+          "installed": "sha256-c5LdmaaMPA4qHKUG5V/mcuFamksA+RgYEk6blAtaUCI="
+        }
+      }
+    }
+  }
+}
