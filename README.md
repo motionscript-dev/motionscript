@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src=".github/logo_label.png" alt="Motionscript" width="400" />
+<img src=".github/banner.png" alt="Motionscript" width="400" />
 
 
 An open-source motion design tool, inspired by tools like Manim and Motion Canvas, that helps
