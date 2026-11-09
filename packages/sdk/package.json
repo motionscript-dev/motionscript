@@ -18,6 +18,7 @@
     "animation"
   ],
   "license": "Apache-2.0",
+  "author": "Motionscript",
   "publishConfig": {
     "access": "public"
   },

@@ -17,7 +17,7 @@
     "promote": "node scripts/promote.mjs",
     "clean": "turbo run clean && rimraf .turbo"
   },
-  "author": "Motion Script",
+  "author": "Motionscript",
   "license": "Apache-2.0",
   "packageManager": "pnpm@11.0.9",
   "devDependencies": {

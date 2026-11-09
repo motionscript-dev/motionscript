@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "Demo server: renders Motion Script scenes to PNG/MP4 in Node and serves them over HTTP.",
+  "author": "Motionscript",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",

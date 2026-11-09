@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "description": "Demo app: a Vite + React page that plays Motion Script scenes through MotionPlayer with hand-rolled controls.",
+  "author": "Motionscript",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",

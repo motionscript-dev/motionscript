@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "description": "Visual end-to-end test harness: renders one scene per TESTS.md checkbox at 960x540/30fps, screenshots first/mid/last frames, and pixel-diffs a stable build against the live library build.",
+  "author": "Motionscript",
   "type": "module",
   "scripts": {
     "gen": "tsx scripts/gen-scenes.ts",

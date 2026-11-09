@@ -52,6 +52,7 @@
     "animation"
   ],
   "license": "Apache-2.0",
+  "author": "Motionscript",
   "peerDependencies": {
     "@motionscript/sdk": "workspace:^"
   },

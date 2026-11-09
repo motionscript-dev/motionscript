@@ -13,6 +13,7 @@
     "url": "https://github.com/motionscript-dev/motionscript/issues"
   },
   "license": "Apache-2.0",
+  "author": "Motionscript",
   "keywords": [
     "webgpu",
     "wgpu"

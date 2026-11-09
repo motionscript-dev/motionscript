@@ -47,6 +47,7 @@
     "registry"
   ],
   "license": "Apache-2.0",
+  "author": "Motionscript",
   "dependencies": {
     "jsonc-parser": "^3.3.1",
     "kleur": "^4.1.5",
