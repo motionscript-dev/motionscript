@@ -851,7 +851,18 @@ Pieces, all under `web/src/adapter/`:
   (`geometry/sink.ts`) straight into `PathData`, exactly what parsing their
   SVG string gives (`geometry/tests/sink.test.ts`); the rest emit the string,
   parsed by `svg-path.ts`. A number the string cannot carry (NaN, ±∞) takes
-  the string route.
+  the string route. Outlines are built on first read, because a plain rect or
+  ellipse may never need one: `ShapeOut.native` describes it as the renderer's
+  own rect or ellipse node, the SDF primitives of §4.2. `context.ts` draws one
+  natively when:
+  - the fill is solid and casts no shadow;
+  - or the stroke is solid and undashed, round a rect (a square corner only
+    with a miter join) or a circle;
+  - and it is the only shape in its paint.
+
+  A biased stroke draws as a centred one round the offset box. Everything else
+  is a path. The edge pixels this changes are in
+  [why](docs/why.md#plain-rects-and-ellipses-draw-as-the-renderers-own-shapes).
 - **Paint** (`paint.ts`): core `Fill`/`Stroke`/`Shadow` to the doc's paints
   (solid, gradients, images, procedural fills, canvas3d as a 3D scene asset).
 - **Text**: text and rich-text ops to the doc's `TextSpec` (fonts registered

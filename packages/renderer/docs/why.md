@@ -2,6 +2,38 @@
 
 Decisions that shaped this code, with what was ruled out. Each section is one decision; add one when a choice is not obvious from the code.
 
+## Plain rects and ellipses draw as the renderer's own shapes
+
+Status: accepted (2026-11-10)
+
+### Context
+
+The adapter turned every shape into a path. A scene drawing many small moving rects or ellipses then defined a new path for each one, every frame, and the renderer took each one in.
+
+On 10,000 ellipses a frame (1080p, a desktop GPU) that was about 87 ms of CPU, almost all of it in the adapter and the path upload. The renderer already draws rects, rounded rects and ellipses itself, as SDF primitives (`DESIGN.md` §4.2), but the adapter never used them.
+
+### Decision
+
+A rect or ellipse the primitive draws exactly is sent as a rect or ellipse node (`ShapeOut.native`, `fillNative` and `strokeNative` in `web/src/adapter/context.ts`). That means:
+- an unturned, unscaled, untrimmed rect, with rounded or square corners within half its shorter side;
+- or a whole ellipse;
+- its only paint solid;
+- no shadow on a fill, and no dash on a stroke.
+
+A stroke only goes native round a rect (a square corner needs a miter join) or a circle. An ellipse's offset outline is not an ellipse. Everything else stays a path, as before.
+
+### Consequences
+
+- The same scene takes about 35 ms of CPU, and the adapter's share drops from ~86 to ~31 ms.
+- Edge pixels change: the primitive's coverage is analytic, the path's is its flattened outline. In the e2e catalog:
+  - 46 of 108 frames move;
+  - at most 0.83% of a frame's pixels, by at most 50 levels;
+  - interiors and axis-aligned edges are unchanged;
+  - nothing visible at 5–8× zoom;
+  - the lane passes within its thresholds, so its baselines were not re-recorded.
+- Small shapes move most: on 2–5 px dots nearly every pixel is an edge, and about 7.5% of such a frame changes by ~13 levels on average.
+- Widening the native route (gradients and images need their paint moved into the node's box; shadows have the renderer's closed-form rrect shadow) changes more edges, and needs the same comparison: exact per-pixel, against the path route, not the e2e lane's tolerance.
+
 ## Stay on CanvasKit (Ganesh, WebGL) and SkSL
 
 Status: superseded by [WebGPU is the only renderer; CanvasKit, SkSL and three.js are removed](#webgpu-is-the-only-renderer-canvaskit-sksl-and-threejs-are-removed) (evaluated 2026-10-10). CanvasKit, SkSL and three.js are removed; WebGPU through the wgpu renderer is the only backend. Kept as the record of why Graphite was not pursued.

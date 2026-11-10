@@ -14,7 +14,7 @@ import { assetKey } from "./driver";
 import { fillPaint, shadowOf } from "./paint";
 import { shaderParamIssues } from "./shader-params";
 import { isClosed, reversePath, signedArea } from "./path-measure";
-import { shapeOf, type ShapeOut, textOf } from "./shapes";
+import { type NativeShape, shapeOf, type ShapeOut, textOf } from "./shapes";
 import { resolveMotionBlur, SAMPLE_THRESHOLD } from "./geometry/motion-blur";
 import { endBox, endDisc, markerInset, markerPath, type PathEnd, strokePlan, type StrokePlan } from "./stroke-ends";
 
@@ -61,6 +61,18 @@ export class MissingKinds extends Set<string> {
 
 const SHAPE_OPS = new Set(["rect", "ellipse", "path", "line", "polygon", "polygram", "text", "richText"]);
 type LeafProps = Parameters<Doc["pathNode"]>[1];
+
+const isSolid = (f: unknown) => (f as { type?: string }).type === "solid";
+
+/** `box` grown by `d` (shrunk when negative), each rounded corner with it; null where that is no longer the offset outline. */
+function offsetBox(box: NativeShape, d: number): NativeShape | null {
+    if (d === 0) return box;
+    const w = box.w + 2 * d, h = box.h + 2 * d;
+    if (!(w > 0 && h > 0)) return null;
+    if (box.kind === "ellipse") return { ...box, x: box.x - d, y: box.y - d, w, h };
+    if (box.radii.some((r) => r > 0 && !(r + d > 0))) return null;
+    return { ...box, x: box.x - d, y: box.y - d, w, h, radii: box.radii.map((r) => (r > 0 ? r + d : 0)) as NativeShape["radii"] };
+}
 
 /** What a paint covers: one path, or a compound's members (a boolean result). */
 type Geom = { path: PathData } | { members: Member[] };
@@ -539,6 +551,7 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
     private paintFill(layers: ReturnType<typeof fillOps.resolve>) {
         this.paintText(layers, null);
         if (!layers.length) return;
+        if (this.fillNative(layers)) return;
         const path = this.surface("fill");
         const geoms: Geom[] = path ? [{ path }] : [];
         for (const s of this.shapes) if (s.members) geoms.push({ members: s.members });
@@ -547,6 +560,57 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
         const all = this.shadows;
         this.shadows = [];
         for (const g of geoms) this.fillGeom(g, bounds, layers, all);
+    }
+
+    /**
+     * One rect or ellipse painted solid, with no shadow to cast, drawn as the
+     * renderer's own shape. Gradients and images stay paths: their paint space
+     * is the path's.
+     */
+    private fillNative(layers: ReturnType<typeof fillOps.resolve>): boolean {
+        const shape = this.shapes.length === 1 ? this.shapes[0] : null;
+        const box = shape?.native;
+        if (!shape || !box || this.inVectorMask || this.shadows.length || !layers.every(isSolid)) return false;
+        for (const f of layers) {
+            const paint = fillPaint(f, shape.bounds!, this.missing, this.assets);
+            if (paint) this.native(this.cur, box, { fill: paint, opacity: this.worldAlpha * ((f as any).opacity ?? 1), blend: this.blendOf(f) });
+        }
+        return true;
+    }
+
+    /**
+     * An undashed solid stroke round one rect, or round a circle (an ellipse's
+     * offset outline is no ellipse), drawn as the renderer's own shape. Biased by
+     * `align`, the band is a centred stroke round the shape offset by
+     * align·weight/2, which stays exact while no rounded corner shrinks away. The
+     * renderer keeps a square corner sharp, which is a miter join.
+     */
+    private strokeNative(st: ReturnType<typeof strokeOps.resolve>[number], weight: number, intWidth: number, dev: Xform): boolean {
+        const shape = this.shapes.length === 1 ? this.shapes[0] : null;
+        const native = shape?.native;
+        if (!shape || !native || weight <= 0 || (st.dash?.length ?? 0) > 0 || !st.fill.every(isSolid)) return false;
+        if (native.kind === "ellipse" && Math.abs(native.w - native.h) > 1e-3) return false;
+        if (native.kind === "rect" && native.radii.some((r) => r === 0) && (st.join !== "miter" || !(st.miterLimit >= Math.SQRT2))) return false;
+        const a = Math.max(-1, Math.min(1, st.align ?? 0));
+        const box = offsetBox(native, (a * weight) / 2);
+        if (!box) return false;
+        const b = shape.bounds!;
+        // As the path's points hold the box: in 32-bit floats.
+        const snapM = this.snapBounds([Math.fround(b[0]), Math.fround(b[1]), Math.fround(b[2]), Math.fround(b[3])], intWidth, dev);
+        const parent = snapM ? this.doc.group(this.cur, { transform: snapM }) : this.cur;
+        for (const f of st.fill) {
+            const paint = fillPaint(f, b, this.missing, this.assets);
+            if (!paint) continue;
+            const stroke = { paint, width: weight, join: st.join as never, cap: st.cap as never, miter: st.miterLimit };
+            // As the path route: an aligned band keeps the normal blend.
+            this.native(parent, box, { opacity: this.worldAlpha * ((f as any).opacity ?? 1), stroke, ...(a === 0 && { blend: this.blendOf(f) }) });
+        }
+        return true;
+    }
+
+    private native(parent: Node, box: NativeShape, props: LeafProps): Node {
+        const at = { ...props, transform: [1, 0, 0, 1, box.x, box.y] as Mat, w: box.w, h: box.h, radii: box.radii };
+        return box.kind === "rect" ? this.doc.rect(parent, at) : this.doc.ellipse(parent, at);
     }
 
     private fillGeom(geom: Geom, bounds: Bounds, layers: ReturnType<typeof fillOps.resolve>, all: ShadowResolved[]) {
@@ -838,8 +902,11 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
     /** StrokeHandler.snapPath: an axis-aligned thin stroke's shape scaled and
      *  moved so its device bounds sit on pixel edges (centres for odd widths). */
     private snap(path: PathData, intWidth: number, m: Xform): Mat | null {
+        return this.snapBounds(pathBounds(path), intWidth, m);
+    }
+
+    private snapBounds([bx0, by0, bx1, by1]: Bounds, intWidth: number, m: Xform): Mat | null {
         if (intWidth <= 0 || Math.abs(m[1]) > 1e-6 || Math.abs(m[2]) > 1e-6 || m[0] === 0 || m[3] === 0) return null;
-        const [bx0, by0, bx1, by1] = pathBounds(path);
         if (bx1 - bx0 <= 0 || by1 - by0 <= 0) return null;
         const sx = m[0], sy = m[3], tx = m[4], ty = m[5];
         const l = tx + sx * bx0, t = ty + sy * by0, r = tx + sx * bx1, b = ty + sy * by1;
@@ -860,7 +927,8 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
 
     private paintStroke(strokes: ReturnType<typeof strokeOps.resolve>) {
         for (const st of strokes) this.paintText(st.fill, st);
-        const fillAll = this.surface("fill");
+        let fillAll: PathData | null | undefined;
+        const surfaceFill = () => (fillAll === undefined ? (fillAll = this.surface("fill")) : fillAll);
         const dev = this.device();
         const scale = Math.sqrt(Math.abs(dev[0] * dev[3] - dev[1] * dev[2]));
         const rotated = isProjective(dev) || Math.abs(dev[1]) > 1e-6 || Math.abs(dev[2]) > 1e-6;
@@ -872,6 +940,7 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
                 intWidth = Math.max(1, Math.round(weight * scale));
                 weight = intWidth / scale;
             }
+            if (this.strokeNative(st, weight, intWidth, dev)) continue;
             for (const shape of this.strokeShapes()) {
                 let geom: Geom, interior: Geom | null;
                 let plan: StrokePlan = { cap: st.cap, ends: [], dash: st.dash, dashPhase: st.dashOffset };
@@ -885,7 +954,7 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
                     geom = { path: p.source ?? shape.stroke };
                     interior = shape.alignInterior ? { members: shape.alignInterior } : shape.interior && isClosed(shape.interior) ? { path: shape.interior } : null;
                 }
-                const bounds = this.bounds(fillAll ?? ("path" in geom ? geom.path : null));
+                const bounds = this.bounds(surfaceFill() ?? ("path" in geom ? geom.path : null));
                 // alignedStrokeBand: outside (1 + a)·w, inside (1 − a)·w, each
                 // clipped to its side. A marked stroke is centred: half a head means nothing.
                 const a = Math.max(-1, Math.min(1, st.align ?? 0));
@@ -915,7 +984,7 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
      *  whole, else their contours together (a union would close open ones),
      *  aligned against the union. Text keeps each shape apart. */
     private strokeShapes(): ShapeOut[] {
-        if (this.shapes.some((s) => s.text)) return this.shapes;
+        if (this.shapes.length < 2 || this.shapes.some((s) => s.text)) return this.shapes;
         // A boolean result first: the union folds in after its own ops.
         const withPaths = this.shapes.filter((s) => s.members || (s.fill && s.fill.verbs.length)).sort((a, b) => (b.members ? 1 : 0) - (a.members ? 1 : 0));
         if (withPaths.length < 2) return this.shapes;

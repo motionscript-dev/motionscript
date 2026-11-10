@@ -1,6 +1,7 @@
 // Shape ops to PathData: each shape's geometry (./geometry) emits its outline,
 // straight into PathData where it writes to a sink, else as an SVG path string
-// parsed here. Shapes are authored y-up, so their position (and
+// parsed here. A plain rect or ellipse also says how the renderer can draw it
+// as its own shape (`native`). Shapes are authored y-up, so their position (and
 // an ellipse's angles) flip into the node's y-down space first; a shape's own
 // rotation/scale then turns its outline about its (x, y) plus pivot.
 
@@ -122,6 +123,18 @@ export interface ShapeOut {
     /** The silhouette grown (or shrunk) by a shadow's spread; unset where the
      *  shape ignores spread (only rects and ellipses resize cleanly). */
     spread?: (spread: number) => PathData | null;
+    /** Set where the renderer can draw the shape as its own rect or ellipse instead of a path. */
+    native?: NativeShape;
+}
+
+/** A rect or ellipse as the renderer's own shape: its box in the node's y-down space, corner radii tl tr br bl. */
+export interface NativeShape {
+    kind: "rect" | "ellipse";
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    radii: [number, number, number, number];
 }
 
 function parse(svg: string | null | undefined, full: Any): PathData | null {
@@ -129,26 +142,77 @@ function parse(svg: string | null | undefined, full: Any): PathData | null {
     return shapeTransform(full, parseSvgPath(svg));
 }
 
+// Each outline is built on first read: a shape drawn as a native one never needs it.
 function viaGeometry(Shape: new (state: Any) => ShapeGeometry<any, any>, state: Any): ShapeOut {
     const shape = new Shape(state);
     const full = shape.fullState as Any, geo = shape.geometry;
-    const outline = shape.buildPathData(geo);
-    const base = outline && shapeTransform(full, outline);
-    const trims = shape.needsTrim();
-    const range = trims ? shape.getTrimRange() : null;
-    const fill = base && range ? trimPath(base, range.start, range.end) : base;
-    let stroke = fill;
-    // A ratio-1 ellipse fills nothing; it strokes its bare outline or arc.
-    const ring = shape instanceof EllipseGeometry ? shape.ringOutline(geo) : null;
-    if (ring != null) {
+    const range = shape.needsTrim() ? shape.getTrimRange() : null;
+    const base = once(() => {
+        const outline = shape.buildPathData(geo);
+        return outline && shapeTransform(full, outline);
+    });
+    const fill = once(() => {
+        const p = base();
+        return p && range ? trimPath(p, range.start, range.end) : p;
+    });
+    const stroke = once(() => {
+        // A ratio-1 ellipse fills nothing; it strokes its bare outline or arc.
+        const ring = shape instanceof EllipseGeometry ? shape.ringOutline(geo) : null;
+        if (ring == null) return fill();
         const outline = parse(ring, full);
-        stroke = outline && range ? trimPath(outline, range.start, range.end) : outline;
-    }
-    const interiorSvg = shape.buildSVGAlignInterior(geo);
-    const interior = interiorSvg != null ? parse(interiorSvg, full) : (trims ? base : fill);
+        return outline && range ? trimPath(outline, range.start, range.end) : outline;
+    });
+    const interior = once(() => {
+        const svg = shape.buildSVGAlignInterior(geo);
+        return svg != null ? parse(svg, full) : range ? base() : fill();
+    });
     const b = shape.computeBounds(geo);
     const spread = shape.supportsSpread() ? (s: number) => parse(shape.buildSpreadSVGPath(geo, s), full) : undefined;
-    return { fill, stroke, interior, bounds: b ? [b.left, b.top, b.right, b.bottom] : null, spread, trimmed: !!range };
+    return {
+        get fill() { return fill(); },
+        get stroke() { return stroke(); },
+        get interior() { return interior(); },
+        bounds: b ? [b.left, b.top, b.right, b.bottom] : null,
+        spread,
+        trimmed: !!range,
+        native: range ? undefined : nativeOf(shape, full, geo),
+    };
+}
+
+function once<T>(make: () => T): () => T {
+    let made = false;
+    let value: T;
+    return () => {
+        if (!made) {
+            value = make();
+            made = true;
+        }
+        return value;
+    };
+}
+
+/**
+ * The shape the renderer draws itself: an unturned, unscaled rect whose corners
+ * are all rounded (or square) and within half its shorter side, as the renderer
+ * clamps them, or a whole ellipse with no hole.
+ */
+function nativeOf(shape: ShapeGeometry<any, any>, full: Any, geo: Any): NativeShape | undefined {
+    if ((full.rotation ?? 0) !== 0 || (full.scale ?? 1) !== 1) return undefined;
+    if (shape instanceof EllipseGeometry) {
+        if (!geo.isFullShape || geo.ratio > 0) return undefined;
+        const w = geo.halfWidth * 2, h = geo.halfHeight * 2;
+        if (!(w > 0 && h > 0) || !Number.isFinite(w + h + geo.cx + geo.cy)) return undefined;
+        return { kind: "ellipse", x: geo.cx - geo.halfWidth, y: geo.cy - geo.halfHeight, w, h, radii: [0, 0, 0, 0] };
+    }
+    if (shape instanceof RectGeometry) {
+        const w = geo.right - geo.left, h = geo.bottom - geo.top;
+        if (!(w > 0 && h > 0) || !Number.isFinite(w + h + geo.left + geo.top)) return undefined;
+        const corners = [geo.tl, geo.tr, geo.br, geo.bl] as { radius: number; style: string }[];
+        const limit = Math.min(w, h) / 2;
+        if (corners.some((c) => !(c.radius >= 0 && c.radius <= limit) || (c.radius > 0 && c.style === "angled"))) return undefined;
+        return { kind: "rect", x: geo.left, y: geo.top, w, h, radii: corners.map((c) => c.radius) as NativeShape["radii"] };
+    }
+    return undefined;
 }
 
 /** A path: data centred on its control-point bounds (or centerBounds), turned about the origin. */
