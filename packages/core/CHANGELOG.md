@@ -1,5 +1,11 @@
 # @motionscript/core
 
+## 0.1.0-alpha.9
+
+### Patch Changes
+
+- 70b93d7: @motionscript/cli and ms add are removed: install the component packages and register their NODES.
+
 ## 0.1.0-alpha.8
 
 ### Minor Changes

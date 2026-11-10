@@ -1,5 +1,12 @@
 # @motionscript/headless
 
+## 0.1.0-alpha.9
+
+### Patch Changes
+
+- @motionscript/browser@0.1.0-alpha.9
+- @motionscript/renderer@0.1.0-alpha.9
+
 ## 0.1.0-alpha.8
 
 ### Patch Changes
