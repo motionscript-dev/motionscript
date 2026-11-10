@@ -107,6 +107,10 @@ jobs:
           MS_WASM_CACHED: ${{ steps.wasm.outputs.cache-hit == 'true' && '1' || '0' }}
         run: pnpm build:lib
 
+      # build:lib skips apps/*, but the example apps import this one.
+      - name: Build the shared example nodes
+        run: pnpm --filter @motionscript/shaders build
+
       - name: Cache the WASM
         if: steps.wasm.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -118,7 +122,7 @@ jobs:
       - name: Pack the build
         run: |
           echo "$GITHUB_SHA" > build-sha.txt
-          find packages -name node_modules -prune -o -type d -name dist -print > build-files.txt
+          find packages apps/shaders -name node_modules -prune -o -type d -name dist -print > build-files.txt
           echo packages/renderer/web/pkg >> build-files.txt
           echo build-sha.txt >> build-files.txt
           tar -I zstd -cf build.tar.zst -T build-files.txt

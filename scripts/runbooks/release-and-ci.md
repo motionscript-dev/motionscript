@@ -52,8 +52,10 @@ Everything runs on the runner itself, with no containers. The libraries are
 built once and the tests fan out over that build:
 
 - **`gate`**: whether this code already passed ("Never twice", above).
-- **`build`**: `pnpm build:lib`, packed as the `build` artifact: every package's
-  `dist/`, `packages/renderer/web/pkg` and `build-sha.txt`.
+- **`build`**: `pnpm build:lib` and `apps/shaders` (the example apps import
+  it), packed as the `build` artifact: every `dist/`, `packages/renderer/web/pkg`
+  and `build-sha.txt`. The other jobs lint and typecheck with turbo's `--only`, so
+  they never rebuild what the artifact holds.
   - The renderer's WASM comes from an `actions/cache` keyed on every Rust input
     (the `wasm` step's key in `ci.yml`: the crates, `Cargo.*`, `rust-toolchain.toml`, the
     `include_str!`'d `web/src/user-shaders.ts`, `build-wasm.sh`, `wasm-env.sh`).
