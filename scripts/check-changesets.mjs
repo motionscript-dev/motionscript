@@ -11,12 +11,14 @@
  * last release's snapshot and wants each change named in a breaking note.
  */
 
-import { readdirSync, readFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), "..", ".changeset")
-const released = new Set(JSON.parse(readFileSync(join(dir, "pre.json"), "utf8")).changesets ?? [])
+// A stable release leaves pre mode, deleting pre.json: every changeset still here is then pending.
+const pre = join(dir, "pre.json")
+const released = new Set(existsSync(pre) ? JSON.parse(readFileSync(pre, "utf8")).changesets ?? [] : [])
 const SUSPECT = /\b(renamed|removed|is gone|are gone|no longer|now defaults?|defaults? (?:to|is|are)\b|units?\b|now means|instead of)/i
 
 const errors = []
