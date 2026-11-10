@@ -198,6 +198,21 @@ describe('setTheme – colors', () => {
         expectColor(parseColor('brand'), [1, 0, 0, 1]);
     });
 
+    it('resolves a name again under a new theme, though it was parsed under the old one', () => {
+        setTheme({ colors: { brand: '#ff0000' } });
+        expectColor(parseColor('brand/50'), [1, 0, 0, 0.5]);
+        setTheme({ colors: { brand: '#00ff00' } });
+        expectColor(parseColor('brand/50'), [0, 1, 0, 0.5]);
+    });
+
+    it('still warns on every unsupported string', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => { });
+        parseColor('not-a-colour');
+        parseColor('not-a-colour');
+        expect(warn).toHaveBeenCalledTimes(2);
+        warn.mockRestore();
+    });
+
     it('does not corrupt a cached theme color when opacity is applied', () => {
         setTheme({ colors: { brand: '#ff0000' } });
         parseColor('brand/20');

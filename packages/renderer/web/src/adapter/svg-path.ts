@@ -3,7 +3,7 @@
 import { type PathData, PathBuilder } from "../doc";
 
 /** Endpoint-parameterised arc → cubic segments (SVG implementation notes F.6). */
-function arcTo(b: PathBuilder, x1: number, y1: number, rx: number, ry: number, phi: number, large: boolean, sweep: boolean, x2: number, y2: number) {
+export function arcTo(b: PathBuilder, x1: number, y1: number, rx: number, ry: number, phi: number, large: boolean, sweep: boolean, x2: number, y2: number) {
     if (rx === 0 || ry === 0) {
         b.lineTo(x2, y2);
         return;
@@ -32,11 +32,15 @@ function arcTo(b: PathBuilder, x1: number, y1: number, rx: number, ry: number, p
     const n = Math.ceil(Math.abs(dt) / (Math.PI / 2) - 1e-9);
     const seg = dt / n;
     const alpha = (4 / 3) * Math.tan(seg / 4);
-    const pt = (t: number) => [cx + rx * Math.cos(t) * c - ry * Math.sin(t) * s, cy + rx * Math.cos(t) * s + ry * Math.sin(t) * c];
-    const dpt = (t: number) => [-rx * Math.sin(t) * c - ry * Math.cos(t) * s, -rx * Math.sin(t) * s + ry * Math.cos(t) * c];
+    // Each point and tangent written out as one expression, the same as a closure
+    // would compute it: no array per point on a path every shape draws through.
     for (let i = 0; i < n; i++) {
         const ta = t1 + i * seg, tb = ta + seg;
-        const [ax, ay] = pt(ta), [bx, by] = pt(tb), [dax, day] = dpt(ta), [dbx, dby] = dpt(tb);
+        const cosA = Math.cos(ta), sinA = Math.sin(ta), cosB = Math.cos(tb), sinB = Math.sin(tb);
+        const ax = cx + rx * cosA * c - ry * sinA * s, ay = cy + rx * cosA * s + ry * sinA * c;
+        const bx = cx + rx * cosB * c - ry * sinB * s, by = cy + rx * cosB * s + ry * sinB * c;
+        const dax = -rx * sinA * c - ry * cosA * s, day = -rx * sinA * s + ry * cosA * c;
+        const dbx = -rx * sinB * c - ry * cosB * s, dby = -rx * sinB * s + ry * cosB * c;
         b.cubicTo(ax + alpha * dax, ay + alpha * day, bx - alpha * dbx, by - alpha * dby, i === n - 1 ? x2 : bx, i === n - 1 ? y2 : by);
     }
 }

@@ -1,5 +1,7 @@
 import { type CornerRadiusResolved, type CornerStyleResolved, type RectState, cornerRadiusOps, cornerStyleOps, withRectDescriptor } from "@motionscript/core";
-import { type Bounds, cornerCommands, cornerReach, type CornerSpec, ShapeGeometry } from "./base";
+import type { PathData } from "../../doc";
+import { type Bounds, cornerReach, type CornerSpec, cornerTo, ShapeGeometry } from "./base";
+import { type PathSink, pathDataOf, svgOf } from "./sink";
 
 type RectGeo = {
     left: number; top: number; right: number; bottom: number;
@@ -8,23 +10,33 @@ type RectGeo = {
 };
 
 /** The outline clockwise, each corner its own arc or chamfer `radius` px from the apex. */
-function rectToSvg(l: number, t: number, r: number, b: number, tl: CornerSpec, tr: CornerSpec, br: CornerSpec, bl: CornerSpec): string {
+function roundedRect(sink: PathSink, l: number, t: number, r: number, b: number, tl: CornerSpec, tr: CornerSpec, br: CornerSpec, bl: CornerSpec): void {
     const rTL = cornerReach(tl), rTR = cornerReach(tr), rBR = cornerReach(br), rBL = cornerReach(bl);
-    return [
-        `M ${l + rTL} ${t}`,
-        `L ${r - rTR} ${t}`,
-        cornerCommands(r, t, -1, 0, 0, 1, tr),
-        `L ${r} ${b - rBR}`,
-        cornerCommands(r, b, 0, -1, -1, 0, br),
-        `L ${l + rBL} ${b}`,
-        cornerCommands(l, b, 1, 0, 0, -1, bl),
-        `L ${l} ${t + rTL}`,
-        cornerCommands(l, t, 0, 1, 1, 0, tl),
-        "Z",
-    ].filter(Boolean).join(" ");
+    sink.move(l + rTL, t);
+    sink.line(r - rTR, t);
+    cornerTo(sink, r, t, -1, 0, 0, 1, tr);
+    sink.line(r, b - rBR);
+    cornerTo(sink, r, b, 0, -1, -1, 0, br);
+    sink.line(l + rBL, b);
+    cornerTo(sink, l, b, 1, 0, 0, -1, bl);
+    sink.line(l, t + rTL);
+    cornerTo(sink, l, t, 0, 1, 1, 0, tl);
+    sink.close();
 }
 
-const plainRect = (l: number, t: number, r: number, b: number) => `M ${l} ${t} L ${r} ${t} L ${r} ${b} L ${l} ${b} Z`;
+function plainRect(sink: PathSink, l: number, t: number, r: number, b: number): void {
+    sink.move(l, t);
+    sink.line(r, t);
+    sink.line(r, b);
+    sink.line(l, b);
+    sink.close();
+}
+
+function outline(sink: PathSink, geo: RectGeo): void {
+    const { left, top, right, bottom, tl, tr, br, bl, isZero } = geo;
+    if (isZero) plainRect(sink, left, top, right, bottom);
+    else roundedRect(sink, left, top, right, bottom, tl, tr, br, bl);
+}
 
 /** Per-corner radii and styles, scaled down together where adjacent corners would overrun a side. */
 export class RectGeometry extends ShapeGeometry<RectState, RectGeo> {
@@ -49,8 +61,11 @@ export class RectGeometry extends ShapeGeometry<RectState, RectGeo> {
     }
 
     buildSVGPath(geo: RectGeo): string {
-        const { left, top, right, bottom, tl, tr, br, bl, isZero } = geo;
-        return isZero ? plainRect(left, top, right, bottom) : rectToSvg(left, top, right, bottom, tl, tr, br, bl);
+        return svgOf((sink) => outline(sink, geo));
+    }
+
+    override buildPathData(geo: RectGeo): PathData | null {
+        return pathDataOf((sink) => outline(sink, geo));
     }
 
     override supportsSpread(): boolean {
@@ -70,8 +85,8 @@ export class RectGeometry extends ShapeGeometry<RectState, RectGeo> {
         const bl: CornerSpec = { ...geo.bl, radius: Math.max(0, geo.bl.radius + spread) };
         const scale = cornerScale(w, h, tl, tr, br, bl);
         tl.radius *= scale; tr.radius *= scale; br.radius *= scale; bl.radius *= scale;
-        if (tl.radius === 0 && tr.radius === 0 && br.radius === 0 && bl.radius === 0) return plainRect(left, top, right, bottom);
-        return rectToSvg(left, top, right, bottom, tl, tr, br, bl);
+        if (tl.radius === 0 && tr.radius === 0 && br.radius === 0 && bl.radius === 0) return svgOf((sink) => plainRect(sink, left, top, right, bottom));
+        return svgOf((sink) => roundedRect(sink, left, top, right, bottom, tl, tr, br, bl));
     }
 
     override computeBounds(geo: RectGeo): Bounds {

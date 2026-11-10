@@ -1,5 +1,6 @@
-// Shape ops to PathData: each shape's geometry (./geometry) emits an SVG path
-// string that is parsed here. Shapes are authored y-up, so their position (and
+// Shape ops to PathData: each shape's geometry (./geometry) emits its outline,
+// straight into PathData where it writes to a sink, else as an SVG path string
+// parsed here. Shapes are authored y-up, so their position (and
 // an ellipse's angles) flip into the node's y-down space first; a shape's own
 // rotation/scale then turns its outline about its (x, y) plus pivot.
 
@@ -131,7 +132,8 @@ function parse(svg: string | null | undefined, full: Any): PathData | null {
 function viaGeometry(Shape: new (state: Any) => ShapeGeometry<any, any>, state: Any): ShapeOut {
     const shape = new Shape(state);
     const full = shape.fullState as Any, geo = shape.geometry;
-    const base = parse(shape.buildSVGPath(geo), full);
+    const outline = shape.buildPathData(geo);
+    const base = outline && shapeTransform(full, outline);
     const trims = shape.needsTrim();
     const range = trims ? shape.getTrimRange() : null;
     const fill = base && range ? trimPath(base, range.start, range.end) : base;

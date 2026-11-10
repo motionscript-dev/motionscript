@@ -846,9 +846,12 @@ Pieces, all under `web/src/adapter/`:
   every leaf takes (pass-through, as the engine's `worldAlpha`). The root is
   scale(pixelRatio)·translate(centre), cleared black.
 - **Shapes**: each shape's geometry (`geometry/`: rect, ellipse, line,
-  polygon and polygram, path) emits an SVG path string, which `shapes.ts`
-  parses into `PathData` (`svg-path.ts`) and turns by the shape's own
-  rotation and scale.
+  polygon and polygram, path) emits its outline, which `shapes.ts` turns by the
+  shape's own rotation and scale. Rect and ellipse write it to a `PathSink`
+  (`geometry/sink.ts`) straight into `PathData`, exactly what parsing their
+  SVG string gives (`geometry/tests/sink.test.ts`); the rest emit the string,
+  parsed by `svg-path.ts`. A number the string cannot carry (NaN, ±∞) takes
+  the string route.
 - **Paint** (`paint.ts`): core `Fill`/`Stroke`/`Shadow` to the doc's paints
   (solid, gradients, images, procedural fills, canvas3d as a 3D scene asset).
 - **Text**: text and rich-text ops to the doc's `TextSpec` (fonts registered

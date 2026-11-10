@@ -105,6 +105,11 @@ const _g = globalThis as Record<string, unknown>;
 if (!_g.__msThemeMap) _g.__msThemeMap = new Map<string, NormalizedColor>();
 const THEME_COLOR_MAP = _g.__msThemeMap as Map<string, NormalizedColor>;
 
+// Colours already parsed, by the string as given: a scene repeats its strings every
+// frame. Shared like the theme, and cleared with it, since a name resolves through it.
+if (!_g.__msParsedColors) _g.__msParsedColors = new Map<string, NormalizedColor>();
+const PARSED = _g.__msParsedColors as Map<string, NormalizedColor>;
+
 // Typography presets ride the same shared-global pattern as the color map, so
 // the prebuilt player bundle and the user's Vite-compiled code read one registry
 // — `setTheme` (called once per build at the player/headless entry points)
@@ -176,6 +181,7 @@ function flattenColors(
  */
 export function setTheme(input: ThemeInput | null = {}): void {
     const theme = input ?? {};
+    PARSED.clear();
     THEME_COLOR_MAP.clear();
     TYPOGRAPHY_MAP.clear();
     flattenColors(theme.colors, '', THEME_COLOR_MAP);
@@ -349,6 +355,8 @@ function splitOpacitySuffix(str: string): { color: string; opacity: number } {
  * Falls back to opaque black and logs a warning for unrecognised input.
  */
 export function parseColor(cssStr: string): NormalizedColor {
+    const known = PARSED.get(cssStr);
+    if (known) return known;
     const { color: str, opacity } = splitOpacitySuffix(cssStr.trim().toLowerCase());
     const parsed =
         parseNamedColor(str) ??
@@ -358,9 +366,16 @@ export function parseColor(cssStr: string): NormalizedColor {
         parseLab(str) ??
         parseLch(str) ??
         parseOklab(str) ??
-        parseOklch(str) ??
-        (console.warn(`[Motion Engine] Unsupported color format: "${cssStr}". Defaulting to black.`), [0, 0, 0, 1] as NormalizedColor);
+        parseOklch(str);
+    if (!parsed) {
+        console.warn(`[Motion Engine] Unsupported color format: "${cssStr}". Defaulting to black.`);
+        return [0, 0, 0, 1];
+    }
     // Clone before applying opacity: named/theme lookups return cached tuples.
-    if (opacity !== 1) return [parsed[0], parsed[1], parsed[2], parsed[3] * opacity];
-    return parsed;
+    const color: NormalizedColor = opacity !== 1 ? [parsed[0], parsed[1], parsed[2], parsed[3] * opacity] : parsed;
+    if (PARSED.size >= PARSED_MAX) PARSED.clear();
+    PARSED.set(cssStr, color);
+    return color;
 }
+
+const PARSED_MAX = 16384;

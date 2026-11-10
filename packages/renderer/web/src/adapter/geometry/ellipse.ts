@@ -1,5 +1,7 @@
 import { type EllipseState, withEllipseDescriptor } from "@motionscript/core";
+import type { PathData } from "../../doc";
 import { type Bounds, ShapeGeometry } from "./base";
+import { type PathSink, pathDataOf, svgOf } from "./sink";
 
 type EllipseGeo = {
     cx: number; cy: number;
@@ -38,26 +40,24 @@ export class EllipseGeometry extends ShapeGeometry<EllipseState, EllipseGeo> {
     // Empty at ratio 1 rather than solid again, so a ratio tween stays
     // continuous at that end; its stroke is `ringOutline`.
     buildSVGPath(geo: EllipseGeo): string {
-        const { cx, cy, halfWidth, halfHeight, ratio } = geo;
-        if (ratio >= 1) return "";
-        if (!geo.isFullShape) return ratio <= 0 ? wedge(geo) : annularSector(geo);
-        const outer = fullEllipse(cx, cy, halfWidth, halfHeight, 0);
-        if (ratio <= 0) return outer;
-        // Wound the other way, so the fill leaves a hole.
-        return `${outer} ${fullEllipse(cx, cy, halfWidth * ratio, halfHeight * ratio, 1)}`;
+        return svgOf((sink) => outline(sink, geo));
+    }
+
+    override buildPathData(geo: EllipseGeo): PathData | null {
+        return pathDataOf((sink) => outline(sink, geo));
     }
 
     /** What a ratio-1 ellipse strokes, once: the bare outline or open arc. Null below ratio 1. */
     ringOutline(geo: EllipseGeo): string | null {
         if (geo.ratio < 1) return null;
-        return geo.isFullShape ? fullEllipse(geo.cx, geo.cy, geo.halfWidth, geo.halfHeight, 0) : openArc(geo);
+        return svgOf((sink) => (geo.isFullShape ? fullEllipse(sink, geo.cx, geo.cy, geo.halfWidth, geo.halfHeight, 0) : openArc(sink, geo)));
     }
 
     // At ratio 1 the region is empty, so the band aligns against the whole
     // ellipse or wedge instead.
     override buildSVGAlignInterior(geo: EllipseGeo): string | null {
-        if (geo.isFullShape) return geo.ratio >= 1 ? fullEllipse(geo.cx, geo.cy, geo.halfWidth, geo.halfHeight, 0) : null;
-        return geo.ratio >= 1 || geo.ratio <= 0 ? wedge(geo) : annularSector(geo);
+        if (geo.isFullShape) return geo.ratio >= 1 ? svgOf((sink) => fullEllipse(sink, geo.cx, geo.cy, geo.halfWidth, geo.halfHeight, 0)) : null;
+        return svgOf((sink) => (geo.ratio >= 1 || geo.ratio <= 0 ? wedge(sink, geo) : annularSector(sink, geo)));
     }
 
     override supportsSpread(): boolean {
@@ -70,7 +70,7 @@ export class EllipseGeometry extends ShapeGeometry<EllipseState, EllipseGeo> {
         if (!geo.isFullShape || geo.ratio >= 1) return null;
         const halfWidth = geo.halfWidth + spread, halfHeight = geo.halfHeight + spread;
         if (halfWidth <= 0 || halfHeight <= 0) return null;
-        return fullEllipse(geo.cx, geo.cy, halfWidth, halfHeight, 0);
+        return svgOf((sink) => fullEllipse(sink, geo.cx, geo.cy, halfWidth, halfHeight, 0));
     }
 
     override computeBounds(geo: EllipseGeo): Bounds {
@@ -79,41 +79,61 @@ export class EllipseGeometry extends ShapeGeometry<EllipseState, EllipseGeo> {
     }
 }
 
-function fullEllipse(cx: number, cy: number, rx: number, ry: number, sweepFlag: 0 | 1): string {
-    const left = cx - rx, right = cx + rx;
-    return `M ${left} ${cy} A ${rx} ${ry} 0 1 ${sweepFlag} ${right} ${cy} A ${rx} ${ry} 0 1 ${sweepFlag} ${left} ${cy} Z`;
+function outline(sink: PathSink, geo: EllipseGeo): void {
+    const { cx, cy, halfWidth, halfHeight, ratio } = geo;
+    if (ratio >= 1) return;
+    if (!geo.isFullShape) return ratio <= 0 ? wedge(sink, geo) : annularSector(sink, geo);
+    fullEllipse(sink, cx, cy, halfWidth, halfHeight, 0);
+    // Wound the other way, so the fill leaves a hole.
+    if (ratio > 0) fullEllipse(sink, cx, cy, halfWidth * ratio, halfHeight * ratio, 1);
 }
 
-/** A partial sweep's outer curve: its start point, and the `A` that runs it round. */
-function outerArc(geo: EllipseGeo): { start: string; arc: string } {
+function fullEllipse(sink: PathSink, cx: number, cy: number, rx: number, ry: number, sweepFlag: 0 | 1): void {
+    const left = cx - rx, right = cx + rx;
+    sink.move(left, cy);
+    sink.arc(rx, ry, 1, sweepFlag, right, cy);
+    sink.arc(rx, ry, 1, sweepFlag, left, cy);
+    sink.close();
+}
+
+/** A partial sweep's outer curve: its start point, and the arc that runs it round. */
+function outerArc(geo: EllipseGeo): { sx: number; sy: number; arc: (sink: PathSink) => void } {
     const { cx, cy, halfWidth, halfHeight, startAngle, sweep } = geo;
     const endAngle = startAngle + sweep;
     const largeArc = Math.abs(sweep) > 180 ? 1 : 0;
     const sweepFlag = sweep > 0 ? 1 : 0;
     const sx = cx + halfWidth * Math.cos(startAngle * TO_RAD), sy = cy + halfHeight * Math.sin(startAngle * TO_RAD);
     const ex = cx + halfWidth * Math.cos(endAngle * TO_RAD), ey = cy + halfHeight * Math.sin(endAngle * TO_RAD);
-    return { start: `${sx} ${sy}`, arc: `A ${halfWidth} ${halfHeight} 0 ${largeArc} ${sweepFlag} ${ex} ${ey}` };
+    return { sx, sy, arc: (sink) => sink.arc(halfWidth, halfHeight, largeArc, sweepFlag, ex, ey) };
 }
 
-function openArc(geo: EllipseGeo): string {
-    const { start, arc } = outerArc(geo);
-    return `M ${start} ${arc}`;
+function openArc(sink: PathSink, geo: EllipseGeo): void {
+    const { sx, sy, arc } = outerArc(geo);
+    sink.move(sx, sy);
+    arc(sink);
 }
 
-function wedge(geo: EllipseGeo): string {
-    const { start, arc } = outerArc(geo);
-    return `M ${geo.cx} ${geo.cy} L ${start} ${arc} Z`;
+function wedge(sink: PathSink, geo: EllipseGeo): void {
+    const { sx, sy, arc } = outerArc(geo);
+    sink.move(geo.cx, geo.cy);
+    sink.line(sx, sy);
+    arc(sink);
+    sink.close();
 }
 
 /** Out along the outer arc, in to the inner edge, back along the inner arc, closed along the start radius. */
-function annularSector(geo: EllipseGeo): string {
+function annularSector(sink: PathSink, geo: EllipseGeo): void {
     const { cx, cy, halfWidth, halfHeight, startAngle, sweep, ratio } = geo;
-    const { start, arc } = outerArc(geo);
+    const { sx, sy, arc } = outerArc(geo);
     const endAngle = startAngle + sweep;
     const innerW = halfWidth * ratio, innerH = halfHeight * ratio;
     const isx = cx + innerW * Math.cos(startAngle * TO_RAD), isy = cy + innerH * Math.sin(startAngle * TO_RAD);
     const iex = cx + innerW * Math.cos(endAngle * TO_RAD), iey = cy + innerH * Math.sin(endAngle * TO_RAD);
     const largeArc = Math.abs(sweep) > 180 ? 1 : 0;
     const innerSweepFlag = sweep > 0 ? 0 : 1;
-    return `M ${start} ${arc} L ${iex} ${iey} A ${innerW} ${innerH} 0 ${largeArc} ${innerSweepFlag} ${isx} ${isy} Z`;
+    sink.move(sx, sy);
+    arc(sink);
+    sink.line(iex, iey);
+    sink.arc(innerW, innerH, largeArc, innerSweepFlag, isx, isy);
+    sink.close();
 }

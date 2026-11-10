@@ -45,6 +45,7 @@
     "prepack": "node scripts/check-package.mjs",
     "lint": "eslint .",
     "typecheck": "tsc -p web --noEmit",
+    "test": "vitest",
     "test:rust": "cargo test --locked --workspace",
     "notices": "node scripts/third-party-notices.mjs",
     "notices:check": "node scripts/third-party-notices.mjs --check",
@@ -64,7 +65,8 @@
     "eslint": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "motionscriptBrowser": {
     "assets": {

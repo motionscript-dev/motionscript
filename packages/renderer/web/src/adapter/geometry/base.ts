@@ -3,6 +3,9 @@
 // y flip are left to adapter/shapes.ts.
 
 import type { CornerStyle } from "@motionscript/core";
+import type { PathData } from "../../doc";
+import { parseSvgPath } from "../svg-path";
+import { type PathSink, svgOf } from "./sink";
 
 export interface Bounds {
     left: number;
@@ -22,6 +25,12 @@ export abstract class ShapeGeometry<S extends { start: number; end: number }, G>
     protected abstract resolveState(state: Partial<S>): S;
     protected abstract computeGeometry(): G;
     abstract buildSVGPath(geo: G): string;
+
+    /** `buildSVGPath` parsed, or null where it is empty. A shape writing to a {@link PathSink} skips the string. */
+    buildPathData(geo: G): PathData | null {
+        const svg = this.buildSVGPath(geo);
+        return svg ? parseSvgPath(svg) : null;
+    }
 
     get geometry(): G {
         return (this.geo ??= this.computeGeometry());
@@ -75,21 +84,37 @@ export function cornerReach(c: CornerSpec): number {
 }
 
 /**
- * SVG commands for a right-angle (rect) corner, the pen already at its entry
- * point `apex + d0·radius`; they leave it at `apex + d1·radius`. `d0` points
+ * A right-angle (rect) corner, the pen already at its entry point
+ * `apex + d0·radius`; it leaves the pen at `apex + d1·radius`. `d0` points
  * from the apex back along the incoming edge, `d1` along the outgoing one.
- * Empty for a zero radius (the edge runs on to a sharp apex).
+ * Nothing for a zero radius (the edge runs on to a sharp apex).
  */
-export function cornerCommands(ax: number, ay: number, d0x: number, d0y: number, d1x: number, d1y: number, c: CornerSpec): string {
-    if (c.radius <= 0) return "";
-    return cornerCommandsFromCut(ax, ay, d0x, d0y, d1x, d1y, c.radius, c.radius, c.style);
+export function cornerTo(sink: PathSink, ax: number, ay: number, d0x: number, d0y: number, d1x: number, d1y: number, c: CornerSpec): void {
+    if (c.radius <= 0) return;
+    cutCornerTo(sink, ax, ay, d0x, d0y, d1x, d1y, c.radius, c.radius, c.style);
 }
 
 /**
- * SVG commands for a corner of any angle, given the cut-back distance `cut`
- * along each edge and the arc `radius` (they differ off a right angle). The pen
- * is at `apex + d0·cut`; the commands leave it at `apex + d1·cut`.
+ * A corner of any angle, given the cut-back distance `cut` along each edge and
+ * the arc `radius` (they differ off a right angle). The pen is at
+ * `apex + d0·cut`; it is left at `apex + d1·cut`.
  */
+export function cutCornerTo(
+    sink: PathSink,
+    ax: number, ay: number,
+    d0x: number, d0y: number,
+    d1x: number, d1y: number,
+    cut: number, radius: number,
+    style: CornerStyle,
+): void {
+    const ex = ax + d1x * cut, ey = ay + d1y * cut;
+    if (style === "angled") return sink.line(ex, ey);
+    // The turn direction picks the sweep flag: a clockwise turn is sweep 1.
+    const cross = d0x * d1y - d0y * d1x;
+    sink.arc(radius, radius, 0, cross < 0 ? 1 : 0, ex, ey);
+}
+
+/** {@link cutCornerTo} as SVG commands. */
 export function cornerCommandsFromCut(
     ax: number, ay: number,
     d0x: number, d0y: number,
@@ -97,10 +122,5 @@ export function cornerCommandsFromCut(
     cut: number, radius: number,
     style: CornerStyle,
 ): string {
-    const ex = ax + d1x * cut, ey = ay + d1y * cut;
-    if (style === "angled") return `L ${ex} ${ey}`;
-    // The turn direction picks the sweep flag: a clockwise turn is sweep 1.
-    const cross = d0x * d1y - d0y * d1x;
-    const sweep = cross < 0 ? 1 : 0;
-    return `A ${radius} ${radius} 0 0 ${sweep} ${ex} ${ey}`;
+    return svgOf((sink) => cutCornerTo(sink, ax, ay, d0x, d0y, d1x, d1y, cut, radius, style));
 }
