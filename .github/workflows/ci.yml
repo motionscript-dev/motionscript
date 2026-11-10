@@ -35,11 +35,6 @@ permissions:
   contents: read
   actions: read
 
-env:
-  # Every Rust input of the WASM build. web/src/user-shaders.ts is read by a
-  # crate's include_str!.
-  WASM_KEY: wasm-${{ hashFiles('packages/renderer/crates/**', 'packages/renderer/Cargo.toml', 'packages/renderer/Cargo.lock', 'packages/renderer/rust-toolchain.toml', 'packages/renderer/web/src/user-shaders.ts', 'packages/renderer/scripts/build-wasm.sh', 'packages/renderer/scripts/wasm-env.sh') }}
-
 jobs:
   gate:
     runs-on: ubuntu-latest
@@ -69,11 +64,13 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # Keyed on every Rust input of the WASM build (hashFiles only works in a
+      # step). web/src/user-shaders.ts is read by a crate's include_str!.
       - id: wasm
         uses: actions/cache/restore@v4
         with:
           path: packages/renderer/web/pkg
-          key: ${{ env.WASM_KEY }}
+          key: wasm-${{ hashFiles('packages/renderer/crates/**', 'packages/renderer/Cargo.toml', 'packages/renderer/Cargo.lock', 'packages/renderer/rust-toolchain.toml', 'packages/renderer/web/src/user-shaders.ts', 'packages/renderer/scripts/build-wasm.sh', 'packages/renderer/scripts/wasm-env.sh') }}
 
       # rustup reads packages/renderer/rust-toolchain.toml: the pinned
       # toolchain and the wasm32 target.
@@ -115,7 +112,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: packages/renderer/web/pkg
-          key: ${{ env.WASM_KEY }}
+          key: ${{ steps.wasm.outputs.cache-primary-key }}
 
       # Every build output is a dist/ folder, plus the renderer's web/pkg.
       - name: Pack the build
@@ -264,8 +261,6 @@ jobs:
     if: needs.gate.outputs.tested != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      PASSED_KEY: rust-passed-${{ hashFiles('packages/renderer/crates/**', 'packages/renderer/Cargo.toml', 'packages/renderer/Cargo.lock', 'packages/renderer/rust-toolchain.toml', 'packages/renderer/about.toml', 'packages/renderer/THIRD_PARTY_NOTICES.txt', 'packages/renderer/scripts/**', 'packages/renderer/web/src/user-shaders.ts', 'packages/renderer/web/pkg*/*.d.ts') }}
     steps:
       - uses: actions/checkout@v5
 
@@ -273,7 +268,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .rust-passed
-          key: ${{ env.PASSED_KEY }}
+          key: rust-passed-${{ hashFiles('packages/renderer/crates/**', 'packages/renderer/Cargo.toml', 'packages/renderer/Cargo.lock', 'packages/renderer/rust-toolchain.toml', 'packages/renderer/about.toml', 'packages/renderer/THIRD_PARTY_NOTICES.txt', 'packages/renderer/scripts/**', 'packages/renderer/web/src/user-shaders.ts', 'packages/renderer/web/pkg*/*.d.ts') }}
           lookup-only: ${{ !inputs.full }}
 
       - name: Already passed
@@ -346,4 +341,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .rust-passed
-          key: ${{ env.PASSED_KEY }}
+          key: ${{ steps.passed.outputs.cache-primary-key }}
