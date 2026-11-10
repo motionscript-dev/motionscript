@@ -59,8 +59,8 @@ describe("runLanes", () => {
         expect(at).toBe(300);
         return sorted;
     };
-    /** Admits the second lane after a few frames and keeps it. */
-    const eager = { windowMs: 20, minFrames: 10, minGain: 0 };
+    /** Admits the second lane after a few frames and keeps it. Without warmupMs, the 300 ms default outlasts a fake run on Linux, whose 1 ms timers are exact. */
+    const eager = { windowMs: 20, minFrames: 10, minGain: 0, warmupMs: 0 };
 
     it("renders every frame once, in ranges that tile the timeline", async () => {
         const got: ExportChunk[] = [];
@@ -94,7 +94,7 @@ describe("runLanes", () => {
         await runLanes({
             lanes: [fakeLane("a", log, { msPerFrame: 1 }), fakeLane("b", log, { msPerFrame: 1 })],
             spec: SPEC, chunks: many, onChunk: () => {}, onActive: (a) => actives.push(a),
-            governor: { windowMs: 30, minFrames: 10, minGain: 1.05 },
+            governor: { windowMs: 30, minFrames: 10, minGain: 1.05, warmupMs: 0 },
         });
         expect(log[0]).toBe("a:0");
         expect(actives[0]).toBe(2);
@@ -143,7 +143,7 @@ describe("runLanes", () => {
         await runLanes({
             lanes: [fakeLane("a", log, { msPerFrame: 1 }), fakeLane("b", log, { msPerFrame: 1 })],
             spec: SPEC, chunks: many, onChunk: (c) => got.push(c),
-            governor: { windowMs: 30, minFrames: 10, minGain: 0, maxWaitShare: 1 },
+            governor: { windowMs: 30, minFrames: 10, minGain: 0, maxWaitShare: 1, warmupMs: 0 },
         });
         expect(got.length).toBeLessThan(many.length);
         const sorted = [...got].sort((x, y) => x.start - y.start);

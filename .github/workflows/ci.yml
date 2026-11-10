@@ -140,8 +140,10 @@ jobs:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-built
 
+      # --only: the artifact already holds every build, and lint's ^build
+      # dependency would rebuild them (the renderer needs Rust this job lacks).
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint --only
 
       - name: Every published package carries the root NOTICE
         run: node scripts/sync-notice.mjs --check
@@ -150,10 +152,14 @@ jobs:
         run: node scripts/check-changesets.mjs
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm typecheck --only
 
       - name: Script tests
         run: node --test scripts/*.test.mjs
+
+      # Imports core's dist/, so it runs here rather than in the rust job.
+      - name: Effect parameter generator
+        run: pnpm --filter @motionscript/renderer test:effects
 
   test-node:
     needs: [gate, build]
@@ -319,10 +325,6 @@ jobs:
       - name: THIRD_PARTY_NOTICES.txt is current
         if: steps.passed.outputs.cache-hit != 'true' || inputs.full
         run: pnpm --filter @motionscript/renderer notices:check
-
-      - name: Effect parameter generator
-        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
-        run: pnpm --filter @motionscript/renderer test:effects
 
       - name: Build the renderer, text and 3D WASM
         if: steps.passed.outputs.cache-hit != 'true' || inputs.full

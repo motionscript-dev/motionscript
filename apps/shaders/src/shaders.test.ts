@@ -1,17 +1,14 @@
-import { spawnSync } from "node:child_process"
 import fs from "node:fs"
-import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { Registry } from "@motionscript/sdk"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { describe, expect, it } from "vitest"
 import * as barrel from "."
 import { AuroraCard, PRISM_SHADER, PrismCard } from "."
 import { NODES } from "./nodes"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const packageDir = path.resolve(here, "..")
-const buildScript = path.resolve(packageDir, "..", "..", "packages", "docs", "scripts", "build-registry.mjs")
 
 describe("the barrel", () => {
     it("exports the two cards, the prism shader and NODES, and nothing else at run time", () => {
@@ -79,37 +76,8 @@ describe("the package", () => {
     })
 })
 
+// The registry build moved to the docs site; this checks the manifest it reads.
 describe("the published pulse-ring item", () => {
-    let out: string
-    let item: { name: string; type: string; dependencies: string[]; files: Array<{ path: string; content: string }>; kit?: string }
-
-    beforeAll(() => {
-        // The build writes under the working directory's public/r, and reads the repository it sits in.
-        const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "ms-shaders-"))
-        out = cwd
-        const run = spawnSync(process.execPath, [buildScript], { cwd, encoding: "utf8" })
-        if (run.status !== 0) throw new Error(`the registry build failed:\n${run.stderr}`)
-        item = JSON.parse(fs.readFileSync(path.join(cwd, "public", "r", "pulse-ring.json"), "utf8"))
-    })
-
-    afterAll(() => {
-        fs.rmSync(out, { recursive: true, force: true })
-    })
-
-    it("is one flat file whose content is src/pulse-ring.ts, byte for byte", () => {
-        expect(item.files).toHaveLength(1)
-        expect(item.files[0]?.path).toBe("pulse-ring.ts")
-        expect(item.files[0]?.content).toBe(fs.readFileSync(path.join(here, "pulse-ring.ts"), "utf8"))
-    })
-
-    it("depends on the SDK alone, and has no kit, because the package is private", () => {
-        expect(item.name).toBe("pulse-ring")
-        expect(item.type).toBe("registry:component")
-        expect(item.dependencies).toHaveLength(1)
-        expect(item.dependencies[0]).toMatch(/^@motionscript\/sdk@/)
-        expect("kit" in item).toBe(false)
-    })
-
     it("is the one item the manifest publishes, from src/pulse-ring.ts, flattened", () => {
         const registry = JSON.parse(fs.readFileSync(path.join(packageDir, "registry.json"), "utf8")) as {
             items: Array<{ name: string; root: string; files: string[]; flatten?: boolean }>
