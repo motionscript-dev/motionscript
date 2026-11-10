@@ -162,6 +162,9 @@ function pendingRelease(channel) {
     const switched = enterChannelMode(channel)
     if (!switched.ok) fail(`switching changesets' pre mode failed:\n${switched.err || switched.out}`)
     const out = join(dir, "status.json")
+    // status diffs against baseBranch, which CI's checkout of alpha has only as origin/<base>.
+    const base = readJson(join(root, ".changeset/config.json")).baseBranch
+    if (!capture(`git rev-parse --verify -q refs/heads/${base}`).ok) capture(`git branch ${base} origin/${base}`)
     const status = capture(`pnpm exec changeset status --output="${out}"`)
     if (!status.ok) fail(`changeset status failed:\n${status.err || status.out}`)
     const { changesets, releases } = readJson(out)
