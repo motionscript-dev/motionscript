@@ -22,6 +22,9 @@
   },
   "changesets": [
     "chilly-coats-peel",
-    "cold-corners-study"
+    "cold-corners-study",
+    "lean-shape-paths",
+    "native-rects-ellipses",
+    "quick-frames-hold"
   ]
 }
