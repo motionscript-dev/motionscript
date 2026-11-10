@@ -118,14 +118,17 @@ jobs:
           path: packages/renderer/web/pkg
           key: ${{ steps.wasm.outputs.cache-primary-key }}
 
-      # Every build output is a dist/ folder, plus the renderer's web/pkg.
+      # Every build output is a dist/ folder, plus the renderer's web/pkg. Tracked
+      # files stay out: web/pkg holds a committed .d.ts that a Linux build rewrites
+      # with other crate hashes, and unpacking it would dirty the release's tree.
       - name: Pack the build
         run: |
           echo "$GITHUB_SHA" > build-sha.txt
           find packages apps/shaders -name node_modules -prune -o -type d -name dist -print > build-files.txt
           echo packages/renderer/web/pkg >> build-files.txt
           echo build-sha.txt >> build-files.txt
-          tar -I zstd -cf build.tar.zst -T build-files.txt
+          xargs git ls-files -- < build-files.txt > build-tracked.txt
+          tar -I zstd -cf build.tar.zst -X build-tracked.txt -T build-files.txt
           ls -lh build.tar.zst
 
       - uses: actions/upload-artifact@v4
