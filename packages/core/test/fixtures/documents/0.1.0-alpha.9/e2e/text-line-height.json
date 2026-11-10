@@ -1,0 +1,71 @@
+{
+  "kind": "project",
+  "name": "text-line-height",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "text-line-height",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "text0",
+            "type": "text",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "text": "Line height controls the vertical rhythm between wrapped rows of text.",
+              "fontFamily": "Inter",
+              "fontSize": 32,
+              "lineHeight": 0.9,
+              "wrap": true,
+              "width": 520,
+              "fill": "#f4f6ff"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "text0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "lineHeight": 2
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}
