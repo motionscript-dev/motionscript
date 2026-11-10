@@ -1,0 +1,73 @@
+{
+  "kind": "project",
+  "name": "ellipse-pie",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "ellipse-pie",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 300,
+              "height": 300,
+              "startAngle": -90,
+              "sweep": 20,
+              "fill": "accent",
+              "stroke": {
+                "weight": 3,
+                "fill": "bg"
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "ellipse0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "sweep": 320
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}
