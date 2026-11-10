@@ -19,7 +19,7 @@ fn fill(in: FillIn) -> vec4f {
 
 /**
  * A **shader pack** — `Fills.shader`'s structured form, over the bare
- * `(source, { uniforms })` `AuroraCard`/`PulseRing` use.
+ * `(source, { uniforms })` `AuroraCard` uses.
  *
  * The difference is `properties`: each editable value is declared once, by
  * kind (`hue` reads as a colour wheel, `slider` carries real bounds) and by

@@ -193,10 +193,8 @@ const auroraDocument: CompositionDocument = {
 };
 
 /**
- * A custom node this app does not depend on at all — its source was copied
- * into `src/components/pulse-ring.ts` with `ms add pulse-ring`, the same way
- * shadcn/ui copies a component into a project instead of publishing it as a
- * dependency. `project.ts` lists that local copy in its `nodes`; this document reaches it the same way it reaches `auroraCard`
+ * A custom node this app defines itself, in `src/components/pulse-ring.ts`
+ * rather than in a package. `project.ts` lists it in its `nodes`; this document reaches it the same way it reaches `auroraCard`
  * — a string in `type` — because the registry does not care how a type got
  * registered, only that it did.
  */
@@ -383,8 +381,8 @@ export const SCENE_DOCS: SceneDoc[] = ([
         doc: auroraDocument,
     },
     {
-        id: 'pulse-ring', name: 'Pulse Ring (ms add)',
-        description: 'A custom node copied into this app with `ms add pulse-ring`, not imported.',
+        id: 'pulse-ring', name: 'Pulse Ring (local node)',
+        description: 'A custom node this app defines itself, not imported from a package.',
         doc: pulseRingDocument,
     },
     {

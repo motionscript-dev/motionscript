@@ -123,7 +123,7 @@ scene, such as [`@motionscript/browser`](https://github.com/motionscript-dev/mot
   asks for before every frame; one that was never measured draws nothing.
 - **Highlighter state is per process.** Loaded grammars, registered themes and
   token ids are shared by every `Code` in it.
-- **`ms add code` copies only `node.ts`** (`registry.json`). The highlighter,
+- **A copy of `code` takes only `node.ts`** (`registry.json`). The highlighter,
   diff, layout and drawing stay in this package behind `src/engine.ts`, which the
   copy imports from `@motionscript/code`; the grammars are dynamic imports, so a
   host's bundler must resolve `@lezer/*` from where the package is installed.
@@ -161,8 +161,7 @@ use another face, set `fontFamily` on the node and list that family instead.
 npm install @motionscript/code @motionscript/sdk
 ```
 
-Or copy the node's source into your project with `ms add code`
-(see [`@motionscript/cli`](https://github.com/motionscript-dev/motionscript/tree/main/packages/cli)). See the
+See the
 [docs](https://motionscript.dev/docs) for the full feature set and API
 reference.
 

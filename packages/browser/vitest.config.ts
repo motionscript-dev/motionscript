@@ -40,10 +40,7 @@ export default defineConfig({
                         // and then the first real `encode()` takes the whole page down — the
                         // run reports "Browser connection was closed while running tests",
                         // nowhere near the cause, with zero tests executed. Any suite that
-                        // encodes (see `concat.test.ts`) is unrunnable without them.
-                        //
-                        // The same three flags, for the same class of reason, as
-                        // `@motionscript/cli`'s headless render driver.
+                        // encodes (see `concat.test.ts`) is unrunnable without them.$1//
                         // `--enable-unsafe-swiftshader` is what makes the software fallback
                         // usable on a machine with no real GPU (CI); it is scoped to this test
                         // browser and says nothing about how the library runs in production.

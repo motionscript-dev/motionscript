@@ -44,8 +44,6 @@ a project document (JSON: tracks of still / composition / audio clips)
 | `react` | `useMotionPlayer` and `MotionStage`: a session, its transport and a canvas. |
 | `headless` | Renders from Node by driving the browser engine in headless Chromium. |
 | `components/*` | Seven published kits of scene components (audio, charts, code, geography, grids, math, patterns), built on the SDK. `geography` also carries the Natural Earth outlines its `GeoBorder` draws. |
-| `cli` | `ms init`, `ms add`, `ms list`, `ms diff`: copy component source into a project from the registry at `motionscript.dev/r`. |
-| `docs` | The Next.js docs site: guides, API reference, the component registry, the online tools (not published). The marketing pages live elsewhere. |
 | `renderer` | The renderer, in Rust/wgpu (WebGPU): a retained 2D/3D renderer compiled to WASM, its storage and text measurement, and an adapter implementing `RenderContext2D` that drives core's render path. Imports nothing from `browser`. Building it needs Rust. |
 | `e2e` | Visual regression: renders scenes through `headless` on SwiftShader's WebGPU adapter and pixel-diffs them against the committed `wgpu-baseline/` (not published). |
 | `apps/*` | `react` (a Vite player page) and `engine` (an HTTP render server) run against built `dist/`; `shaders` is the demo kit of custom nodes on custom WGSL shaders they import. |

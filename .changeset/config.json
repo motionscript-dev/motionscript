@@ -13,7 +13,6 @@
       "@motionscript/renderer",
       "@motionscript/react",
       "@motionscript/headless",
-      "@motionscript/cli",
       "@motionscript/audio",
       "@motionscript/charts",
       "@motionscript/code",

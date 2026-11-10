@@ -6,7 +6,6 @@
     "@motionscript/app-react": "0.0.0",
     "@motionscript/shaders": "0.0.0",
     "@motionscript/browser": "0.1.0-alpha.0",
-    "@motionscript/cli": "0.1.0-alpha.0",
     "@motionscript/audio": "0.1.0-alpha.0",
     "@motionscript/charts": "0.1.0-alpha.0",
     "@motionscript/code": "0.1.0-alpha.0",

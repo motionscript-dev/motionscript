@@ -2,7 +2,8 @@
 
 Seven published kits (`audio`, `charts`, `code`, `geo`, `grids`, `math`,
 `patterns`): components plus helpers, installed as a
-dependency or copied into a project by `ms add` from the same source.
+dependency, or copied into a project from the same source (the files each
+`registry.json` item lists).
 
 ## Imports
 

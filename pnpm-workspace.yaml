@@ -7,7 +7,6 @@ packages:
   - "packages/react"
   - "packages/browser"
   - "packages/e2e"
-  - "packages/cli"
   - "packages/components/charts"
   - "packages/components/geography"
   - "packages/components/audio"

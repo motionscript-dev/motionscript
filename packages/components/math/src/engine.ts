@@ -1,7 +1,7 @@
 /**
  * The math **kit**: what the nodes share, and what a copied one does not copy.
  *
- * `ms add` writes a node's own files into a project and rewrites its reach for
+ * A copy takes a node's own files into a project and rewrites its reach for
  * these to `@motionscript/math`, so MathJax, the morph and every shared module
  * stay a real dependency with one identity.
  */

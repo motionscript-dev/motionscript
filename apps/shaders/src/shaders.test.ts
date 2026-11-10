@@ -16,9 +16,6 @@ describe("the barrel", () => {
         expect(barrel.NODES).toBe(NODES)
     })
 
-    it("does not export PulseRing", () => {
-        expect("PulseRing" in barrel).toBe(false)
-    })
 
     it("lists exactly the two cards in NODES", () => {
         expect(NODES).toHaveLength(2)
@@ -26,10 +23,9 @@ describe("the barrel", () => {
         expect(NODES[1]).toBe(PrismCard)
     })
 
-    it("registers the keys a document names, and not pulseRing", () => {
+    it("registers the keys a document names", () => {
         const registry = new Registry({ builtins: false, nodes: NODES })
         expect(registry.nodeKeys().sort()).toEqual(["auroraCard", "prismCard"])
-        expect(registry.hasNode("pulseRing")).toBe(false)
     })
 
     it("gives the prism card a fill shader with a source of its own", () => {
@@ -76,13 +72,3 @@ describe("the package", () => {
     })
 })
 
-// The registry build moved to the docs site; this checks the manifest it reads.
-describe("the published pulse-ring item", () => {
-    it("is the one item the manifest publishes, from src/pulse-ring.ts, flattened", () => {
-        const registry = JSON.parse(fs.readFileSync(path.join(packageDir, "registry.json"), "utf8")) as {
-            items: Array<{ name: string; root: string; files: string[]; flatten?: boolean }>
-        }
-        expect(registry.items).toHaveLength(1)
-        expect(registry.items[0]).toMatchObject({ name: "pulse-ring", root: "src", files: ["pulse-ring.ts"], flatten: true })
-    })
-})

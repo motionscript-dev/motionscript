@@ -78,8 +78,8 @@ the `ItemGrid` module: `reveal`, `conceal`, `wave`, `focus`, `unfocus`, `spreadT
   timeline builds commands at (time 0).
 - **`order[k]` is the child in slot `k`**, and `normalizeOrder` repairs any order
   (missing, repeated or out-of-range entries), so a stale order never throws.
-- **The kit stays an import.** `ms add rectangular-grid` (or `radial-grid`,
-  `path-grid`, `sphere-grid`) copies one grid's two files and rewrites their kit
+- **The kit stays an import.** A copy of `rectangular-grid` (or `radial-grid`,
+  `path-grid`, `sphere-grid`) takes one grid's two files and rewrites their kit
   imports to `@motionscript/grids/kit` (`registry.json`): a second copy of
   `ItemGrid` would keep a second register of grids, and a morph would not find the
   grids it should.

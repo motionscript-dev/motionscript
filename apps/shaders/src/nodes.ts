@@ -15,8 +15,5 @@ import { PrismCard } from "./prism-card"
  * Referencing the component **value** is what makes that impossible: a data
  * dependency a bundler cannot discard, where a bare `import "./aurora-card"`
  * is exactly what `sideEffects: false` says to drop.
- *
- * `PulseRing` is deliberately absent — it is not part of this package's
- * barrel at all, only its `registry.json` item. See `pulse-ring.ts`.
  */
 export const NODES = [AuroraCard, PrismCard];

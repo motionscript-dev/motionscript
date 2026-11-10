@@ -10,8 +10,8 @@
 //     const still = await engine.renderImage({ document, frame: 'last' });
 //     const video = await engine.renderVideo({ document });
 //
-// The entry is a **file**, not an object: `src/project.ts` (the path
-// `motionscript.json` declares), exporting the `nodes` and `shaders` its
+// The entry is a **file**, not an object: a module such as `src/project.ts`,
+// exporting the `nodes` and `shaders` its
 // documents name, and optionally a default project document for a request that
 // brings none. Node types are classes, and a class does not survive a process
 // boundary — so the entry is bundled into the page rather than passed to it.

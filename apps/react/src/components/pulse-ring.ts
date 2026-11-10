@@ -24,10 +24,8 @@ fn fill(in: FillIn) -> vec4f {
 `
 
 /**
- * This file is not part of `./index`'s barrel and is not in `./nodes`'
- * `NODES` list — it exists only for `ms add pulse-ring` to copy, so a project
- * that installs `@motionscript/shaders` never registers `pulseRing` twice
- * over. See `registry.json`.
+ * Defined in this app rather than installed: a project's own node, listed in
+ * `project.ts` beside the ones it imports.
  *
  * One custom node, one custom shader: a `shader` **fill** paints the rings.
  * `hue`/`speed`/`rings` are ordinary state entries, so a scene can tween them

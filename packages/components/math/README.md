@@ -368,7 +368,7 @@ scene, such as [`@motionscript/browser`](https://github.com/motionscript-dev/mot
   (typeset geometry by formula, 128 entries; paths by size and formula, 64).
   Importing the module registers MathJax's HTML handler, with the DOM-free adaptor
   when there is no `window` or `document`.
-- **`ms add latex` copies only `tex/node.ts`** (`registry.json`); typesetting, the
+- **A copy of `latex` takes only `tex/node.ts`** (`registry.json`); typesetting, the
   morph and the drawing (`tex/typeset.ts`) stay in this package behind `src/engine.ts`.
 
 ## Usage
@@ -377,8 +377,7 @@ scene, such as [`@motionscript/browser`](https://github.com/motionscript-dev/mot
 npm install @motionscript/math @motionscript/sdk
 ```
 
-Or copy the node's source into your project with `ms add latex`
-(see [`@motionscript/cli`](https://github.com/motionscript-dev/motionscript/tree/main/packages/cli)). See the [docs](https://motionscript.dev/docs) for the full feature set and API
+See the [docs](https://motionscript.dev/docs) for the full feature set and API
 reference.
 
 ## Development

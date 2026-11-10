@@ -2,7 +2,7 @@
  * The chart **kit**: everything the three charts share, and the one thing a
  * copied chart does not copy.
  *
- * `ms add line-chart` writes `line-chart/*` into your project and rewrites its
+ * A copy of the line chart takes `line-chart/*` into your project and rewrites its
  * reach for these to `@motionscript/charts`, so the plot panel, the value
  * axis, the legend and the number formatting stay a real dependency. That is
  * not a size decision — it is the only arrangement that works.

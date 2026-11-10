@@ -69,8 +69,8 @@ later change to `stroke` leaves it as it was.
 npm install @motionscript/patterns @motionscript/sdk
 ```
 
-Or copy one into a project with `ms add line-grid-pattern`, `ms add dot-grid-pattern`
-or `ms add grid-pattern`; a copy keeps importing `ViewportPattern` and the tiling
+A copy of `line-grid-pattern`, `dot-grid-pattern` or `grid-pattern`
+(`registry.json`) keeps importing `ViewportPattern` and the tiling
 helpers from `@motionscript/patterns/kit`.
 
 ## Development

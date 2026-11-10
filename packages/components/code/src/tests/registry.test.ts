@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 /**
- * `ms add code` copies `node.ts` and rewrites its import of `./engine` to the
+ * A copy of `code` takes `node.ts` and rewrites its import of `./engine` to the
  * kit's specifier. That is only sound while every name the node takes from
  * `./engine` is one `engine.ts` exports: a name it forgot would dangle in the
  * copy, with a typecheck error that only the copy's owner would ever see.

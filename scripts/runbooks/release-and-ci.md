@@ -263,7 +263,6 @@ Windows agree to within the lane's threshold. Workflow:
 
 ## The docs site
 
-The docs (guides, API reference, tools, the `ms add` registry at `/r`) are
-the docs site at [motionscript.dev/docs](https://motionscript.dev/docs), built outside this repository from the published packages: the API reference from their `.d.ts`, the registry from each
-kit's published `src` and `registry.json`. So a release reaches the docs when
+The docs (guides, API reference, tools) are
+the docs site at [motionscript.dev/docs](https://motionscript.dev/docs), built outside this repository from the published packages, the API reference from their `.d.ts`. So a release reaches the docs when
 the site moves its pin to it, and nothing here deploys anything.

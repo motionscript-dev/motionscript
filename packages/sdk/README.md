@@ -94,8 +94,8 @@ all supported. See the
 Component kits such as [`@motionscript/code`](https://github.com/motionscript-dev/motionscript/tree/main/packages/components/code) and
 [`@motionscript/math`](https://github.com/motionscript-dev/motionscript/tree/main/packages/components/math) are not bundled here. They are
 built on this package and take it as a peer dependency. Install one as a
-dependency, or copy a component's source into your project with
-`ms add <name>` (see [`@motionscript/cli`](https://github.com/motionscript-dev/motionscript/tree/main/packages/cli)). The rules a kit follows are
+dependency; each kit's `registry.json` names the files a copy of one of its
+components takes. The rules a kit follows are
 in [`packages/components/CLAUDE.md`](https://github.com/motionscript-dev/motionscript/blob/main/packages/components/CLAUDE.md).
 
 ## What is deliberately not here

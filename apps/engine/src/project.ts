@@ -1,5 +1,5 @@
 /**
- * This project's entry — the file `motionscript.json` has always declared.
+ * This project's entry: the module an engine opens this app's documents with.
  *
  * Everything an engine needs to open this app's documents, as **values**. That
  * is the whole point of the shape: a node type reached by importing a module for

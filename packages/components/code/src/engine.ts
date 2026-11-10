@@ -1,9 +1,9 @@
 // The Code "engine": syntax highlighting, tokenizing, layout, diffing, and
-// transition/phase scheduling — kept separate from node.ts so `ms add code`
-// can copy just the node declaration and import this behind
+// transition/phase scheduling — kept separate from node.ts so a copy of the node
+// can take just its declaration and import this behind
 // `@motionscript/code` instead. What gets copied is whatever this
 // package's registry.json declares, which for this component is node.ts;
-// the docs site's registry builder enforces that anything it
+// src/tests/registry.test.ts checks that anything it
 // reaches for is either copied alongside it or re-exported from here.
 export * from './transitions';
 export * from './layout';

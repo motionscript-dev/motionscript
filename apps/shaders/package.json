@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Demo library: custom nodes built on custom WGSL shaders. AuroraCard and PrismCard are imported by the other apps; PulseRing is meant to be copied into a project with `ms add`, not installed.",
+  "description": "Demo library: custom nodes built on custom WGSL shaders. AuroraCard and PrismCard, imported by the other apps.",
   "author": "Motionscript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -141,13 +141,6 @@ and passes it in.
 headless Chromium page driven by Playwright, and renders it there with the
 browser engine.
 
-### `@motionscript/cli`: the component CLI
-
-The `ms` binary — `init`, `add`, `list`, `diff`. It copies a component's source
-into a project from a registry (by default the one the docs site serves) and tracks
-upstream changes. It runs from `packages/cli/dist/`, so rebuild it
-(`pnpm --filter @motionscript/cli build`) after changing `packages/cli/src/`.
-
 ### Component kits
 
 `packages/components/*` holds the published component kits: `audio`, `charts`,

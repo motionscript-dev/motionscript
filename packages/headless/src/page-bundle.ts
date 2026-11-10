@@ -42,7 +42,7 @@ export async function bundlePage(options: BundleOptions): Promise<BuiltBundle> {
         throw new EngineError(
             'PROJECT_NOT_FOUND',
             `No project entry at ${entry}. \`createServerEngine\` renders a project ` +
-            `entry — the file \`motionscript.json\` declares as "project".`,
+            `entry: a module exporting the nodes and shaders its documents name.`,
         );
     }
 

@@ -51,7 +51,7 @@ when left out), and for `spotlightRegion` and `zoomTo` a `region` of
 
 ## Rules worth knowing
 
-- **The kit stays an import.** `ms add line-chart` copies only `line-chart/*` and
+- **The kit stays an import.** A copy of `line-chart` takes only `line-chart/*` and
   rewrites its kit imports to `@motionscript/charts` (`registry.json`): a second
   copy of `VerticalAxis` would render as nothing, with no error.
 - **Resting state is the finished chart.** `enter` arms every part on its first

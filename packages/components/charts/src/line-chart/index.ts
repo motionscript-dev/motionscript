@@ -6,7 +6,7 @@
  * (the plot panel, the value axis, the legend); each part is exported too, so
  * another node type can reuse one on its own.
  *
- * These files are what `ms add line-chart` copies. Everything they reach for
+ * These files are what a copy of the line chart takes (`registry.json`). Everything they reach for
  * that is *not* here comes from the kit and stays a dependency — see
  * `../engine.ts` for why that line is where it is.
  */

@@ -15,7 +15,7 @@ import { NODES } from '../nodes';
 /** The node file's own: the component, the factory a custom strategy builds one with, and what were its methods. */
 const NODE = ['Code', 'defineCode', 'findAllRanges', 'findFirstRange', 'findRangeAt', 'listingOf'];
 
-/** The engine: what `ms add code` rewrites a copied node's import of `./engine` to. */
+/** The engine: what a copied node's import of `./engine` is rewritten to. */
 const ENGINE = [
     'BUILTIN_THEMES',
     'CodeRangeChain',

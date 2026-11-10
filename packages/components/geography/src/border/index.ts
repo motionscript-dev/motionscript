@@ -1,7 +1,7 @@
 /**
  * GeoBorder: country and subdivision outlines by ISO 3166 code.
  *
- * `ms add geo-border` copies only `geo-border.ts`. Everything it imports from
+ * A copy of `geo-border` takes only `geo-border.ts`. Everything it imports from
  * here — the source registry, the file cache, the geometry — stays behind the
  * package, so a forked node shares the host's registered sources instead of
  * owning an empty registry of its own.
