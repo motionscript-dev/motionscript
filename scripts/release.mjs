@@ -151,6 +151,11 @@ function enterChannelMode(channel) {
 
 /** What `changeset version` would release on this branch: the version, or null with nothing pending. */
 function pendingRelease(channel) {
+  // `changeset status` errors when packages differ from baseBranch and nothing is pending, as right after a release
+  // commit. Pre mode keeps the changesets it released, listing them in pre.json; leaving pre mode releases them again.
+  const released = channel.pre && preMode() === "pre" ? new Set(readJson(PRE).changesets) : new Set()
+  const ids = readdirSync(join(root, ".changeset")).filter((file) => file.endsWith(".md") && file !== "README.md")
+  if (!ids.some((file) => !released.has(file.slice(0, -3)))) return null
   const saved = existsSync(PRE) ? readFileSync(PRE, "utf8") : null
   const dir = mkdtempSync(join(tmpdir(), "ms-release-"))
   try {
