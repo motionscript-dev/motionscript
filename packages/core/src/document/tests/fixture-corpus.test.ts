@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -15,7 +15,9 @@ import { jsonFiles, manifestFor, releases, root } from "./corpus.fixtures";
 /** The notes of every changeset not yet released that start `**Breaking:**`. */
 function pendingBreakingNotes(): string {
     const dir = resolve(root, "../../../../../.changeset");
-    const released = new Set((JSON.parse(readFileSync(join(dir, "pre.json"), "utf8")) as { changesets: string[] }).changesets);
+    // A stable release leaves pre mode, deleting pre.json: every changeset still here is then pending.
+    const pre = join(dir, "pre.json");
+    const released = new Set(existsSync(pre) ? (JSON.parse(readFileSync(pre, "utf8")) as { changesets: string[] }).changesets : []);
     return readdirSync(dir)
         .filter((name) => name.endsWith(".md") && name !== "README.md" && !released.has(name.slice(0, -3)))
         .map((name) => readFileSync(join(dir, name), "utf8").replace(/\r\n/g, "\n").split(/^---$/m).slice(2).join("---").trim())
