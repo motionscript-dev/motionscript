@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/math",
-  "version": "0.1.0-alpha.10",
+  "version": "0.1.0",
   "type": "module",
   "description": "Math for Motion Script: coordinate systems, function and vector-field plots, 3D graphs and surfaces, network graphs, and LaTeX formulas typeset to glyph paths that morph token by token.",
   "repository": {

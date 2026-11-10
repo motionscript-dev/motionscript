@@ -1,5 +1,17 @@
 # @motionscript/core
 
+## 0.1.0
+
+### Minor Changes
+
+- ba03011: WebGPU renderer replaces Skia, @motionscript/renderer is new, skia-render/canvaskit are gone, and it’s breaking
+
+### Patch Changes
+
+- 70b93d7: @motionscript/cli and ms add are removed: install the component packages and register their NODES.
+- d2241c3: Drawing is faster with the same output: rects and ellipses build their outlines without going through an SVG path string, arcs convert without allocating, and a colour string already parsed is not parsed again (until the theme changes). On a scene of 10,000 ellipses a frame the renderer's per-frame work drops by about 15%.
+- 1666474: Frames evaluate, lay out and render several times faster on animated scenes (about 4x on a scene of 2,100 laid-out rects), with the same output. Finished built-in commands (`to`, `set`, `moveTo`, `fadeTo`, `rotateTo`, `scaleTo`, `layoutTo`, the paint commands, `variableTo` and the rest) are held at their end values instead of run every frame, as component commands already were. A prop's accessor now lives on its node type's prototype instead of on each node: `Object.keys(node)` and a spread of a node no longer list its props (a child's `state` still does). A value written from outside the timeline onto a slot of an animated node that no command writes now survives a seek, as it already did for nodes animated by component commands.
+
 ## 0.1.0-alpha.10
 
 ### Patch Changes
