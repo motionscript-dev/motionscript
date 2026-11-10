@@ -333,7 +333,8 @@ jobs:
 
       - name: Committed wasm-bindgen declarations are current
         if: steps.passed.outputs.cache-hit != 'true' || inputs.full
-        run: git diff --exit-code -- 'packages/renderer/web/pkg*/*.d.ts'
+        working-directory: packages/renderer
+        run: node scripts/check-declarations.mjs
 
       - name: Record the pass
         if: steps.passed.outputs.cache-hit != 'true'

@@ -5,6 +5,9 @@
             "dependsOn": [
                 "^build"
             ],
+            "passThroughEnv": [
+                "MS_WASM_CACHED"
+            ],
             "outputs": [
                 "dist/**",
                 ".next/**",

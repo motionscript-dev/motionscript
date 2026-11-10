@@ -55,10 +55,11 @@ built once and the tests fan out over that build:
 - **`build`**: `pnpm build:lib`, packed as the `build` artifact: every package's
   `dist/`, `packages/renderer/web/pkg` and `build-sha.txt`.
   - The renderer's WASM comes from an `actions/cache` keyed on every Rust input
-    (`WASM_KEY` in `ci.yml`: the crates, `Cargo.*`, `rust-toolchain.toml`, the
+    (the `wasm` step's key in `ci.yml`: the crates, `Cargo.*`, `rust-toolchain.toml`, the
     `include_str!`'d `web/src/user-shaders.ts`, `build-wasm.sh`, `wasm-env.sh`).
     On a hit `MS_WASM_CACHED=1` makes `build-wasm.sh` skip cargo, and the job
-    installs no Rust.
+    installs no Rust. Turbo drops variables a task does not declare, so
+    `turbo.json` lists it under the build's `passThroughEnv`.
   - On a miss it installs the pinned toolchain (`rust-toolchain.toml`),
     `Swatinem/rust-cache` and the `wasm-bindgen-cli` that `Cargo.lock` pins, then
     saves the new WASM.
@@ -80,9 +81,12 @@ built once and the tests fan out over that build:
     `out/wgpu-summary.json` upload for 5 days, pass or fail.
 - **`rust`** (in parallel with `build`):
   - It runs `cargo test --locked --workspace`, with naga validating every WGSL
-    module; `notices:check`; `test:effects`; the renderer, text and 3D WASM
-    builds; and a `git diff --exit-code` on the committed `web/pkg*/*.d.ts`.
-  - A cached marker keyed on all of its inputs (`PASSED_KEY`) skips the job when
+    module; `notices:check`; the renderer, text and 3D WASM builds; and
+    `scripts/check-declarations.mjs`, which compares the committed
+    `web/pkg*/*.d.ts` with the build, masking the rustc crate hashes in
+    closure names (they differ between Windows and Linux builds).
+  - `test:effects` imports core's `dist/`, so it runs in `lint-typecheck`.
+  - A cached marker keyed on all of its inputs (the `passed` step's key) skips the job when
     exactly these inputs passed before.
 
 Playwright's browsers are cached under `~/.cache/ms-playwright`, keyed on the
