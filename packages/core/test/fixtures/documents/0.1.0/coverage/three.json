@@ -1,0 +1,454 @@
+{
+  "kind": "project",
+  "name": "three",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "three-0",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "canvas3d-30",
+            "type": "canvas3d",
+            "parentId": null,
+            "layerOrder": 31,
+            "props": {
+              "width": 800,
+              "height": 450
+            }
+          },
+          {
+            "id": "group3d-31",
+            "type": "group3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 32,
+            "props": {
+              "y": 0.5
+            }
+          },
+          {
+            "id": "camera3d-32",
+            "type": "camera3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 33,
+            "props": {
+              "orbit": 30,
+              "elevation": 20,
+              "distance": 6
+            }
+          },
+          {
+            "id": "box3d-33",
+            "type": "box3d",
+            "parentId": "group3d-31",
+            "layerOrder": 34,
+            "props": {
+              "fill": "primary"
+            }
+          },
+          {
+            "id": "sphere3d-34",
+            "type": "sphere3d",
+            "parentId": "group3d-31",
+            "layerOrder": 35,
+            "props": {
+              "x": -2,
+              "z": -1
+            }
+          },
+          {
+            "id": "plane3d-35",
+            "type": "plane3d",
+            "parentId": "group3d-31",
+            "layerOrder": 36,
+            "props": {
+              "x": -1,
+              "z": -1
+            }
+          },
+          {
+            "id": "circle3d-36",
+            "type": "circle3d",
+            "parentId": "group3d-31",
+            "layerOrder": 37,
+            "props": {
+              "x": 0,
+              "z": -1
+            }
+          },
+          {
+            "id": "cylinder3d-37",
+            "type": "cylinder3d",
+            "parentId": "group3d-31",
+            "layerOrder": 38,
+            "props": {
+              "x": 1,
+              "z": -1
+            }
+          },
+          {
+            "id": "cone3d-38",
+            "type": "cone3d",
+            "parentId": "group3d-31",
+            "layerOrder": 39,
+            "props": {
+              "x": 2,
+              "z": -1
+            }
+          },
+          {
+            "id": "capsule3d-39",
+            "type": "capsule3d",
+            "parentId": "group3d-31",
+            "layerOrder": 40,
+            "props": {
+              "x": -2,
+              "z": 0
+            }
+          },
+          {
+            "id": "torus3d-40",
+            "type": "torus3d",
+            "parentId": "group3d-31",
+            "layerOrder": 41,
+            "props": {
+              "x": -1,
+              "z": 0
+            }
+          },
+          {
+            "id": "torus-knot3d-41",
+            "type": "torus-knot3d",
+            "parentId": "group3d-31",
+            "layerOrder": 42,
+            "props": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": "ring3d-42",
+            "type": "ring3d",
+            "parentId": "group3d-31",
+            "layerOrder": 43,
+            "props": {
+              "x": 1,
+              "z": 0
+            }
+          },
+          {
+            "id": "polyhedron3d-43",
+            "type": "polyhedron3d",
+            "parentId": "group3d-31",
+            "layerOrder": 44,
+            "props": {
+              "x": 2,
+              "z": 0
+            }
+          },
+          {
+            "id": "points3d-44",
+            "type": "points3d",
+            "parentId": "group3d-31",
+            "layerOrder": 45,
+            "props": {
+              "x": -2,
+              "z": 1
+            }
+          },
+          {
+            "id": "sprite3d-45",
+            "type": "sprite3d",
+            "parentId": "group3d-31",
+            "layerOrder": 46,
+            "props": {
+              "x": -1,
+              "z": 1
+            }
+          },
+          {
+            "id": "instances3d-46",
+            "type": "instances3d",
+            "parentId": "group3d-31",
+            "layerOrder": 47,
+            "props": {
+              "x": 0,
+              "z": 1
+            }
+          },
+          {
+            "id": "mesh3d-47",
+            "type": "mesh3d",
+            "parentId": "group3d-31",
+            "layerOrder": 48,
+            "props": {
+              "x": 1,
+              "z": 1
+            }
+          },
+          {
+            "id": "lathe3d-48",
+            "type": "lathe3d",
+            "parentId": "group3d-31",
+            "layerOrder": 49,
+            "props": {
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.2,
+                  1
+                ]
+              ]
+            }
+          },
+          {
+            "id": "tube3d-49",
+            "type": "tube3d",
+            "parentId": "group3d-31",
+            "layerOrder": 50,
+            "props": {
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  2,
+                  0,
+                  1
+                ]
+              ],
+              "radius": 0.1
+            }
+          },
+          {
+            "id": "extrude3d-50",
+            "type": "extrude3d",
+            "parentId": "group3d-31",
+            "layerOrder": 51,
+            "props": {
+              "path": "M0 0 L1 0 L1 1 Z",
+              "depth": 0.2
+            }
+          },
+          {
+            "id": "line3d-51",
+            "type": "line3d",
+            "parentId": "group3d-31",
+            "layerOrder": 52,
+            "props": {
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "stroke": {
+                "color": "accent",
+                "width": 2
+              }
+            }
+          },
+          {
+            "id": "ambient-light3d-52",
+            "type": "ambient-light3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 53,
+            "props": {
+              "intensity": 0.3
+            }
+          },
+          {
+            "id": "directional-light3d-53",
+            "type": "directional-light3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 54,
+            "props": {
+              "x": 2,
+              "y": 4,
+              "z": 3
+            }
+          },
+          {
+            "id": "point-light3d-54",
+            "type": "point-light3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 55,
+            "props": {
+              "y": 2
+            }
+          },
+          {
+            "id": "spot-light3d-55",
+            "type": "spot-light3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 56,
+            "props": {
+              "y": 3
+            }
+          },
+          {
+            "id": "hemisphere-light3d-56",
+            "type": "hemisphere-light3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 57,
+            "props": {}
+          },
+          {
+            "id": "area-light3d-57",
+            "type": "area-light3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 58,
+            "props": {}
+          },
+          {
+            "id": "fog3d-58",
+            "type": "fog3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 59,
+            "props": {
+              "color": "bg",
+              "near": 4,
+              "far": 20
+            }
+          },
+          {
+            "id": "environment3d-59",
+            "type": "environment3d",
+            "parentId": "canvas3d-30",
+            "layerOrder": 60,
+            "props": {
+              "preset": "studio"
+            }
+          },
+          {
+            "id": "model3d-60",
+            "type": "model3d",
+            "parentId": "group3d-31",
+            "layerOrder": 61,
+            "props": {
+              "src": "robot.glb",
+              "scaleX": 0.5,
+              "scaleY": 0.5,
+              "scaleZ": 0.5
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "c30",
+            "type": "moveTo",
+            "targetId": "box3d-33",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "x": 1,
+              "y": 0.5,
+              "z": 0
+            }
+          },
+          {
+            "id": "c31",
+            "type": "rotateTo",
+            "targetId": "box3d-33",
+            "at": 0.5,
+            "duration": 0.5,
+            "args": {
+              "rotationY": 90
+            }
+          },
+          {
+            "id": "c32",
+            "type": "scaleTo",
+            "targetId": "box3d-33",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "scale": 1.5
+            }
+          },
+          {
+            "id": "c33",
+            "type": "orbitTo",
+            "targetId": "camera3d-32",
+            "at": 0,
+            "duration": 2,
+            "args": {
+              "orbit": 90,
+              "elevation": 30
+            }
+          },
+          {
+            "id": "c34",
+            "type": "lookTo",
+            "targetId": "camera3d-32",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "target": [
+                0,
+                1,
+                0
+              ]
+            }
+          },
+          {
+            "id": "c35",
+            "type": "orbitTo",
+            "targetId": "canvas3d-30",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "orbit": 10
+            }
+          }
+        ]
+      },
+      "startAt": 0,
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}
