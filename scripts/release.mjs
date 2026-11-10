@@ -69,14 +69,18 @@ function capture(command) {
   return { ok: result.status === 0, out: (result.stdout ?? "").trimEnd(), err: (result.stderr ?? "").trim() }
 }
 
-/** `capture`, without blocking, for running several at once; `out` holds stdout and stderr. */
+/** `capture`, without blocking, for running several at once; `out` holds stdout and stderr, `stdout` stdout alone. */
 function captureAsync(command, cwd = root) {
   return new Promise((resolve) => {
     const child = spawn(command, { cwd, shell: true, stdio: ["ignore", "pipe", "pipe"] })
     let out = ""
-    child.stdout.on("data", (chunk) => (out += chunk))
+    let stdout = ""
+    child.stdout.on("data", (chunk) => {
+      out += chunk
+      stdout += chunk
+    })
     child.stderr.on("data", (chunk) => (out += chunk))
-    child.on("close", (code) => resolve({ ok: code === 0, out: out.trimEnd() }))
+    child.on("close", (code) => resolve({ ok: code === 0, out: out.trimEnd(), stdout: stdout.trimEnd() }))
   })
 }
 
@@ -127,7 +131,8 @@ function onNpm(name, version) {
 async function askNpm(version) {
   await Promise.all(publicPackages().map(async ({ name }) => {
     const key = tagOf(name, version)
-    if (!npmState.has(key)) npmState.set(key, (await captureAsync(`npm view ${key} version`)).out === version)
+    // stdout alone: npm warns on stderr (CI's setup-node writes an `always-auth` it no longer knows).
+    if (!npmState.has(key)) npmState.set(key, (await captureAsync(`npm view ${key} version`)).stdout === version)
   }))
 }
 const missingFromNpm = (version) => publicPackages().filter((pkg) => !onNpm(pkg.name, version))
