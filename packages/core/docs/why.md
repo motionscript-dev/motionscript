@@ -80,6 +80,23 @@ An earlier property system tracked dependencies with a caching `Signal`. The ren
 - A binding that reads an absent node reads `undefined`; `_writeProp` never hands that to a prop's mapper, so the prop holds the default a node built without it would hold, keeping the frame a function of the playhead.
 - Asset and audio declarations are the exception that needs dependency information: `observeSlots` (`props/observer.ts`) records the slots a declaration reads so the runtime re-runs it only when one can have changed (`packages/core/docs/assets.md`).
 
+## A prop is read through its class's prototype, by index
+
+Status: accepted (2026-11-10)
+
+### Context
+
+Each prop's accessor was a pair of closures defined on the node itself. No two nodes then shared a hidden class, so every prop read in layout and render was megamorphic, and a component's state view looked props up by name inside one shared getter. On a scene of 2,100 laid-out rects (about 58 prop reads per node per frame), reads were a third of the frame.
+
+### Decision
+
+`PropLayout` (`packages/core/src/props/layout.ts`) gives each node class one index per prop and defines the accessor once, on the class's prototype; an instance keeps its slots in that order (`PropCells.list`). Accessors and state-view getters reach the slot by index, never by name: closures made at one site share their feedback, so a lookup by name inside one would see every prop of every class. A read the layout cannot answer (an instance that never registered the field, a class that already defines the name) falls through to what the node would read without it.
+
+### Consequences
+
+- A node's props are not its own properties: `Object.keys(node)` and a spread of a node no longer list them. A child's `state` lists them as its own, so a spread of it still does.
+- Every node of a type shares one hidden class, so reads stay monomorphic with or without a JIT.
+
 ## Core describes 3D as data; it never imports a 3D library
 
 Status: accepted

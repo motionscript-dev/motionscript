@@ -79,6 +79,18 @@ function timesOf(placed: readonly SettlePlaced[], rand: () => number): number[] 
 }
 
 describe("SettledIndex", () => {
+    it("runs a marked command writing what an earlier unmarked one read", () => {
+        const read = new PropSlot(0);
+        const other = new PropSlot(0);
+        const placed: SettlePlaced[] = [
+            { start: 0, duration: 0, command: commandOf(0, () => read.get()), writes: new Set(), reads: new Set([read]) },
+            { start: 1, duration: 1, command: settling(commandOf(1, (t) => read.set(t))), writes: new Set([read]) },
+            { start: 1, duration: 1, command: settling(commandOf(1, (t) => other.set(t))), writes: new Set([other]) },
+        ];
+        const index = SettledIndex.build(placed)!;
+        expect([0, 1, 2].map((i) => index.holds(i))).toEqual([false, false, true]);
+    });
+
     it("is null when nothing is marked", () => {
         const slot = new PropSlot(0);
         const command = commandOf(1, (t) => slot.set(t));

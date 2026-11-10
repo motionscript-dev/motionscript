@@ -11,6 +11,8 @@ export interface SettlePlaced {
     readonly duration: number;
     readonly command: Command<Record<string, unknown>>;
     readonly writes: ReadonlySet<PropSlot<unknown>>;
+    /** What it read while built, when it is unmarked: what it may read while it runs. */
+    readonly reads?: ReadonlySet<PropSlot<unknown>>;
 }
 
 /**
@@ -29,6 +31,10 @@ export interface SettlePlaced {
  * later gets that writer's value back: placement order still decides. This
  * relies on what the timeline's restore already does, that a command writes
  * nothing while running that it did not write while being built.
+ *
+ * A held end value is in place before every command runs, so one an earlier
+ * unmarked command reads (a `save`) would reach it early: a marked command
+ * writing a slot an earlier unmarked one read is run instead, as if unmarked.
  */
 export class SettledIndex {
     /** `null` when nothing is marked: the timeline runs everything, as before. */
@@ -37,10 +43,13 @@ export class SettledIndex {
         const writers = new Map<PropSlot<unknown>, Writer[]>();
         const replayed: number[] = [];
         const running: number[] = [];
+        const read = new Set<PropSlot<unknown>>();
         for (let i = 0; i < placed.length; i++) {
             const p = placed[i];
-            const end = settles(p.command) ? finishTime(p.start, p.duration) : NaN;
+            const marked = settles(p.command);
+            const end = marked && !readEarlier(p.writes, read) ? finishTime(p.start, p.duration) : NaN;
             if (Number.isNaN(end)) {
+                if (!marked && p.reads) for (const slot of p.reads) read.add(slot);
                 replayed.push(i);
                 continue;
             }
@@ -175,6 +184,12 @@ export class SettledIndex {
         const bin = Math.floor((seconds - this._from) / this._width);
         return bin < 0 ? 0 : bin >= this._bins ? this._bins - 1 : bin;
     }
+}
+
+function readEarlier(writes: ReadonlySet<PropSlot<unknown>>, read: ReadonlySet<PropSlot<unknown>>): boolean {
+    if (read.size === 0) return false;
+    for (const slot of writes) if (read.has(slot)) return true;
+    return false;
 }
 
 const NONE = 0x7fffffff;

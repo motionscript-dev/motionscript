@@ -18,6 +18,8 @@ import type { SpaceCamera } from "@/attributes/layout/space3d";
 import type { TextStyle } from "@/attributes/text/types";
 import type { MergePaint, ChildView, Clock, Component, Element, FontSpec, Max, Measurer, NodeFrame, NodeView, Piece, RenderContext2D } from "@/components/factory/api";
 import { clipOf } from "@/components/factory/clip-of";
+import type { PropHost } from "@/props/host";
+import type { PropLayout } from "@/props/layout";
 
 /**
  * What a render did with its children beyond drawing them: composited them
@@ -106,8 +108,20 @@ class ChildViewImpl implements ChildView {
     constructor(node: Node2D) {
         this[NODE] = node;
         // The node's own accessors are its resolved values; a proxy keeps a parent from writing through them.
+        // Its props live on the prototype, so the proxy lists them as its own, as a spread or `Object.keys` expects.
         this.state = new Proxy(node, {
             set: () => { throw new TypeError("A child's state is read-only to its parent; animate it with a command."); },
+            ownKeys: (target) => {
+                const keys = Reflect.ownKeys(target);
+                const own = new Set(keys);
+                for (const key of propsOf(target)) if (!own.has(key)) keys.push(key);
+                return keys;
+            },
+            getOwnPropertyDescriptor: (target, key) => {
+                const own = Reflect.getOwnPropertyDescriptor(target, key);
+                if (own || typeof key !== "string" || !propsOf(target).has(key)) return own;
+                return { value: Reflect.get(target, key), writable: false, enumerable: true, configurable: true };
+            },
         }) as never;
     }
 
@@ -139,6 +153,13 @@ class ChildViewImpl implements ChildView {
     run(name: string, args?: object): Piece {
         return { _piece: { kind: "run", node: this[NODE], name, args } };
     }
+}
+
+const NO_PROPS: ReadonlySet<string> = new Set();
+
+function propsOf(node: object): ReadonlySet<string> {
+    const slots = (node as PropHost).__cells?.slots;
+    return slots ? new Set(slots.keys()) : NO_PROPS;
 }
 
 export function childView(node: Node2D | Node): ChildView {
@@ -264,7 +285,7 @@ export function stateViewPrototype(keys: readonly string[], references: Readonly
     for (const key of keys) {
         entries[key] = references.has(key)
             ? { get(this: { [NODE]: Node }) { return referenced(this[NODE], (this[NODE] as unknown as Record<string, unknown>)[key]); }, enumerable: true }
-            : { get(this: { [NODE]: object }) { return (this[NODE] as Record<string, unknown>)[key]; }, enumerable: true };
+            : { get: entryGetter(key), enumerable: true };
     }
     const proto = {};
     // The children of the node's own tree, as its commands see them too.
@@ -273,6 +294,26 @@ export function stateViewPrototype(keys: readonly string[], references: Readonly
         enumerable: false,
     });
     return { proto, entries };
+}
+
+/** Reads the entry's slot by its index in the node's layout, found once per layout: no lookup by name per read. */
+function entryGetter(key: string): (this: { [NODE]: object }) => unknown {
+    let layout: PropLayout | undefined;
+    let i = -1;
+    return function () {
+        const node = this[NODE];
+        const cells = (node as PropHost).__cells;
+        if (cells !== undefined) {
+            if (cells.layout !== layout) {
+                i = cells.layout.indexOf(key);
+                // An entry not registered yet is looked for again next time.
+                layout = i < 0 ? undefined : cells.layout;
+            }
+            const slot = i < 0 ? undefined : cells.list[i];
+            if (slot !== undefined) return slot.get();
+        }
+        return (node as Record<string, unknown>)[key];
+    };
 }
 
 export function stateView(shape: ViewShape, node: object): object {

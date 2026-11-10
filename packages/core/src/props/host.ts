@@ -1,3 +1,4 @@
+import { PropLayout } from "./layout";
 import { PropSlot } from "./slot";
 
 /** @internal */
@@ -17,6 +18,10 @@ export type TweenFn<T> = (from: T, to: T, t: number) => T;
 export interface PropCells {
     /** Field → its live slot. Present for every registered prop. */
     slots: Map<string, PropSlot<any>>;
+    /** The host class's prop indices; {@link list} holds its slots by them. */
+    layout: PropLayout;
+    /** Field → its slot, by {@link layout} index: what the prop accessors read. */
+    list: (PropSlot<any> | undefined)[];
     /** Field → how it interpolates, for props a numeric lerp cannot cover. */
     tweens?: Map<string, TweenFn<any>>;
     /** Field → external prop value to internal slot value, for fields that need it. */
@@ -37,5 +42,6 @@ export function getPropSlot(obj: PropHost, name: string): PropSlot<any> | undefi
 
 /** The host's slots, created on first use. @internal */
 export function ensureCells(obj: PropHost): PropCells {
-    return obj.__cells ??= { slots: new Map() };
+    // Every field from the start, so all cells share one shape and the prop accessors' reads of them stay monomorphic.
+    return obj.__cells ??= { slots: new Map(), layout: PropLayout.of(Object.getPrototypeOf(obj) as object), list: [], tweens: undefined, mappers: undefined };
 }

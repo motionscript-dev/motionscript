@@ -79,6 +79,18 @@ export function commandTraits(registry: Registry, spec: CommandSpec, target: Nod
 }
 
 /**
+ * Whether a command with these traits, built, may be held at its end values once
+ * finished instead of run (`settled-index.ts`): the library's own implementation
+ * of a command whose `at` reads only what it captured when built. Expression args
+ * bind live values, so they keep it running. A component's own commands are
+ * marked by the factory instead, from their pieces.
+ */
+export function holdsWhenFinished(traits: CommandTraits | null, spec: CommandSpec): boolean {
+    return traits !== null && traits.known && !traits.lifecycle && HELD.has(spec.type)
+        && expressionOps.collect(spec.args ?? {}, "").length === 0;
+}
+
+/**
  * The node ids a command's args name through a `nodeRef` argument — the nodes
  * whose boxes it may read when it is built, beside its own target.
  */
@@ -149,6 +161,13 @@ export function writesPlacementInPlace(registry: Registry, row: NodeSpec, key: s
 const LIFECYCLE = new Set(["removeChildAt", "addChildAt", "reparent"]);
 
 const VARIABLE_COMMANDS = new Set(["variableTo", "variableSet"]);
+
+// Known commands that are pure functions of `t`. A new one joins once `held-class-commands.test.ts` covers it.
+const HELD = new Set([
+    "to", "set", "moveTo", "fadeTo", "rotateTo", "scaleTo", "layoutTo", "effectTo", "pulse", "wiggle",
+    "fillTo", "strokeTo", "shadowTo", "overlayTo", "progressTo", "zoomTo", "panTo", "headingTo",
+    "variableTo", "variableSet",
+]);
 
 const NEUTRAL_KEYS = new Set([
     "x", "y", "rotation", "scale", "opacity", "fill", "stroke", "shadow", "overlay",

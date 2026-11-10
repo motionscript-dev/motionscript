@@ -10,7 +10,7 @@ The scene graph is `Node` (`packages/core/src/components/trees/node/node.ts`) an
 |---|---|
 | Tree | `parent`, `children`, `_allChildren` (unfiltered, both dimensions), `add`, `remove`, `clear`, `addChildAt` |
 | Identity | `id` (`props.id`, else a UUID; `""` is kept because it is the scene root's id), `key` (`props.key`, never generated). Neither is a prop: they do not tween and are not in `set()`/`to()`/`save()` |
-| Props | property slots (a component's public `state` entries, or a core class's `declare` fields registered with `declareMembers`), `set`, `to`, `save`, `restore`, `properties`; protected `command()` builds a `Command` from a pure `t => props` function |
+| Props | property slots (a component's public `state` entries, or a core class's `declare` fields registered with `declareMembers`), `set`, `to`, `save`, `restore`, `properties`; protected `command()` builds a `Command` from a pure `t => props` function. A prop's accessor is on its class's prototype, reaching the slot by index (`props/layout.ts`, [why](./why.md#a-prop-is-read-through-its-classs-prototype-by-index)) |
 | Context | `provideContext`, `resolveContext` (first attach only), `useContext`; a component's `provide` and an entry's `inherit` lower onto the first two |
 | Clock | `time`: `total` (clip seconds), `creation` (clip time of the node's first advance), `elapsed` (`total - creation`); a node built at 3 s reads `elapsed === 0` on its first frame |
 | Assets | `declareAssets` (`Node` declares nothing; a component's typed entries and `load` run in it; see [assets.md](assets.md)), `attachDetached` |
@@ -96,7 +96,7 @@ The document key `path` is `PathShape` (geometry as a fraction of the node's box
 
 ## Where to look
 
-- `components/trees/node/node.ts`, `node-reactive.ts`, `node-time.ts`, `node-editor-state.ts`, `node-walk.ts` (per-frame `sampleTree` and `primeMotionTree`).
+- `components/trees/node/node.ts`, `node-reactive.ts` (with `props/layout.ts`), `node-time.ts`, `node-editor-state.ts`, `node-walk.ts` (per-frame `sampleTree` and `primeMotionTree`).
 - `components/factory/component2d.ts` (what a 2D spec's generated class overrides), `component3d.ts`, `component-audio.ts`, `factory.ts`; the built-ins in `components/builtins/`.
 - `components/trees/2d/node2d.ts` (props, render, layout), `node-lifecycle.ts`, `node-transform.ts`, `node-space.ts`.
 - `components/builtins/geometry/` (the shape components and their outline math), `components/trees/2d/group-bounds.ts`, `components/trees/root/canvas2d-node.ts`; the key table is `document/builtins.ts`.

@@ -686,7 +686,7 @@ describe("what a command's variable is restored to", () => {
         expect(clip.timeline.variableValue("fixed")).toBe(99);
     });
 
-    it("never restores a node that only formulas drive, but does restore one a command writes", () => {
+    it("never restores a node that only formulas drive, but does restore the slots a command writes", () => {
         const clip = built({
             kind: "composition",
             variables: [variable("g", 2)],
@@ -703,10 +703,11 @@ describe("what a command's variable is restored to", () => {
 
         // Overwrite both bindings from outside, as an editor holding an override would.
         formula.set({ x: 42 });
-        tweened.set({ x: 42 });
+        tweened.set({ x: 42, y: 42 });
         clip.seek(0);
         expect(formula.x).toBe(42);
-        expect(tweened.x).toBe(4);
+        // The `to` is held once finished, so only the slot it writes is put back.
+        expect([tweened.x, tweened.y]).toEqual([42, 0]);
     });
 
     it("keeps following the variable after it is restored", () => {

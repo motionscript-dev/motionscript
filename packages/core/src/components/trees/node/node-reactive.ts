@@ -29,28 +29,31 @@ export interface ReactiveHost extends PropHost {
 }
 
 /**
- * Create the {@link PropSlot} + accessor for a freshly-declared prop and register
- * its tween/mapper metadata. Extracted from `Node2D._registerProp`; defines the
- * getter/setter on `host` so writes route through `host._writeProp`
- * (mapper-aware, binding-aware).
+ * Create the {@link PropSlot} for a freshly-declared prop, place it in its class's
+ * `PropLayout` (whose prototype accessor routes writes through
+ * `host._writeProp`) and register its tween/mapper metadata.
  */
 /** @internal */
 export function registerProp<Int>(host: ReactiveHost, field: string, options?: PropOptions<any, Int>): void {
     const slot = new PropSlot<Int>(undefined as unknown as Int, host, field);
     const cells = ensureCells(host);
     cells.slots.set(field, slot);
+    cells.list[cells.layout.place(field)] = slot;
     if (options?.tween) {
         (cells.tweens ??= new Map()).set(field, options.tween as TweenFn<any>);
     }
     if (options?.mapper) {
         (cells.mappers ??= new Map()).set(field, options.mapper as (ext: any, prev?: any) => any);
     }
-    Object.defineProperty(host, field, {
-        get: () => slot.get(),
-        set: (value: any) => host._writeProp(field, value),
-        enumerable: true,
-        configurable: true,
-    });
+    // Something of the instance's own, or its class's, already answers to the name: shadow it as before.
+    if (!cells.layout.serves(host, field)) {
+        Object.defineProperty(host, field, {
+            get: () => slot.get(),
+            set: (value: any) => host._writeProp(field, value),
+            enumerable: true,
+            configurable: true,
+        });
+    }
 }
 
 /**

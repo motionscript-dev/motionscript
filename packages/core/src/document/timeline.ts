@@ -4,11 +4,11 @@ import type { Node, NodeDimension } from "@/components/trees/node/node";
 import type { Canvas2D } from "@/components/trees/root/canvas2d-node";
 import { _observer, PropSlot, type PropSnapshot } from "@/props/slot";
 import { LAYOUT_SLOT, observeSlots, PRESENCE_PREFIX, unobserved, VAR_PREFIX, type SlotObserver } from "@/props/observer";
-import { driveCommand, loopCommand, type Command } from "@/tween/command";
+import { driveCommand, loopCommand, settles, settling, type Command } from "@/tween/command";
 import { loopRepeats } from "@/tween/loop";
 import type { EasingFunction } from "@/tween/ease/type";
 import { easeOfSpec } from "@/tween/ease/spec";
-import { commandNodeRefs, commandTraits, hasNodeRef, isContextProvider, isLayoutNeutralProp, writesPlacementInPlace } from "./command-traits";
+import { commandNodeRefs, commandTraits, hasNodeRef, holdsWhenFinished, isContextProvider, isLayoutNeutralProp, writesPlacementInPlace } from "./command-traits";
 import { diffClip, jsonEqual } from "./diff";
 import { indexDocument, type DocIndex } from "./doc-index";
 import { expressionOps } from "./expression/ops";
@@ -112,6 +112,8 @@ export interface PlacedCommandInfo {
 interface PlacedCommand extends PlacedCommandInfo {
     readonly command: Command<Record<string, unknown>>;
     readonly writes: Set<PropSlot<unknown>>;
+    /** What an unmarked one may read while it runs: its owner's slots and what it read while built. Empty for a marked one. */
+    readonly reads: ReadonlySet<PropSlot<unknown>>;
     /** Its neighbours decide it, so it is worked out again after every compile and update. */
     holdFrom: number;
     readonly entrance: boolean;
@@ -185,6 +187,23 @@ function inTimelineOrder(commands: readonly CommandSpec[]): CommandSpec[] {
         .map((spec, index) => ({ spec, index }))
         .sort((a, b) => (a.spec.at - b.spec.at) || (a.index - b.index))
         .map((e) => e.spec);
+}
+
+const NO_SLOTS: ReadonlySet<PropSlot<unknown>> = new Set();
+
+/**
+ * Only an unmarked command can read live state while it runs, so only its reads are kept. A slot
+ * snapshot (`save`) reads without reporting it, so everything it acts on counts as read.
+ */
+function readsOf(command: Command<Record<string, unknown>>, recorder: WriteRecorder, owned: Iterable<PropSlot<unknown>>): ReadonlySet<PropSlot<unknown>> {
+    if (settles(command)) return NO_SLOTS;
+    for (const slot of owned) recorder.reads.add(slot);
+    return recorder.reads;
+}
+
+/** Marks the command `settling` when `held`; a looped one is wrapped after, and runs. */
+function heldIf(held: boolean, made: Command<Record<string, unknown>> | void): Command<Record<string, unknown>> | void {
+    return held && made ? settling(made) : made;
 }
 
 /** The scene root when a document doesn't author one explicitly. */
@@ -1026,9 +1045,10 @@ export class ClipTimeline {
             }
             this._assertNoExpressions(spec);
             const { factory } = entry;
+            const held = holdsWhenFinished(commandTraits(this._registry, spec, undefined), spec);
             const command = observeSlots(recorder, () =>
-                buildToEnd(() => repeat(factory(variable.target, spec.args, duration, easing))));
-            return { spec, start: spec.at, holdFrom: spec.at, entrance: false, duration: loop ? command.duration : duration, command, writes: recorder.writes, readsLayout: recorder.readsLayout, owner: variable };
+                buildToEnd(() => repeat(heldIf(held, factory(variable.target, spec.args, duration, easing)))));
+            return { spec, start: spec.at, holdFrom: spec.at, entrance: false, duration: loop ? command.duration : duration, command, writes: recorder.writes, reads: readsOf(command, recorder, [variable.cell]), readsLayout: recorder.readsLayout, owner: variable };
         }
 
         const target = this._targetOrThrow(spec);
@@ -1038,10 +1058,11 @@ export class ClipTimeline {
             : spec.args;
         const args = entry.binds ? this._bindArgs(given) : (this._assertNoExpressions(spec), given);
         const { factory } = entry;
+        const held = holdsWhenFinished(commandTraits(this._registry, spec, target.entry.spec), spec);
         const command = observeSlots(recorder, () =>
-            buildToEnd(() => repeat(factory(target.node, args, duration, easing))));
+            buildToEnd(() => repeat(heldIf(held, factory(target.node, args, duration, easing)))));
         const entrance = entry.scope === "node" && this._registry.node(target.entry.spec.type)?.commands.get(spec.type)?.entrance === true;
-        return { spec, start: spec.at, holdFrom: spec.at, entrance, duration: loop ? command.duration : duration, command, writes: recorder.writes, readsLayout: recorder.readsLayout, owner: target.entry };
+        return { spec, start: spec.at, holdFrom: spec.at, entrance, duration: loop ? command.duration : duration, command, writes: recorder.writes, reads: readsOf(command, recorder, (target.node as unknown as ReactiveHost).__cells?.slots.values() ?? []), readsLayout: recorder.readsLayout, owner: target.entry };
     }
 
     /**
@@ -1529,6 +1550,7 @@ type TouchedOwner = LiveNode | LiveVariable | PropSlot<unknown>;
 /** Records what building one command wrote, and whether it read a laid-out box. */
 class WriteRecorder implements SlotObserver {
     readonly writes = new Set<PropSlot<unknown>>();
+    readonly reads = new Set<PropSlot<unknown>>();
     readsLayout = false;
 
     /** `firstWrite` runs the first time a slot is written, before the write lands. */
@@ -1536,6 +1558,7 @@ class WriteRecorder implements SlotObserver {
 
     read(slot: PropSlot<unknown>): void {
         if (slot._name === LAYOUT_SLOT) this.readsLayout = true;
+        this.reads.add(slot);
     }
 
     write(slot: PropSlot<unknown>): void {
