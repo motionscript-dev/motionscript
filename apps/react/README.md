@@ -6,7 +6,7 @@ look at a change: edit a scene, save, watch it.
 
 ```bash
 pnpm build:lib                                 # the app runs against built dist/
-pnpm --filter @motionscript/app-react dev     # http://localhost:5173
+pnpm --filter @motionscript/app-react dev     # http://localhost:5174
 ```
 
 Nothing is shared with `apps/engine`: the scenes here are this app's own.

@@ -25,14 +25,18 @@ at the version `packages/renderer/Cargo.lock` pins
 | Start the Node host, alone or beside the React one | `pnpm dev engine`, `pnpm dev react engine` |
 | Check before a push (CI's checks in one go) | `pnpm check` (`--no-build` after a fresh build, `--e2e` to add the e2e suite) |
 | One part of that | `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e` |
-| Note a user-visible change to a published package | `pnpm exec changeset` (`runbooks/release-and-ci.md#changesets`) |
+| Note a user-visible change to a published package | `pnpm exec changeset` (`runbooks/release-and-ci.md#changesets`), or `node scripts/changeset.mjs add <patch\|minor\|major> [package] < note.md` |
+| Take a pending changeset out of the next release | `node scripts/changeset.mjs drop <id>` |
+| See branches, versions, pending changesets, build freshness and running apps | `node scripts/status.mjs` (`--fetch` asks GitHub, `--npm` asks npm; `--json` feeds the workspace pane) |
+| Stop whatever serves a port (an example app left running) | `node scripts/status.mjs --stop 5174` |
 
 ## Branches and releasing (`runbooks/release-and-ci.md`)
 
 Work lands on `alpha`; pull requests go there too. Once CI passes, every push
 to `alpha` with pending changesets publishes the next `0.1.0-alpha.N` under
-npm's `alpha` tag, and merging `alpha` into `main` publishes a stable
-version under `latest`. The Release workflow does it (`release.mjs --ci`).
+npm's `alpha` tag, and `pnpm promote` (a fast-forward of `main` to `alpha`)
+publishes a stable version under `latest`. The Release workflow does it
+(`release.mjs --ci --prebuilt`).
 
 | To | Run |
 | --- | --- |
