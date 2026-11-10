@@ -1,5 +1,11 @@
 # @motionscript/core
 
+## 0.1.0-alpha.8
+
+### Minor Changes
+
+- ba03011: WebGPU renderer replaces Skia, @motionscript/renderer is new, skia-render/canvaskit are gone, and it’s breaking
+
 ## 0.1.0-alpha.7
 
 ### Minor Changes

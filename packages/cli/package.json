@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/cli",
-  "version": "0.1.0-alpha.7",
+  "version": "0.1.0-alpha.8",
   "type": "module",
   "description": "Copy Motion Script component source into your project: ms init, ms add, ms list, ms diff.",
   "repository": {

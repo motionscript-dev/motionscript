@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/browser",
-  "version": "0.1.0-alpha.7",
+  "version": "0.1.0-alpha.8",
   "type": "module",
   "description": "Motion Script in the browser: WebGPU rendering through @motionscript/renderer, video and still export, audio playback.",
   "repository": {

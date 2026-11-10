@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/headless",
-  "version": "0.1.0-alpha.7",
+  "version": "0.1.0-alpha.8",
   "description": "Render Motion Script projects to images and video from Node, through the browser engine in a headless Chromium page.",
   "repository": {
     "type": "git",
