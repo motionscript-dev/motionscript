@@ -1,0 +1,129 @@
+{
+  "extends": "node3d",
+  "icon": "grid-3x3",
+  "leaf": true,
+  "properties": {
+    "width": {
+      "label": "Width"
+    },
+    "depth": {
+      "label": "Depth"
+    },
+    "cell": {
+      "label": "Grid"
+    },
+    "color": {
+      "label": "Plate"
+    },
+    "gridColor": {
+      "label": "Grid lines"
+    },
+    "lineColor": {
+      "label": "Edges"
+    },
+    "plot": {
+      "label": "Plot",
+      "control": "switch"
+    },
+    "plotX": {
+      "label": "Plot x"
+    },
+    "plotZ": {
+      "label": "Plot z"
+    },
+    "plotWidth": {
+      "label": "Plot width"
+    },
+    "plotDepth": {
+      "label": "Plot depth"
+    },
+    "plotColor": {
+      "label": "Plot line"
+    },
+    "lineWidth": {
+      "label": "Line weight",
+      "control": "slider"
+    },
+    "laid": {
+      "label": "Laid",
+      "control": "slider"
+    }
+  },
+  "commands": {
+    "lay": {
+      "label": "Lay",
+      "icon": "layers",
+      "category": "transform",
+      "description": "Raises the plate, rules its grid from the middle out and pegs out the plot.",
+      "defaults": {
+        "duration": 2
+      }
+    }
+  },
+  "layout": [
+    {
+      "section": "site",
+      "title": "Site",
+      "icon": "grid-3x3",
+      "before": "appearance",
+      "items": [
+        {
+          "row": [
+            "width",
+            "depth"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        "cell",
+        {
+          "row": [
+            "color",
+            "gridColor"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        "lineColor",
+        "lineWidth"
+      ]
+    },
+    {
+      "section": "plot",
+      "title": "Plot",
+      "icon": "square-dashed",
+      "before": "appearance",
+      "items": [
+        "plot",
+        {
+          "row": [
+            "plotX",
+            "plotZ"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        {
+          "row": [
+            "plotWidth",
+            "plotDepth"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        "plotColor"
+      ]
+    },
+    {
+      "section": "siteStart",
+      "title": "Starts at",
+      "icon": "play",
+      "before": "appearance",
+      "collapsible": true,
+      "collapsed": true,
+      "items": [
+        "laid"
+      ]
+    }
+  ]
+}

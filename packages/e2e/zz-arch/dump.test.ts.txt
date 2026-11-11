@@ -1,0 +1,16 @@
+import fs from "node:fs"
+import { it } from "vitest"
+
+import { ARCHITECTURE_PRESET } from "@/features/editor/themes/lib/architecture-preset"
+import { presetAsScenes, presetAsTheme } from "@/features/editor/themes/lib/template-catalog"
+import { templateSceneDocument } from "@/features/editor/themes/lib/template-preview"
+
+it("dumps the architecture scenes", () => {
+  const theme = presetAsTheme(ARCHITECTURE_PRESET)
+  for (const scene of presetAsScenes(ARCHITECTURE_PRESET)) {
+    const built = templateSceneDocument({ scene, theme, describe: () => undefined })
+    if (!built) throw new Error("no document " + scene.name)
+    const slug = scene.name.toLowerCase().replace(/[^a-z]+/g, "-")
+    fs.writeFileSync(`C:/Users/workk/Projects/motionscript/motionscript/packages/e2e/zz-arch/tmpl-${slug}.json`, JSON.stringify({ ...built.document, duration: built.seconds }))
+  }
+})
