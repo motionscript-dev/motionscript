@@ -2,6 +2,24 @@
 
 Decisions that shaped this code, with what was ruled out. Each section is one decision; add one when a choice is not obvious from the code.
 
+## A native export sidecar replays the renderer's call stream
+
+Status: prototype (2026-11-11), not shipped. The full design and the measurements are in `crates/export/DESIGN.md`.
+
+### Context
+
+A desktop host's exports encode through WebCodecs behind the browser's one GPU process. One window managed about 200 fps at 1080p, and more windows were slower. The renderer is Rust, so it can also draw natively and feed an encoder the host controls (NVENC).
+
+### Decision
+
+The page keeps running the frame loop, the adapter and the backend. Only the WASM `Renderer` is swapped for a recorder (`web/src/native/`), which streams the delta protocol and the resource calls to `ms-export` (`crates/export`). `ms-export` replays them into the same scene code on a native wgpu device (feature `native`), converts frames to NV12 on the GPU and pipes them to ffmpeg. Serialising the adapter's `Doc` was ruled out: it resends every node every frame, and its decoder would be a second one. So was running the engine outside the page: it would need DOM-free decode, fonts and node compilation.
+
+### Consequences
+
+- The native renderer draws 1080p (from 2× supersampled 4K) at 1,450–1,800 fps. Output matches the WebCodecs file at 46–49 dB PSNR on the e2e scenes.
+- Through ffmpeg's pipe the whole path reaches ~300–420 fps: the CPU copies set the ceiling, not NVENC. Feeding NVENC from GPU memory is the next step.
+- `ms-renderer` builds natively only under `native`, and `crates/export` is its own Cargo workspace. The WASM build and `cargo test --workspace` are unchanged.
+
 ## Plain rects and ellipses draw as the renderer's own shapes
 
 Status: accepted (2026-11-10)

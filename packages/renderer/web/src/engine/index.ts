@@ -1,7 +1,9 @@
 // @motionscript/renderer: the wgpu renderer that @motionscript/browser's
 // createBrowserEngine() draws with. Hosts use that entry; this one is for it.
 
-import type { MeasureContext2D, PlatformDeps } from "@motionscript/core";
+import type { MeasureContext2D, PlatformDeps, Size2D } from "@motionscript/core";
+import { NativeExportContext } from "../native/context";
+import { StreamWriter } from "../native/recorder";
 import { loadRendererWasm, prewarmDevice } from "../backend-wgpu";
 import { WgpuStorageAdapter } from "./storage";
 import { WgpuSurfaceContext } from "./surface";
@@ -11,7 +13,7 @@ export { onWgpuEvent } from "./faults";
 export type { WgpuEvent } from "./faults";
 export { ShaderPreview, validateShader, WGSL_PRELUDE } from "./shader-preview";
 export type { ShaderDiagnostic, ShaderField, ShaderPreviewInput, ShaderReport, ShaderScope, ShaderStatus } from "./shader-preview";
-export type { WgpuStorageAdapter, WgpuSurfaceContext };
+export type { WgpuStorageAdapter, WgpuSurfaceContext, NativeExportContext };
 
 export interface WgpuRendererOptions {
     /** Where `ms_renderer_bg.wasm` is served; defaults to beside this module. */
@@ -62,3 +64,15 @@ export async function createWgpuRenderer(options: WgpuRendererOptions = {}): Pro
         },
     };
 }
+
+/**
+ * Experimental: a render context that records the export stream for the
+ * native sidecar (`crates/export`) instead of drawing. `size` is the render
+ * target in pixels; `effects` the sidecar's built-in effect names in its
+ * index order (`ms-export info`).
+ */
+export function createNativeExportContext(storage: WgpuStorageAdapter, options: { viewport: Size2D; effects: readonly string[]; size: { width: number; height: number } }): NativeExportContext {
+    return new NativeExportContext(storage, options.viewport, new StreamWriter(), options.effects, options.size);
+}
+
+export { NATIVE_RECORD, STREAM_VERSION as NATIVE_STREAM_VERSION } from "../native/recorder";

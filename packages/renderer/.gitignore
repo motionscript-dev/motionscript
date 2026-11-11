@@ -11,3 +11,4 @@ web/pkg-r3d/*
 !web/pkg-r3d/ms_render3d.d.ts
 web/dist/
 .DS_Store
+crates/export/bench/out/

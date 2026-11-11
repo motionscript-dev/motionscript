@@ -5,6 +5,10 @@
 
 use wgpu::util::DeviceExt;
 
+#[cfg(feature = "native")]
+#[path = "gpu_native.rs"]
+mod native;
+
 use crate::frame::{hardware_blend, DevFilter, Frame, Op};
 use crate::paths::GeomCache;
 use crate::scene::{GpuPaint, GpuStop, NONE, USER_FILL};
@@ -349,6 +353,7 @@ thread_local! {
 /// Gets the shared device ready, and the pipelines for the format a canvas
 /// surface picks, so the first surface that mounts finds both: compiling the
 /// pipelines is most of a first frame's GPU time (about a second, cold).
+#[cfg(target_arch = "wasm32")]
 pub async fn prewarm() -> Result<(), String> {
     let d = shared_device().await?;
     // Best effort: a surface that finds no core builds its own.
@@ -374,7 +379,8 @@ async fn shared_device() -> Result<SharedDevice, String> {
         return Ok(d);
     }
     let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
-    desc.backends = wgpu::Backends::BROWSER_WEBGPU;
+    // Native (the export sidecar, feature `native`): DX12/Vulkan/Metal.
+    desc.backends = if cfg!(target_arch = "wasm32") { wgpu::Backends::BROWSER_WEBGPU } else { wgpu::Backends::from_env().unwrap_or(wgpu::Backends::PRIMARY) };
     let instance = wgpu::Instance::new(desc);
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -716,7 +722,9 @@ fn build_core(device: &wgpu::Device, format: wgpu::TextureFormat) -> Core {
 pub struct Gpu {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    pub surface: wgpu::Surface<'static>,
+    /// None for an offscreen renderer (native export), which draws into a
+    /// view it is handed and only reads `config` for its size and format.
+    pub surface: Option<wgpu::Surface<'static>>,
     config: wgpu::SurfaceConfiguration,
     globals_layout: wgpu::BindGroupLayout,
     comp_layout: wgpu::BindGroupLayout,
@@ -814,11 +822,21 @@ impl Drop for Gpu {
 
 impl Gpu {
     pub async fn new(target: wgpu::SurfaceTarget<'static>, width: u32, height: u32) -> Result<Gpu, String> {
+        Self::create(Some(target), width, height).await
+    }
+
+    /// A renderer with no surface, drawing in RGBA8 into views it is handed.
+    #[cfg(feature = "native")]
+    pub async fn new_offscreen(width: u32, height: u32) -> Result<Gpu, String> {
+        Self::create(None, width, height).await
+    }
+
+    async fn create(target: Option<wgpu::SurfaceTarget<'static>>, width: u32, height: u32) -> Result<Gpu, String> {
         let SharedDevice { instance, adapter, device, queue } = shared_device().await?;
-        let surface = instance.create_surface(target).map_err(|e| format!("surface: {e}"))?;
+        let surface = target.map(|t| instance.create_surface(t).map_err(|e| format!("surface: {e}"))).transpose()?;
         let info = adapter.get_info();
 
-        let format = surface_format(&surface.get_capabilities(&adapter));
+        let format = surface.as_ref().map_or(wgpu::TextureFormat::Rgba8Unorm, |s| surface_format(&s.get_capabilities(&adapter)));
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
@@ -833,7 +851,9 @@ impl Gpu {
             alpha_mode: wgpu::CompositeAlphaMode::PreMultiplied,
             view_formats: vec![],
         };
-        surface.configure(&device, &config);
+        if let Some(s) = &surface {
+            s.configure(&device, &config);
+        }
 
         let Core { globals_layout, comp_layout, image_layout, effect_layout, mip_layout, user_layout, user_fill_pl, user_effect_pl, sampler, sampler_nearest, image_sampler, pipes, direct_formats } = core_for(&device, format);
         let dummy = device
@@ -1087,7 +1107,9 @@ impl Gpu {
     pub fn resize(&mut self, w: u32, h: u32) {
         self.config.width = w.max(1);
         self.config.height = h.max(1);
-        self.surface.configure(&self.device, &self.config);
+        if let Some(s) = &self.surface {
+            s.configure(&self.device, &self.config);
+        }
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -1205,6 +1227,7 @@ impl Gpu {
     /// Uploads (or replaces) image `id` from a browser image source with a
     /// GPU copy (no readback). Video frames reuse their texture when the size
     /// is unchanged; `mipmaps` builds a mip chain for minified sampling.
+    #[cfg(target_arch = "wasm32")]
     pub fn upload_image(&mut self, id: u32, source: wgpu::ExternalImageSource, w: u32, h: u32, mipmaps: bool) {
         let mips = if mipmaps { 32 - w.max(h).max(1).leading_zeros() } else { 1 };
         self.ensure_image(id, w, h, mips);
@@ -1426,6 +1449,7 @@ impl Gpu {
         }
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn upload_external(&mut self, id: u32, source: wgpu::ExternalImageSource, w: u32, h: u32) {
         self.images[id as usize].as_mut().unwrap().generation += 1;
         let img = self.images[id as usize].as_ref().unwrap();
@@ -1441,6 +1465,12 @@ impl Gpu {
             },
             wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
         );
+        self.build_mips(id);
+    }
+
+    /// Fills image `id`'s mip levels below 0 from level 0.
+    fn build_mips(&mut self, id: u32) {
+        let img = self.images[id as usize].as_ref().unwrap();
         if img.mips > 1 {
             let mut enc = self.device.create_command_encoder(&Default::default());
             for level in 1..img.mips {

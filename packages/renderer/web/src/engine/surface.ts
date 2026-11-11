@@ -17,7 +17,7 @@ type Shaper = ReturnType<typeof shaperFor>;
 const reported = new Set<string>();
 
 /** Kinds that mean "not loaded yet", which a settled frame waits out. */
-const TRANSIENT = /-not-(?:decoded|loaded)$/;
+export const TRANSIENT = /-not-(?:decoded|loaded)$/;
 
 /** What a feature the adapter does not draw is called, by its exact kind or by its kind's prefix. */
 const FEATURE_NAMES: Record<string, string> = {
@@ -37,7 +37,7 @@ const FEATURE_NAMES: Record<string, string> = {
     "3d:": "In 3D,",
 };
 
-function missingMessage(kind: string): string {
+export function missingMessage(kind: string): string {
     if (FEATURE_NAMES[kind]) return `${FEATURE_NAMES[kind]} is not drawn by the WebGPU renderer.`;
     const prefix = Object.keys(FEATURE_NAMES).filter((p) => p.endsWith(":") && kind.startsWith(p)).sort((a, b) => b.length - a.length)[0];
     return prefix ? `${FEATURE_NAMES[prefix]} "${kind.slice(prefix.length)}" is not drawn by the WebGPU renderer.` : `Not drawn by the WebGPU renderer: ${kind}.`;

@@ -110,8 +110,17 @@ export class WgpuBackend {
         const exports = await loadRendererWasm();
         // A failure surfaces from `create`, which asks again.
         await prewarmDevice().catch(() => {});
-        this.r = await Renderer.create(canvas, width, height);
-        this.w = new DeltaWriter(this.r, exports.memory);
+        this.attach(await Renderer.create(canvas, width, height), exports.memory, width, height);
+    }
+
+    /**
+     * Drives `renderer` instead of a WASM one on a canvas: anything with its
+     * methods, writing deltas into `memory` (the native export's recorder,
+     * `native/recorder.ts`).
+     */
+    attach(renderer: Renderer, memory: WebAssembly.Memory, width: number, height: number) {
+        this.r = renderer;
+        this.w = new DeltaWriter(this.r, memory);
         this.effectIndex = new Map(this.r.effect_names().map((n, i) => [n, i]));
         this.viewport = { w: width, h: height };
         this.shaders = new UserShaders(this.r, () => this.onShaderReady?.());

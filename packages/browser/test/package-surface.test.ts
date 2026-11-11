@@ -40,6 +40,7 @@ describe("the root barrel", () => {
             "exportAudio",
             "exportScreenshot",
             "exportVideo",
+            "exportVideoNative",
             "exportVideoParallel",
             "isWgpuSupported",
             "loadAssetBytes",

@@ -11,8 +11,10 @@ mod layout_parity_test;
 mod field;
 mod frame;
 mod fxhash;
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", feature = "native"))]
 mod gpu;
+#[cfg(feature = "native")]
+pub mod native;
 mod paths;
 mod protocol;
 mod scene;
@@ -398,7 +400,8 @@ mod api {
             self.scene3d_maps_ms = t4 - t3;
             self.scene3d_draw_ms = now() - t4;
             let t0 = now();
-            let tex = match self.gpu.surface.get_current_texture() {
+            let surface = self.gpu.surface.as_ref().ok_or_else(|| JsValue::from_str("no surface"))?;
+            let tex = match surface.get_current_texture() {
                 wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => t,
                 other => return Err(JsValue::from_str(&format!("surface texture unavailable: {other:?}"))),
             };

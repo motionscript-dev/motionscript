@@ -36,6 +36,8 @@ export { concatVideoSegments, createSegmentJoiner, ConcatMismatchError, type Con
 // One export across several renderers: chunks of frames on lanes the run admits
 // while they add throughput, joined as they land. See `parallel/export-parallel.ts`.
 export { exportVideoParallel, type ParallelExportParams } from "./parallel/export-parallel";
+// Experimental: the same export rendered and encoded by the native sidecar (NVENC), fed a stream through a host transport. See `native-export.ts`.
+export { exportVideoNative, type NativeExportParams, type NativeExportTransport } from "./native-export";
 export { localLane, messagePortLane, serveExportLane, type MessagePortLaneOptions } from "./parallel/lanes";
 export type { ExportLane, LaneEnvironment, LaneReport, LaneSession, SegmentSpec } from "./parallel/lane";
 export type { ExportChunk } from "./parallel/plan";

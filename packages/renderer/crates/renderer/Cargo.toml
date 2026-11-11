@@ -9,6 +9,12 @@ license = "Apache-2.0"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# The offscreen native renderer (`src/native.rs`) for the export sidecar
+# (`crates/export`), which also picks wgpu's native backends. The WASM build
+# never enables it.
+native = []
+
 [dependencies]
 wgpu = { version = "30", default-features = false, features = ["std", "webgpu", "wgsl"] }
 kurbo = "0.13"
