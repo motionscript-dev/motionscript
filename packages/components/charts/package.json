@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/charts",
-  "version": "0.1.0",
+  "version": "0.1.1-alpha.0",
   "type": "module",
   "description": "Animated data charts for Motion Script: a line chart, a bar chart and a pie chart sharing one axis, legend and theme kit.",
   "repository": {

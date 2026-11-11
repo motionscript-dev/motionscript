@@ -1,0 +1,33 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "@motionscript/app-engine": "0.0.0",
+    "@motionscript/app-react": "0.0.0",
+    "@motionscript/shaders": "0.0.0",
+    "@motionscript/browser": "0.1.0",
+    "@motionscript/audio": "0.1.0",
+    "@motionscript/charts": "0.1.0",
+    "@motionscript/code": "0.1.0",
+    "@motionscript/geography": "0.1.0",
+    "@motionscript/grids": "0.1.0",
+    "@motionscript/math": "0.1.0",
+    "@motionscript/patterns": "0.1.0",
+    "@motionscript/core": "0.1.0",
+    "@motionscript/e2e": "0.0.0",
+    "@motionscript/headless": "0.1.0",
+    "@motionscript/react": "0.1.0",
+    "@motionscript/renderer": "0.1.0",
+    "@motionscript/sdk": "0.1.0"
+  },
+  "changesets": [
+    "declarations-recalled",
+    "mesh-bounds-reported",
+    "prewarm-pipelines",
+    "remove-deprecated-shims",
+    "scene-textures-follow",
+    "shared-asset-loads",
+    "text-segments-paint",
+    "tidy-component-kits"
+  ]
+}

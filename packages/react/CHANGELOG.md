@@ -1,5 +1,14 @@
 # @motionscript/react
 
+## 0.1.1-alpha.0
+
+### Patch Changes
+
+- Updated dependencies [3630b74]
+- Updated dependencies [1c43a37]
+- Updated dependencies [e279864]
+  - @motionscript/core@0.1.1-alpha.0
+
 ## 0.1.0
 
 ## 0.1.0-alpha.10

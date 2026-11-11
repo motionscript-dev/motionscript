@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/audio",
-  "version": "0.1.0",
+  "version": "0.1.1-alpha.0",
   "type": "module",
   "description": "Waveform components for Motion Script: a full recording drawn as bars, and a live meter that moves with playback. Both draw a loudness envelope the host supplies.",
   "repository": {
