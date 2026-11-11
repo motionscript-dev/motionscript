@@ -31,6 +31,10 @@
       "label": "Placed",
       "control": "slider"
     },
+    "measured": {
+      "label": "Dimensions in",
+      "control": "slider"
+    },
     "look": {
       "label": "Outline",
       "control": "segmented",
@@ -67,6 +71,15 @@
       "defaults": {
         "duration": 1
       }
+    },
+    "measure": {
+      "label": "Measure",
+      "icon": "ruler",
+      "category": "paint",
+      "description": "Draws the dimensions in: they fade and slide out from the piece.",
+      "defaults": {
+        "duration": 0.7
+      }
     }
   },
   "layout": [
@@ -97,7 +110,8 @@
       "collapsible": true,
       "collapsed": true,
       "items": [
-        "placed"
+        "placed",
+        "measured"
       ]
     }
   ]

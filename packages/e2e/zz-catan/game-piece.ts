@@ -299,19 +299,28 @@ function letter(text: string, height: number, place: (x: number, y: number) => V
   return out
 }
 
-/** A drafting dimension from `a` to `b`: the line, a tick at each end, the gaps out to the part, and the size. */
-function dimension(bars: Transform3D[], a: Vec, b: Vec, out: Vec, mirror: boolean): void {
-  const off = (v: Vec, k: number): Vec => [v[0] + out[0] * k, v[1] + out[1] * k, v[2] + out[2] * k]
-  const a1 = off(a, 1)
-  const b1 = off(b, 1)
-  bars.push(bar(off(a, 0.25), off(a, 1.25), 0.003, 0), bar(off(b, 0.25), off(b, 1.25), 0.003, 0), bar(a1, b1, 0.003, 0))
-  // Ticks at 45 degrees across each end.
+/**
+ * A drafting dimension from `a` to `b`: extension lines out from the part that stop on the
+ * dimension line, an arrowhead at each end of it, and the size beside it. `k` (0..1) slides the
+ * whole drawing out from the part as it is drawn in.
+ */
+function dimension(bars: Transform3D[], a: Vec, b: Vec, out: Vec, mirror: boolean, k: number): void {
+  const off = (v: Vec, f: number): Vec => [v[0] + out[0] * f, v[1] + out[1] * f, v[2] + out[2] * f]
+  const reach = 0.5 + 0.5 * k
+  const a1 = off(a, reach)
+  const b1 = off(b, reach)
+  bars.push(bar(off(a, 0.25), a1, 0.003, 0), bar(off(b, 0.25), b1, 0.003, 0), bar(a1, b1, 0.003, 0))
+  // An arrowhead at each end: two short barbs that meet at the tip and never cross the line.
   const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
   const d: Vec = [(b[0] - a[0]) / len, (b[1] - a[1]) / len, (b[2] - a[2]) / len]
-  const t: Vec = [(d[0] + out[0] * 3) * 0.008, (d[1] + out[1] * 3) * 0.008, (d[2] + out[2] * 3) * 0.008]
-  for (const e of [a1, b1]) bars.push(bar([e[0] - t[0], e[1] - t[1], e[2] - t[2]], [e[0] + t[0], e[1] + t[1], e[2] + t[2]], 0.0035, 0))
+  const barb = (tip: Vec, s: number, side: number): Transform3D => {
+    const back = 0.024 * s
+    const wide = 0.008 * side
+    return bar(tip, [tip[0] + d[0] * back + out[0] * wide, tip[1] + d[1] * back + out[1] * wide, tip[2] + d[2] * back + out[2] * wide], 0.0035, 0)
+  }
+  for (const side of [1, -1]) bars.push(barb(a1, 1, side), barb(b1, -1, side))
   // The size, lettered in the part's front plane beside the line.
-  const mid = off([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], out[0] !== 0 ? 1.9 : 2.3)
+  const mid = off([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], (out[0] !== 0 ? 1.9 : 2.3) * reach)
   const size = 0.034
   // Lettered in the front plane; read from behind, the figures are flipped so they never show mirrored.
   const flip = mirror ? -1 : 1
@@ -334,12 +343,19 @@ export default component3d({
     color: Types.color("#3D7FE6"),
     lineColor: Types.color("#24212E"),
     placed: Types.number(1, { min: 0, max: 1, step: 0.01, scale: 100, unit: "%" }),
+    /** How far the dimensions have faded and slid in. */
+    measured: Types.number(1, { min: 0, max: 1, step: 0.01, scale: 100, unit: "%" }),
   },
   commands: {
     place: {
       args: {},
       entrance: true,
       run: (timeline) => timeline.animate((t) => ({ placed: t }), { eased: false }),
+    },
+    measure: {
+      args: {},
+      entrance: true,
+      run: (timeline) => timeline.animate((t) => ({ measured: t }), { eased: false }),
     },
   },
   render: (ctx, s) => {
@@ -364,7 +380,8 @@ export default component3d({
     if (look !== "flat") g.instances(BAR, Mat.basic({ color: line }), strokesOf(kind, look), { transform: at })
     if (look === "cad") {
       g.instances(BAR, Mat.basic({ color: line, opacity: 0.28 * fall, transparent: true, depthTest: false, depthWrite: false }), dashesOf(kind), { transform: at })
-      if (s.dimensions && fall > 0.98) {
+      const shown = clamp01(s.measured)
+      if (s.dimensions && fall > 0.98 && shown > 0) {
         const part = PARTS[kind][0]!
         const xs = part.poly.map((p) => p[0])
         const ys = part.poly.map((p) => p[1])
@@ -374,9 +391,9 @@ export default component3d({
         const bars: Transform3D[] = []
         // The camera looks along -z; past a quarter turn either way the piece shows its back.
         const mirror = Math.cos((s.rotationY * Math.PI) / 180) < 0
-        dimension(bars, [x0, 0, z], [x1, 0, z], [0, 0, 0.07], mirror)
-        dimension(bars, [x1, 0, -z], [x1, Math.max(...ys), -z], [0.07, 0, 0], mirror)
-        g.instances(BAR, Mat.basic({ color: line }), bars, { transform: at })
+        dimension(bars, [x0, 0, z], [x1, 0, z], [0, 0, 0.07], mirror, shown)
+        dimension(bars, [x1, 0, -z], [x1, Math.max(...ys), -z], [0.07, 0, 0], mirror, shown)
+        g.instances(BAR, Mat.basic({ color: line, opacity: shown, transparent: true, depthWrite: false }), bars, { transform: at })
       }
     }
     ctx.draw(g)
