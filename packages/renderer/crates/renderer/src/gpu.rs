@@ -346,9 +346,27 @@ thread_local! {
     static GENERATION: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
-/// Gets the shared device ready, so the first surface that mounts finds it.
+/// Gets the shared device ready, and the pipelines for the format a canvas
+/// surface picks, so the first surface that mounts finds both: compiling the
+/// pipelines is most of a first frame's GPU time (about a second, cold).
 pub async fn prewarm() -> Result<(), String> {
-    shared_device().await.map(|_| ())
+    let d = shared_device().await?;
+    // Best effort: a surface that finds no core builds its own.
+    if let Ok(canvas) = web_sys::OffscreenCanvas::new(1, 1) {
+        if let Ok(surface) = d.instance.create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas)) {
+            core_for(&d.device, surface_format(&surface.get_capabilities(&d.adapter)));
+        }
+    }
+    Ok(())
+}
+
+/// The format a surface draws in; `prewarm` must pick the one `Gpu::new` will.
+fn surface_format(caps: &wgpu::SurfaceCapabilities) -> wgpu::TextureFormat {
+    caps.formats
+        .iter()
+        .copied()
+        .find(|f| matches!(f, wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm))
+        .unwrap_or(caps.formats[0])
 }
 
 async fn shared_device() -> Result<SharedDevice, String> {
@@ -800,13 +818,7 @@ impl Gpu {
         let surface = instance.create_surface(target).map_err(|e| format!("surface: {e}"))?;
         let info = adapter.get_info();
 
-        let caps = surface.get_capabilities(&adapter);
-        let format = caps
-            .formats
-            .iter()
-            .copied()
-            .find(|f| matches!(f, wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Rgba8Unorm))
-            .unwrap_or(caps.formats[0]);
+        let format = surface_format(&surface.get_capabilities(&adapter));
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,

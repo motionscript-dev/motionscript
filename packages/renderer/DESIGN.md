@@ -894,6 +894,11 @@ pipelines); a surface creates and configures only its canvas. `createWgpuRendere
 starts the device (`Renderer.prewarm`) without waiting for it, so it comes up
 while the host loads fonts and builds its document; a dropped renderer destroys its
 own buffers and textures, since the device outlives it. Warm mount 138 → 34–45 ms.
+Since 2026-11-10 prewarm also builds the `Core` for the format a canvas surface
+picks (`surface_format`, read off a 1×1 `OffscreenCanvas` surface): the GPU
+process compiles its pipelines while the host starts, instead of after the first
+frame is submitted (a cold GPU process spent 0.9–1.2 s there, holding the first
+frame back).
 
 **Faults (2026-11-06).** With one device, a fault is every surface's.
 `engine/faults.ts` watches each device a surface mounts on: its `lost` promise
