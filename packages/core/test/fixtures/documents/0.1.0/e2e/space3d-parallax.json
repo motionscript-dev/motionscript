@@ -1,0 +1,142 @@
+{
+  "kind": "project",
+  "name": "space3d-parallax",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "space3d-parallax",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "#0b0d12",
+              "space3D": true,
+              "perspective": 1000
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 300,
+              "height": 180,
+              "cornerRadius": 20,
+              "fill": "#e0533d",
+              "depth": 150
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 1,
+            "props": {
+              "width": 1600,
+              "height": 300,
+              "y": -330,
+              "cornerRadius": 150,
+              "fill": "#34425f",
+              "depth": -250
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 2,
+            "props": {
+              "width": 2200,
+              "height": 420,
+              "y": -300,
+              "cornerRadius": 210,
+              "fill": "#232d45",
+              "depth": -700
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": null,
+            "layerOrder": 3,
+            "props": {
+              "width": 360,
+              "height": 360,
+              "x": -700,
+              "y": 380,
+              "fill": "#f2c14e",
+              "depth": -1600
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 4,
+            "props": {
+              "width": 4000,
+              "height": 2200,
+              "fill": "#141a2b",
+              "depth": -2000
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "panTo",
+            "targetId": null,
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "cubic"
+            },
+            "args": {
+              "lookAt": {
+                "x": 100,
+                "y": 30
+              }
+            }
+          },
+          {
+            "id": "step1",
+            "type": "dollyTo",
+            "targetId": null,
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "out",
+              "args": "quad"
+            },
+            "args": {
+              "dolly": 250
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}

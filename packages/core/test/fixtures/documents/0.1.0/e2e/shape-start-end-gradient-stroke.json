@@ -1,0 +1,173 @@
+{
+  "kind": "project",
+  "name": "shape-start-end-gradient-stroke",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "shape-start-end-gradient-stroke",
+      "clip": {
+        "kind": "composition",
+        "duration": 1,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "horizontal",
+              "gap": 24
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 150,
+              "height": 150,
+              "cornerRadius": 12,
+              "fill": "transparent",
+              "stroke": {
+                "weight": 12,
+                "fill": [
+                  {
+                    "type": "linear-gradient",
+                    "colors": [
+                      "#6990dd",
+                      "#e8617c"
+                    ],
+                    "start": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "end": {
+                      "x": 0,
+                      "y": -1
+                    }
+                  }
+                ]
+              },
+              "start": 0,
+              "end": 0.2
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 1,
+            "props": {
+              "width": 150,
+              "height": 150,
+              "cornerRadius": 12,
+              "fill": "transparent",
+              "stroke": {
+                "weight": 12,
+                "fill": [
+                  {
+                    "type": "linear-gradient",
+                    "colors": [
+                      "#6990dd",
+                      "#e8617c"
+                    ],
+                    "start": {
+                      "x": 0,
+                      "y": 1
+                    },
+                    "end": {
+                      "x": 0,
+                      "y": -1
+                    }
+                  }
+                ]
+              },
+              "start": 0,
+              "end": 1
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 2,
+            "props": {
+              "width": 150,
+              "height": 150,
+              "cornerRadius": 12,
+              "fill": "transparent",
+              "stroke": {
+                "weight": 12,
+                "fill": [
+                  {
+                    "type": "radial-gradient",
+                    "colors": [
+                      "#6990dd",
+                      "#e8617c"
+                    ]
+                  }
+                ]
+              },
+              "start": 0,
+              "end": 0.2
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 3,
+            "props": {
+              "width": 150,
+              "height": 150,
+              "cornerRadius": 12,
+              "fill": "transparent",
+              "stroke": {
+                "weight": 12,
+                "fill": [
+                  {
+                    "type": "radial-gradient",
+                    "colors": [
+                      "#6990dd",
+                      "#e8617c"
+                    ]
+                  }
+                ]
+              },
+              "start": 0,
+              "end": 1
+            }
+          }
+        ],
+        "commands": []
+      },
+      "duration": 1
+    }
+  ],
+  "formatVersion": 2
+}

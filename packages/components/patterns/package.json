@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/patterns",
-  "version": "0.1.0-alpha.10",
+  "version": "0.1.0",
   "type": "module",
   "description": "Background patterns for Motion Script: line and dot grids that fill a box, and an infinite grid that fills whatever a camera can see.",
   "repository": {

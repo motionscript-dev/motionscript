@@ -1,0 +1,264 @@
+{
+  "kind": "project",
+  "name": "space3d-flythrough",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "space3d-flythrough",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "#07080c",
+              "space3D": true,
+              "perspective": 900
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 900,
+              "height": 4000,
+              "y": -300,
+              "rotationX": 90,
+              "depth": -1400,
+              "fill": "#161b26"
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": -1800,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 1,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": -1350,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 2,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": -900,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 3,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": -450,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect5",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 4,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": 0,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect6",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 5,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": 450,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect7",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 6,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": 900,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect8",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 7,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": 1350,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect9",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 8,
+            "props": {
+              "width": 40,
+              "height": 200,
+              "y": 1800,
+              "fill": "white/35"
+            }
+          },
+          {
+            "id": "rect10",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 1,
+            "props": {
+              "width": 900,
+              "height": 520,
+              "cornerRadius": 30,
+              "depth": 0,
+              "stroke": {
+                "weight": 16,
+                "fill": "#e0533d"
+              }
+            }
+          },
+          {
+            "id": "rect11",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 2,
+            "props": {
+              "width": 900,
+              "height": 520,
+              "cornerRadius": 30,
+              "depth": -700,
+              "stroke": {
+                "weight": 16,
+                "fill": "#f2c14e"
+              }
+            }
+          },
+          {
+            "id": "rect12",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 3,
+            "props": {
+              "width": 900,
+              "height": 520,
+              "cornerRadius": 30,
+              "depth": -1400,
+              "stroke": {
+                "weight": 16,
+                "fill": "#4fb286"
+              }
+            }
+          },
+          {
+            "id": "rect13",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 4,
+            "props": {
+              "width": 900,
+              "height": 520,
+              "cornerRadius": 30,
+              "depth": -2100,
+              "stroke": {
+                "weight": 16,
+                "fill": "#3d6fe0"
+              }
+            }
+          },
+          {
+            "id": "rect14",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 5,
+            "props": {
+              "width": 900,
+              "height": 520,
+              "cornerRadius": 30,
+              "depth": -2800,
+              "stroke": {
+                "weight": 16,
+                "fill": "#9b5de5"
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "panTo",
+            "targetId": null,
+            "at": 0,
+            "duration": 1.8,
+            "easing": {
+              "kind": "inOut",
+              "args": "sine"
+            },
+            "args": {
+              "lookAt": {
+                "x": 0,
+                "y": 0,
+                "z": -2300
+              }
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}

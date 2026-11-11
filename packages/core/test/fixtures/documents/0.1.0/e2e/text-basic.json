@@ -1,0 +1,71 @@
+{
+  "kind": "project",
+  "name": "text-basic",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "text-basic",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "text0",
+            "type": "text",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "text": "Motion Script",
+              "fontFamily": "Inter",
+              "fontSize": 84,
+              "fill": "#f4f6ff",
+              "opacity": 0,
+              "y": 30
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "text0",
+            "at": 0,
+            "duration": 0.8,
+            "easing": {
+              "kind": "out",
+              "args": "cubic"
+            },
+            "args": {
+              "opacity": 1,
+              "y": 0
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}
