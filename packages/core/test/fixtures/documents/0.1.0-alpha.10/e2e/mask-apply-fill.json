@@ -1,0 +1,96 @@
+{
+  "kind": "project",
+  "name": "mask-apply-fill",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "mask-apply-fill",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "mask0",
+            "type": "mask",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "mode": "vector",
+              "width": "fill",
+              "height": "fill"
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "mask0",
+            "layerOrder": 0,
+            "props": {
+              "width": 100,
+              "height": 100,
+              "fill": "#ffffff"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "mask0",
+            "layerOrder": 1,
+            "props": {
+              "width": 360,
+              "height": 240,
+              "cornerRadius": 20,
+              "fill": "primary",
+              "stroke": {
+                "weight": 10,
+                "align": "inside",
+                "fill": "#f4f6ff"
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "ellipse0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "width": 320,
+              "height": 320
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}

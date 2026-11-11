@@ -1,0 +1,85 @@
+{
+  "kind": "project",
+  "name": "fill-image-camera-zoom",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "fill-image-camera-zoom",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "camera0",
+            "type": "camera",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "zoom": 1
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "camera0",
+            "layerOrder": 0,
+            "props": {
+              "width": 160,
+              "height": 110,
+              "cornerRadius": 6,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill"
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "camera0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "zoom": 7
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}

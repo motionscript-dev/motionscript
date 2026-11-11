@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/grids",
-  "version": "0.1.0-alpha.8",
+  "version": "0.1.0-alpha.10",
   "type": "module",
   "description": "Grid layouts for Motion Script: rectangular, radial, path and spherical arrangements of a node's children, with staggered reveals, waves, focus and morphs between them.",
   "repository": {

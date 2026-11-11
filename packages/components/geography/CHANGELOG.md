@@ -1,5 +1,9 @@
 # @motionscript/geography
 
+## 0.1.0-alpha.10
+
+## 0.1.0-alpha.9
+
 ## 0.1.0-alpha.8
 
 ## 0.1.0-alpha.7

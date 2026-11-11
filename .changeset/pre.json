@@ -21,6 +21,10 @@
     "@motionscript/sdk": "0.1.0-alpha.0"
   },
   "changesets": [
-    "cold-corners-study"
+    "chilly-coats-peel",
+    "cold-corners-study",
+    "lean-shape-paths",
+    "native-rects-ellipses",
+    "quick-frames-hold"
   ]
 }

@@ -1,0 +1,129 @@
+{
+  "kind": "project",
+  "name": "view3d-basic",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "view3d-basic",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [
+          {
+            "id": "spin",
+            "value": 0
+          }
+        ],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "canvas3d0",
+            "type": "canvas3d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 480,
+              "height": 320,
+              "cornerRadius": 16
+            }
+          },
+          {
+            "id": "camera3d0",
+            "type": "camera3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 0,
+            "props": {
+              "position": [
+                0,
+                1.6,
+                5
+              ],
+              "target": 0,
+              "fov": 45
+            }
+          },
+          {
+            "id": "ambient-light3d0",
+            "type": "ambient-light3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 1,
+            "props": {
+              "intensity": 0.35
+            }
+          },
+          {
+            "id": "directional-light3d0",
+            "type": "directional-light3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 2,
+            "props": {
+              "intensity": 2.2,
+              "position": [
+                3,
+                5,
+                4
+              ]
+            }
+          },
+          {
+            "id": "box3d0",
+            "type": "box3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 3,
+            "props": {
+              "width": 2,
+              "height": 2,
+              "depth": 2,
+              "fill": "#e0533d",
+              "roughness": 0.4,
+              "metalness": 0.1,
+              "rotation": [
+                0,
+                "=[spin]",
+                0
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "variableTo",
+            "targetId": "spin",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "value": 180
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}

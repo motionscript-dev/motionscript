@@ -1,0 +1,80 @@
+{
+  "kind": "project",
+  "name": "stroke-miter-limit",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "stroke-miter-limit",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "polygram0",
+            "type": "polygram",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "sides": 5,
+              "ratio": 0.4,
+              "width": 280,
+              "height": 280,
+              "fill": "card",
+              "stroke": {
+                "weight": 14,
+                "fill": "primary",
+                "join": "miter",
+                "miterLimit": 8
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "strokeTo",
+            "targetId": "polygram0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "stroke": {
+                "weight": 14,
+                "fill": "primary",
+                "join": "miter",
+                "miterLimit": 1
+              }
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 2
+}
