@@ -1,0 +1,70 @@
+{
+  "kind": "project",
+  "name": "number-node-integer",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "number-node-integer",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "number0",
+            "type": "number",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "value": 0,
+              "format": "number",
+              "fontFamily": "Inter",
+              "fontWeight": 700,
+              "fontSize": 72,
+              "fill": "accent"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "countTo",
+            "targetId": "number0",
+            "at": 0,
+            "duration": 1.5,
+            "easing": {
+              "kind": "out",
+              "args": "cubic"
+            },
+            "args": {
+              "value": 48291
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}
