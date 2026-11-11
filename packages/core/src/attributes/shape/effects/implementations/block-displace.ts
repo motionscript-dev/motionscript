@@ -1,24 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Datamosh-style tearing: the content is cut into bands and each band is
- * displaced by a random amount.
- *
- * `density` is what separates this from noise — only that fraction of bands
- * move at all, so the image stays readable and the tear reads as a fault rather
- * than as static. Turn it to 1 and every band shifts.
- *
- * The displacement is a pure function of the band index and `seed`, so a frame
- * always re-renders identically. Animate `seed` (in whole steps) to make the
- * glitch jump between distinct states rather than sliding smoothly, which is
- * what makes it read as digital.
- */
+/** Datamosh-style tearing: the content is cut into bands and each is displaced by a random amount. `density` is what separates it from noise: only that fraction of bands move, so the tear reads as a fault rather than static. Displacement is a pure function of band index and `seed`, so a frame re-renders identically; step `seed` in whole numbers to jump between glitch states. */
 export interface BlockDisplaceEffect extends ModedEffect, EffectFields<typeof blockDisplaceSpec.params> {
     type: "blockDisplace";
 }
 
-/** The {@link BlockDisplaceEffect} spec: its parameters, defaults and ranges. */
 export const blockDisplaceSpec = defineEffect({
     type: "blockDisplace",
     group: "glitch",

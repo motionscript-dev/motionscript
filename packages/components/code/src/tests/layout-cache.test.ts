@@ -13,7 +13,7 @@ import { CountingMeasurer, Frame, at, attach, make, measured } from './harness.f
  */
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 /** Measures `node` with `measurer` as its parent would, lays it out at that size and draws it. */

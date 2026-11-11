@@ -10,7 +10,6 @@ import {
     type Color,
     type Geometry3D,
     type Material3D,
-    type Mesh3DProps,
     type NodeOf,
     type NormalizedColor,
     type Values,
@@ -26,7 +25,6 @@ import {
     type Shading3D as _Shading3D,
     type Texture3D as _Texture3D,
 } from "@motionscript/sdk";
-import type { Interval } from "../kit/coords";
 import { parseSurface, surfaceParams, type SurfaceEquation } from "../kit/equation3d";
 import type { ExpressionScope } from "../kit/expression";
 import { PLOT_COLOR } from "../kit/furniture";
@@ -35,18 +33,6 @@ import { colorAt, lerpScale, readScale } from "../kit/scale";
 import { lerpParams, lerpSource, readSource, revisionOf, scopeFor, type PlotSource } from "../kit/source";
 import { domainEntry, meshEntries } from "./entries";
 import { graphEntry, graphOf, type GraphSpace } from "./space";
-
-export interface SurfacePlot3dProps extends Mesh3DProps {
-    expression?: string | PlotSource;
-    uDomain?: Interval | null;
-    vDomain?: Interval | null;
-    params?: ExpressionScope;
-    segments?: number;
-    colorScale?: Color[];
-    meshLines?: number;
-    meshColor?: Color;
-    floorShadow?: number;
-}
 
 /** A graph point for grid coordinate `(u, v)`, both 0 to 1, written into `out`. */
 type SurfaceSampler = (u: number, v: number, out: Vector3) => void;
@@ -79,7 +65,6 @@ const state = {
     graph: graphEntry(),
 };
 
-/** What a surface is drawn from: its own entries, as its node and its helpers read them. */
 export type SurfaceValues = Values<typeof state> & { readonly x: number; readonly y: number; readonly z: number };
 
 /**

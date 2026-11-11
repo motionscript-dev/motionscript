@@ -1,0 +1,76 @@
+{
+ "duration": 4,
+ "nodes": [
+  {
+   "id": "",
+   "type": "canvas2d",
+   "parentId": null,
+   "layerOrder": 0,
+   "props": {
+    "fill": "#121419"
+   }
+  },
+  {
+   "id": "dots",
+   "type": "dotGridPattern",
+   "parentId": "",
+   "layerOrder": 0,
+   "props": {
+    "width": 1920,
+    "height": 1920,
+    "divisions": 48,
+    "radius": 1.5,
+    "subdivisions": 1,
+    "fill": "rgba(190, 205, 230, 0.10)"
+   }
+  },
+  {
+   "id": "view",
+   "type": "canvas3d",
+   "parentId": "",
+   "layerOrder": 1,
+   "props": {
+    "width": 1920,
+    "height": 1080,
+    "fill": [],
+    "orbit": 96,
+    "elevation": 58,
+    "zoom": 21.5,
+    "fov": 35,
+    "tone": "none"
+   }
+  },
+  {
+   "id": "hemi",
+   "type": "hemisphere-light3d",
+   "parentId": "view",
+   "layerOrder": 0,
+   "props": {
+    "color": "#FFF4E6",
+    "groundColor": "#5B4B9A",
+    "intensity": 1.15
+   }
+  },
+  {
+   "id": "sun",
+   "type": "directional-light3d",
+   "parentId": "view",
+   "layerOrder": 1,
+   "props": {
+    "color": "#FFF1DC",
+    "intensity": 2.5,
+    "x": -5,
+    "y": 8,
+    "z": 4
+   }
+  },
+  {
+   "id": "board",
+   "type": "hexBoard",
+   "parentId": "view",
+   "layerOrder": 2,
+   "props": {}
+  }
+ ],
+ "commands": []
+}

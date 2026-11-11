@@ -1,5 +1,4 @@
-import { Graphics2D } from '@motionscript/sdk';
-import { Corners, Flow, Paint, Types, component2d } from '@motionscript/core/experimental';
+import { Flow, Graphics2D, Paint, Shapes, Types, component2d } from '@motionscript/sdk';
 
 /**
  * Components written with `component2d`, registered beside the built-in nodes
@@ -9,11 +8,11 @@ import { Corners, Flow, Paint, Types, component2d } from '@motionscript/core/exp
 /** Today's Rect, as a component: the class's paint pipeline and layout, from modules. */
 export const Rect = component2d({
     key: 'rect',
-    state: { ...Paint.state, ...Flow.state, ...Corners.state },
+    state: { ...Paint.state, ...Flow.state, ...Shapes.corners },
     commands: { ...Paint.commands },
     measure: (measurer, state, children) => Flow.measure(measurer, state, children, Paint.inset(state)),
     layout: (box, state, children) => Flow.layout(box, state, children, Paint.inset(state)),
-    render: (ctx, state) => Paint.draw(ctx, state, Corners.rect(ctx.size, state)),
+    render: (ctx, state) => Paint.draw(ctx, state, Shapes.rect(ctx.size, state)),
 });
 
 export const Gauge = component2d({

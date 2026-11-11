@@ -5,11 +5,7 @@ import { largest, slot, type Slot, type SlotInput } from "./slot"
 export const FILL_DIRECTIONS = ["row", "column"] as const
 export type FillDirection = (typeof FILL_DIRECTIONS)[number]
 
-/**
- * How big a cell is: the largest child (`fit`), a size of its own (`fixed`), or
- * an equal share of the grid's box (`fill`), which is also the room a child set
- * to `fill` grows into.
- */
+/** The largest child (`fit`), a size of its own (`fixed`), or an equal share of the box (`fill`). */
 export const CELL_MODES = ["fit", "fixed", "fill"] as const
 export type CellMode = (typeof CELL_MODES)[number]
 

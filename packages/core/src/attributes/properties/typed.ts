@@ -24,34 +24,14 @@ import {
     type Quaternion, type Vector3, type Vector3Input,
 } from "@/render3d/vector3";
 
-/**
- * Attribute-typed variants of `property`, for the props the tree bases declare
- * themselves (`Node2D`, `Node3D`, `NodeAudio`, the root `Canvas2D`).
- *
- * A rich attribute (a fill, an effect chain, an inset) is only declarative and
- * tweenable because its `property` carries the matching *mapper* (loose author
- * input → resolved value) and *tween* (how the resolved value interpolates) —
- * together, an `AttributeOps` (`attributes/shared/operators.ts`). These pre-bake
- * each pair: `fillProperty()` is exactly
- * `property({ default: [], mapper: fillOps.resolve, tween: fillOps.lerp, kind: "fills" })`.
- * A component declares the same pairs as state entries (`Types.fill`, …).
- */
+/** Attribute-typed variants of `property` for the props the tree bases declare themselves. A rich attribute is only declarative and tweenable because its `property` carries the matching *mapper* (loose input → resolved) and *tween*, together an `AttributeOps`; these pre-bake each pair (`fillProperty()` is `property({ default: [], mapper: fillOps.resolve, tween: fillOps.lerp, kind: "fills" })`). */
 interface AttributePropOptions<Ext, Int> {
-    /** Initial value, used when the constructor `props` object omits the key. */
     default?: Ext;
-    /** Override the attribute's built-in external → internal mapper. */
     mapper?: (ext: Ext, prev?: Int) => Int;
-    /** Override the attribute's built-in lerp for `to()`. */
     tween?: TweenFn<Int>;
 }
 
-/**
- * Build one attribute-typed `property` from its canonical {@link AttributeOps}.
- *
- * `fallback` is a factory rather than a value so array/object defaults aren't a
- * single instance shared by every property declared through it. An **explicit**
- * `default: undefined` means "this prop has no default" and is honoured as such.
- */
+/** Builds one attribute-typed `property` from its {@link AttributeOps}. `fallback` is a factory so array/object defaults aren't one instance shared by every property; an **explicit** `default: undefined` means "no default" and is honoured. */
 function attributeProperty<Ext, Int>(
     fallback: () => Ext,
     mapper?: (ext: Ext, prev?: Int) => Int,
@@ -71,30 +51,17 @@ function attributeProperty<Ext, Int>(
 /** A fill-layer property: a CSS string, a fill prop object, a `Fills` chain, or an array of them, lerped layer by layer. */
 export const fillProperty = attributeProperty<Fill, FillResolved[]>(() => [], fillOps.resolve, fillOps.lerp, "fills");
 
-/** An effect-chain property — the `effects` prop's op set. */
 export const effectsProperty = attributeProperty<Effect, NodeEffect[]>(() => [], effectsOps.resolve, effectsOps.lerp, "effects");
 
-/** An edge-inset property: scalar, symmetric or per-edge, tweened per edge. */
 export const insetsProperty = attributeProperty<Insets, InsetsResolved>(() => 0, insetsOps.resolve, insetsOps.lerp, "insets");
 
-/**
- * An alignment property: a named position (`'center'`, `'topLeft'`, …) resolved
- * to a per-axis {@link Vector2} in `[-1, 1]`, tweened as a vector so
- * `'centerLeft' → 'centerRight'` slides.
- */
+/** A named position (`'center'`, …) resolved to a {@link Vector2} in `[-1, 1]` and tweened as a vector, so `'centerLeft' → 'centerRight'` slides. */
 export const alignmentProperty = attributeProperty<Alignment, Vector2>(() => "center", alignmentOps.resolve, alignmentOps.lerp, "alignment");
 
-/**
- * A layout-mode property. Mid-tween it holds both modes and how far along, so
- * restoring the prop — which is what a seek does — restores the blend with it.
- */
+/** Mid-tween it holds both modes and how far along, so a seek restoring the prop restores the blend. */
 export const flowProperty = attributeProperty<FlowMode, FlowResolved>(() => "freeform", undefined, flowOps.lerp);
 
-/**
- * A 3D point that may be unset: a node's `lookAt`. It defaults to unset (not to
- * the origin), stays unset when a binding returns `undefined`, and tweens with
- * `to()` — from `unset`'s reading of an unset start (see {@link lerpOptionalVector3}).
- */
+/** A 3D point that may be unset (a node's `lookAt`): defaults to unset rather than the origin, stays unset when a binding returns `undefined`, and tweens from `unset`'s reading of an unset start (see {@link lerpOptionalVector3}). */
 export function optionalVector3Property(unset: "origin" | "snap") {
     return property<Vector3Input | undefined, Vector3 | undefined>({
         default: undefined,
@@ -109,22 +76,10 @@ export const quaternionProperty = attributeProperty<Quaternion, Quaternion>(
     () => ({ x: 0, y: 0, z: 0, w: 1 }), undefined, quaternionOps.lerp, "quaternion",
 );
 
-/**
- * An audio level — a gain, a pan position, anything a clip or a bus schedules.
- *
- * `Param`, not `number`, because an `AudioRequest` is a schedule record built
- * once during precomp: a per-frame prop write would be read on whichever frame
- * happened to create the request and then never again. A `Ramp` *is* the
- * automation lane, which is why the tween interpolates between whole ramps.
- */
+/** An audio level (gain, pan). A `Param`, not a `number`, because an `AudioRequest` is a schedule record built once during precomp: a per-frame prop write would be read on one frame and never again. A `Ramp` *is* the automation lane, so the tween interpolates whole ramps. */
 export const audioParamProperty = attributeProperty<Param, Param>(() => 0, undefined, audioParamOps.lerp, "audioParam");
 
-/**
- * An audio effect chain — the `effects` prop's op set.
- *
- * Without it a chain is an object-valued prop, and `Node._prepareStep` drops
- * those silently: the tween would run its duration and write nothing.
- */
+/** An audio effect chain. Without it the chain is an object-valued prop and `Node._prepareStep` silently drops those: the tween would run its duration and write nothing. */
 export const audioEffectsProperty = attributeProperty<AudioEffectsInput, AudioEffect[]>(
     () => [], audioEffectsOps.resolve, audioEffectsOps.lerp, "audioEffects",
 );

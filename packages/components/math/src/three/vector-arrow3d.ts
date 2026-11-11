@@ -5,7 +5,6 @@ import {
     Material,
     resolveVector3,
     Types,
-    type Mesh3DProps,
     type NodeOf,
     type Values,
     type Vector3,
@@ -25,13 +24,6 @@ import {
 } from "@motionscript/sdk";
 import { meshEntries } from "./entries";
 import { aim, graphEntry, graphOf } from "./space";
-
-export interface VectorArrow3dProps extends Mesh3DProps {
-    tail?: Vector3Input;
-    head?: Vector3Input;
-    thickness?: number;
-    tip?: boolean;
-}
 
 function point(initial: Vector3) {
     return Types.custom<Vector3Input, Vector3>(initial, { resolve: resolveVector3, lerp: lerpVector3, kind: "vector3" });

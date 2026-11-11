@@ -77,5 +77,3 @@ export const RadialGrid = ItemGrid.define(component2d({
 }), arranger)
 
 export type RadialGrid = NodeOf<typeof RadialGrid>
-/** What a call or a document row may set. */
-export type RadialGridProps = NonNullable<Parameters<typeof RadialGrid>[0]>

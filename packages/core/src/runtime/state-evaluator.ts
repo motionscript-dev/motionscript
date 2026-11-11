@@ -9,7 +9,6 @@ import { ClipStore } from "./clip-store";
 import { clipFrameToTime } from "./frame-time";
 import { frameTime, placeTracks, spansCovering, type TrackSpan } from "./placement";
 
-/** One track, and the tree it was last evaluated on. */
 interface Slot {
     track: Track;
     span: TrackSpan;
@@ -19,19 +18,15 @@ interface Slot {
 }
 
 /**
- * Puts a project's tracks into the state for a frame, then lays out and draws
- * the ones covering it, back to front.
+ * Puts a project's tracks into the state for a frame, then lays out and draws the ones covering it, back to
+ * front.
  *
- * Trees come from a {@link ClipStore}: a track's is built the first time it
- * covers a frame — or taken as discovery left it — and thereafter only asked for
- * times, so a seek costs the same in either direction and however far. The store
- * owns them; anything it does to one (a refinement, a patch, a rebuild) moves
- * its generation, and this evaluates again. Nothing isolates overlapping
- * tracks: they composite by draw order alone, which is what lets a translucent
- * track show the one beneath it.
+ * Trees come from a {@link ClipStore}: a track's is built the first time it covers a frame (or taken as
+ * discovery left it) and thereafter only asked for times, so a seek costs the same in either direction. The
+ * store owns them; anything it does to one moves its generation, and this evaluates again. Overlapping tracks
+ * composite by draw order alone, which lets a translucent track show the one beneath it.
  */
 export class StateEvaluator {
-    /** Without `store`, the evaluator builds into one of its own. */
     constructor(project: ProjectDocument, private readonly _scope: RuntimeScope, store?: ClipStore) {
         this._owned = store === undefined;
         this._store = store ?? new ClipStore(project, _scope, { assets: false, audio: false });
@@ -39,46 +34,41 @@ export class StateEvaluator {
         this._currentTrackId = firstVisual(this._slots)?.track.id ?? null;
     }
 
-    /** The frame on screen. {@link invalidate} drops the memo, not the position. */
     get currentFrame(): number {
         return this._currentFrame;
     }
 
     /**
-     * The topmost visual track on screen — or, over a hole, the last one there
-     * was. An audio clip is a canvas drawing nothing, so it is never what an
+     * Over a hole, the last one there was. An audio clip is a canvas drawing nothing, so it is never what an
      * editor picks from.
      */
     get currentTrackId(): string | null {
         return this._currentTrackId;
     }
 
-    /** {@link currentTrackId}'s tree, once built. */
     get currentCanvas(): Canvas2D | null {
         return this.currentInstance?.canvas ?? null;
     }
 
-    /** {@link currentTrackId}'s clip instance, once built. */
     get currentInstance(): ClipInstance | null {
         const slot = this._slotOf(this._currentTrackId);
         if (!slot?.instance) return null;
         return slot.instance === this._store.instanceOf(slot.track.id) ? slot.instance : null;
     }
 
-    /** Every track on screen, back to front. Empty over a hole. */
     get activeTrackIds(): string[] {
         return this._active.map(slot => slot.track.id);
     }
 
-    /** Put every track covering `frame` into its state, building any that never has been. */
     stateAt(frame: number): void {
         if (this._disposed) return;
         const target = Math.max(0, Math.floor(frame));
         const active = this._slotsToDraw(target);
 
-        // Evaluation is idempotent, so a repeat would only cost. Compared by slot
-        // rather than by count: a swap can change which tracks are on screen
-        // without changing how many.
+        /**
+         * Evaluation is idempotent, so a repeat would only cost. Compared by slot, not count: a swap can change which
+         * tracks are on screen without changing how many.
+         */
         if (!this._stale && target === this._currentFrame && sameSlots(active, this._active)
             && active.every(slot => this._settled(slot))) {
             return;
@@ -107,17 +97,13 @@ export class StateEvaluator {
         for (const slot of this._active) this._live(slot)?.render(pass);
     }
 
-    /** Evaluate the current frame afresh on the next {@link stateAt}. */
     invalidate(): void {
         this._stale = true;
     }
 
     /**
-     * Throw a track's tree away so the next {@link stateAt} builds it fresh.
-     *
-     * The way back to what the document says for a node nothing animates: the
-     * timeline restores only what its commands write, so a value written straight
-     * onto a live prop — an editor's override — survives re-evaluation.
+     * The way back to what the document says for a node nothing animates: the timeline restores only what its
+     * commands write, so a value written onto a live prop (an editor's override) survives re-evaluation.
      */
     rebuild(trackId: string | null = this._currentTrackId): void {
         if (trackId === null) return;
@@ -126,9 +112,8 @@ export class StateEvaluator {
     }
 
     /**
-     * Take a new document. The store decides what each track keeps — see
-     * {@link ClipStore.setProject}; a store shared with a precomp has already
-     * taken it, and taking it twice is a no-op.
+     * The store decides what each track keeps (see {@link ClipStore.setProject}); a store shared with a precomp
+     * has already taken it, and taking it twice is a no-op.
      */
     setProject(next: ProjectDocument): void {
         if (this._disposed) return;
@@ -141,8 +126,10 @@ export class StateEvaluator {
             if (!this._slotOf(id)) this._editorStates.delete(id);
         }
 
-        // Keep drawing what survived until the next evaluation: a repaint can land
-        // in between, and an emptied set would paint a blank frame over an edit.
+        /**
+         * Keep drawing what survived until the next evaluation: a repaint can land in between, and an emptied set
+         * would paint a blank frame over an edit.
+         */
         this._active = this._active.filter(slot => kept.has(slot));
         if (!this._slotOf(this._currentTrackId)) {
             this._currentTrackId = firstVisual(this._slots)?.track.id ?? null;
@@ -150,7 +137,6 @@ export class StateEvaluator {
         this._stale = true;
     }
 
-    /** Hidden/locked state for one track's nodes — editor state, not authored, so it rides beside the document. */
     setEditorStates(trackId: string, states: NodeEditorStates | undefined): void {
         if (states) this._editorStates.set(trackId, states);
         else this._editorStates.delete(trackId);
@@ -192,22 +178,19 @@ export class StateEvaluator {
         return trackId === null ? undefined : this._slots.find(slot => slot.track.id === trackId);
     }
 
-    /** Whether `slot` still holds the tree the store has, in the state it was evaluated to. */
     private _settled(slot: Slot): boolean {
         const id = slot.track.id;
         if (!slot.instance) return this._store.failed(id);
         return slot.instance === this._store.instanceOf(id) && slot.generation === this._store.generationOf(id);
     }
 
-    /** `slot`'s tree while the store still holds it — a released one must not be drawn. */
     private _live(slot: Slot): ClipInstance | null {
         return slot.instance && slot.instance === this._store.instanceOf(slot.track.id) ? slot.instance : null;
     }
 
     /**
-     * The slots to draw at `frame`, holding the final stack past the end of the
-     * project — a frame parked beyond the last one keeps showing the picture —
-     * while a gap in the middle is a real hole and draws nothing.
+     * Hold the final stack past the end of the project, so a frame parked beyond the last one keeps showing the
+     * picture; a gap in the middle is a real hole and draws nothing.
      */
     private _slotsToDraw(frame: number): Slot[] {
         const spans = this._slots.map(slot => slot.span);
@@ -220,17 +203,16 @@ export class StateEvaluator {
     }
 
     /**
-     * Put `slot` into the state for `localFrame`.
-     *
-     * The track runs on its own clock, so where it sits never changes what it
-     * draws. The frame before is evaluated too and stamped as motion history:
-     * motion is a property of the frame, not of the seek that reached it.
+     * The track runs on its own clock. The frame before is evaluated too and stamped as motion history: motion is
+     * a property of the frame, not of the seek that reached it.
      */
     private _evaluate(slot: Slot, localFrame: number): void {
         const instance = slot.instance!;
         const dt = clipFrameToTime(1, this._scope.fps);
-        // Clamped so a frame held past the end shows where the track stops — a
-        // track can cut its clip short, and the clip goes on past the cut.
+        /**
+         * Clamped so a frame held past the end shows where the track stops: a track can cut its clip short, and the
+         * clip goes on past the cut.
+         */
         const time = frameTime(localFrame, this._scope.fps, slot.track.duration);
         instance.attach(time, this._editorStates.get(slot.track.id));
 

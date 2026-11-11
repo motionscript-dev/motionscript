@@ -13,11 +13,11 @@ export default scene((stage) => {
                 width: 320,
                 height: 320,
                 cornerRadius: 24,
-                fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: Adjustments.curves({ points: [[0, 0], [0.5, 0.5], [1, 1]] }) }),
+                fill: Fills.image('kingfisher.jpg', { fit: 'fill', preset: { adjustments: Adjustments.curves({ points: [[0, 0], [0.5, 0.5], [1, 1]] }) } }),
             }),
         ] }),
     );
 }, [
-    () => rect().to({ data: { fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: Adjustments.curves({ points: [[0, 0], [0.25, 0.1], [0.75, 0.9], [1, 1]] }) }) }, duration: 1.4, easing: easeInOut('quad') }),
+    () => rect().to({ data: { fill: Fills.image('kingfisher.jpg', { fit: 'fill', preset: { adjustments: Adjustments.curves({ points: [[0, 0], [0.25, 0.1], [0.75, 0.9], [1, 1]] }) } }) }, duration: 1.4, easing: easeInOut('quad') }),
     holdTail(1.4),
 ]);

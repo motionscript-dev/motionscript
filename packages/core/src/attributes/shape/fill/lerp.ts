@@ -1,10 +1,4 @@
-/**
- * Low-level color interpolation utilities.
- *
- * These helpers operate on {@link NormalizedColor} tuples (linear [R, G, B, A]
- * in the 0–1 range) and are used by fill implementations that need per-channel
- * lerp without pulling in the full fill-registry machinery.
- */
+// Per-channel colour interpolation on {@link NormalizedColor} tuples, for fill implementations that need it without the full fill-registry machinery.
 
 import { Color, NormalizedColor, parseColor } from "./color/parser";
 import type { AttributeOps } from "@/attributes/shared/operators";
@@ -21,15 +15,11 @@ export function lerpColor(from: NormalizedColor, to: NormalizedColor, t: number)
 
 /** Helpers the colour attribute carries beyond its mapper and lerp. */
 export interface ColorOps {
-    /**
-     * `#rrggbb`, or `#rrggbbaa` when not opaque — for a consumer that takes a
-     * colour as a string, such as a resolved `Types.color` entry read back.
-     */
+    /** `#rrggbb`, or `#rrggbbaa` when not opaque, for a consumer that takes a colour as a string. */
     hex(value: Color): string;
 }
 
-/** The colour attribute's op set: parses a CSS string (or passes an already-normalized
- * tuple through) and interpolates in normalized space. */
+/** The colour attribute's op set: parses a CSS string (or passes a normalized tuple through) and interpolates in normalized space. */
 export const colorOps: AttributeOps<Color, NormalizedColor> & ColorOps = {
     resolve,
     lerp: lerpColor,

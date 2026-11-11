@@ -1,0 +1,104 @@
+{
+  "extends": "node3d",
+  "icon": "pentagon",
+  "leaf": true,
+  "properties": {
+    "kind": {
+      "label": "Piece",
+      "control": "segmented",
+      "options": [
+        {
+          "value": "settlement",
+          "label": "Settlement"
+        },
+        {
+          "value": "city",
+          "label": "City"
+        },
+        {
+          "value": "road",
+          "label": "Road"
+        }
+      ]
+    },
+    "color": {
+      "label": "Color"
+    },
+    "lineColor": {
+      "label": "Lines"
+    },
+    "placed": {
+      "label": "Placed",
+      "control": "slider"
+    },
+    "look": {
+      "label": "Outline",
+      "control": "segmented",
+      "options": [
+        {
+          "value": "cad",
+          "label": "CAD"
+        },
+        {
+          "value": "ink",
+          "label": "Ink"
+        },
+        {
+          "value": "sketch",
+          "label": "Sketch"
+        },
+        {
+          "value": "flat",
+          "label": "None"
+        }
+      ]
+    },
+    "dimensions": {
+      "label": "Dimensions",
+      "control": "switch"
+    }
+  },
+  "commands": {
+    "place": {
+      "label": "Place",
+      "icon": "arrow-down-to-line",
+      "category": "transform",
+      "description": "Brings the piece down from above to stand where it is.",
+      "defaults": {
+        "duration": 1
+      }
+    }
+  },
+  "layout": [
+    {
+      "section": "piece",
+      "title": "Piece",
+      "icon": "pentagon",
+      "before": "appearance",
+      "items": [
+        "kind",
+        {
+          "row": [
+            "color",
+            "lineColor"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        "look",
+        "dimensions"
+      ]
+    },
+    {
+      "section": "pieceStart",
+      "title": "Starts at",
+      "icon": "play",
+      "before": "appearance",
+      "collapsible": true,
+      "collapsed": true,
+      "items": [
+        "placed"
+      ]
+    }
+  ]
+}

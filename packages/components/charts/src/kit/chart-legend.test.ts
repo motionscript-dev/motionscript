@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import { Rect } from "@motionscript/sdk"
 
 import { at, layOut, scrub } from "../tests/harness"
-import { ChartLegend, legendShows } from "./chart-legend"
+import { ChartLegend } from "./chart-legend"
 import { DEFAULT_LEGEND, SPOTLIGHT_DIM, resolveLegendConfig, type ChartSeries } from "./shared"
 
 /**
@@ -94,13 +94,6 @@ describe("ChartLegend: which series show", () => {
     expect(reveal(legend())).toEqual([1, 0, 1])
   })
 
-  it("shows a series from the reveal: any reveal above 0 is showing", () => {
-    const node = legend()
-    expect([legendShows(node, 0), legendShows(node, 1), legendShows(node, 2)]).toEqual([true, false, true])
-    expect(legendShows(node, 9)).toBe(false)
-    expect(legendShows(node, -1)).toBe(false)
-  })
-
   it("starts a hidden series collapsed: transparent, with no gap and no room", () => {
     const [shown, hidden] = state(legend())
     expect(shown).toMatchObject({ opacity: 1, gapScale: 1 })
@@ -128,7 +121,7 @@ describe("ChartLegend.showSeries and hideSeries", () => {
       expect(middle.opacity, `t = ${t}`).toBeCloseTo(t)
       expect(middle.gapScale, `t = ${t}`).toBeCloseTo(t)
     }
-    expect(legendShows(node, 1)).toBe(true)
+    expect(node.reveal[1]).toBeGreaterThan(0)
   })
 
   it("lands a shown entry at its natural width", () => {
@@ -160,7 +153,7 @@ describe("ChartLegend.showSeries and hideSeries", () => {
     at(hide, 1)
     layOut(node, { width: 1000, height: 100 })
     expect(state(node)[0]).toEqual({ opacity: 0, gapScale: 0, width: 0 })
-    expect(legendShows(node, 0)).toBe(false)
+    expect(node.reveal[0]).toBe(0)
   })
 
   // The natural width was learnt from earlier frames, so a seek straight into a hide gave another picture.

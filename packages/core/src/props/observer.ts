@@ -1,12 +1,6 @@
 import { _setObserver, type PropSlot } from "./slot";
 
-/**
- * What the slots touched inside {@link observeSlots} are reported to.
- *
- * Reads and writes are recorded rather than declared: a dependency is whatever a
- * computation actually touched, bindings included, so nothing has to annotate a
- * prop as mattering to anyone.
- */
+/** What the slots touched inside {@link observeSlots} are reported to. Reads and writes are recorded rather than declared: a dependency is whatever a computation actually touched, bindings included, so nothing annotates a prop as mattering to anyone. */
 export interface SlotObserver {
     read(slot: PropSlot<unknown>): void;
     write(slot: PropSlot<unknown>): void;

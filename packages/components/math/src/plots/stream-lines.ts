@@ -14,17 +14,10 @@ import {
     type StrokeResolved as _StrokeResolved,
 } from "@motionscript/sdk";
 import type { CoordinateMap } from "../kit/coords";
-import { drawField, FIELD_COMMANDS, FIELD_STATE, traceField, type FieldDrawing, type FieldProps, type FieldSampler, type FieldStroke, type FieldValues } from "../kit/field-mark";
+import { drawField, FIELD_COMMANDS, FIELD_STATE, traceField, type FieldDrawing, type FieldSampler, type FieldStroke, type FieldValues } from "../kit/field-mark";
 import { PLOT_COLOR } from "../kit/furniture";
 import { clamp } from "../kit/geometry";
 import { inkSize, reading, traced, type MarkReading } from "../kit/mark";
-
-export interface StreamLinesProps extends FieldProps {
-    spacing?: number;
-    length?: number;
-    window?: number;
-    phase?: number;
-}
 
 const MAX_LINES = 1600;
 /** Steps a line takes across one spacing: what keeps a tight swirl round. */

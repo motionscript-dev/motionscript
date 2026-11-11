@@ -26,18 +26,7 @@ import { PlotPoint3d } from "./three/plot-point3d";
 import { SurfacePlot3d } from "./three/surface-plot3d";
 import { VectorArrow3d } from "./three/vector-arrow3d";
 
-/**
- * Every node type this package publishes.
- *
- * A host registers these by handing the array to an engine —
- * `new Engine(platform, { nodes: NODES })` — which reads each component's key.
- * Defining a component only *declares* that key: nothing is registered by
- * importing a module, so a registry holds exactly what its owner asked for.
- *
- * Listing the component **values** is also what survives bundling: this package
- * declares `sideEffects: false`, and a document names a node type by string, so
- * an import kept only for its side effect is exactly what gets shaken out.
- */
+/** Every node type this package publishes, for `new Engine(platform, { nodes: NODES })`. Listing the values survives `sideEffects: false` bundling. */
 // Typed by name, so the declaration names each component rather than spelling out its type through core.
 type KitNode =
     | typeof Latex

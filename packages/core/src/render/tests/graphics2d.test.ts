@@ -38,7 +38,7 @@ describe('Graphics2D', () => {
         // None of the modifiers merge into the shape — they're graphics-level.
         expect(op.state.rotation).toBeUndefined();
         expect(op.state.scale).toBeUndefined();
-        expect(op.state.opacity).toBeUndefined();
+        expect((op.state as { opacity?: number }).opacity).toBeUndefined();
         expect(g.groupOpacity()).toBe(0.5);
         expect(g.groupTransform()).toEqual({ rotation: 30, scale: 2, center: undefined });
         // Opacity < 1 still needs a whole-graphics layer; effects no longer do.

@@ -3,7 +3,16 @@ import { Types, easeOut, type EasingFunction, type Piece, type Timeline } from "
 const identity: EasingFunction = (t) => t
 
 /** Any component's timeline: these helpers only build pieces, which every timeline builds alike. */
-type AnyTimeline = Timeline<any, any>
+export type AnyTimeline = Timeline<any, any>
+
+/** How far a legend starts below its slot when `enter` brings it in, in px. */
+export const LEGEND_SLIDE = 20
+
+/** Marker count when an axis states no ticks. */
+export const DEFAULT_MARKERS = 5
+
+/** How a cartesian `enter` splits its duration: axes arriving, marks drawing, legend coming up. Sums to 1. */
+export const ENTER_SHARE = { axes: 0.35, marks: 0.5, legend: 0.15 } as const
 
 /**
  * The ease a part's own frames apply to `t`: none when its command was given
@@ -49,7 +58,7 @@ export interface Arrival {
 /** Each piece's arrival, by key. An unlisted piece has landed. */
 export type Arrivals = Readonly<Record<string, Arrival>>
 
-export const LANDED: Arrival = { opacity: 1, shift: 0 }
+const LANDED: Arrival = { opacity: 1, shift: 0 }
 
 /**
  * A part's private record of its pieces' arrivals. A write merges into it, so

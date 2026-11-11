@@ -9,7 +9,6 @@ export interface LineState extends ShapeState {
 
 export function withLineDescriptor(descriptor: Partial<LineState>): LineState {
     return {
-        opacity: descriptor.opacity ?? 1,
         rotation: descriptor.rotation ?? 0,
         scale: descriptor.scale ?? 1,
         x: descriptor.x ?? 0,

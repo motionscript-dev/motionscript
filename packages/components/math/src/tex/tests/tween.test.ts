@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PathCommand } from "@motionscript/sdk";
 
-import { prepareLatexTween } from "../tween";
+import { defaultLatexMorph } from "../tween";
 import type { LatexToken } from "../geometry";
 
 /**
@@ -40,7 +40,7 @@ function token(t: string, path: PathCommand[]): LatexToken {
     return { token: t, path };
 }
 
-describe("prepareLatexTween", () => {
+describe("defaultLatexMorph", () => {
     /**
      * The exponent-to-coefficient case: the `2` of `b^2` is set at script size
      * and the `2` of `2a` at full size, so a matched glyph routinely changes
@@ -50,15 +50,15 @@ describe("prepareLatexTween", () => {
     const to = [token("2", square(20, 100, 50))];
 
     it("lands exactly on the source geometry at t = 0", () => {
-        expect(prepareLatexTween(from, to)(0)[0].path).toEqual(from[0].path);
+        expect(defaultLatexMorph(from, to)(0)[0].path).toEqual(from[0].path);
     });
 
     it("lands exactly on the target geometry at t = 1", () => {
-        expect(prepareLatexTween(from, to)(1)[0].path).toEqual(to[0].path);
+        expect(defaultLatexMorph(from, to)(1)[0].path).toEqual(to[0].path);
     });
 
     it("grows a resized glyph continuously rather than snapping to its new size", () => {
-        const frame = prepareLatexTween(from, to);
+        const frame = defaultLatexMorph(from, to);
 
         // The regression: the morph used to emit the *target* path from the
         // first frame and lerp only its centroid, so the whole size change
@@ -69,7 +69,7 @@ describe("prepareLatexTween", () => {
     });
 
     it("carries the glyph's place in the path, leaving no residual offset", () => {
-        const [glyph] = prepareLatexTween(from, to)(0.5);
+        const [glyph] = defaultLatexMorph(from, to)(0.5);
         expect(glyph.x).toBe(0);
         expect(glyph.y).toBe(0);
         // Halfway between the two centres.
@@ -81,7 +81,7 @@ describe("prepareLatexTween", () => {
         // Same character, different command count — the pointwise lerp can't
         // apply, so the fallback shrinks the target outline and grows it back.
         const wonky = [token("2", [...square(20, 100, 50), { type: "Z" }])];
-        const frame = prepareLatexTween(from, wonky);
+        const frame = defaultLatexMorph(from, wonky);
 
         expect(widthOf(frame(0)[0].path)).toBeCloseTo(10, 6);
         expect(widthOf(frame(0.5)[0].path)).toBeCloseTo(15, 6);
@@ -89,14 +89,14 @@ describe("prepareLatexTween", () => {
     });
 
     it("fades a departing glyph out over the first half", () => {
-        const frame = prepareLatexTween([token("a", square(10))], []);
+        const frame = defaultLatexMorph([token("a", square(10))], []);
         expect(frame(0)[0].opacity).toBeCloseTo(1, 6);
         expect(frame(0.25)[0].opacity).toBeCloseTo(0.5, 6);
         expect(frame(0.5)[0].opacity).toBeCloseTo(0, 6);
     });
 
     it("fades an arriving glyph in over the second half", () => {
-        const frame = prepareLatexTween([], [token("a", square(10))]);
+        const frame = defaultLatexMorph([], [token("a", square(10))]);
         expect(frame(0.5)[0].opacity).toBeCloseTo(0, 6);
         expect(frame(0.75)[0].opacity).toBeCloseTo(0.5, 6);
         expect(frame(1)[0].opacity).toBeCloseTo(1, 6);
@@ -105,7 +105,7 @@ describe("prepareLatexTween", () => {
     it("treats synthetic shapes as unmatchable, since their keys are positional", () => {
         // A fraction bar is `__rect_0` in both formulas but need not be the
         // same bar, so it is replaced rather than carried.
-        const frame = prepareLatexTween(
+        const frame = defaultLatexMorph(
             [token("__rect_0", square(10))],
             [token("__rect_0", square(20))],
         );
@@ -127,8 +127,8 @@ describe("a morph between formulas that share a term", () => {
         // `2 + x^2` to `x^2 + 2`: the exponent goes with its `x`, the lone `2` to the lone `2`.
         const from = [term("2", 0, "2"), term("+", 20, "+"), term("x", 40, "x^2"), term("2", 50, "x^2")];
         const to = [term("x", 0, "x^2"), term("2", 10, "x^2"), term("+", 30, "+"), term("2", 50, "2")];
-        const end = prepareLatexTween(from, to)(1);
-        const start = prepareLatexTween(from, to)(0);
+        const end = defaultLatexMorph(from, to)(1);
+        const start = defaultLatexMorph(from, to)(0);
         // Tokens come out in `from` order: the lone 2, +, x, the exponent.
         expect(start.map((t) => centreX(t.path))).toEqual([0, 20, 40, 50]);
         expect(end.slice(0, 4).map((t) => centreX(t.path))).toEqual([50, 30, 0, 10]);
@@ -138,7 +138,7 @@ describe("a morph between formulas that share a term", () => {
     it("falls back to the character alone where no term is shared", () => {
         const from = [term("a", 0, "a^2"), term("2", 10, "a^2")];
         const to = [term("2", 0, "2a"), term("a", 10, "2a")];
-        const end = prepareLatexTween(from, to)(1);
+        const end = defaultLatexMorph(from, to)(1);
         expect(end.map((t) => [t.token, centreX(t.path), t.opacity])).toEqual([
             ["a", 10, 1],
             ["2", 0, 1],

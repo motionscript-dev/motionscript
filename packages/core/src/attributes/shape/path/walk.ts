@@ -1,34 +1,22 @@
 /**
- * From a `d` string to the normal form: the scanner, the parser, the one pen
- * walk, and everything that reads a {@link PathSegment} once it exists.
- *
- * There were **seven** pen walks — one each in `bounds`, `length`, `dash`,
- * `sampler`, `subpath`, `morph` and the editor's vector model — and they
- * disagreed. Four forgot that `Z` returns the cursor to the contour's start, so
- * a relative command after a close resolved against the wrong point. Three kept
- * a single slot for the control point an `S`/`T` reflects, so a `T` following a
- * `C` reflected a cubic's control as if it were a quadratic's. One handled arcs
- * exactly, one as a subdivided chord, one as a single chord, one by dropping
- * them, and one by aborting the parse.
- *
- * Everything downstream takes {@link PathContour}s from here.
+ * From a `d` string to the normal form: the scanner, the parser, the one pen walk, and everything that reads a
+ * {@link PathSegment}. Everything downstream takes {@link PathContour}s from here, so the pen rules (`Z` returns the
+ * cursor to the contour start, `S`/`T` reflect from separate cubic and quadratic slots, arcs are exact) live once.
  */
 import { Vector2 } from "@/attributes/layout/vector2";
 import { PathCommand, PathData } from "@/render/descriptors/path";
 import {
     arcAxisAngles, arcContainsAngle, arcParams, arcPointAtAngle, arcSweepToCubics,
-    cubicExtrema, cubicPoint, distance, extractCubicRange, extractQuadRange,
+    cubicExtrema, cubicPoint, extractCubicRange, extractQuadRange,
     lerpVector2, lineToCubic, quadExtrema, quadPoint, quadToCubic,
 } from "./bezier";
 import type { Extents } from "@/layout/bounds";
 import type { ArcParams, Cubic, PathContour, PathSegment } from "./types";
 
-/** The incremental scanner {@link parseCommands} drives. */
 interface PathScanner {
     atEnd(): boolean;
     /** The next command letter, consumed, or `null` if a number comes first. */
     takeLetter(): string | null;
-    /** Whether a number follows — i.e. whether a coordinate run continues. */
     hasNumber(): boolean;
     takeNumber(): number | null;
     /** A single-character `0`/`1` arc flag, consumed, or `null`. */
@@ -36,38 +24,16 @@ interface PathScanner {
 }
 
 /**
- * The one `d`-string scanner.
+ * The one `d`-string scanner. **It scans on demand rather than tokenizing up front**: SVG's grammar is not
+ * context-free, since an arc's `largeArc`/`sweep` are single characters that may run together with what follows
+ * (`A9.564 9.564 0 0112 6.844`: `0112` is flag `0`, flag `1`, coordinate `12`). A regex split also reads `.5.5` as
+ * one token.
  *
- * There were two: a regex split (`/([MmLlHhVvCcSsQqTtAaZz])|(-?[\d.]+(?:e[-+]?\d+)?)/`)
- * and a hand-rolled one in the editor model. They accepted different languages —
- * the regex reads `.5.5` as a single token and `parseFloat` then silently keeps
- * only the first half, so `M .5.5` parsed as a move to an undefined y.
- *
- * **It scans on demand rather than tokenizing up front**, because SVG's grammar
- * is not context-free: an arc's `largeArc` and `sweep` are single *characters*,
- * and the spec lets them run together with what follows. A real icon writes
- * `A9.564 9.564 0 0112 6.844`, where `0112` is the flag `0`, the flag `1`, and
- * the coordinate `12` — a number scanner with no idea what it is reading takes
- * it for one number and puts the arc's endpoint 100 units away. Both parsers
- * this replaces had that bug.
- *
- * Deliberately forgiving otherwise. This value comes out of a database column
- * that a previous version of an app — or an author pasting a path in — may have
- * written, and a strict scanner's answer to a malformed tail is to throw away
- * geometry that was rendering fine a moment ago. So a token it can't read ends
- * the scan and keeps everything before it, which degrades to "the shape is
- * missing its last curve" instead of "the node is empty".
+ * Deliberately forgiving otherwise: the value may come from a stored column or a pasted path, so a token it can't
+ * read ends the scan and keeps everything before it ("missing its last curve", not "the node is empty").
  */
 
-/**
- * Every command letter, including the arcs.
- *
- * `A`/`a` were absent from the editor model's copy of this list, which made its
- * scanner stop dead at the first arc — so a pasted icon (arcs are how every icon
- * set draws a rounded join) lost everything from that point on. The arc is
- * dropped at the *model* boundary now, where it is a deliberate conversion to
- * cubics, rather than here where it was a silent truncation.
- */
+/** Every command letter, including arcs; those become cubics at the *model* boundary, a deliberate conversion rather than a silent truncation. */
 const COMMAND_LETTERS = "MmLlHhVvCcSsQqTtAaZz";
 
 function isSeparator(ch: string): boolean {
@@ -132,8 +98,7 @@ function createPathScanner(data: string): PathScanner {
         takeNumber: scanNumber,
         takeFlag: () => {
             skip();
-            // One character, no sign and no decimal point — that is the whole
-            // grammar for a flag, and reading it as a number is the bug.
+            // One character, no sign and no decimal point: reading a flag as a number is the bug.
             if (data[i] === "0") { i++; return 0; }
             if (data[i] === "1") { i++; return 1; }
             return null;
@@ -153,14 +118,7 @@ export function cubicSegment(from: Vector2, c1: Vector2, c2: Vector2, to: Vector
     return { kind: "cubic", from, c1, c2, to };
 }
 
-/**
- * An arc, or the line it degenerates to.
- *
- * A zero radius or coincident endpoints make the endpoint→center conversion
- * divide by zero, and the SVG spec says both draw as a straight line — so the
- * substitution happens here rather than in each of the four places that would
- * otherwise have to guard.
- */
+/** An arc, or the line it degenerates to: a zero radius or coincident endpoints make the endpoint->center conversion divide by zero, and SVG says both draw as a straight line. */
 export function arcSegment(
     from: Vector2, to: Vector2,
     rx: number, ry: number, rotation: number, largeArc: 0 | 1, sweep: 0 | 1,
@@ -179,7 +137,6 @@ export function segmentArc(segment: PathSegment & { kind: "arc" }): ArcParams {
     );
 }
 
-/** The point at parameter `t` (0..1). */
 export function segmentPointAt(segment: PathSegment, t: number): Vector2 {
     switch (segment.kind) {
         case "line": return lerpVector2(segment.from, segment.to, t);
@@ -203,15 +160,7 @@ function boxOf(points: Vector2[]): Extents {
     return { minX, minY, maxX, maxY };
 }
 
-/**
- * The segment's tight box — its own extrema, solved, not its control hull.
- *
- * Closed form on every kind, so this stays cheap enough for `measure()`. The
- * control hull can sit a long way outside the curve: `size` used it
- * and a hugging `Path` was correspondingly too big, while an arc — whose hull it
- * had no way to compute at all — was measured across its chord and came back
- * flat on one axis.
- */
+/** The segment's tight box (its own extrema, solved, not its control hull, which can sit far outside the curve); closed form on every kind so it stays cheap enough for `measure()`. */
 export function segmentBounds(segment: PathSegment): Extents {
     switch (segment.kind) {
         case "line":
@@ -258,13 +207,7 @@ export function segmentCubics(segment: PathSegment): Cubic[] {
     }
 }
 
-/**
- * The sub-range `t0..t1` as commands, with no leading move.
- *
- * A sub-range of an arc is still an arc, so it stays one rather than being
- * refitted — the old trim approximated it with cubics through sampled points
- * using a *tangent* formula, which was wrong on top of being lossy.
- */
+/** The sub-range `t0..t1` as commands, no leading move. A sub-range of an arc stays an arc rather than being refitted with cubics. */
 export function segmentSplit(segment: PathSegment, t0: number, t1: number): PathCommand[] {
     switch (segment.kind) {
         case "line": {
@@ -295,12 +238,7 @@ export function segmentSplit(segment: PathSegment, t0: number, t1: number): Path
     }
 }
 
-/**
- * The closing line of a closed contour, when it has any length.
- *
- * Every walk this replaced synthesized this the same way, so one synthesis
- * reproduces all of them.
- */
+/** The closing line of a closed contour, when it has any length. */
 export function closingSegment(contour: PathContour): PathSegment | null {
     if (!contour.closed || contour.segments.length === 0) return null;
     const end = contour.segments[contour.segments.length - 1].to;
@@ -308,7 +246,6 @@ export function closingSegment(contour: PathContour): PathSegment | null {
     return lineSegment(end, contour.start);
 }
 
-/** Every segment of a contour, the implied closing line included. */
 export function contourSegments(contour: PathContour): PathSegment[] {
     const closing = closingSegment(contour);
     return closing ? [...contour.segments, closing] : contour.segments;
@@ -337,19 +274,7 @@ export function contourBounds(contours: PathContour[]): Extents | null {
     return seen ? { minX, minY, maxX, maxY } : null;
 }
 
-/** Straight-line distance between a segment's endpoints — its chord. */
-export function segmentChord(segment: PathSegment): number {
-    return distance(segment.from, segment.to);
-}
-
-/**
- * Parses a `d` string into commands, **as written** — relative stays relative,
- * shorthands stay short, arcs stay arcs.
- *
- * Normalizing here would throw away the one thing a caller might still want the
- * original for (round-tripping a stored string), and {@link contours} resolves
- * all of it one step later anyway.
- */
+/** Parses a `d` string into commands **as written** (relative stays relative, shorthands stay short, arcs stay arcs) so a stored string round-trips; {@link contours} resolves it later. */
 export function parseCommands(d: string): PathCommand[] {
     const scan = createPathScanner(d);
     const commands: PathCommand[] = [];
@@ -463,27 +388,15 @@ export function commands(d: PathData | null | undefined): PathCommand[] {
 }
 
 /**
- * Contours already walked, keyed by the value they were walked from.
- *
- * `Path.measure` and `Text.measure` re-walk the same `d` every layout pass, and
- * a string key hits by value while an authored `PathCommand[]` hits by
- * reference — so a static path is walked once and a tweened one, whose array is
- * fresh each frame, misses exactly as `morph.ts`'s plan cache does. Bounded and
- * insertion-ordered, so those fresh arrays age out instead of accumulating.
- *
- * The cached list is shared, so treat what comes back as read-only.
+ * Contours already walked, keyed by the value they were walked from: `Path.measure` and `Text.measure` re-walk the
+ * same `d` every layout pass. A string key hits by value, an authored `PathCommand[]` by reference (a tweened path's
+ * fresh array misses, as in `morph.ts`'s plan cache). Bounded and insertion-ordered so those age out. The cached
+ * list is shared: treat it as read-only.
  */
 const CONTOUR_CACHE = new Map<PathData, PathContour[]>();
 const CONTOUR_CACHE_MAX = 32;
 
-/**
- * Resolves commands into absolute contours of typed segments.
- *
- * The three things every previous walk had to get right, in one place: relative
- * commands resolve against the pen, `Z` returns the pen to the contour's start,
- * and `S`/`T` reflect from **separate** cubic and quadratic slots, each cleared
- * by a command of the other kind.
- */
+/** Resolves commands into absolute contours of typed segments: relative commands resolve against the pen, `Z` returns the pen to the contour start, and `S`/`T` reflect from **separate** cubic and quadratic slots, each cleared by a command of the other kind. */
 export function contours(d: PathData | null | undefined): PathContour[] {
     if (d == null) return [];
     const cached = CONTOUR_CACHE.get(d);
@@ -515,9 +428,7 @@ export function walkCommands(list: PathCommand[]): PathContour[] {
         return contour;
     };
     const push = (segment: PathSegment) => {
-        // A drawing command before any `M` starts a contour where the pen is,
-        // which is the origin. Malformed, but recoverable, and every previous
-        // walk did the same.
+        // A drawing command before any `M` starts a contour at the pen (the origin): malformed but recoverable.
         if (!current) current = open(cursor);
         current.segments.push(segment);
     };
@@ -604,10 +515,7 @@ export function walkCommands(list: PathCommand[]): PathContour[] {
             case "Z": case "z": {
                 if (current) {
                     current.closed = true;
-                    // The closing line is implied by `closed`, not stored — a
-                    // stored one would be a zero-length segment whenever the
-                    // contour already ends where it started, which is most of
-                    // the time.
+                    // The closing line is implied by `closed`, not stored: it would be zero-length whenever the contour already ends where it started.
                     current = null;
                 }
                 cursor = contourStart;

@@ -29,48 +29,19 @@ export type Canvas3D = NodeOf<typeof Canvas3D>;
 // What code building a 3D viewport names its props as.
 
 export interface Canvas3DProps extends RectProps {
-    /**
-     * Ceiling on the 3D buffer's device-pixel ratio. Default 2.
-     *
-     * Lower it for an expensive scene: the 3D renders at a smaller buffer and is
-     * scaled up on composite, which trades sharpness for fill rate.
-     */
+    /** Ceiling on the 3D buffer's device-pixel ratio, default 2; lower it for an expensive scene (renders smaller, scaled up on composite). */
     maxPixelRatio: number;
     /** Multisample the 3D pass. Default true. */
     antialias: boolean;
-    /**
-     * Turn shadow casting on for the scene. A switch, or `{ quality }`.
-     *
-     * A render setting rather than a scene object, which is why it is a prop here
-     * and not a `<Shadows3D>` node: it has no position, and two of them in a tree
-     * meant one silently doing nothing.
-     */
+    /** Turns shadow casting on for the scene: a switch, or `{ quality }`. A render setting, so a prop rather than a `<Shadows3D>` node (it has no position, and two of them meant one silently did nothing). */
     shadows: Shadows3D;
     /** How HDR colour is compressed to what the screen can show. Default `"aces"`. */
     tone: ToneMapping3D;
     /** Stops of exposure applied before tone mapping. Default 1. */
     exposure: number;
-    /**
-     * Post-processing inside the 3D composite: `bloom`, `ssao`, `dof`, `outline`.
-     *
-     * Short by design — a `Canvas3D` is a `Node2D`, so vignette, grain, grading,
-     * blur and the rest of the 2D `effects` chain already run over the composited
-     * result. What is here is what genuinely needs the depth buffer, object ids,
-     * or HDR radiance before tone mapping.
-     *
-     * **Inert today**: the chain is recorded on the scene and no pass is applied,
-     * so a viewport with `post` renders exactly like one without (the first one
-     * set warns in development). Use the viewport's 2D `effects` instead.
-     */
+    /** Post-processing inside the 3D composite: `bloom`, `ssao`, `dof`, `outline`. Short by design: the 2D `effects` chain already runs over the composited result, so only passes needing depth, object ids or pre-tone-mapping HDR radiance are here. **Inert today**: the chain is recorded and no pass is applied (the first set warns in development); use the viewport's 2D `effects`. */
     post: PostEffect3D | readonly PostEffect3D[];
-    /**
-     * The camera, as three numbers rather than a `<Camera3D>` child.
-     *
-     * A host that renders a **timeline** needs a camera a `to` command can tween
-     * and a scrub can reproduce exactly, and a drag-to-orbit gesture that writes
-     * the same values the timeline reads. Only read when the scene contains no
-     * camera of its own, so a `<Camera3D>` child still wins.
-     */
+    /** The camera as three numbers rather than a `<Camera3D>` child, so a timeline `to` can tween it, a scrub reproduce it, and a drag-to-orbit write the values the timeline reads. Only read when the scene has no camera of its own. */
 
   /** Camera orbit about the vertical axis, in **degrees**. Animate this to spin. */
   orbit: number;
@@ -89,10 +60,7 @@ export interface Canvas3DProps extends RectProps {
   /** Colour of the key light, and of the rim derived from it. */
   keyColor: Color;
 
-  /**
-   * Whether the ground plane is drawn. **Off by default** — it is an authoring
-   * reference rather than part of the picture; see the property below.
-   */
+  /** Whether the ground plane is drawn. **Off by default**: it is an authoring reference, not part of the picture. */
   showGrid: boolean;
   /** Total extent of the grid, in scene units. */
   gridSize: number;
@@ -108,19 +76,6 @@ export interface Canvas3DProps extends RectProps {
   axisZColor: Color;
   /** How much of the way to the edge the grid has faded out, in `[0, 1]`. */
   gridFade: number;
-  /**
-   * What the grid fades into, when the node's own fills do not answer.
-   *
-   * **Derived, not authored.** The horizon dissolves into the first solid layer
-   * of this node's `fill` — the viewport's background — and falls back to this
-   * only when the stack has no solid in it to read (an empty stack, or a
-   * gradient or image on its own). A grid that faded into a *different* colour
-   * than the one behind it would ring the horizon with a halo, and the way to
-   * make that impossible is for there to be nothing to keep in step: see
-   * {@link Canvas3DView.fadeColor}.
-   *
-   * The same rule the engine applies to fog with no colour of its own, one
-   * layer down (`View3D.scene`), and for the same reason.
-   */
+  /** What the grid fades into when the node's own fills don't answer. **Derived, not authored**: the horizon dissolves into the first solid layer of `fill` (the background), falling back to this only when the stack has none; a different colour would ring the horizon with a halo, so there is nothing to keep in step (see {@link Canvas3DView.fadeColor}). Same rule as fog with no colour (`View3D.scene`). */
   gridFadeColor: Color;
 }

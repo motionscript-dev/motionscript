@@ -18,18 +18,12 @@ import {
     type StrokeResolved as _StrokeResolved,
     type Vector2 as _Vector2,
 } from "@motionscript/sdk";
-import type { LatexProps } from "./node";
 import {
     drawFormula, formula, formulaFrame, layoutFormula, lerpMorph, loadFormula, measureFormula, morphOf, TYPESET, TYPESET_COMMANDS,
     type Morphing,
 } from "./typeset";
 
 export type MatrixBrackets = "square" | "round" | "bar" | "double" | "curly" | "none";
-
-export interface LatexMatrixProps extends LatexProps {
-    entries: string[][];
-    brackets: MatrixBrackets;
-}
 
 const ENVIRONMENT: Record<MatrixBrackets, string> = {
     square: "bmatrix",
@@ -73,11 +67,7 @@ const state = {
     }),
 };
 
-/**
- * A matrix typeset from its entries, row by row, inside the brackets it is
- * given. Each entry is a piece of LaTeX and is one of the formula's parts, so
- * it can be painted, boxed or braced by its own source.
- */
+/** A matrix typeset from its entries inside its brackets; each entry is a formula part, addressable by its source. */
 export const LatexMatrix = formula(component2d({
     key: "latexMatrix",
     state,

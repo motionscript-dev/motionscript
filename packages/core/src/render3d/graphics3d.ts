@@ -12,40 +12,20 @@ import { inspectDrawable3D } from "./inert";
 import { type Transform3D, type Blend3D, type Faces3D } from "./transform";
 import type { Vector3Input } from "./vector3";
 
-// ─── Ops ─────────────────────────────────────────────────────────────────────
-
 /** One clip of a model's baked animation, sampled at an explicit time. */
 export interface ModelAnimation3D {
     /** Clip name, or its index in the file. Defaults to the first clip. */
     clip?: string | number;
-    /**
-     * Seconds into the clip. **Explicit by design** — the renderer seeks to this
-     * time rather than advancing by a delta, which is what keeps a model's
-     * animation identical whether the frame was reached by playing forward or by
-     * scrubbing backwards.
-     */
+    /** Seconds into the clip. **Explicit by design**: the renderer seeks to it rather than advancing by a delta, so animation is identical whether reached by playing forward or scrubbing back. */
     time: number;
     /** Blend weight, for cross-fading clips. Default 1. */
     weight?: number;
 }
 
-/**
- * How a `line` op connects its points: in order, or as disjoint start/end pairs,
- * or in order and closed back to the start.
- */
+/** How a `line` op connects its points: in order, as disjoint start/end pairs, or in order and closed back to the start. */
 export type LineMode3D = "strip" | "segments" | "loop";
 
-/**
- * One recorded operation in a {@link Graphics3D} command list.
- *
- * Every op draws something. Hierarchy, lights and the camera are *scene*
- * concerns, recorded by the `Node3D` tree into a `Scene3D` — this is only ever
- * "what one node paints", which is exactly what a `Graphics2D` is in 2D.
- *
- * A drawable's geometry and material are *inline sub-descriptors*, not ops,
- * because in a 3D scene graph they are properties of an object rather than
- * children of it.
- */
+/** One recorded operation in a {@link Graphics3D} command list: what one node paints, like a `Graphics2D`. Hierarchy, lights and the camera are scene concerns recorded into a `Scene3D`. Geometry and material are inline sub-descriptors, not ops, since in a 3D graph they are properties of an object rather than children. */
 export type Graphics3DOp =
     | { kind: "mesh"; geometry: Geometry3D; material: Material3D | readonly Material3D[]; transform?: Transform3D }
     | {
@@ -76,33 +56,18 @@ export type Graphics3DOp =
         transform?: Transform3D;
     };
 
-/**
- * Op kinds that put something in the scene (as opposed to shaping the tree).
- *
- * Shared with `Scene3D`, whose op list is this one plus `push`/`pop`/`light`/
- * `camera` — so "is anything actually drawn here" has a single definition.
- */
+/** Op kinds that put something in the scene; shared with `Scene3D` (this list plus `push`/`pop`/`light`/`camera`) so "is anything drawn here" has one definition. */
 /** @internal */
 export const DRAWABLE_KINDS: ReadonlySet<string> = new Set([
     "mesh", "light", "instances", "points", "line", "sprite", "model",
 ]);
 
-// ─── Shorthand ───────────────────────────────────────────────────────────────
-
 /**
- * Material fields promoted onto the geometry sugar methods, so the common case is
- * one flat call: `.box({ width: 2, fill: "red", roughness: 0.3 })`.
- *
- * `fill` is the whole 2D fill vocabulary — see {@link Fill3D} — and is what a
- * flat `color` plus a `map` slot used to be. The rest is surface *response*
- * (how light behaves on it) rather than colour, which is the line Spline's
- * material panel draws too and the reason those stay separate fields.
- *
- * These desugar at record time into a full {@link Material3D} — `standard` by
- * default, `basic` when {@link unlit} is set — so the recorded op list stays
- * canonical. Pass {@link material} to bypass the shorthand entirely; every
- * renderer-level knob that is not a design decision (`depthWrite`, `alphaTest`,
- * `toneMapped`, `polygonOffset`, …) lives there and only there.
+ * Material fields promoted onto the geometry sugar methods so the common case is one flat call:
+ * `.box({ width: 2, fill: "red", roughness: 0.3 })`. `fill` is the whole 2D fill vocabulary ({@link Fill3D}); the
+ * rest is surface response rather than colour. These desugar at record time into a full {@link Material3D}
+ * (`standard`, or `basic` when {@link unlit}), keeping the op list canonical. {@link material} bypasses the
+ * shorthand; renderer-level knobs (`depthWrite`, `alphaTest`, `toneMapped`, `polygonOffset`, ...) live only there.
  */
 export interface MaterialShorthand3D {
     /** A full descriptor (or an array, for multi-material). Wins over the rest. */
@@ -140,12 +105,7 @@ const TRANSFORM_KEYS = [
     "visible", "shadow", "renderOrder",
 ] as const;
 
-/**
- * Shorthand keys copied straight onto the built descriptor.
- *
- * `fill` is deliberately absent: it resolves into `color` *and* `map` rather than
- * being one field, so it is handled on its own in {@link resolveMaterialShorthand3D}.
- */
+/** Shorthand keys copied straight onto the built descriptor. `fill` is absent: it resolves into `color` and `map`, handled in {@link resolveMaterialShorthand3D}. */
 const MATERIAL_SHORTHAND_KEYS = [
     "opacity", "roughness", "metalness",
     "emission", "emissionStrength", "normalMap", "roughnessMap",
@@ -156,12 +116,7 @@ const MATERIAL_SHORTHAND_KEYS = [
 /** Every key the shorthand owns, for stripping a geometry bag. */
 const SHORTHAND_KEYS: readonly string[] = [...MATERIAL_SHORTHAND_KEYS, "fill", "material", "unlit"];
 
-/**
- * Pull the {@link Transform3D} fields out of a shorthand bag. Takes `object` so
- * the concrete option types at each call site pass without a cast, and returns
- * `undefined` rather than `{}` when there is nothing to apply — an absent
- * transform lets the renderer skip the matrix write entirely.
- */
+/** Pulls the {@link Transform3D} fields out of a shorthand bag; `undefined` rather than `{}` when none, so the renderer can skip the matrix write. */
 function pickTransform(source: object): Transform3D | undefined {
     const bag = source as Record<string, unknown>;
     let out: Record<string, unknown> | undefined;
@@ -172,12 +127,9 @@ function pickTransform(source: object): Transform3D | undefined {
 }
 
 /**
- * Build the material a shorthand bag describes. Always returns one, so a recorded
- * drawable op never has to be interpreted with "…or the default" in mind.
- *
- * Exported because `Mesh3D` desugars the identical bag from its own props: this
- * is where `fill` becomes `color`-or-`map`, and two copies of that decision is
- * two chances for a node and a builder call to paint differently.
+ * Builds the material a shorthand bag describes; always one, so a drawable op never needs "...or the default"
+ * handling. Exported because `Mesh3D` desugars the same bag from its props: one place decides how `fill` becomes
+ * `color`-or-`map`, so a node and a builder call paint alike.
  *
  * @internal
  */
@@ -212,66 +164,27 @@ function pickGeometry<T>(source: object, type: string): T {
 /** Geometry params only, with `type` and the inherited passthrough removed. */
 type ParamsOf<G> = Omit<G, "type">;
 
-// ─── Recorder ────────────────────────────────────────────────────────────────
-
 /**
- * What one 3D node draws — the `Graphics2D` of 3D.
- *
- * Records an ordered list of drawables (meshes, instanced meshes, points, lines,
- * sprites, models), each with its own geometry, material and local transform.
- * That is the whole surface: it holds no camera, no lights and no hierarchy,
- * because those are properties of a *scene* rather than of a thing in one, and
- * the `Node3D` tree owns them. The exact division `Graphics2D` and
- * `RenderContext2D` already make in 2D.
+ * What one 3D node draws: the `Graphics2D` of 3D. Records an ordered list of drawables (meshes, instanced meshes,
+ * points, lines, sprites, models), each with its own geometry, material and local transform; camera, lights and
+ * hierarchy belong to the `Node3D` tree and its scene. A built `Graphics3D` is spliced into a {@link RenderContext3D}.
  *
  *   render: (ctx) => ctx.draw(new Graphics3D()
  *       .box({ width: 2, cornerRadius: 0.15, fill: "#e0533d", roughness: 0.3 })),
  *
- * Nothing here touches a renderer: a built `Graphics3D` is handed to a
- * {@link RenderContext3D}, which splices its ops into the scene being recorded.
+ * One flat bag, not chained paint: in 2D a `fill` is a group-scoped op over earlier shapes, but in 3D a material
+ * belongs to exactly one object, so shape and material are stated together.
  *
- * ── One flat bag, deliberately ────────────────────────────────────────────────
- * `Graphics2D` paints with a *chained* `.rect(…).fill(…)`, and this does not,
- * which is the one place the two recorders diverge on purpose. In 2D a `fill` is
- * a **group-scoped op** covering the shapes recorded before it; in 3D a material
- * belongs to exactly one object, because a mesh *is* geometry plus material.
- * A chained `.box().fill()` would imply a group material that has nothing to
- * scope over, so the shape and what it is made of are stated together instead.
+ * Angles are DEGREES (Euler rotations, sweep arcs, UV rotation), matching 2D `rotation`; the renderer converts.
  *
- * ── Angles are DEGREES ────────────────────────────────────────────────────────
- * Every angle here — Euler rotations, sweep arcs, UV rotation — is in degrees,
- * matching the engine's 2D `rotation`. The renderer converts.
+ * Rebuilt from scratch every frame, so animation is reading the node's own state while building. A state entry
+ * holding a non-number needs an explicit tween (`lerpVector3`, `lerpEuler3`, `slerpQuaternion`) or `to()` leaves it alone.
  *
- * ── Animation ─────────────────────────────────────────────────────────────────
- * A `Graphics3D` is rebuilt from scratch every frame, so animation is just
- * reading the node's own state while building:
+ * Reconciliation identity is derived from the owning `Node3D` plus a signature of what the op draws; there is no `key` to set.
  *
- *   const Rig = component3d({
- *       key: "rig",
- *       state: { spin: 0, lift: Types.custom<Vector3>([0, 0, 0], { lerp: lerpVector3 }) },
- *       render: (ctx, s) => ctx.draw(new Graphics3D()
- *           .box({ rotation: [0, s.spin, 0], position: s.lift })),
- *   });
- *   // a `to` of { spin: 360 } over two seconds turns it
- *
- * Note the `lerp` on `lift`. An entry holding a non-number needs an explicit
- * tween (`lerpVector3`, `lerpEuler3`, `slerpQuaternion`) or `to()` has nothing
- * to interpolate it with and leaves it alone.
- *
- * ── Reconciliation identity ───────────────────────────────────────────────────
- * The renderer caches one live 3D object per op and mutates it between frames
- * rather than rebuilding. Identity is **derived**: it comes from the owning
- * `Node3D` plus a signature of what the op actually draws, so a builder that
- * emits ops conditionally reuses the right cache entry with nothing written by
- * hand. There is no `key` to set.
- *
- * ── What is cheap to animate ──────────────────────────────────────────────────
- * Transforms and most material values are in-place writes, so they cost nothing
- * per frame. **Geometry parameters are not** — three geometries are immutable, so
- * tweening `.box({ width: this.size })` reallocates the mesh every frame. Scale
- * the object instead: `.box({ width: 1, scale: [this.size, 1, 1] })`. The fields marked
- * "structural" on `MaterialCommon3D` recompile the shader program and should be
- * set once, not tweened.
+ * Transforms and most material values are cheap in-place writes. Geometry parameters are not (three geometries are
+ * immutable, so tweening `.box({ width })` reallocates every frame): scale the object instead. Fields marked
+ * "structural" on `MaterialCommon3D` recompile the shader and should be set once.
  */
 export class Graphics3D {
     private _ops: Graphics3DOp[] = [];
@@ -282,12 +195,7 @@ export class Graphics3D {
         this._ops.push(op);
     }
 
-    // ─── Meshes ──────────────────────────────────────────────────────────────
-
-    /**
-     * Record a mesh from an explicit geometry and material. The geometry sugar
-     * methods below all funnel here.
-     */
+    /** Records a mesh from an explicit geometry and material; the sugar methods below funnel here. */
     mesh(
         geometry: Geometry3D,
         material?: Material3D | readonly Material3D[],
@@ -355,15 +263,7 @@ export class Graphics3D {
         return this.sugar("tube", options);
     }
 
-    // ─── Other drawables ─────────────────────────────────────────────────────
-
-    /**
-     * Record many copies of one geometry in a single draw call. The way to put
-     * thousands of objects on screen — a plain `mesh` per copy would not keep up.
-     *
-     *   g3.instances(Geo.box({ width: 0.2 }), Mat.standard({ color: "cyan" }),
-     *               positions.map(p => ({ position: p })))
-     */
+    /** Records many copies of one geometry in a single draw call, for thousands of objects where a `mesh` per copy wouldn't keep up. */
     instances(
         geometry: Geometry3D,
         material: Material3D,
@@ -396,22 +296,12 @@ export class Graphics3D {
         return this;
     }
 
-    /**
-     * Record a line. Give it either explicit `points` or a `geometry` (typically
-     * `Geo.edges(...)` for a wireframe outline).
-     *
-     * `closed` joins the last point back to the first, as the 2D `line` op's
-     * own field does. `segments` treats the points as disjoint start/end pairs
-     * instead — the form `Geo.edges(...)` produces. (There is no subdivision to
-     * confuse it with: a line is drawn from the points it is given.)
-     */
+    /** Records a line from explicit `points` or a `geometry` (typically `Geo.edges(...)`). `closed` joins the last point to the first; `segments` treats points as disjoint start/end pairs, the form `Geo.edges(...)` produces. */
     line(options: {
         points?: readonly Vector3Input[];
         geometry?: Geometry3D;
         material?: Material3D;
-        /** Join the last point back to the first. */
         closed?: boolean;
-        /** Treat the points as disjoint start/end pairs. */
         segments?: boolean;
         /** The line's paint. Cap and join have no meaning on a GL line. */
         stroke?: LineStroke3D;
@@ -462,14 +352,7 @@ export class Graphics3D {
         return this;
     }
 
-    /**
-     * Record a loaded model. **glTF/GLB only**: any other format (an `.obj`, say)
-     * resolves to an empty slot and draws nothing, and in development the first
-     * one recorded warns.
-     *
-     * Baked animation is sampled by explicit `time`, never advanced by a delta, so
-     * a model stays frame-identical under scrubbing.
-     */
+    /** Records a loaded model. **glTF/GLB only**: any other format resolves to an empty slot and draws nothing (in development the first warns). Baked animation is sampled by explicit `time`, so a model stays frame-identical under scrubbing. */
     model(options: {
         src: string;
         animation?: ModelAnimation3D | readonly ModelAnimation3D[];
@@ -488,8 +371,6 @@ export class Graphics3D {
         return this;
     }
 
-    // ─── Consumption ─────────────────────────────────────────────────────────
-
     /** The recorded ops, in order. Replayed by the renderer. */
     ops(): readonly Graphics3DOp[] {
         return this._ops;
@@ -501,14 +382,7 @@ export class Graphics3D {
     }
 }
 
-/**
- * A 3D line's paint, named after the 2D `Stroke` it mirrors.
- *
- * `cap`, `join` and the rest of the 2D stroke vocabulary are deliberately absent:
- * they describe a stroked *path*, and a GL line has no outline to cap. Note that
- * `weight` above 1 is ignored by most WebGL implementations — for a genuinely
- * thick line, draw a `tube`.
- */
+/** A 3D line's paint, mirroring the 2D `Stroke`. `cap`/`join` are absent (a GL line has no outline to cap); `weight` above 1 is ignored by most WebGL implementations, so draw a `tube` for a thick line. */
 export interface LineStroke3D {
     /** The line's colour. Named `fill` to match the 2D `Stroke`. */
     fill?: Color;
@@ -521,11 +395,7 @@ export interface LineStroke3D {
 const lineBuffers = new WeakMap<readonly Vector3Input[], { readonly position: Float32Array; readonly revision: number }>();
 let lineRevision = 0;
 
-/**
- * `points` as a line's buffer. The same array holding the same values gets the
- * same buffer and revision back, so a renderer uploads an unchanged line once,
- * not every frame; the values are checked, so one changed in place still lands.
- */
+/** `points` as a line's buffer. The same array with the same values gets the same buffer and revision back, so an unchanged line uploads once; values are checked, so an in-place change still lands. */
 function lineBuffer(points: readonly Vector3Input[]): BufferGeometry3D {
     let kept = lineBuffers.get(points);
     if (!kept || !holds(kept.position, points)) {

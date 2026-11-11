@@ -41,7 +41,6 @@ const ENGINE = [
     'metricsSignature',
     'moveProgress',
     'normalizeSource',
-    'phasesFor',
     'rangeToCharOffsets',
     'registerCodeTheme',
     'resolveTheme',
@@ -68,7 +67,7 @@ describe('the root barrel', () => {
     });
 
     it('does not export the internals a node keeps to itself', () => {
-        for (const internal of ['highlightToTokens', 'diffCode', 'splitTokensAt', 'makeIdToken', 'makeIdLine']) {
+        for (const internal of ['highlightToTokens', 'diffCode', 'makeIdToken', 'makeIdLine']) {
             expect(barrel, internal).not.toHaveProperty(internal);
         }
     });

@@ -7,10 +7,7 @@ import { AudioSink } from "@/platform/audio-sink";
 import { StorageAdapter } from "@/platform/storage-adapter";
 import { AssetTrack, AssetTimelineResult } from "@/runtime/asset-timeline";
 
-/**
- * Coordinates asset loading and audio synchronization during playback.
- * Wraps a {@link AssetTimelineResult} and delegates storage/audio work to platform adapters.
- */
+/** Coordinates asset loading and audio synchronization during playback over an {@link AssetTimelineResult}, delegating storage/audio work to platform adapters. */
 export class AssetManager {
     private precomp: AssetTimelineResult;
     private readonly storageAdapter: StorageAdapter;
@@ -20,14 +17,7 @@ export class AssetManager {
     private lastAudioRequestKey: string | null = "";
     private lastAudioSrcs: ReadonlySet<string> | null = new Set();
     private audioFetching = new Map<string, Promise<void>>();
-    /**
-     * Sources whose fetch or decode failed, with why, so they are not fetched
-     * again every sync. A source leaves when no request in the window names it
-     * any more — and, once it has been reported, when a new precomp arrives —
-     * so the next time it is wanted it is tried afresh. One that failed quietly
-     * (see {@link AudioRequest.optional}) is kept across a precomp: a video with
-     * no audio track would otherwise be fetched whole on every edit.
-     */
+    /** Sources whose fetch or decode failed, with why, so they are not refetched every sync. A source leaves when no request in the window names it any more (and, once reported, when a new precomp arrives) so it is tried afresh when wanted. One that failed quietly (see {@link AudioRequest.optional}) survives a precomp: a video with no audio track would otherwise be fetched whole on every edit. */
     private audioFailed = new Map<string, unknown>();
     /** The failed sources already reported to {@link onError}. */
     private audioReported = new Set<string>();
@@ -37,15 +27,11 @@ export class AssetManager {
     private layoutGateKeys: ReadonlySet<string>;
     private disposed = false;
 
-    /** Disposers for loaders whose load has resolved, keyed by loader key. */
     private loaderDisposers = new Map<string, Disposer>();
     /** In-flight loader runs, keyed by loader key, to dedupe concurrent calls. */
     private loaderInFlight = new Map<string, Promise<void>>();
 
-    /**
-     * @param onError Told once per source when audio a request asked for cannot
-     *   be fetched or decoded. Defaults to `console.error`.
-     */
+    /** @param onError Told once per source when audio a request asked for cannot be fetched or decoded. Defaults to `console.error`. */
     constructor(
         precomp: AssetTimelineResult,
         storageAdapter: StorageAdapter,
@@ -58,16 +44,7 @@ export class AssetManager {
         this.audioDevice = audioDevice;
     }
 
-    // ─── Public surface ───────────────────────────────────────────────────────
-
-    /**
-     * Swap in a new precomp result (a document swap). The manager keeps its
-     * warm loader disposers and in-flight audio fetches so a single-track edit
-     * doesn't re-fetch unchanged assets; the next loadAt/syncAudio picks up the
-     * new asset windows. Resetting the audio signature forces a reschedule so a
-     * changed track's audio is re-evaluated against the new timeline — including
-     * into an empty window, which is how removed audio stops.
-     */
+    /** Swaps in a new precomp (a document swap), keeping warm loader disposers and in-flight audio fetches so a single-track edit doesn't refetch unchanged assets. Resets the audio signature to force a reschedule, including into an empty window (how removed audio stops). */
     setPrecomp(precomp: AssetTimelineResult): void {
         this.precomp = precomp;
         this.layoutGateKeys = layoutGatesOf(precomp);
@@ -77,10 +54,7 @@ export class AssetManager {
         this.lastAudioSrcs = null;
     }
 
-    /**
-     * Blocking load for seek and initial render. Waits for every asset whose
-     * cacheAt <= frame and endFrame >= frame to be ready, then schedules audio.
-     */
+    /** Blocking load for seek and initial render: waits for every asset whose `cacheAt <= frame <= endFrame`, then schedules audio. */
     async loadAt(frame: number): Promise<void> {
         const jobs: Promise<void>[] = [];
 
@@ -104,20 +78,14 @@ export class AssetManager {
         return this.loaderDisposers.has(key) || this.storageAdapter.isLoaded(key);
     }
 
-    /**
-     * Load `records` whatever their windows say — for layout gates, which must be
-     * resident before a track measures regardless of the frame being drawn.
-     */
+    /** Loads `records` whatever their windows say: layout gates must be resident before a track measures regardless of the frame drawn. */
     async loadRecords(records: readonly AssetRecord[]): Promise<void> {
         await Promise.all(records.map((record) => record.type === 'loader'
             ? this.runLoader(record.src, record.load)
             : this.storageAdapter.loadAsset(record.src, record)));
     }
 
-    /**
-     * Non-blocking incremental prefetch called after each render tick. Fires
-     * loads for assets whose cacheAt window has been reached without blocking.
-     */
+    /** Non-blocking prefetch after each render tick; fires loads for assets whose `cacheAt` window was reached. */
     prefetch(frame: number): void {
         for (const [key, track] of this.precomp.assets) {
             if (track.record.type === 'loader') {
@@ -134,23 +102,14 @@ export class AssetManager {
         }
     }
 
-    /**
-     * Drive a single loader track toward the state `frame` requires. If `frame`
-     * is inside the loader's `[cacheAt, discardAt]` window, run its callback
-     * (deduped — at most one in-flight run, skipped once loaded) and return the
-     * pending job, if any. If `frame` is outside the window and the loader was
-     * loaded, dispose it. Returns the in-flight load promise so a blocking
-     * caller can await it; `undefined` when there's nothing to wait for.
-     */
+    /** Drives one loader toward the state `frame` requires: inside `[cacheAt, discardAt]` run it (deduped, skipped once loaded), outside dispose it if loaded. Returns the in-flight promise a blocking caller can await, else `undefined`. */
     private syncLoader(key: string, track: AssetTrack, frame: number): Promise<void> | undefined {
         if (track.record.type !== 'loader') return undefined;
         const discardAt = track.discardAt ?? Infinity;
         const inWindow = track.cacheAt <= frame && frame <= discardAt;
 
         if (!inWindow) {
-            // A layout gate is loaded by `loadRecords` whatever frame is drawn, so
-            // its window says nothing about when it may go: disposing it here made
-            // `isReady` false and the next frame load it again.
+            // A layout gate is loaded by `loadRecords` whatever frame is drawn; disposing it here made `isReady` false and the next frame load it again.
             if (this.layoutGateKeys.has(key)) return undefined;
             const dispose = this.loaderDisposers.get(key);
             if (dispose) {
@@ -163,19 +122,14 @@ export class AssetManager {
         return this.runLoader(key, track.record.load);
     }
 
-    /** Run a loader unless it is resident or already running. */
     private runLoader(key: string, load: LoaderFn): Promise<void> | undefined {
-        // Already loaded for this window, or a run is already in flight.
         if (this.loaderDisposers.has(key)) return undefined;
         const existing = this.loaderInFlight.get(key);
         if (existing) return existing;
 
         const job = load()
             .then(disposer => {
-                // A loader that resolves nothing is keeping its result resident on
-                // purpose (see `LoaderFn`). Recording a no-op disposer rather than
-                // skipping the entry is what keeps `loaderDisposers.has(key)` the
-                // single "already loaded" test for both kinds.
+                // A loader resolving nothing keeps its result resident on purpose (see `LoaderFn`); a no-op disposer keeps `loaderDisposers.has(key)` the single "already loaded" test.
                 this.loaderDisposers.set(key, disposer ?? NO_DISPOSE);
             })
             .finally(() => {
@@ -185,7 +139,6 @@ export class AssetManager {
         return job;
     }
 
-    /** Run every outstanding loader disposer and clear loader state. */
     dispose(): void {
         for (const dispose of this.loaderDisposers.values()) dispose();
         this.loaderDisposers.clear();
@@ -193,10 +146,7 @@ export class AssetManager {
         this.disposed = true;
     }
 
-    /**
-     * Push the current audio working set to the AudioSink. Called after each
-     * render tick so the device stays in sync with the tracks' audio requests.
-     */
+    /** Pushes the current audio working set to the AudioSink after each render tick. */
     syncAudio(frame: number): void {
         const currentTime = frame / this.precomp.fps;
 
@@ -205,7 +155,6 @@ export class AssetManager {
         const required = new Set<string>();
         const seen = new Set<string>();
 
-        /** Admit `req` if it overlaps the scheduling window, shifted by its owner's offset. */
         const consider = (req: AudioRequest, offsetSecs: number): void => {
             const globalStart = offsetSecs + req.startAt;
             const globalEnd = offsetSecs + req.endAt;
@@ -246,9 +195,7 @@ export class AssetManager {
                 this.audioFetching.set(src, job);
             }
         }
-        // A failed source nothing asks for any more is forgotten, so wanting it
-        // again later tries it afresh; one that failed quietly is reported when
-        // a request that asks for its sound arrives.
+        // A failed source nothing asks for any more is forgotten so it is tried afresh when wanted; one that failed quietly is reported when a request for its sound arrives.
         for (const [src, cause] of this.audioFailed) {
             if (!srcs.has(src)) {
                 this.audioFailed.delete(src);
@@ -285,9 +232,6 @@ export class AssetManager {
     }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Every layout-gate key any track of `precomp` declares. */
 function layoutGatesOf(precomp: AssetTimelineResult): ReadonlySet<string> {
     const keys = new Set<string>();
     for (const track of precomp.tracks) for (const key of track.layoutGates ?? []) keys.add(key);
@@ -297,21 +241,11 @@ function layoutGatesOf(precomp: AssetTimelineResult): ReadonlySet<string> {
 /** Stand-in for a loader that resolved nothing — see the note in {@link AssetManager.syncLoader}. */
 const NO_DISPOSE: Disposer = () => { };
 
-/**
- * Produce a deterministic string key that uniquely identifies an audio request's
- * playback identity. Includes the effect chain, the ramps and the transitions so
- * editing any of them changes the id — the device then stops the stale source and
- * rebuilds the graph instead of reusing the old one.
- *
- * The bus chain is in for the same reason: re-routing a clip to a different bus,
- * or changing a bus's level or its span, changes what it sounds like without
- * changing anything else here — so leaving it out would keep the stale graph.
- */
+/** A deterministic key for an audio request's playback identity, including its effects, ramps, transitions and bus chain: editing any changes what it sounds like, so the device must stop the stale source and rebuild the graph. */
 function stableKey(req: AudioRequest, clipOffsetSecs: number): string {
     return `${req.src}|${clipOffsetSecs + req.startAt}|${clipOffsetSecs + req.endAt}|${req.trimStart}|${req.trimEnd ?? "_"}|${req.loop ? 1 : 0}|${paramKey(req.volume)}|${paramKey(req.speed)}|${req.sourceLength ?? "_"}|${effectsKey(req.effects)}|${transitionKey(req.transitionIn)}|${transitionKey(req.transitionOut)}|${busKey(req.bus)}`;
 }
 
-/** The bus chain's contribution to {@link stableKey}. */
 function busKey(bus: AudioRequest["bus"]): string {
     if (!bus || bus.length === 0) return "";
     return bus.map(busStopKey).join(">");
@@ -323,7 +257,6 @@ function audioSignature(reqs: readonly AudioRequest[]): string {
     return reqs.map(r => r.id).sort().join("\n");
 }
 
-/** Shallow equality check for two string sets (order-independent). */
 function setsEqual(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
     if (a.size !== b.size) return false;
     for (const v of a) if (!b.has(v)) return false;

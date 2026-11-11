@@ -21,31 +21,13 @@ import type { GlowEffect } from "../effects/implementations/glow";
 import type { GlassEffect } from "../effects/implementations/glass";
 
 /**
- * The node effects that are **not** media filters, and why.
- *
- * Everything else in {@link NodeEffect} is a function of the pixels it is
- * given, so it means exactly the same thing applied to a node's rendered
- * content or to one fill layer's own pixels — and the renderer already runs
- * both through a single handler registry. This is the exception list, so a new
- * effect becomes a filter by default rather than by remembering to add it.
- *
- * Two reasons land here:
- *
- * - **Needs something a fill layer doesn't have.** `magnify` and `glass` sample
- *   the backdrop beneath the node — glass is a slab you see *through*, and a
- *   node's own paint is not something there is anything behind; `motionBlur` and
- *   `trails` are derived from the node's sampled velocity. A fill has no
- *   backdrop and no motion of its own.
- * - **Draws outside the silhouette.** `outline` paints a ring around the
- *   content, which the shape path a fill is clipped to would cut away, and
- *   `glow` bleeds past it in every direction — a glow clipped to the thing that
- *   cast it is not a dimmer glow, it is no glow at all. (`bloom` stays: it is
- *   the contained version of the same idea, which is what makes it the right
- *   one to reach for on a fill.)
- *
- * `blur`, `grayscale`, `curves` and `colorAdjustment` are excluded for a third,
- * bookkeeping reason: they already have a dedicated filter type below, sharing
- * the same fields and the same renderer handler.
+ * The node effects that are **not** media filters. Everything else in {@link NodeEffect} is a function of the pixels it
+ * is given, so it means the same on a node's content or one fill layer's pixels; this is the exception list, so a new
+ * effect becomes a filter by default. Two reasons: **it needs something a fill layer lacks** (`magnify` and `glass`
+ * sample the backdrop, `motionBlur` and `trails` derive from the node's velocity), or **it draws outside the
+ * silhouette** (`outline` paints a ring the fill's clip would cut away, and `glow` bleeds past it; `bloom` stays as the
+ * contained version). `blur`, `grayscale`, `curves` and `colorAdjustment` are excluded only because they have dedicated
+ * filter types below sharing the same fields and renderer handler.
  */
 type NonFilterEffect =
     | MagnifyEffect
@@ -59,29 +41,10 @@ type NonFilterEffect =
     | CurvesEffect
     | ColorAdjustmentEffect;
 
-/**
- * Node effects usable as a media filter — i.e. applied to one image/video
- * fill's own pixels rather than to a node and everything under it.
- *
- * This is what lets a background image be oil-painted, dithered or posterized
- * without wrapping it in a node whose effect would also hit its children:
- *
- *     Rect({
- *         fill: Fills.image('bg.jpg', { filters: Adjustments.oilPaint(4) }),
- *         children: [Text({ text: "still sharp" })],
- *     })
- *
- * The effects carry a `mode` field that means nothing here (a fill has no
- * backdrop); the {@link VideoAdjustmentChain} builders drop it, and the renderer ignores
- * it on this path.
- */
+/** Node effects usable as a media filter: applied to one image/video fill's own pixels rather than a node and everything under it (so a background can be oil-painted without also hitting its children). Their `mode` means nothing here (a fill has no backdrop); the {@link VideoAdjustmentChain} builders drop it and the renderer ignores it. */
 export type EffectAdjustment = Exclude<NodeEffect, NonFilterEffect>;
 
-/**
- * Discriminated union of pixel filters — the filters valid on both image and
- * video fills. Each is realised either as a per-pixel colour filter, or — for
- * the ones that resample pixel *positions* — as a lens pass over the fill.
- */
+/** Pixel filters valid on both image and video fills, each a per-pixel colour filter or, for those that resample pixel *positions*, a lens pass over the fill. */
 export type MediaAdjustment =
     | ExposureFilter
     | BlurFilter
@@ -92,11 +55,7 @@ export type MediaAdjustment =
     | ColorAdjustmentFilter
     | EffectAdjustment;
 
-/**
- * Discriminated union of video-only filters — temporal/multi-frame effects that
- * are meaningless on a still image (a single frame has no time axis and no
- * previous frames). Consumed outside the pixel `setImageFilter` path.
- */
+/** Video-only filters: temporal/multi-frame effects meaningless on a still (no time axis, no previous frames), consumed outside the pixel `setImageFilter` path. */
 export type VideoOnlyAdjustment =
     | PosterizeTimeFilter
     | VideoEchoFilter;

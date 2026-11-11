@@ -5,12 +5,7 @@ import { Corners, CornersInput, resolveCorners, lerpCorners, isUniformCorners } 
 /** Per-corner border radius values, all fully resolved to numbers. */
 export type CornerRadiusResolved = Corners<number>;
 
-/**
- * Accepted corner radius input for a Rect: a single number applies uniformly to
- * all corners; an object overrides corners individually (`{ topLeft, … }`) or by
- * axis (`{ top, bottom }` / `{ left, right }`). An already-resolved value passes
- * through. Unspecified corners fall back to a previous value or 0 when resolved.
- */
+/** Corner radius input for a Rect: one number for all corners, or an object per corner (`{ topLeft, … }`) or axis (`{ top, bottom }` / `{ left, right }`); an already-resolved value passes through. Unspecified corners fall back to a previous value or 0. */
 export type RectCornerRadius = CornersInput<number> | CornerRadiusResolved;
 
 /**

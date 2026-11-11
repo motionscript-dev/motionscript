@@ -158,12 +158,7 @@ export interface TextBaseProps extends PaintProps {
     textDecoration: TextDecoration;
     textCase: TextCase;
     minFontSize: number;
-    /**
-     * Name of a typography preset from `theme.typography` (e.g. `"header"`).
-     * Supplies any text-style prop (fontSize, fontWeight, …) not set explicitly
-     * here. An explicit prop always wins over the preset; the preset wins over an
-     * inherited `<DefaultTextStyle>`.
-     */
+    /** Name of a `theme.typography` preset (e.g. `"header"`) supplying any text-style prop not set explicitly. Precedence: explicit prop, then preset, then an inherited `<DefaultTextStyle>`. */
     variant: string;
 }
 
@@ -171,51 +166,23 @@ export interface TextProps extends TextBaseProps {
     text: string;
     /** Wrap onto more lines once the text runs out of width. */
     wrap: boolean;
-    /**
-     * Wrap the text around a path (text-on-path). Accepts the same value shapes
-     * as the {@link Path} node's `d`: an SVG path string, a `PathCommand[]`, or a
-     * {@link PathBuilder}. When set, `wrap` and multi-line (`\n`) are ignored
-     * (single line), and `runs` are not applied.
-     */
+    /** Wraps the text around a path (text-on-path), taking the same shapes as {@link Path}'s `d` (SVG string, `PathCommand[]`, {@link PathBuilder}). Single line: `wrap`, `\n` and `runs` are ignored. */
     path: PathData | PathBuilder;
-    /**
-     * Stretches of `text` styled apart from the node — see {@link TextRun}.
-     * Where two overlap the later one wins; offsets past the end of the string
-     * style nothing. Ignored on a `path`.
-     */
+    /** Stretches of `text` styled apart from the node (see {@link TextRun}); the later of two overlapping runs wins, offsets past the end style nothing, ignored on a `path`. */
     runs: TextRun[];
 }
 
-/**
- * How a {@link NumberNode}'s value is written down.
- *
- * `'custom'` hands the pattern over verbatim through
- * {@link NumberProps.customPattern}; the other three compose one from
- * {@link NumberProps.fractionDigits} and {@link NumberProps.grouped}.
- */
+/** How a {@link NumberNode}'s value is written: `'custom'` hands {@link NumberProps.customPattern} over verbatim; the others compose a pattern from {@link NumberProps.fractionDigits} and {@link NumberProps.grouped}. */
 export type NumberFormat = "currency" | "percent" | "number" | "custom";
 
 export interface NumberProps extends TextBaseProps {
     /** The numeric value to display. Tweenable — `to({ value })` counts. */
     value: number;
-    /**
-     * How the figure is written:
-     * - `'number'` — plain decimal (the default)
-     * - `'currency'` — money, prefixed with {@link NumberProps.currencySymbol}
-     * - `'percent'` — multiplies by 100 and appends `%` (so `0.42` → `42%`)
-     * - `'custom'` — {@link NumberProps.customPattern}, verbatim
-     */
+    /** How the figure is written: `'number'` (default), `'currency'` (prefixed with {@link NumberProps.currencySymbol}), `'percent'` (x100 and `%`, so `0.42` is `42%`), `'custom'` ({@link NumberProps.customPattern}, verbatim). */
     format: NumberFormat;
-    /**
-     * The pattern, when {@link NumberProps.format} is `'custom'` — the same
-     * grammar `formatNumber` takes (`#,##0.00`, `0.0%`, `$#,##0`).
-     */
+    /** The pattern when {@link NumberProps.format} is `'custom'`, in the grammar `formatNumber` takes (`#,##0.00`, `0.0%`, `$#,##0`). */
     customPattern: string;
-    /**
-     * Fixed number of decimal places. Always exactly this many, which is what
-     * keeps a counting animation from flickering trailing digits as the value
-     * crosses an integer boundary.
-     */
+    /** Fixed decimal places, always exactly this many so a counting animation doesn't flicker trailing digits across an integer boundary. */
     fractionDigits: number;
     /** Group digits in threes — `1,000` rather than `1000`. */
     grouped: boolean;
@@ -238,12 +205,7 @@ export interface RichTextProps extends PaintProps {
     /** Line height multiplier applied to each run's font size. */
     lineHeight: number;
     textAlign: TextAlign;
-    /**
-     * Name of a typography preset from `theme.typography` (e.g. `"body"`).
-     * Supplies any node-level default (fontSize, fontWeight, â€¦) not set
-     * explicitly here, which `runs()` then folds into each span. An explicit prop
-     * wins over the preset; the preset wins over an inherited `<DefaultTextStyle>`.
-     */
+    /** Name of a `theme.typography` preset (e.g. `"body"`) supplying node-level defaults not set explicitly, which `runs()` folds into each span. Precedence: explicit prop, then preset, then an inherited `<DefaultTextStyle>`. */
     variant: string;
 }
 

@@ -5,7 +5,7 @@ import { fillOps, strokeOps } from "@motionscript/sdk"
 import { lerpBarChartTheme, resolveBarChartTheme } from "../bar-chart/shared"
 import { lerpChartTheme, resolveChartTheme } from "../line-chart/shared"
 import { PIE_SPOTLIGHT_DIM, lerpPieChartTheme, resolvePieChartTheme } from "../pie-chart/shared"
-import { axisTweenTarget, lerpAxisDomain, resolveAxisDomain, type AxisDomainConfig } from "./shared"
+import { lerpAxisDomain, resolveAxisDomain, type AxisDomainConfig } from "./shared"
 
 /**
  * The three charts' themes: each is a tree of leaves that a partial write merges
@@ -311,36 +311,5 @@ describe("lerpAxisDomain", () => {
 
   it("stays auto when both sides are", () => {
     expect(lerpAxisDomain({ label: "" }, { label: "" }, 0.5)).toEqual({ label: "", range: undefined, ticks: undefined, format: undefined })
-  })
-})
-
-describe("axisTweenTarget", () => {
-  const DRAWN: AxisDomainConfig = { label: "Sales", range: [0, 10], ticks: [0, 5, 10] }
-
-  it("is nothing when the request states neither a range nor ticks: the plain property tween will do", () => {
-    expect(axisTweenTarget(DRAWN, undefined)).toBeUndefined()
-    expect(axisTweenTarget(DRAWN, { label: "Revenue" })).toBeUndefined()
-    expect(axisTweenTarget(DRAWN, { format: "$0" })).toBeUndefined()
-  })
-
-  it("keeps the tick count the axis draws when only a range is given, spaced across the new range", () => {
-    expect(axisTweenTarget(DRAWN, { range: [0, 40] })).toEqual({ label: "Sales", range: [0, 40], ticks: [0, 20, 40], format: undefined })
-  })
-
-  it("uses the ticks it is given, with the range it has", () => {
-    expect(axisTweenTarget(DRAWN, { ticks: [0, 4, 8] })).toEqual({ label: "Sales", range: [0, 10], ticks: [0, 4, 8], format: undefined })
-  })
-
-  it("takes both when both are given", () => {
-    expect(axisTweenTarget(DRAWN, { range: [5, 15], ticks: [5, 10, 15] })).toEqual({ label: "Sales", range: [5, 15], ticks: [5, 10, 15], format: undefined })
-  })
-
-  it("carries the caption and the format it is also given", () => {
-    expect(axisTweenTarget(DRAWN, { range: [0, 20], label: "Revenue", format: "$0" })).toMatchObject({ label: "Revenue", format: "$0", range: [0, 20] })
-  })
-
-  it("draws at least two markers, whatever the drawn axis had", () => {
-    expect(axisTweenTarget({ label: "", range: [0, 10] }, { range: [0, 6] })?.ticks).toEqual([0, 3, 6])
-    expect(axisTweenTarget({ label: "", range: [0, 10], ticks: [3] }, { range: [0, 6] })?.ticks).toEqual([0, 3, 6])
   })
 })

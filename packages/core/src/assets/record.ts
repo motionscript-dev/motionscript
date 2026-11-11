@@ -3,19 +3,8 @@ export type AssetType = 'image' | 'font' | 'video' | 'audio' | 'loader';
 /** Frees whatever a {@link LoaderFn} loaded. Called when its window is evicted. */
 export type Disposer = () => void;
 
-/**
- * An opaque async load owned by the declaring package. Runs the load and
- * optionally resolves a {@link Disposer} that frees it. The core never inspects
- * what was loaded — this is how a component package (e.g. the code component's
- * Shiki highlighter) loads its own resources without core depending on it.
- *
- * Resolving nothing means "keep it resident": a syntax grammar or a 3D runtime is
- * cheap to hold and expensive to re-fetch, so most loaders have nothing to free.
- * Resolving a `Disposer` opts into eviction when the frame window closes.
- */
+/** An opaque async load owned by the declaring package (a code component's Shiki highlighter loads its own resources without core depending on it). Resolving nothing means "keep it resident": grammars and 3D runtimes are cheap to hold and expensive to refetch; resolving a {@link Disposer} opts into eviction when the frame window closes. */
 export type LoaderFn = () => Promise<void | Disposer>;
-
-// ─── Cached entry types ───────────────────────────────────────────────────────
 
 /** The frame window one asset is needed over. */
 interface BaseAssetRecord {
@@ -49,17 +38,10 @@ export interface AudioRecord extends BaseAssetRecord {
     trimEnd: number;    // seconds; default is end of audio (manifest duration)
 }
 
-/**
- * A generic, opaque async load tracked on the timeline like any other asset.
- * Unlike images/fonts/etc. it isn't dispatched by {@link StorageAdapter}; the
- * {@link AssetManager} runs {@link load} directly when the frame window opens
- * and calls the returned {@link Disposer} when it evicts. `src` is the dedupe
- * key (e.g. `lang:java|github-dark`).
- */
+/** An opaque async load tracked on the timeline like any asset but not dispatched by {@link StorageAdapter}: the {@link AssetManager} runs {@link load} when the frame window opens and calls the returned {@link Disposer} on eviction. `src` is the dedupe key (e.g. `lang:java|github-dark`). */
 export interface LoaderRecord extends BaseAssetRecord {
     type: 'loader';
     load: LoaderFn;
 }
 
-/** Union of all per-type cached entry shapes. */
 export type AssetRecord = ImageRecord | FontRecord | VideoRecord | AudioRecord | LoaderRecord;

@@ -2,32 +2,15 @@ import { LerpFunction } from "@/tween/lerp";
 import type { AttributeOps, HasUniformCheck } from "@/attributes/shared/operators";
 import { Corners, CornersInput, resolveCorners, lerpCorners, isUniformCorners } from "./corners";
 
-/**
- * How a single corner is shaped once it has a non-zero radius:
- * - `'rounded'` — a circular arc;
- * - `'angled'`  — a straight diagonal chamfer cut across the corner.
- */
+/** How a corner with a non-zero radius is shaped: `'rounded'` (a circular arc) or `'angled'` (a straight chamfer). */
 export type CornerStyle = "rounded" | "angled";
 
-/** Per-corner resolved styles. */
 export type CornerStyleResolved = Corners<CornerStyle>;
 
-/**
- * Accepted corner style input for a Rect: a single {@link CornerStyle} applies to
- * all corners; an object overrides corners individually (`{ topLeft, … }`) or by
- * axis (`{ top, bottom }` / `{ left, right }`). An already-resolved value passes
- * through. Unspecified corners fall back to a previous value or `'rounded'` when
- * resolved.
- */
+/** Corner style input for a Rect: one {@link CornerStyle} for all corners, or an object per corner (`{ topLeft, … }`) or axis (`{ top, bottom }` / `{ left, right }`); an already-resolved value passes through. Unspecified corners fall back to a previous value or `'rounded'`. */
 export type RectCornerStyle = CornersInput<CornerStyle> | CornerStyleResolved;
 
-/**
- * The corner-style attribute's op set — no zero check, since style has no zero
- * value. "Interpolating" corner styles means snapping at the midpoint — corner
- * style is a discrete enum, so it switches at `t = 0.5` rather than blending,
- * matching the codebase's convention for discrete properties (see e.g. the
- * pixelate effect).
- */
+/** The corner-style op set. No zero check (style has no zero value); style is a discrete enum, so "interpolating" snaps at `t = 0.5`, as for other discrete properties (see the pixelate effect). */
 export const cornerStyleOps: AttributeOps<RectCornerStyle, CornerStyleResolved>
     & HasUniformCheck<RectCornerStyle, CornerStyleResolved> = {
     resolve: (value, previous) => resolveCorners(value as CornersInput<CornerStyle>, "rounded", previous, (v): v is CornerStyle => v === "rounded" || v === "angled"),
@@ -36,9 +19,5 @@ export const cornerStyleOps: AttributeOps<RectCornerStyle, CornerStyleResolved>
     isUniform: (value) => isUniformCorners(value),
 };
 
-/**
- * Scalar (single-value) corner style tween for shapes whose vertices don't map to
- * named corners — polygons and polygrams apply one style to every vertex, so they
- * use this instead of {@link cornerStyleOps}'s per-corner form.
- */
+/** Scalar corner style tween for shapes whose vertices don't map to named corners (polygons and polygrams apply one style to every vertex), instead of {@link cornerStyleOps}'s per-corner form. */
 export const lerpCornerScalarStyle: LerpFunction<CornerStyle> = (from, to, t) => (t < 0.5 ? from : to);

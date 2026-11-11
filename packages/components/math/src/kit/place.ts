@@ -16,11 +16,9 @@ export function anchored<C extends { is(child: ChildView): boolean }>(component:
 }
 
 /**
- * Lay `children` out on `map`, for whichever node holds them: a coordinate
- * system, or a plot holding the marks that read it. A mark goes on its ink;
- * anything else keeps its own size and has its `x`/`y` read as graph
- * coordinates. `origin` is the holder's own centre in the map's pixels (y-up),
- * since a child's box is placed from there.
+ * Lay `children` out on `map` for a system or a plot: a mark goes on its ink,
+ * anything else keeps its size and reads `x`/`y` as graph coordinates.
+ * `origin` is the holder's centre in the map's pixels (y-up).
  */
 export function placeOnMap(children: readonly ChildView[], map: CoordinateMap, origin: Vector2, room: Size2D, plane: GraphPlane): Placement2D[] {
     return children.map((child) => {

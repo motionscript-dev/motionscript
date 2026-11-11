@@ -6,30 +6,13 @@ export type DataRecord = Record<string, string | number | boolean>;
 export interface ParseCSVOptions {
     /** Field separator. Default: ','. */
     delimiter?: string;
-    /**
-     * Which columns to coerce to `number`. An explicit list forces just those
-     * columns; `false` disables coercion entirely (every cell stays a string).
-     * Default (omitted/`true`): auto-detect — a column becomes numeric only if
-     * every non-empty cell in it parses as a finite number, so a text column
-     * that happens to contain a numeric-looking value here and there is left
-     * alone rather than partially coerced.
-     */
+    /** Columns to coerce to `number`: an explicit list forces just those, `false` disables coercion, and the default auto-detects (numeric only if every non-empty cell parses as a finite number, so a text column with a stray numeric-looking value isn't partially coerced). */
     numeric?: string[] | boolean;
-    /**
-     * Which columns to coerce to `boolean`, same shape/semantics as
-     * {@link numeric}. Default (omitted/`true`): auto-detect — a column
-     * becomes boolean only if every non-empty cell is exactly `"true"` or
-     * `"false"`. Never applied to a column already coerced to numeric.
-     */
+    /** Columns to coerce to `boolean`, as {@link numeric}; auto-detect makes a column boolean only if every non-empty cell is exactly `"true"` or `"false"`. Never applied to a column already numeric. */
     boolean?: string[] | boolean;
 }
 
-/**
- * Parse CSV text into an array of row records keyed by the header row.
- * Handles quoted fields (embedded delimiters, newlines, and `""` escapes) and
- * both CRLF/LF line endings. Synchronous and dependency-free, so it's safe to
- * call at module-eval time on text pulled in via a `?raw` import.
- */
+/** Parses CSV text into row records keyed by the header row. Handles quoted fields (embedded delimiters, newlines, `""` escapes) and CRLF/LF. Synchronous and dependency-free, so safe at module-eval time on `?raw` text. */
 export function parseCSV(text: string, options: ParseCSVOptions = {}): DataRecord[] {
     const delimiter = options.delimiter ?? ',';
     const rows = splitRows(text, delimiter);
@@ -64,15 +47,7 @@ export function parseCSV(text: string, options: ParseCSVOptions = {}): DataRecor
     });
 }
 
-/**
- * `parseData` only ever runs as an inlined literal — the
- * `@motionscript/vite-plugin` build-time macro replaces
- * `parseData("file.csv")` call sites with the already-parsed rows before this
- * body ever executes. This implementation exists purely so the call
- * type-checks and so an unresolved call site (missing plugin, or a
- * non-literal argument the macro couldn't statically inline) fails loudly
- * instead of silently returning nothing.
- */
+/** Only ever an inlined literal: the `@motionscript/vite-plugin` macro replaces `parseData("file.csv")` call sites with the parsed rows before this runs. This body exists so the call type-checks and an unresolved call site (no plugin, non-literal argument) fails loudly instead of returning nothing. */
 export function parseData(file: string, _options?: ParseCSVOptions): DataRecord[] {
     throw new Error(
         `parseData("${file}") must be called with a static string literal so the ` +
@@ -82,7 +57,6 @@ export function parseData(file: string, _options?: ParseCSVOptions): DataRecord[
     );
 }
 
-/** Decide which columns to coerce, per {@link ParseCSVOptions.numeric}. */
 function resolveNumericColumns(
     header: string[],
     records: Record<string, string>[],
@@ -103,7 +77,6 @@ function resolveNumericColumns(
     });
 }
 
-/** Decide which columns to coerce, per {@link ParseCSVOptions.boolean}. */
 function resolveBooleanColumns(
     header: string[],
     records: Record<string, string>[],
@@ -127,11 +100,7 @@ function resolveBooleanColumns(
     });
 }
 
-/**
- * Split raw CSV text into rows of raw (unquoted) string cells. A minimal
- * hand-rolled scanner rather than a `split(',')`/`split('\n')` pair so quoted
- * fields can safely contain the delimiter, newlines, and escaped (`""`) quotes.
- */
+/** Splits raw CSV text into rows of unquoted cells. A hand-rolled scanner, not `split(',')`, so quoted fields can contain the delimiter, newlines and `""` escapes. */
 function splitRows(text: string, delimiter: string): string[][] {
     const rows: string[][] = [];
     let row: string[] = [];

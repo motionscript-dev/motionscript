@@ -26,112 +26,40 @@ import {
 /** Reports export progress in [0, 1]; video encoding occupies most of the range, audio mixing/finalize the tail. */
 export type ExportProgressCallback = (progress: number) => void;
 
-/**
- * How the video track is encoded.
- *
- * Every field is a straight pass-through to mediabunny's `VideoEncodingConfig`,
- * defaulted here rather than there so an export has one obvious place to look.
- */
+/** How the video track is encoded; fields pass through to mediabunny's `VideoEncodingConfig`, defaulted here. */
 export type VideoEncoderOptions = {
     /**
-     * Which codec the video track is encoded with. Defaults to the format's own:
-     * `'avc'` (H.264) for MP4, which every player, editor and upload target
-     * accepts, and `'vp9'` for WebM.
-     *
-     * `'hevc'` and `'av1'` reconstruct sharp edges far better at the same
-     * bitrate, which is what a listing of syntax-highlighted code or a hairline
-     * stroke is made of — worth reaching for when the file is going somewhere
-     * that decodes them. Both are still 4:2:0, so they narrow the gap rather
-     * than close it. Availability depends on the platform's encoders; an
-     * unsupported choice, or one the container cannot hold (`'avc'` in WebM),
-     * falls back to the format's default rather than failing the export.
+     * Defaults to the format's own: `'avc'` for MP4, `'vp9'` for WebM. `'hevc'`/`'av1'` keep hairline strokes and
+     * code listings sharper at the same bitrate (still 4:2:0). An unsupported choice, or one the container cannot
+     * hold, falls back to the default.
      */
     codec?: 'avc' | 'hevc' | 'av1' | 'vp9' | 'vp8';
     /**
-     * Which encoder implementation WebCodecs should prefer.
-     *
-     * Defaults to `'no-preference'`, which lets each platform use its own
-     * hardware encoder (VideoToolbox on macOS, Media Foundation/NVENC on
-     * Windows, VA-API on Linux). That is typically several times faster than the
-     * software path *and* it is the only configuration in which this sink's
-     * zero-readback design actually holds: a software encoder needs the pixels
-     * on the CPU, so it forces a full GPU→CPU copy of every frame that a
-     * hardware encoder reads directly off the canvas.
-     *
-     * Pass `'prefer-software'` when byte-identical output across machines
-     * matters more than speed — different hardware encoders tune quality and
-     * colour differently at the same nominal bitrate, so the same settings do
-     * not produce the same file.
+     * Defaults to `'no-preference'` (the platform's hardware encoder): several times faster, and the only setup where
+     * this sink's zero-readback design holds, since a software encoder forces a GPU->CPU copy of every frame.
+     * `'prefer-software'` when byte-identical output across machines matters more than speed.
      */
     hardwareAcceleration?: 'no-preference' | 'prefer-hardware' | 'prefer-software';
-    /**
-     * Target bitrate in bits per second, or one of mediabunny's subjective
-     * `Quality` levels.
-     *
-     * Defaults to {@link motionGraphicsBitrate}, which is deliberately *not*
-     * mediabunny's `QUALITY_VERY_HIGH`: that level is frame-rate blind, so a
-     * 60 fps export got the same ~12 Mbps at 1080p as a 30 fps one and paid for
-     * it with ringing along every glyph edge and banding across every gradient.
-     * See that function for the reasoning.
-     */
+    /** Bits per second or a mediabunny `Quality`. Defaults to {@link motionGraphicsBitrate}, not `QUALITY_VERY_HIGH`, which is frame-rate blind (ringing on glyph edges at 60 fps). */
     bitrate?: number | Quality;
     /** Defaults to mediabunny's `'variable'`. `'constant'` is the reproducible-output choice. */
     bitrateMode?: 'constant' | 'variable';
-    /**
-     * Seconds between key frames. Defaults to 1.
-     *
-     * Shorter than mediabunny's 2, because a frame's error is carried by every
-     * inter frame that references it: on synthetic content, where a flat
-     * background makes a shimmer obvious, a keyframe twice as often visibly
-     * resets the drift. It also halves the seek granularity, which matters for a
-     * clip an editor is going to scrub.
-     */
+    /** Seconds between key frames (default 1). Shorter than mediabunny's 2 because inter frames carry a frame's error, so flat synthetic backgrounds shimmer less; it also halves seek granularity. */
     keyFrameInterval?: number;
-    /**
-     * WebCodecs performance/quality trade-off. Defaults to `'quality'`, which
-     * also guarantees no frame is dropped — the only correct setting for a file
-     * being written rather than streamed.
-     */
+    /** Defaults to `'quality'`, which also guarantees no frame is dropped: the only correct setting for a file being written. */
     latencyMode?: 'quality' | 'realtime';
-    /**
-     * A hint about what the frames contain, per
-     * [mst-content-hint](https://w3c.github.io/mst-content-hint/#video-content-hints).
-     *
-     * Defaults to `'detail'`: encoders that honour it bias towards preserving
-     * sharp edges and fine texture over smoothing motion, which is what motion
-     * graphics are. Ignored where it is not implemented.
-     */
+    /** A [content hint](https://w3c.github.io/mst-content-hint/#video-content-hints). Defaults to `'detail'`: bias towards sharp edges and fine texture over smoothing motion. Ignored where unimplemented. */
     contentHint?: string;
 };
 
-/**
- * Bits per pixel per frame the default bitrate is built from.
- *
- * Rendered motion graphics are the hard case for a codec tuned on camera
- * footage: hard glyph edges, large flat fields, and gradients with no sensor
- * noise to hide the quantisation in. They compress *worse* than live action at
- * the same perceived quality, not better, so the figure here is well above what
- * a streaming preset would use — this is a master being rendered once, not a
- * bitstream being pushed down a pipe.
- */
+/** Bits per pixel per frame for the default bitrate. Motion graphics (hard glyph edges, flat fields, noise-free gradients) compress worse than camera footage, so this is well above a streaming preset. */
 const BITS_PER_PIXEL = 0.2;
 /** Floor, so a tiny viewport still gets enough bits to be legible. */
 const MIN_VIDEO_BITRATE = 2_000_000;
-/**
- * Ceiling. Past this the returns are gone and the levels start excluding
- * hardware decoders — 4K60 lands here, and AVC level 5.1 (which every consumer
- * device implements) tops out at 240 Mbps, well clear of it.
- */
+/** Ceiling: past it the returns are gone and AVC levels start excluding hardware decoders (4K60 lands here; level 5.1 allows 240 Mbps). */
 const MAX_VIDEO_BITRATE = 100_000_000;
 
-/**
- * The default video bitrate for an export of this size and frame rate.
- *
- * Scaling with **both** axes is the point. mediabunny's `Quality` levels scale
- * with resolution only, so doubling the frame rate halved the bits available per
- * frame while leaving the number unchanged — which is exactly the configuration
- * that produced clean stills and a mushy video from the very same renderer.
- */
+/** Default video bitrate scaled by **both** axes: mediabunny's `Quality` levels scale with resolution only, so doubling the frame rate halved the bits per frame (clean stills, mushy video). */
 export function motionGraphicsBitrate(width: number, height: number, fps: number): number {
     const raw = width * height * fps * BITS_PER_PIXEL;
     return Math.round(Math.min(MAX_VIDEO_BITRATE, Math.max(MIN_VIDEO_BITRATE, raw)));
@@ -166,10 +94,7 @@ export type ExportParams = RendererWasmOption & {
     manifest?: AssetManifest;
     /** Theme for a document that carries none of its own. */
     theme?: Theme;
-    /**
-     * Set false to produce a silent file — no audio track is added to the
-     * container and the mix is skipped entirely. Defaults to true.
-     */
+    /** Set false to produce a silent file: no audio track, mix skipped. Defaults to true. */
     includeAudio?: boolean;
     /** Video encoder settings; see {@link VideoEncoderOptions} for the defaults. */
     video?: VideoEncoderOptions;
@@ -190,36 +115,14 @@ export type ExportParams = RendererWasmOption & {
      */
     onIssue?: (issue: RenderIssue) => void;
     /**
-     * Render each frame at this multiple of the output resolution and downsample
-     * it before encoding. **Defaults to 2**; pass 1 to turn it off.
-     *
-     * The one lever that improves an export at a *fixed* output size. Every
-     * codec a browser can encode is 4:2:0 — colour is stored at half resolution
-     * on both axes, and no bitrate buys that back — so the colour fringing along
-     * a saturated glyph or a hard edge is a property of the format, not of the
-     * settings. Handing the encoder an already-downsampled frame does not undo
-     * the subsampling, but it does mean every chroma sample averages four real
-     * pixels instead of one, which is what removes most of the crawl on fine
-     * detail and much of the banding on gradients.
-     *
-     * Measured against a correctly-sampled reference frame of a syntax-highlighted
-     * listing, `2` lands 2.7 dB closer than a 1× encode — and 1.3 dB closer than
-     * an *unencoded* 1× still, which is why it is the default despite costing
-     * `supersample²` times the render work per frame plus a rescale. Pass 1 when
-     * turnaround matters more than the file, and note that exporting at
-     * `scale: 2` is cheaper than supersampling *and* better whenever the extra
-     * resolution is wanted in the file itself.
-     *
-     * Clamped so the render surface stays inside {@link MAX_RENDER_AXIS}, since a
-     * supersampled 4K export is already drawing 8K frames.
+     * Render each frame at this multiple of the output resolution and downsample before encoding (default 2; 1 turns
+     * it off). Every browser-encodable codec is 4:2:0, so chroma fringing on saturated edges is a property of the
+     * format; downsampling first makes each chroma sample average four real pixels (2 measured 2.7 dB closer to a
+     * reference than a 1x encode). Costs `supersample²` render work; `scale: 2` is cheaper and better when the
+     * resolution is wanted in the file. Clamped to {@link MAX_RENDER_AXIS}.
      */
     supersample?: number;
-    /**
-     * When true, the encoded bytes are returned instead of triggering a
-     * browser download. Used by headless drivers (e.g. the CLI) that capture
-     * the output themselves and write it to disk; leave unset for the
-     * interactive player, which downloads via an `<a>` element.
-     */
+    /** Return the encoded bytes instead of triggering a browser download (for headless drivers that write to disk). */
     returnBytes?: boolean;
 }
 
@@ -230,25 +133,10 @@ const EMPTY_MANIFEST: AssetManifest = {
     font: {},
 };
 
-// ── Audio mixing ─────────────────────────────────────────────────────────────
-//
-// The mix itself lives in ./audio/mixer, shared with `mixTimelineAudio` so a
-// split export and a whole one cannot mix differently.
-
-// ── Video sink ───────────────────────────────────────────────────────────────
-
 /**
- * mediabunny/WebCodecs implementation of the frame sink, writing whichever
- * container `format` names.
- *
- * Wraps the very `<canvas>` the renderer draws into, so `addFrame` costs nothing but
- * a timestamp — WebCodecs pulls the pixels from the canvas itself, with no
- * GPU→CPU readback. That is why the seam signals a frame rather than passing one.
- *
- * The readback claim holds only while the encoder is a hardware one, which is
- * why {@link VideoEncoderOptions.hardwareAcceleration} defaults to letting the
- * platform choose: a software encoder has to be handed CPU pixels, so it drags
- * a full-frame copy off the GPU on every single frame.
+ * mediabunny/WebCodecs frame sink wrapping the very canvas the renderer draws into: `addFrame` costs only a timestamp
+ * because WebCodecs pulls pixels from the canvas with no GPU->CPU readback (hence the seam signals a frame rather
+ * than passing one). Holds only for a hardware encoder; a software one forces a full-frame copy every frame.
  */
 export class MediabunnyVideoSink implements VideoFrameSink<AudioBuffer> {
     private readonly target = new BufferTarget();
@@ -273,9 +161,7 @@ export class MediabunnyVideoSink implements VideoFrameSink<AudioBuffer> {
             latencyMode: encoding.latencyMode,
             contentHint: encoding.contentHint,
             ...(encoding.bitrateMode !== undefined && { bitrateMode: encoding.bitrateMode }),
-            // `fit` is exact here — the supersampled canvas is a whole multiple
-            // of the output — but mediabunny requires it whenever both axes are
-            // given, so it is stated rather than inferred.
+            // `fit` is exact (the canvas is a whole multiple of the output) but mediabunny requires it when both axes are given.
             ...(downsampling && { transform: { width: output.width, height: output.height, fit: 'fill' as const } }),
         });
         this.output = new Output({ format: formatSpec(format).container(), target: this.target });
@@ -283,8 +169,7 @@ export class MediabunnyVideoSink implements VideoFrameSink<AudioBuffer> {
 
     async start(info: { fps: number; hasAudio: boolean }): Promise<void> {
         this.output.addVideoTrack(this.video, { frameRate: info.fps });
-        // Tracks must be declared before the muxer starts, which is why the
-        // orchestrator reports this rather than leaving it to be inferred.
+        // Tracks must be declared before the muxer starts.
         if (info.hasAudio) {
             await ensureAudioEncoder(this.format);
             this.audio = audioTrackSource(this.format, this.audioOptions.bitrate ?? DEFAULT_AUDIO_BITRATE);
@@ -312,33 +197,15 @@ export class MediabunnyVideoSink implements VideoFrameSink<AudioBuffer> {
     }
 }
 
-// ── Main export ──────────────────────────────────────────────────────────────
-
-/** Round up to the nearest even integer — see the call site. */
 function evenUp(n: number): number {
     const rounded = Math.round(n);
     return rounded % 2 === 0 ? rounded : rounded + 1;
 }
 
-/**
- * Longest axis the render surface is allowed to reach.
- *
- * Supersampling multiplies the surface, not the output: a 4K export at
- * `supersample: 2` is drawing 8K frames, and the next step up asks for a
- * 15360-wide WebGL surface that most drivers will not give and none will give
- * cheaply. 8192 is the smallest `MAX_TEXTURE_SIZE` in wide circulation, so a
- * surface inside it is one every machine that can run the export at all can
- * also allocate.
- */
+/** Longest axis the render surface may reach: a 4K export at `supersample: 2` already draws 8K frames, and 8192 is WebGPU's default `maxTextureDimension2D`. */
 const MAX_RENDER_AXIS = 8192;
 
-/**
- * How far the frame can actually be supersampled at this output size.
- *
- * Reduced rather than refused: an export that quietly renders at 1× is a
- * slightly softer file, and one that throws because the default was too
- * ambitious for a 4K project is no file at all.
- */
+/** How far the frame can be supersampled at this output size; reduced rather than refused, since a slightly softer file beats no file. */
 function fittedSupersample(requested: number, output: { width: number; height: number }): number {
     const longest = Math.max(output.width, output.height);
     let factor = Math.max(1, Math.round(requested));
@@ -347,13 +214,8 @@ function fittedSupersample(requested: number, output: { width: number; height: n
 }
 
 /**
- * The codec to actually encode with: the one asked for if the container holds
- * it and this platform can encode it at this size, else the format's default,
- * else its fallback (`'avc'` for MP4, `'vp8'` for WebM).
- *
- * Which encoders a machine has varies by OS, browser and GPU, and an export that
- * dies at the muxer for want of an HEVC encoder is worse than one that quietly
- * produces H.264. The fallback is not probed: there is nothing to fall back to.
+ * The codec to encode with: the one asked for if the container holds it and this platform can encode it at this
+ * size, else the format's default, else its fallback (`'avc'` MP4, `'vp8'` WebM). The fallback is not probed.
  */
 async function resolveCodec(
     requested: VideoCodec | undefined,
@@ -393,12 +255,7 @@ async function canEncode(codec: VideoCodec, size: { width: number; height: numbe
     }
 }
 
-/**
- * Every encoder setting, decided. A split export pins one of these across its
- * segments, since `concatVideoSegments` refuses parts encoded differently. With
- * a numeric `bitrate` (see {@link plainVideoEncoding}) it is plain data and
- * crosses a process boundary.
- */
+/** Every encoder setting, decided; a split export pins one across segments since `concatVideoSegments` refuses parts encoded differently. Plain data with a numeric `bitrate` (see {@link plainVideoEncoding}). */
 export interface ResolvedVideoEncoding {
     codec: VideoCodec;
     /** A `Quality` is left for the encoder to size, as an export always has. */
@@ -429,10 +286,7 @@ export async function resolveVideoEncoding(
     };
 }
 
-/**
- * The encoding with a `Quality` turned into the bits per second mediabunny would
- * give it at this size, since a class instance cannot cross a `MessagePort`.
- */
+/** Turns a `Quality` into bits per second at this size, since a class instance cannot cross a `MessagePort`. */
 export function plainVideoEncoding(
     encoding: ResolvedVideoEncoding,
     output: { width: number; height: number },
@@ -453,7 +307,7 @@ export function exportGeometry(viewport: Size2D, scale: number, supersample: num
 }
 
 /** A hidden canvas with a mounted render context, reusable across renders of one project. */
-export interface ExportSurface {
+interface ExportSurface {
     canvas: HTMLCanvasElement;
     renderContext: BrowserRenderContext;
     storageAdapter: StorageAdapter;
@@ -461,12 +315,7 @@ export interface ExportSurface {
     dispose(): void;
 }
 
-/**
- * Open the canvas, renderer, storage and render context an export draws with,
- * resolving once the surface can draw (a frame drawn before an asynchronously
- * started surface is ready encodes blank). The canvas is a whole multiple of the
- * output, so the downsample is exact.
- */
+/** Opens the canvas, renderer, storage and render context an export draws with, resolving once the surface can draw (a frame drawn earlier encodes blank). The canvas is a whole multiple of the output, so the downsample is exact. */
 export async function openExportSurface(params: {
     canvasSize: { width: number; height: number };
     viewport: Size2D;
@@ -498,16 +347,7 @@ export async function openExportSurface(params: {
     }
 }
 
-/**
- * Renders a document frame-by-frame to an offscreen canvas and muxes the result
- * into an MP4 or WebM via mediabunny.
- *
- * The frame loop itself — discovery, state evaluation, the warm-and-re-render retry
- * that keeps every frame accurate, audio scheduling, progress and cancellation —
- * lives in `renderTimeline` (frame-loop.ts). What this function
- * supplies is the browser-specific half: a canvas to draw into, a WebCodecs sink,
- * a Web Audio mixer, and the `<a download>` delivery.
- */
+/** Renders a document frame by frame to an offscreen canvas and muxes it into MP4/WebM via mediabunny. The frame loop lives in `renderTimeline` (frame-loop.ts); this supplies the browser half: canvas, WebCodecs sink, Web Audio mixer, download. */
 export async function exportVideo(params: ExportParams): Promise<Uint8Array | void> {
     const {
         // Not `document`, which would shadow the DOM global this function uses.

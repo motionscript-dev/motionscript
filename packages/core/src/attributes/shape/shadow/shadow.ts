@@ -4,8 +4,6 @@ import { Fill } from '../fill/chain';
 import { Vector2, lerpVector2 } from '@/attributes/layout/vector2';
 import type { AttributeOps } from '@/attributes/shared/operators';
 
-// ── Prop (loose) ─────────────────────────────────────────────────────────────
-
 export interface ShadowProp {
     blur?: number;
     /** Offset of the shadow from the shape, in px. Defaults to `{ x: 0, y: 0 }`. */
@@ -14,24 +12,13 @@ export interface ShadowProp {
     fill?: Fill;
     /** When true, the shadow is cast inward (inset) instead of as a drop shadow. Defaults to false. */
     inner?: boolean;
-    /**
-     * Grows (positive) or shrinks (negative) the shadow's silhouette before it
-     * is offset and blurred, like CSS `box-shadow` spread. Only honoured for
-     * ellipses and rectangles, whose geometry can be resized cleanly; ignored
-     * for other shapes. Defaults to 0.
-     */
+    /** Grows (positive) or shrinks (negative) the silhouette before offset and blur, like CSS `box-shadow` spread. Only honoured for ellipses and rectangles, whose geometry resizes cleanly. Defaults to 0. */
     spread?: number;
 }
-/**
- * Fully resolved shadow — all fields normalised with defaults applied.
- * Compatible with the lerp registry (IFill is used for fill to avoid
- * breaking the existing lerp/registry pipeline).
- */
+/** Fully resolved shadow: all fields normalised, defaults applied. */
 export interface ShadowResolved {
     blur: number;
-    /** Offset of the shadow from the shape, in px. */
     offset?: Vector2;
-    /** Resolved fill layers, painted bottom-to-top like a node's `fill`. */
     fill: FillResolved[];
     /** When true, the shadow is cast inward (inset) instead of as a drop shadow. */
     inner: boolean;
@@ -39,18 +26,11 @@ export interface ShadowResolved {
     spread: number;
 }
 
-/**
- * Accepted shapes for a node's `shadow` prop: a single loose {@link ShadowProp},
- * an array of them (stacked), or an already-resolved {@link ShadowResolved}/array
- * — resolved values pass through `resolveShadow` idempotently, so a node's
- * read-back `shadow` can be assigned straight back.
- */
+/** Accepted shapes for a node's `shadow`: a loose {@link ShadowProp}, an array of them (stacked), or already-resolved values, which pass through `resolveShadow` idempotently so a read-back `shadow` can be assigned straight back. */
 export type Shadow =
     | ShadowProp
     | ShadowResolved
     | (ShadowProp | ShadowResolved)[];
-
-// ── Resolve ──────────────────────────────────────────────────────────────────
 
 export function resolveShadow(prop: ShadowProp, previous?: ShadowResolved): ShadowResolved {
     return {
@@ -61,8 +41,6 @@ export function resolveShadow(prop: ShadowProp, previous?: ShadowResolved): Shad
         spread: prop.spread ?? previous?.spread ?? 0,
     };
 }
-
-// ── Lerp ─────────────────────────────────────────────────────────────────────
 
 function lerpShadow(from: ShadowResolved, to: ShadowResolved, t: number): ShadowResolved {
     return {
@@ -75,7 +53,6 @@ function lerpShadow(from: ShadowResolved, to: ShadowResolved, t: number): Shadow
     };
 }
 
-/** The shadow-layer attribute's op set — the `shadow` prop's resolve/lerp pair. */
 export const shadowOps: AttributeOps<Shadow, ShadowResolved[]> = {
     resolve: (prop, previous) => {
         if (prop == null) return [];

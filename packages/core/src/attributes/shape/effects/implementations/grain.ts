@@ -1,24 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Film grain — per-pixel noise blended into the node's own content.
- *
- * The noise is *signed* (it lightens and darkens around the source value) and
- * scaled by the local alpha, so it never bleeds past the silhouette and never
- * shifts the average exposure.
- *
- * Grain that doesn't move reads as a texture rather than as film, so
- * {@link animated} re-seeds the field every frame from the node's elapsed time.
- * For a deterministic render (e.g. a pixel-diff test) leave it off and animate
- * {@link seed} instead — a tween over `seed` gives the same shimmer frame-locked
- * to the timeline.
- */
+/** Film grain: per-pixel noise blended into the node's content. The noise is *signed* and scaled by local alpha, so it never bleeds past the silhouette or shifts average exposure. Static grain reads as texture rather than film, so {@link animated} re-seeds every frame from elapsed time; for a deterministic render (a pixel-diff test) leave it off and tween {@link seed} for the same shimmer frame-locked to the timeline. */
 export interface GrainEffect extends ModedEffect, EffectFields<typeof grainSpec.params> {
     type: "grain";
 }
 
-/** The {@link GrainEffect} spec: its parameters, defaults and ranges. */
 export const grainSpec = defineEffect({
     type: "grain",
     group: "stylize",

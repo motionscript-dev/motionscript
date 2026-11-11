@@ -517,21 +517,33 @@ export class WgpuBackend {
     /** Per 3D scene asset, the geometry its renderer keeps. */
     private geometries3d = new Map<number, GeometryTable>();
 
-    /** Answers a scene's new texture requests: images and surfaces from the
-     *  image store (converted on the GPU), data textures as pixels. */
+    /** Uploads a scene's new data textures, and binds its images and surfaces
+     *  from the image store (converted on the GPU). Image ids restart with
+     *  every frame's doc, so a bind made on an earlier frame can name another
+     *  asset now, the scene's own target included: every image and surface the
+     *  scene has asked for is bound again, to this frame's id, on every sync. */
     private bindTextures3d(img: ImageAsset, table: TextureTable) {
-        for (const req of table.pending.splice(0)) {
+        const fresh = new Set(table.pending.splice(0));
+        for (const req of fresh) {
             const t = req.texture;
-            if ("data" in t) {
-                this.r.scene3d_pixels(img.id, req.id, Uint8Array.from(t.data as ArrayLike<number>), t.width, t.height, req.srgb);
-                continue;
-            }
+            if ("data" in t) this.r.scene3d_pixels(img.id, req.id, Uint8Array.from(t.data as ArrayLike<number>), t.width, t.height, req.srgb);
+        }
+        for (const req of table.all.values()) {
+            const t = req.texture;
+            if ("data" in t) continue;
             const source = "src" in t ? img.links3d?.images?.[t.src] : img.links3d?.surfaces?.get(t);
             if (source) this.r.scene3d_bind(img.id, req.id, source.id, req.srgb);
-            else this.missing3d.add("src" in t ? `image:${t.src}` : "surface");
+            else if (fresh.has(req)) this.missing3d.add("src" in t ? `image:${t.src}` : "surface");
         }
     }
     private scene3dSigs = new Map<number, string>();
+    /** Ids are positional per frame, so a scene's id can turn into a surface or
+     *  an image; the renderer drops that scene, and so must what is kept for it. */
+    private forgetScene3d(id: number) {
+        this.textures3d.delete(id);
+        this.geometries3d.delete(id);
+        this.scene3dSigs.delete(id);
+    }
     /** The last sync's 3D encode (and signature) time and words. */
     private encode3dMs = 0;
     private words3d = 0;
@@ -647,6 +659,7 @@ export class WgpuBackend {
         for (const img of doc.images) {
             if (this.uploaded.get(img.id) === img.version) continue;
             if (img.surface) {
+                this.forgetScene3d(img.id);
                 this.r.set_surface(img.id, img.surface.id, img.width, img.height);
             } else if (img.scene3d) {
                 const k = this.viewport.w / doc.width;
@@ -676,7 +689,10 @@ export class WgpuBackend {
                 }
                 for (const u of report.unsupported) this.missing3d.add(u);
                 this.bindTextures3d(img, table);
-            } else this.r.upload_image(img.id, this.colorCorrect(img), img.mipmaps);
+            } else {
+                this.forgetScene3d(img.id);
+                this.r.upload_image(img.id, this.colorCorrect(img), img.mipmaps);
+            }
             this.uploaded.set(img.id, img.version);
         }
         const w = this.w;

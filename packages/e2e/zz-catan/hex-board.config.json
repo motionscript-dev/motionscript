@@ -1,0 +1,356 @@
+{
+  "extends": "node3d",
+  "icon": "hexagon",
+  "leaf": true,
+  "properties": {
+    "tiles": {
+      "label": "Tiles",
+      "control": "table",
+      "tile": {
+        "row": [
+          "resource",
+          "number"
+        ]
+      },
+      "item": {
+        "type": "object",
+        "control": "object",
+        "properties": {
+          "resource": {
+            "type": "text",
+            "control": "select",
+            "label": "Resource",
+            "span": 3,
+            "options": [
+              {
+                "value": "wood",
+                "label": "Wood"
+              },
+              {
+                "value": "brick",
+                "label": "Brick"
+              },
+              {
+                "value": "sheep",
+                "label": "Sheep"
+              },
+              {
+                "value": "wheat",
+                "label": "Wheat"
+              },
+              {
+                "value": "ore",
+                "label": "Ore"
+              },
+              {
+                "value": "desert",
+                "label": "Desert"
+              }
+            ]
+          },
+          "number": {
+            "type": "number",
+            "label": "Number",
+            "min": 0,
+            "max": 12,
+            "step": 1,
+            "integer": true,
+            "span": 2
+          }
+        }
+      }
+    },
+    "ports": {
+      "label": "Harbors",
+      "control": "list",
+      "numbered": true,
+      "item": {
+        "type": "text",
+        "control": "select",
+        "options": [
+          {
+            "value": "any",
+            "label": "3:1 any"
+          },
+          {
+            "value": "wood",
+            "label": "2:1 wood"
+          },
+          {
+            "value": "brick",
+            "label": "2:1 brick"
+          },
+          {
+            "value": "sheep",
+            "label": "2:1 sheep"
+          },
+          {
+            "value": "wheat",
+            "label": "2:1 wheat"
+          },
+          {
+            "value": "ore",
+            "label": "2:1 ore"
+          }
+        ]
+      }
+    },
+    "waterTexture": {
+      "label": "Water texture",
+      "control": "slider"
+    },
+    "woodColor": {
+      "label": "Wood"
+    },
+    "brickColor": {
+      "label": "Brick"
+    },
+    "sheepColor": {
+      "label": "Sheep"
+    },
+    "wheatColor": {
+      "label": "Wheat"
+    },
+    "oreColor": {
+      "label": "Ore"
+    },
+    "desertColor": {
+      "label": "Desert"
+    },
+    "seaColor": {
+      "label": "Sea"
+    },
+    "frameColor": {
+      "label": "Frame"
+    },
+    "tokenColor": {
+      "label": "Tokens"
+    },
+    "inkColor": {
+      "label": "Numbers"
+    },
+    "hotColor": {
+      "label": "6 and 8"
+    },
+    "built": {
+      "label": "Built",
+      "control": "slider"
+    },
+    "spotlit": {
+      "label": "Spotlight",
+      "control": "slider"
+    },
+    "spotTiles": {
+      "label": "Spotlit tiles",
+      "control": "list",
+      "look": "pills",
+      "item": {
+        "type": "number",
+        "min": 1,
+        "max": 19,
+        "step": 1,
+        "integer": true
+      }
+    },
+    "spotPorts": {
+      "label": "Spotlit harbors",
+      "control": "list",
+      "look": "pills",
+      "item": {
+        "type": "number",
+        "min": 1,
+        "max": 9,
+        "step": 1,
+        "integer": true
+      }
+    },
+    "look": {
+      "label": "Outline",
+      "control": "segmented",
+      "options": [
+        {
+          "value": "cad",
+          "label": "CAD"
+        },
+        {
+          "value": "ink",
+          "label": "Ink"
+        },
+        {
+          "value": "sketch",
+          "label": "Sketch"
+        },
+        {
+          "value": "flat",
+          "label": "None"
+        }
+      ]
+    },
+    "lineColor": {
+      "label": "Lines"
+    },
+    "frame": {
+      "label": "Frame",
+      "control": "segmented",
+      "options": [
+        {
+          "value": "grid",
+          "label": "Grid"
+        },
+        {
+          "value": "tray",
+          "label": "Tray"
+        }
+      ]
+    },
+    "gridColor": {
+      "label": "Grid"
+    },
+    "platformColor": {
+      "label": "Platform"
+    }
+  },
+  "commands": {
+    "assemble": {
+      "label": "Assemble",
+      "icon": "blocks",
+      "category": "content",
+      "description": "Tiles fall in from the centre outward, then the numbers and harbors pop on.",
+      "defaults": {
+        "duration": 3.5
+      }
+    },
+    "spotlight": {
+      "label": "Spotlight",
+      "icon": "spotlight",
+      "category": "paint",
+      "description": "Lifts and outlines the tiles and harbors given, and dims the rest.",
+      "defaults": {
+        "duration": 1
+      },
+      "args": {
+        "tiles": {
+          "label": "Tiles",
+          "control": "list",
+          "look": "pills",
+          "item": {
+            "type": "number",
+            "min": 1,
+            "max": 19,
+            "step": 1,
+            "integer": true
+          }
+        },
+        "ports": {
+          "label": "Harbors",
+          "control": "list",
+          "look": "pills",
+          "item": {
+            "type": "number",
+            "min": 1,
+            "max": 9,
+            "step": 1,
+            "integer": true
+          }
+        }
+      }
+    },
+    "clearSpotlight": {
+      "label": "Clear spotlight",
+      "icon": "eye",
+      "category": "paint",
+      "description": "Sets the spotlit tiles back down and brings the board back up.",
+      "defaults": {
+        "duration": 0.8
+      }
+    }
+  },
+  "layout": [
+    {
+      "section": "board",
+      "title": "Board",
+      "icon": "hexagon",
+      "before": "appearance",
+      "items": [
+        "tiles",
+        "ports",
+        "look",
+        "frame",
+        "waterTexture"
+      ]
+    },
+    {
+      "section": "boardColors",
+      "title": "Colors",
+      "icon": "palette",
+      "before": "appearance",
+      "collapsible": true,
+      "items": [
+        {
+          "row": [
+            "woodColor",
+            "brickColor"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        {
+          "row": [
+            "sheepColor",
+            "wheatColor"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        {
+          "row": [
+            "oreColor",
+            "desertColor"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        {
+          "row": [
+            "seaColor",
+            "frameColor"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        {
+          "row": [
+            "tokenColor",
+            "inkColor"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        {
+          "row": [
+            "hotColor",
+            "lineColor"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        "gridColor",
+        "platformColor"
+      ]
+    },
+    {
+      "section": "boardStart",
+      "title": "Starts at",
+      "icon": "play",
+      "before": "appearance",
+      "collapsible": true,
+      "collapsed": true,
+      "items": [
+        "built",
+        "spotlit",
+        "spotTiles",
+        "spotPorts"
+      ]
+    }
+  ]
+}

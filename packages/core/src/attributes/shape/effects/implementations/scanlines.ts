@@ -1,18 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * CRT scanlines — periodic dark bands across the content.
- *
- * `offset` scrolls the band pattern; animating it past `spacing` produces the
- * slow vertical roll of a mistuned display, and it wraps, so a linear tween of
- * `offset` loops seamlessly.
- */
+/** CRT scanlines: periodic dark bands. `offset` scrolls the pattern (animating it past `spacing` gives a mistuned display's slow roll) and wraps, so a linear tween loops seamlessly. */
 export interface ScanlinesEffect extends ModedEffect, EffectFields<typeof scanlinesSpec.params> {
     type: "scanlines";
 }
 
-/** The {@link ScanlinesEffect} spec: its parameters, defaults and ranges. */
 export const scanlinesSpec = defineEffect({
     type: "scanlines",
     group: "stylize",

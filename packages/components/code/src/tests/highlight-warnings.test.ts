@@ -22,8 +22,8 @@ const messages = (): string[] => warn.mock.calls.map((call: unknown[]) => String
 
 describe('an unknown language', () => {
     it('warns once, naming the language, and draws plain text', async () => {
-        await ensureHighlighter(undefined, ['bash']);
-        await ensureHighlighter(undefined, ['bash']);
+        await ensureHighlighter(['bash']);
+        await ensureHighlighter(['bash']);
         tokenizeCodeToIdLines('ls -la', 'bash', DefaultHighlightStyle);
         const about = messages().filter((m: string) => m.includes('"bash"'));
         expect(about).toHaveLength(1);
@@ -32,22 +32,22 @@ describe('an unknown language', () => {
     });
 
     it('warns once for each different language', async () => {
-        await ensureHighlighter(undefined, ['c', 'sh']);
-        await ensureHighlighter(undefined, ['c']);
+        await ensureHighlighter(['c', 'sh']);
+        await ensureHighlighter(['c']);
         expect(messages().filter((m: string) => m.includes('"c"'))).toHaveLength(1);
         expect(messages().filter((m: string) => m.includes('"sh"'))).toHaveLength(1);
     });
 
     it('says nothing for a language it highlights, an alias of one, or deliberate plain text', async () => {
-        await ensureHighlighter(undefined, ['typescript', 'ts', 'JSON', '', 'text', 'plaintext']);
+        await ensureHighlighter(['typescript', 'ts', 'JSON', '', 'text', 'plaintext']);
         expect(warn).not.toHaveBeenCalled();
     });
 });
 
 describe('a grammar that fails to load', () => {
     it('is reported once, with the reason, and stays unhighlighted', async () => {
-        await ensureHighlighter(undefined, ['go']);
-        await ensureHighlighter(undefined, ['go']);
+        await ensureHighlighter(['go']);
+        await ensureHighlighter(['go']);
         const about = messages().filter((m: string) => m.includes('"go"'));
         expect(about).toHaveLength(1);
         // The reason the import gave rides along.

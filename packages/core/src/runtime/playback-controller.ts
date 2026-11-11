@@ -31,18 +31,11 @@ import { NodeTextLayout, nodeTextLayout } from "./text-geometry";
 import { spanFrames, spansCovering, trackFrameCount, type TrackSpan } from "./placement";
 import { clipFrameToTime, clipTimeToFrame } from "./frame-time";
 
-/**
- * Transient prop values layered over a node's evaluated state — see
- * {@link PlaybackController.setNodeOverride}. Keys are prop names the node
- * accepts (`x`, `y`, `rotation`, `width`, …).
- */
+/** Keys are prop names the node accepts; see {@link PlaybackController.setNodeOverride}. */
 export type NodeOverride = Record<string, unknown>;
 
-/** Dependencies injected into `PlaybackController` at construction time. */
 export type ControllerParams = {
-    /** The project to play, its fps and viewport resolved — see `Session`. */
     project: ProjectDocument;
-    /** The vocabulary its clips compile against. */
     registry: Registry;
     renderContext: CanvasRenderContext2D;
     measurer: MeasureContext2D;
@@ -51,29 +44,19 @@ export type ControllerParams = {
     audioDevice: AudioSink;
     assets: AssetCatalog;
     /**
-     * Wall-clock ms the background discovery may run before yielding. Defaults
-     * to {@link DEFAULT_PRECOMP_BUDGET_MS}; `0` in tests yields between every
-     * sample interval, making preemption deterministic.
+     * Wall-clock ms background discovery may run before yielding. `0` in tests yields between every sample
+     * interval, making preemption deterministic.
      */
     precompBudgetMs?: number;
     precompProfile?: AssetTimelineProfile;
-    /**
-     * Called each time background discovery lands another track. Passed at
-     * construction so a fast first track can't publish before the caller attaches.
-     */
+    /** Passed at construction so a fast first track cannot publish before the caller attaches. */
     onPrecompProgress?: (result: AssetTimelineResult) => void;
 };
 
 /**
- * Orchestrates playback of a project document.
- *
- * On construction it discovers what frame 0 needs, then streams the rest of the
- * project's asset timeline in behind the first paint. Every clock tick:
- *
- * 1. Loads assets required at the current frame (`AssetManager.loadAt`).
- * 2. Evaluates the tracks on screen and lays them out (`StateEvaluator`).
- * 3. Renders the frame to the render context.
- * 4. Prefetches assets for upcoming frames.
+ * Plays a project document: discovers what frame 0 needs, then streams the rest of the asset timeline in
+ * behind the first paint. Each tick loads the frame's assets, evaluates and lays out the tracks on screen,
+ * renders, then prefetches upcoming frames.
  */
 export class PlaybackController {
     private renderContext: CanvasRenderContext2D;
@@ -84,34 +67,27 @@ export class PlaybackController {
     private assetManager: AssetManager;
     private audioDevice: AudioSink;
     /**
-     * Held rather than merely handed on, because {@link recoverMissingAsset} has
-     * to build a record for a source no pass declared, from what the catalog
-     * knows of it.
+     * Held because {@link recoverMissingAsset} must build a record for a source no pass declared, from what the
+     * catalog knows of it.
      */
     private readonly assetCatalog: AssetCatalog;
     /**
-     * Called synchronously at the end of every frame this controller paints, on
-     * the same task as the draw — for a host drawing *over* the canvas (a
-     * selection box, a caret) that must measure the tree for the frame just
-     * drawn rather than poll and trail a fast scrub. Called after the draw, so a
-     * throwing listener is never mistaken for a render failure.
+     * Called synchronously at the end of every painted frame, on the same task as the draw, for a host drawing
+     * over the canvas (a selection box, a caret) that must measure the tree for the frame just drawn rather than
+     * trail a fast scrub. Called after the draw, so a throwing listener is never mistaken for a render failure.
      */
     onFramePainted?: (frame: number) => void;
 
-    /** Set by dispose(); once true the controller must never touch its (now-freed) render context again. */
     private disposed = false;
-    /** One background pass at a time — see {@link startBackgroundPrecomp}. */
     private precompRunning = false;
     /**
-     * Whether a frame has ever been drawn. Every render pass but {@link repaint}
-     * loads the frame's assets first, so this is what `repaint` waits on before
-     * it will draw one of its own.
+     * Every render pass but {@link repaint} loads the frame's assets first, so `repaint` waits on this before
+     * drawing one of its own.
      */
     private hasPainted = false;
     /**
-     * Monotonic token bumped by every seek / tick / swap. A render pass captures
-     * it at entry and bails before painting if a newer pass has begun, so a
-     * superseded seek never stamps its stale frame over a newer one.
+     * Bumped by every seek, tick and swap. A render pass captures it at entry and bails before painting if a newer
+     * pass began, so a superseded seek never stamps a stale frame over a newer one.
      */
     private seekGeneration = 0;
     private readonly precompBudgetMs: number;
@@ -119,17 +95,14 @@ export class PlaybackController {
     readonly fps: number;
     readonly viewport: Size2D;
     private readonly precomper: AssetTimeline;
-    /** The one build per track that discovery, the evaluator and the editor API share. */
     private readonly store: ClipStore;
     /**
-     * Transient prop values re-applied after every state evaluation, keyed by
-     * structural path so they survive a rebuild. See {@link setNodeOverride}.
+     * Re-applied after every state evaluation, keyed by structural path so they survive a rebuild. See {@link
+     * setNodeOverride}.
      */
     private readonly overrides = new Map<string, NodeOverride>();
-    /** Latest assembled precomp result. */
     precomp: AssetTimelineResult;
 
-    /** Every track's span on the project timeline, in document order. */
     get spans(): readonly TrackSpan[] {
         return this.precomp.tracks.map((track, index) => ({
             id: track.id,
@@ -143,20 +116,17 @@ export class PlaybackController {
         return this.precomp.totalFrames;
     }
 
-    /** Total playback duration in seconds. */
     get totalDuration(): number {
         return this.precomp.totalDuration;
     }
 
-    /** The track the editor API reads from — see `StateEvaluator.currentTrackId`. */
     get currentTrackId(): string | null {
         return this.stateEvaluator.currentTrackId;
     }
 
     /**
-     * Errors collected while discovering tracks, plus any thrown while
-     * *drawing* — one list, because a consumer showing them has the same thing
-     * to say about both: this frame is not what the document says.
+     * Discovery errors plus any thrown while drawing: one list, because a consumer says the same thing about both
+     * (this frame is not what the document says).
      */
     get buildErrors(): BuildError[] {
         if (this.renderErrors.length === 0) return this.precomp.buildErrors;
@@ -164,24 +134,23 @@ export class PlaybackController {
     }
 
     /**
-     * Errors thrown by a render pass, deduplicated by message. A render throwing
-     * happens per frame, at pointer rate while scrubbing, and left to propagate
-     * it was an unhandled rejection and a canvas that simply stopped drawing.
+     * Deduplicated by message. A render throws per frame, at pointer rate while scrubbing, and left to propagate
+     * it would be an unhandled rejection and a canvas that stopped drawing.
      */
     private readonly renderErrors: BuildError[] = [];
 
-    /** Called when {@link renderErrors} gains an entry. Set by the host. */
     onRenderError?: (errors: BuildError[]) => void;
 
     /**
-     * Record a draw-time failure and tell the host, once per distinct message.
-     * Swallowing it is the point: one bad frame must not take down the clock loop.
+     * Swallowing is the point: one bad frame must not take down the clock loop. Reported once per distinct
+     * message.
      */
     private captureRenderError(error: unknown, frame?: number, issue?: RenderIssue): void {
         const e = error instanceof Error ? error : new Error(String(error));
-        // A frame can reach for an asset no pass declared — an override previewing
-        // an edit puts a picture on a node the rebuild that would declare it has
-        // not run yet. The error names the source, so load it and paint again.
+        /**
+         * A frame can reach for an asset no pass declared (an override previewing an edit puts a picture on a node
+         * before the rebuild that would declare it has run). The error names the source, so load it and paint again.
+         */
         if (frame !== undefined && this.recoverMissingAsset(e, frame)) return;
         if (issue) {
             const key = renderIssueKey(issue);
@@ -196,9 +165,8 @@ export class PlaybackController {
     }
 
     /**
-     * Widen the drawing track's index by what the draw found missing, so the next
-     * visit to this frame loads it ahead. The owner is the node the error names,
-     * or else whoever declared the source elsewhere in the clip.
+     * Widen the drawing track's index by what the draw found missing, so the next visit to this frame loads it
+     * ahead. The owner is the node the error names, else whoever declared the source elsewhere in the clip.
      */
     private learnMissingAsset(error: AssetNotLoadedError, frame: number): void {
         const decl = declOf(error, this.assetCatalog);
@@ -222,16 +190,14 @@ export class PlaybackController {
     }
 
     /**
-     * Sources already tried by {@link recoverMissingAsset}, so a picture that
-     * genuinely cannot be fetched is reported rather than re-fetched every frame
-     * of a drag. Cleared by {@link clearRenderErrors}.
+     * Sources already tried by {@link recoverMissingAsset}, so a picture that cannot be fetched is reported rather
+     * than re-fetched every frame of a drag. Cleared by {@link clearRenderErrors}.
      */
     private readonly rescuedAssets = new Set<string>();
 
     /**
-     * Load an asset a frame reached for but nothing had declared, then paint that
-     * frame again. Deliberately narrow: only {@link AssetNotLoadedError}, only a
-     * source the catalog can describe, and only once per source.
+     * Deliberately narrow: only {@link AssetNotLoadedError}, only a source the catalog can describe, once per
+     * source.
      */
     private recoverMissingAsset(error: Error, frame: number): boolean {
         if (!(error instanceof AssetNotLoadedError)) return false;
@@ -262,10 +228,7 @@ export class PlaybackController {
         return true;
     }
 
-    /**
-     * A one-frame record describing `src` well enough to load it, from the
-     * catalog's own metadata — or `null` when the catalog has never heard of it.
-     */
+    /** `null` when the catalog has never heard of `src`. */
     private recordFor(type: AssetNotLoadedError["assetType"], src: string, frame: number): AssetRecord | null {
         try {
             if (type === "font") {
@@ -290,7 +253,6 @@ export class PlaybackController {
         }
     }
 
-    /** Forget draw-time errors — called when what they were about is replaced. */
     clearRenderErrors(): void {
         this.rescuedAssets.clear();
         if (this.renderErrors.length === 0) return;
@@ -327,8 +289,10 @@ export class PlaybackController {
             isReady: (key) => this.assetManager?.isReady(key) ?? false,
         });
         this.precomper = new AssetTimeline(project, scope, { store: this.store });
-        // Only what frame 0 needs — the rest streams in behind the first paint,
-        // so time-to-first-frame is O(the tracks on screen), not O(the project).
+        /**
+         * Only what frame 0 needs; the rest streams in behind the first paint, so time-to-first-frame is O(tracks on
+         * screen), not O(project).
+         */
         this.precomp = this.precomper.ensureCovering(0);
         this.stateEvaluator = new StateEvaluator(project, scope, this.store);
         this.assetManager = new AssetManager(
@@ -347,8 +311,10 @@ export class PlaybackController {
             this.storageAdapter.setPlaying(false);
         });
         this.masterClock.onTick(async (currentTime: number) => {
-            // A tick is also a render pass: claim a generation so a stale paused
-            // seek can't paint after the clock has moved on (and vice-versa).
+            /**
+             * A tick is also a render pass: claim a generation so a stale paused seek cannot paint after the clock moved
+             * on, and vice versa.
+             */
             const gen = ++this.seekGeneration;
             const frame = clipTimeToFrame(currentTime, this.fps);
             if (frame >= this.totalFrames) this.masterClock.pause();
@@ -364,19 +330,16 @@ export class PlaybackController {
         this.startBackgroundPrecomp();
     }
 
-    /**
-     * Discover the remaining tracks off the critical path, republishing the
-     * asset timeline as each one lands. Deferred behind a yield so the first
-     * frame paints before this starts competing for the main thread.
-     */
+    /** Deferred behind a yield so the first frame paints before this competes for the main thread. */
     private startBackgroundPrecomp(): void {
         if (this.precompRunning || this.disposed || this.precomp.complete) return;
         this.precompRunning = true;
         void (async () => {
             try {
                 await yieldToScheduler();
-                // Looped: a document swapped in during the pass's last step has
-                // no yield left for the pass to notice it by.
+                /**
+                 * Looped: a document swapped in during the pass's last step has no yield left for the pass to notice it by.
+                 */
                 while (!this.disposed && !this.precomp.complete) {
                     const final = await this.precomper.runAsync({
                         budgetMs: this.precompBudgetMs,
@@ -393,8 +356,7 @@ export class PlaybackController {
     }
 
     /**
-     * Swap in a newly assembled result. `setPrecomp` resets the asset manager's
-     * audio signature, which is what reschedules audio a new result changed.
+     * `setPrecomp` resets the asset manager's audio signature, which reschedules audio a new result changed.
      */
     private adoptPrecomp(next: AssetTimelineResult): void {
         if (this.disposed) return;
@@ -405,9 +367,8 @@ export class PlaybackController {
     }
 
     /**
-     * Discover the tracks covering `frame` before anything loads or draws it — a
-     * track nobody discovered has no asset windows, so its frame would reach for
-     * decodes nothing loaded. Cheap once they are: this runs on every tick.
+     * A track nobody discovered has no asset windows, so its frame would reach for decodes nothing loaded. Cheap
+     * once they are: runs every tick.
      */
     private discoverThrough(frame: number): void {
         const next = this.precomper.ensureCovering(Math.floor(frame));
@@ -415,8 +376,8 @@ export class PlaybackController {
     }
 
     /**
-     * Load `frame`'s assets and the layout gates of every track covering it —
-     * a face must be resident before text measures, whatever its window says.
+     * Also the layout gates of every track covering it: a face must be resident before text measures, whatever its
+     * window says.
      */
     private async loadFrame(frame: number): Promise<void> {
         const gates: AssetRecord[] = [];
@@ -432,7 +393,6 @@ export class PlaybackController {
         await Promise.all([this.assetManager.loadAt(frame), this.assetManager.loadRecords(gates)]);
     }
 
-    /** Keep built trees near the playhead only; a released track keeps what discovery found. */
     private trimAround(frame: number): void {
         if (Math.abs(frame - this.lastTrimFrame) < this.fps) return;
         this.lastTrimFrame = frame;
@@ -445,51 +405,48 @@ export class PlaybackController {
         return this.masterClock.isPlaying;
     }
 
-    /** Current playback position in seconds. */
     get currentTime(): number {
         return this.masterClock.currentTime;
     }
 
-    /** Current playback position in frames (float). */
     get currentFrame(): number {
         return clipTimeToFrame(this.masterClock.currentTime, this.fps);
     }
 
-    /** Register a callback that fires on every clock tick with the current time. */
     onTime(cb: TimeCallback): void {
         this.masterClock.onTime(cb);
     }
 
-    /** Register a callback that fires when playback starts. */
     onPlay(cb: () => void): void {
         this.masterClock.onPlay(() => cb());
     }
 
-    /** Register a callback that fires when playback pauses. */
     onPause(cb: () => void): void {
         this.masterClock.onPause(cb);
     }
 
-    /** True while `gen` is still the latest seek/tick and the controller is alive. */
     private isCurrent(gen: number): boolean {
         return !this.disposed && gen === this.seekGeneration;
     }
 
-    /** Evaluate the tracks on screen, lay them out, and render `frame`. */
     private renderAt(frame: number): void {
-        // A disposed controller's surface is freed; an in-flight seek
-        // (StrictMode double-mount, HMR) can resolve after dispose().
+        /**
+         * A disposed controller's surface is freed; an in-flight seek (StrictMode double-mount, HMR) can resolve after
+         * `dispose()`.
+         */
         if (this.disposed) return;
         this.hasPainted = true;
         this.renders++;
         try {
-            // A track whose compile measured a face before it loaded builds again, now that it has.
+            /** A track whose compile measured a face before it loaded builds again now that it has. */
             this.store.settleGates(spansCovering(this.store.spans, Math.floor(frame)).map((span) => span.id));
-            // Evaluation and layout are inside the guard too: a command can throw
-            // at a time, and a missing font throws while measuring.
+            /**
+             * Inside the guard too: a command can throw at a time, and a missing font throws while measuring.
+             */
             this.stateEvaluator.stateAt(frame);
-            // After evaluation, before layout: an override beats what the document
-            // evaluated to, and the layout pass that follows sees it.
+            /**
+             * After evaluation, before layout: an override beats what the document evaluated to, and layout sees it.
+             */
             this.applyOverrides();
             this.stateEvaluator.layout(this.measurer);
             this.renderContext.execute(() => {
@@ -505,7 +462,6 @@ export class PlaybackController {
         this.announcePaint(frame);
     }
 
-    /** Tell {@link onFramePainted} a frame has landed, without letting a listener take the render loop down. */
     private announcePaint(frame: number): void {
         if (!this.onFramePainted) return;
         try {
@@ -515,10 +471,7 @@ export class PlaybackController {
         }
     }
 
-    /**
-     * Jump to `frame`, pausing playback first. Waits for required assets to
-     * load before rendering, then prefetches upcoming frames.
-     */
+    /** Pauses playback first. Waits for required assets before rendering, then prefetches upcoming frames. */
     async seek(frame: number): Promise<void> {
         if (this.disposed) return;
         const gen = ++this.seekGeneration;
@@ -530,8 +483,10 @@ export class PlaybackController {
             this.masterClock.seek(clipFrameToTime(clamped, this.fps));
             await this.loadFrame(clamped);
             if (!this.isCurrent(gen)) return;
-            // A cold seek can land on a video frame or an image no draw has asked
-            // for yet: the render asks, the adapter warms, the frame paints again.
+            /**
+             * A cold seek can land on a video frame or image no draw has asked for yet: the render asks, the adapter
+             * warms, the frame paints again.
+             */
             if (await this.settle(() => this.renderAt(clamped), gen) === "superseded") return;
             this.assetManager.prefetch(clamped);
             this.trimAround(clamped);
@@ -541,19 +496,19 @@ export class PlaybackController {
     }
 
     /**
-     * Swap in a new document without rebuilding the backend.
+     * A track whose clip is unchanged keeps its tree and discovery; one whose clip patches in place re-declares
+     * only the owners the edit can reach, and republishes the asset timeline only when that changed it.
      *
-     * A track whose clip is unchanged keeps its tree and its discovery; one whose
-     * clip patches in place re-declares only the owners the edit can reach, and
-     * republishes the asset timeline only when that changed it. **The swap does not
-     * paint**: it loads the frame's assets first, and the canvas keeps the last
-     * complete frame until then — strictly better than a current frame with a
-     * hole where an added picture has not arrived. See {@link pendingSwap}.
+     * The swap does not paint: it loads the frame's assets first and the canvas keeps the last complete frame
+     * until then, better than a current frame with a hole where an added picture has not arrived. See {@link
+     * pendingSwap}.
      */
     setProject(next: ProjectDocument): void {
         if (this.disposed) return;
-        // Claimed before anything is touched, so a seek parked on a yield unwinds
-        // rather than painting into a timeline that moved under it.
+        /**
+         * Claimed before anything is touched, so a seek parked on a yield unwinds rather than painting into a timeline
+         * that moved under it.
+         */
         const gen = ++this.seekGeneration;
 
         this.precomper.setProject(next);
@@ -572,10 +527,9 @@ export class PlaybackController {
     }
 
     /**
-     * The catalog this controller builds against changed in place: build every
-     * track again and repaint, as a swap to the same document would if it could
-     * tell. A clip that failed for want of an entry the catalog now has builds,
-     * and one measured against an old size is measured again.
+     * Build every track again and repaint, as a swap to the same document would if it could tell: a clip that
+     * failed for want of an entry the catalog now has builds, and one measured against an old size is measured
+     * again.
      */
     reconcileCatalog(): void {
         if (this.disposed) return;
@@ -583,7 +537,6 @@ export class PlaybackController {
         this.setProject(this.store.project);
     }
 
-    /** Resolves when the paint {@link setProject} scheduled has landed — for a caller that swaps in order to read the result. */
     whenReplaced(): Promise<void> {
         return this.lastReplacePaint;
     }
@@ -591,17 +544,13 @@ export class PlaybackController {
     private lastReplacePaint: Promise<void> = Promise.resolve();
 
     /**
-     * The generation claimed by the swap whose paint has not landed yet, or `0`.
-     *
-     * {@link repaint} stands down while this names the current generation: the
-     * swap is loading the frame's assets and owes a paint that reads every
-     * override as it stands when it lands. A generation rather than a flag,
-     * because a seek can supersede the swap, and a flag nobody cleared would
-     * leave `repaint` disabled for the rest of the session.
+     * The generation claimed by the swap whose paint has not landed, or `0`. {@link repaint} stands down while it
+     * names the current generation: the swap owes a paint that reads every override as it stands. A generation,
+     * not a flag, because a seek can supersede the swap and an uncleared flag would disable `repaint` for the
+     * session.
      */
     private pendingSwap = 0;
 
-    /** Load `frame`'s assets, then paint — abandoning both if a newer pass began. */
     private async loadAndRepaint(frame: number, gen: number): Promise<void> {
         try {
             try {
@@ -628,10 +577,8 @@ export class PlaybackController {
     }
 
     /**
-     * Capture the current frame as a base-64 PNG data URL. Renders afresh — the
-     * drawing buffer may have been cleared since the last tick — and loads the
-     * frame's assets first, so the capture is right whatever the caller did
-     * before it.
+     * Renders afresh (the drawing buffer may have been cleared since the last tick) and loads the frame's assets
+     * first.
      */
     async screenshot(): Promise<string | undefined> {
         const frame = this.stateEvaluator.currentFrame;
@@ -648,7 +595,6 @@ export class PlaybackController {
         }
     }
 
-    /** {@link renderSettled} against this controller's generation, warning when a frame never settles. */
     private async settle(render: () => void, gen: number, upgrades = false): Promise<SettleOutcome> {
         const adapter = upgrades ? settlingUpgrades(this.storageAdapter) : this.storageAdapter;
         const outcome = await renderSettled(render, adapter, () => this.isCurrent(gen));
@@ -659,19 +605,16 @@ export class PlaybackController {
     }
 
     /**
-     * The generation of the seek, swap or screenshot still on its way to its
-     * paint, or `0`. A repaint behind decodes leaves that paint to it — see
-     * {@link settleTrailing}.
+     * The generation of the seek, swap or screenshot still on its way to its paint, or `0`. A repaint behind
+     * decodes leaves that paint to it; see {@link settleTrailing}.
      */
     private paintInFlight = 0;
 
-    /** Bumped by every render, so a repaint owed to a landed upgrade can tell whether one has happened since. */
     private renders = 0;
 
-    /** {@link renders} when an upgrade landed with a paint in flight, or `null`. */
     private repaintOwedSince: number | null = null;
 
-    /** Release `gen`'s claim — unless a newer paint has claimed since — and repaint behind what it drew. */
+    /** Unless a newer paint has claimed since; repaints behind what it drew. */
     private paintLanded(gen: number): void {
         if (this.paintInFlight !== gen || this.disposed) return;
         this.paintInFlight = 0;
@@ -684,9 +627,8 @@ export class PlaybackController {
     }
 
     /**
-     * The current track's node tree, with each node's frame range on the project
-     * timeline and its waveforms attached. Used by the timeline UI. `null` before
-     * any track is built.
+     * With each node's frame range on the project timeline and its waveforms attached. `null` before any track is
+     * built.
      */
     getTreeState(): TreeState | null {
         const instance = this.stateEvaluator.currentInstance;
@@ -717,25 +659,13 @@ export class PlaybackController {
     }
 
     /**
-     * What a document node of the current track holds before any command has
-     * acted on it, whatever frame is showing and whether or not it is on screen:
-     * the props an editor shows for the node itself, where {@link getNodeState}
-     * is the node at this frame. `null` when the track holds no such row.
+     * What a document node holds before any command acted on it, whatever frame is showing: the props an editor
+     * shows for the node itself, where {@link getNodeState} is the node at this frame.
      */
     getNodeInitialProps(nodeId: string): NodeState["properties"] | null {
         return this.stateEvaluator.currentInstance?.baselineProps(nodeId) ?? null;
     }
 
-    // ---- Direct manipulation ----------------------------------------------
-    // Where a node's pixels are, what is under a point, and a write path fast
-    // enough for a drag. See `runtime/node-picking.ts` for the geometry.
-
-    /**
-     * The on-screen box of one node at the current frame, or `null` when the path
-     * does not resolve. See {@link NodeBox}.
-     *
-     * @param path Structural path from {@link TreeState.path}.
-     */
     getNodeBox(path: string): NodeBox | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
@@ -744,11 +674,7 @@ export class PlaybackController {
         return nodeBoxAt(canvas, path);
     }
 
-    /**
-     * The node's **own** props at a structural path — what it holds right now,
-     * in its own coordinate space, the space {@link setNodeOverride} writes into —
-     * or `null` when the path doesn't resolve.
-     */
+    /** In the node's own coordinate space, the space {@link setNodeOverride} writes into. */
     getNodePropsAt(path: string): NodeState["properties"] | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
@@ -756,7 +682,6 @@ export class PlaybackController {
         return node ? node.properties : null;
     }
 
-    /** Every visible node's box in draw order — one tree walk instead of N {@link getNodeBox} calls. */
     getNodeBoxes(): NodeBox[] {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return [];
@@ -765,10 +690,6 @@ export class PlaybackController {
         return out;
     }
 
-    /**
-     * Project points around the `Node3D` at `path`, or `null` when the path
-     * doesn't resolve to one. See {@link Node3DFrame}.
-     */
     projectNode3D(
         path: string,
         parentPoints: readonly Vector3[],
@@ -779,56 +700,37 @@ export class PlaybackController {
         return projectNode3DAt(canvas, path, parentPoints, localPoints);
     }
 
-    /**
-     * Where a viewport point lands on the plane the node at `path` is positioned
-     * in, in that plane's own y-up frame — see {@link parentPlanePointAt}.
-     */
     parentPlanePoint(path: string, point: Vector2): Vector2 | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
         return parentPlanePointAt(canvas, path, point);
     }
 
-    /**
-     * Where a viewport point lands in the coordinates the node at `path`
-     * positions its children in, or `null` when those are pixels — see
-     * {@link childPlanePointAt}.
-     */
     childPlanePoint(path: string, point: Vector2): Vector2 | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
         return childPlanePointAt(canvas, path, point);
     }
 
-    /**
-     * What keeps the node at `path` looking as it does once it moves under the
-     * node at `parentPath` — see {@link reparentPlacementAt}.
-     */
     reparentPlacement(path: string, parentPath: string, offsets: readonly Vector2[]): ReparentPlacement | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
         return reparentPlacementAt(canvas, path, parentPath, offsets);
     }
 
-    /** The points an editor may drag on the node at `path`, in viewport space — see {@link nodeHandlesAt}. */
     nodeHandles(path: string): NodeHandle[] | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
         return nodeHandlesAt(canvas, path);
     }
 
-    /** The value of `prop` that puts its handle under a viewport point — see {@link handleValueAt}. */
     handleValue(path: string, prop: string, point: Vector2): Vector2 | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
         return handleValueAt(canvas, path, prop, point);
     }
 
-    /**
-     * Where a Text node's caret slots landed on screen, or `null` when the path
-     * doesn't resolve, the node isn't text, or the measurer has no caret model.
-     * See {@link NodeTextLayout}.
-     */
+    /** `null` when the path does not resolve, the node is not text, or the measurer has no caret model. */
     getTextLayout(path: string): NodeTextLayout | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
@@ -838,17 +740,12 @@ export class PlaybackController {
             : null;
     }
 
-    /** `node`'s caret slots in viewport space, or `null` when this controller's measurer keeps no glyph positions. */
     private textLayoutOf(node: Node2D, path: string): NodeTextLayout | null {
         const source = asTextBlockSource(this.measurer);
         return source ? nodeTextLayout(node, path, source) : null;
     }
 
-    /**
-     * The topmost node under a viewport-space point (origin at the viewport
-     * centre, y-up), or `null`. `tolerance` is grab-slop in **scene units** —
-     * the host's pixel slop divided by its preview zoom. See {@link pickNode}.
-     */
+    /** `tolerance` is grab-slop in scene units: the host's pixel slop divided by its preview zoom. */
     pickNode(point: Vector2, tolerance = 0): NodeBox | null {
         const canvas = this.stateEvaluator.currentCanvas;
         if (!canvas) return null;
@@ -856,14 +753,9 @@ export class PlaybackController {
     }
 
     /**
-     * Layer transient prop values over a node, on top of whatever the document
-     * evaluates to, re-applied after every evaluation until cleared — for an
-     * editor dragging a node at pointer rate without rebuilding anything. Not
-     * persistence: the host commits the value to its document on drop and
-     * clears the override.
-     *
-     * @param path  Structural path from {@link TreeState.path}.
-     * @param props Props the node accepts. Merged over any existing override.
+     * Layer transient prop values over a node, on top of what the document evaluates to, re-applied after every
+     * evaluation until cleared. For an editor dragging at pointer rate without rebuilding anything; the host
+     * commits to its document on drop and clears the override.
      */
     setNodeOverride(path: string, props: NodeOverride): void {
         const existing = this.overrides.get(path);
@@ -872,16 +764,11 @@ export class PlaybackController {
     }
 
     /**
-     * Drop one node's overrides, or all of them when `path` is omitted, and
-     * repaint so the node snaps back to what the document says.
+     * Drop one node's overrides, or all when `path` is omitted, and repaint.
      *
-     * Rebuilds the current track's tree to do it: an override was written
-     * straight onto a live prop, and the timeline only restores what its own
-     * commands write. Cheap enough for a pointer-up, which is the only place it
-     * belongs.
-     *
-     * @param path Structural path, as {@link setNodeOverride} takes — not an id,
-     *   since a node a composite built for itself has no authored one to name.
+     * Rebuilds the current track's tree: an override was written straight onto a live prop, and the timeline only
+     * restores what its own commands write. Cheap enough for pointer-up, the only place it belongs. `path` is
+     * structural, not an id: a node a composite built for itself has no authored one.
      */
     clearNodeOverrides(path?: string): void {
         const cleared = path === undefined
@@ -893,20 +780,17 @@ export class PlaybackController {
         this.repaint();
     }
 
-    /** Hidden/locked state for one track's nodes. Not authored, so it rides beside the document. */
+    /** Not authored, so it rides beside the document. */
     setEditorStates(trackId: string, states: NodeEditorStates | undefined): void {
         this.stateEvaluator.setEditorStates(trackId, states);
         this.repaint();
     }
 
     /**
-     * Re-lay-out and repaint the current frame. Cheap enough for a pointer-rate
-     * drag loop: `stateAt` early-returns for the frame already current.
+     * Cheap enough for a pointer-rate drag loop: `stateAt` early-returns for the frame already current.
      *
-     * Does nothing **before the first frame has been drawn** — its assets have
-     * not been loaded, and the last complete frame is a blank surface, which is
-     * what should stay up — **nor between a swap and its paint**, which owes a
-     * paint of its own. See {@link pendingSwap}.
+     * Does nothing before the first frame has been drawn (the last complete frame is a blank surface, which should
+     * stay up), nor between a swap and its paint, which owes one of its own. See {@link pendingSwap}.
      */
     repaint(): void {
         if (!this.hasPainted) return;
@@ -916,11 +800,10 @@ export class PlaybackController {
     }
 
     /**
-     * Repaint a paused frame as the decodes its draw asked for land — one it could
-     * not draw at all, and an upgrade of one it drew below demand, which no paint
-     * waits for. Never while playing: the next tick picks them up. A seek, swap or
-     * screenshot still on its way paints for itself, and once more when it lands
-     * if an upgrade arrived after its render.
+     * Repaint a paused frame as the decodes its draw asked for land: one it could not draw at all, and an upgrade
+     * of one drawn below demand, which no paint waits for. Never while playing (the next tick picks them up). A
+     * seek, swap or screenshot still on its way paints for itself, and once more when it lands if an upgrade
+     * arrived after its render.
      */
     private settleTrailing(): void {
         if (this.trailingSettle || this.disposed || this.isPlaying || !this.hasBackgroundDecodes()) return;
@@ -957,7 +840,6 @@ export class PlaybackController {
         }
     }
 
-    /** Write every held override onto its node. No-op when none are set. */
     private applyOverrides(): void {
         if (this.overrides.size === 0) return;
         const canvas = this.stateEvaluator.currentCanvas;
@@ -996,7 +878,6 @@ export class PlaybackController {
 /** How far from the playhead a built tree is kept, in seconds. */
 const TRIM_HORIZON_SECONDS = 30;
 
-/** `adapter`, settling upgrades alongside what a frame needs — for a paint that is kept rather than shown. */
 function settlingUpgrades(adapter: StorageAdapter): Pick<StorageAdapter, "warmPendingDecodes"> {
     return {
         async warmPendingDecodes() {
@@ -1006,7 +887,6 @@ function settlingUpgrades(adapter: StorageAdapter): Pick<StorageAdapter, "warmPe
     };
 }
 
-/** What a missing-asset error says was needed, as a declaration. */
 function declOf(error: AssetNotLoadedError, catalog: AssetCatalog): AssetDecl | undefined {
     switch (error.assetType) {
         case "image":
@@ -1024,16 +904,9 @@ function declOf(error: AssetNotLoadedError, catalog: AssetCatalog): AssetDecl | 
     }
 }
 
-// Every Node2D is a container (children may be empty); kept for callers that
-// want an explicit "has children" check.
-export function isParentNode(node: Node2D): boolean {
-    return node.children.length > 0;
-}
-
 /**
- * `node` and its subtree as {@link TreeState}, indexed over the authored child
- * list — the same one every other structural-path walk reads, so selection,
- * bars and `getNodeBox` share one set of paths.
+ * Indexed over the authored child list, the one every structural-path walk reads, so selection, bars and
+ * `getNodeBox` share one set of paths.
  */
 function nodeToTreeState(
     node: Node,
@@ -1058,9 +931,8 @@ function nodeToTreeState(
 }
 
 /**
- * Group a track's audio requests into per-node waveform entries, keyed by the
- * structural path their owner has in the tree right now. A request whose owner
- * is not in the tree has no bar to land on.
+ * Keyed by the structural path their owner has in the tree right now; a request whose owner is not in the tree
+ * has no bar to land on.
  */
 function waveformsByOwner(
     requests: readonly AudioRequest[],

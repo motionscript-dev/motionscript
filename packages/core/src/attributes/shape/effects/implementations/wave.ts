@@ -1,32 +1,14 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { CENTER, defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * How the wave's crests are laid out.
- *
- * - `"linear"` — parallel crests running across the node, travelling along
- *   `angle`. Flags, banners, wobbling type, heat shimmer.
- * - `"radial"` — concentric rings expanding from `center`. The pond-ripple /
- *   drop-impact look, and the one that reads as *something happened here*.
- */
+/** How the wave's crests are laid out: `"linear"` (parallel crests travelling along `angle`: flags, heat shimmer) or `"radial"` (concentric rings from `center`: pond ripples, drop impacts). */
 export type WaveShape = "linear" | "radial";
 
-/**
- * Sine displacement — the procedural warp that needs no asset.
- *
- * Pixels are resampled at a position offset by a sine of their own coordinate,
- * so the content ripples without anything being generated or loaded. For an
- * arbitrary warp driven by an image, see `displace`.
- *
- * `phase` is in degrees and the sine wraps, so a **linear tween of `phase` over
- * 360 loops seamlessly** — that is how you make the wave travel. Animating it is
- * the whole point; a static wave reads as a distortion rather than as motion.
- */
+/** Sine displacement, the procedural warp that needs no asset: pixels are resampled at an offset by a sine of their own coordinate (see `displace` for an image-driven warp). `phase` is in degrees and wraps, so a **linear tween of `phase` over 360 loops seamlessly**: how the wave travels. */
 export interface WaveEffect extends ModedEffect, EffectFields<typeof waveSpec.params> {
     type: "wave";
 }
 
-/** The {@link WaveEffect} spec: its parameters, defaults and ranges. */
 export const waveSpec = defineEffect({
     type: "wave",
     group: "distort",
@@ -35,10 +17,7 @@ export const waveSpec = defineEffect({
     scalar: "amplitude",
     neutral: { amplitude: 0 },
     params: {
-        /**
-         * Peak displacement in px per axis. A bare number means the Y axis only:
-         * a wave that displaces along its own direction of travel just smears.
-         */
+        /** Peak displacement in px per axis. A bare number means Y only: displacing along the direction of travel just smears. */
         amplitude: param.vec2({ default: 20, fromNumber: "y", unit: "px" }),
         /** Distance between crests in px. */
         wavelength: param.number({ default: 120, min: 1, unit: "px", inline: true }),

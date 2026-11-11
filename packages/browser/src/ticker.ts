@@ -1,17 +1,6 @@
 import { Ticker } from "@motionscript/core";
 
-/**
- * Ticker backed by a Web Audio AudioContext. Clip time follows
- * `audioContext.currentTime` (within a few ms, see `startLoop`), so any
- * AudioBufferSourceNodes scheduled on the same context play in sync.
- *
- * When paused we suspend the context (audio stops, currentTime freezes);
- * when playing we resume and a rAF loop publishes ticks at the target fps.
- *
- * A single silent buffer covering the full timeline is started on play(),
- * which keeps the context active and gives the browser a stable audio
- * graph to schedule against even on scenes that contain no audio nodes.
- */
+/** Ticker backed by a Web Audio AudioContext: clip time follows `audioContext.currentTime` (within a few ms, see `startLoop`), so AudioBufferSourceNodes on the same context play in sync. Paused suspends the context (currentTime freezes); playing resumes it and a rAF loop publishes ticks at the target fps. A silent buffer covering the full timeline starts on play() to keep the context active even for scenes with no audio nodes. */
 export class WebTicker extends Ticker {
     private readonly contextOf: () => AudioContext;
     private readonly ownsContext: boolean;
@@ -28,11 +17,7 @@ export class WebTicker extends Ticker {
     private seekEpoch: number = 0;
     private silentSource: AudioBufferSourceNode | null = null;
 
-    /**
-     * `context` may be a getter, called on the first `play`: a session hands
-     * over its audio sink's, which is created on first use, so a session that
-     * never plays never opens the audio device.
-     */
+    /** `context` may be a getter, called on the first `play`, so a session that never plays never opens the audio device. */
     constructor(opts: { context?: AudioContext | (() => AudioContext); fps: number }) {
         super();
         const { context } = opts;
@@ -59,14 +44,7 @@ export class WebTicker extends Ticker {
         this.setCurrentTime(clamped);
     }
 
-    /**
-     * Anchors elapsed-time tracking to the current `context.currentTime`, starts the silent ticker
-     * + rAF tick loop and asks a suspended context to resume.
-     *
-     * Synchronous, as {@link Ticker.play} is: a `pause` or `seek` in the same turn must find a
-     * running clock to stop. A suspended context's `currentTime` is frozen, so the clock holds at
-     * the anchor until the resume lands — outside a user gesture that is never.
-     */
+    /** Anchors elapsed-time tracking to `context.currentTime`, starts the silent ticker and rAF loop, and asks a suspended context to resume. Synchronous, as {@link Ticker.play} is: a `pause` or `seek` in the same turn must find a running clock to stop. A suspended context's `currentTime` is frozen, so the clock holds at the anchor until the resume lands (outside a user gesture, never). */
     play(speed: number = 1, reverse: boolean = false): void {
         this.speed = speed;
         this.reverse = reverse;
@@ -102,7 +80,7 @@ export class WebTicker extends Ticker {
         super.pause();
     }
 
-    /** (Re)starts the silent buffer source covering the remaining timeline — keeps the AudioContext active and gives a stable graph for other AudioBufferSourceNodes to schedule against, per the class-level note. */
+    /** (Re)starts the silent buffer source covering the remaining timeline (see the class note). */
     private startSilentTicker(): void {
         this.stopSilentTicker();
         const remaining = Math.max(0.001, this.duration - this.seekOffset);
@@ -122,7 +100,6 @@ export class WebTicker extends Ticker {
                 this.silentSource.stop();
                 this.silentSource.disconnect();
             } catch {
-                // already stopped
             }
             this.silentSource = null;
         }
@@ -139,19 +116,12 @@ export class WebTicker extends Ticker {
     }
 
     /**
-     * Drives ticks off `requestAnimationFrame`, firing `tick()` when the playhead reaches another
-     * project frame — and once more at the end of the run, whether or not it landed on a boundary.
-     *
-     * `context.currentTime` moves in whole render quanta handed over in bursts: at 48 kHz on a
-     * 60 Hz display it advances 8, 10.67, 18.67 or 21.33 ms between animation frames, and a
-     * playhead read straight off it skipped up to a third of the frames. So the playhead advances
-     * by each animation frame's own interval, pulled 5% of the way to the audio clock every frame
-     * and snapped to it when they disagree by more than 50 ms (a stall, a seek). It stays within
-     * a few ms of the audio and moves one frame per frame.
-     *
-     * A listener may `seek` (a host looping wraps to 0 when it hears the end), so the end is
-     * re-read after the listeners and the tick callbacks have run: a run that was seeked out of
-     * its end carries on, and one that was not pauses itself.
+     * Drives ticks off `requestAnimationFrame`, firing `tick()` when the playhead reaches another project frame, and
+     * once more at the end of the run. `context.currentTime` moves in whole render quanta handed over in bursts (at
+     * 48 kHz on a 60 Hz display 8, 10.67, 18.67 or 21.33 ms between frames), so a playhead read straight off it skipped
+     * up to a third of the frames. The playhead therefore advances by each animation frame's own interval, pulled 5% of
+     * the way to the audio clock every frame and snapped to it past 50 ms apart (a stall, a seek). A listener may `seek`
+     * (a host looping wraps to 0 on the end), so the end is re-read after listeners and tick callbacks run.
      */
     private startLoop(): void {
         if (this.rafId !== null) return;
@@ -176,11 +146,9 @@ export class WebTicker extends Ticker {
             let epoch = this.seekEpoch;
             const position = steadied(now);
             let ended = position.ended;
-            // This loop runs at the display's refresh rate, which on a 120 or 144Hz panel is two
-            // or three times the rate anything is rendered at — so the clock advances every time
-            // round (the elapsed maths in `play`/`pause` depend on it being exact) while listeners
-            // hear about it once per frame. The end of the run always reports, or the final
-            // position would never reach a host. See `Ticker.setCurrentTime`.
+            // The loop runs at the display's refresh rate (2-3x the render rate on 120/144Hz), so the clock advances every
+            // round (`play`/`pause` maths need it exact) while listeners hear once per frame. The end of the run always
+            // reports or the final position never reaches a host. See `Ticker.setCurrentTime`.
             const crossed = frameOf(position.time) !== lastFrame;
             const report = crossed || ended;
             this.setCurrentTime(position.time, report);

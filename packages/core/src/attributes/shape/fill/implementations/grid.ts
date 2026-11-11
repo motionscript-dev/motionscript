@@ -5,23 +5,14 @@ import { lerpNumber } from '@/tween/lerp';
 import { Vector2 } from '@/attributes/layout/vector2';
 
 /**
- * Ruled lines in both axes — graph paper, a chart's backing, a layout guide, the
- * floor plane of a diagram.
+ * Ruled lines in both axes (graph paper, a chart's backing, a layout guide). Measured in **divisions of the shape**, not
+ * pixels (unlike {@link DotGridFillProp}): a grid of 8 stays 8 when the shape resizes, so it reads as structure rather
+ * than a texture laid over it. Cells follow the box (a 16:9 shape divided 8 ways has 16:9 cells), since square cells
+ * would leave a ragged strip down one side.
  *
- * Measured in **divisions of the shape**, not in pixels, which is the whole
- * difference between this and {@link DotGridFillProp}: a grid of 8 stays a grid
- * of 8 when the shape resizes, so it reads as structure the figure is built on
- * rather than as a texture laid over it. The cells follow the box — a 16:9 shape
- * divided 8 ways has 8 columns and 8 rows of 16:9 cells — because a grid that
- * kept its cells square would leave a ragged strip down one side of every shape
- * that isn't.
- *
- * {@link subdivisions} nests a finer grid inside each cell, drawn by default at
- * {@link MINOR_WIDTH_RATIO} of the division line's width. Thinner rather than
- * fainter: a half-width line antialiases to a lighter one at any zoom, so the two
- * orders stay distinguishable at every scale without a second colour to keep in
- * sync. {@link subdivisionWidth} overrides that when the default ratio isn't the
- * look wanted.
+ * {@link subdivisions} nests a finer grid inside each cell, by default at {@link MINOR_WIDTH_RATIO} of the division
+ * line's width: thinner rather than fainter, since a half-width line antialiases lighter at any zoom, so the two orders
+ * stay distinguishable at every scale without a second colour. {@link subdivisionWidth} overrides it.
  */
 export interface GridFillProp {
     type: 'grid';
@@ -33,11 +24,7 @@ export interface GridFillProp {
     offset?: Vector2;
     /** Thickness of a division line, in px. `0` leaves the coarse ruling undrawn. */
     strokeWidth?: number;
-    /**
-     * Thickness of a subdivision line, in px. Defaults to
-     * {@link MINOR_WIDTH_RATIO} of {@link strokeWidth} — so a grid that only
-     * states one width still gets two visibly different orders.
-     */
+    /** Thickness of a subdivision line, in px; defaults to {@link MINOR_WIDTH_RATIO} of {@link strokeWidth}. */
     subdivisionWidth?: number;
     color?: Color;
     opacity?: number;
@@ -74,20 +61,14 @@ export const gridFill: FillData<GridFillResolved> = {
             subdivisions: prop.subdivisions ?? DEFAULT_SUBDIVISIONS,
             offset: prop.offset ?? { x: 0, y: 0 },
             strokeWidth,
-            // Derived from the width actually in force rather than from the
-            // default, so stating only `strokeWidth: 4` still yields a minor
-            // ruling in proportion to it.
+            // From the width in force, so stating only `strokeWidth: 4` still gives a proportionate minor ruling.
             subdivisionWidth: prop.subdivisionWidth ?? strokeWidth * MINOR_WIDTH_RATIO,
             color: Array.isArray(raw) ? (raw as NormalizedColor) : parseColor(raw as string),
             opacity: prop.opacity,
             blend: prop.blend,
         };
     },
-    // `divisions` interpolates continuously — a fractional count is a grid caught
-    // mid-zoom, which is exactly what tweening one should look like. The renderer
-    // rounds `subdivisions` instead, so the minor ruling always nests a whole
-    // number of times inside a cell and a tween of it steps rather than sliding
-    // the fine lines out of alignment with the coarse ones.
+    // `divisions` interpolates continuously (a fractional count is a grid caught mid-zoom). The renderer rounds `subdivisions`, so the minor ruling nests a whole number of times and a tween steps instead of sliding fine lines out of alignment.
     lerp: (a, b, t) => ({
         divisions: lerpNumber(a.divisions, b.divisions, t),
         subdivisions: lerpNumber(a.subdivisions, b.subdivisions, t),

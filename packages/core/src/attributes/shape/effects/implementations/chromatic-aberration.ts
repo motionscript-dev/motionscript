@@ -5,7 +5,6 @@ export interface ChromaticAberrationEffect extends ModedEffect, EffectFields<typ
     type: "chromaticAberration";
 }
 
-/** The {@link ChromaticAberrationEffect} spec: its parameters, defaults and ranges. */
 export const chromaticAberrationSpec = defineEffect({
     type: "chromaticAberration",
     group: "glitch",

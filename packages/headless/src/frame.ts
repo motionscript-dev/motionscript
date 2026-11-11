@@ -4,17 +4,10 @@ import { EngineError } from './errors.js';
 export type { FrameSpec };
 
 /**
- * How a caller names the frame to capture.
- *
- * - `'first'` / `'last'` — that end of the timeline.
- * - a `number` — a **frame index**, always. Whole numbers only; a fractional
- *   number is rejected rather than silently reinterpreted as seconds, because
- *   a library caller computing `duration * 0.5` deserves an error rather than
- *   a different unit.
- * - `{ frame }` / `{ seconds }` — the same two units, said explicitly.
- * - a `string` — free text from a CLI flag, an HTTP query param or a job
- *   record, parsed by {@link parseFrameSelector}: `'42'` is a frame, `'2.5'`
- *   and `'2.5s'` are times, `'first'`/`'last'` are the ends.
+ * How a caller names the frame to capture: `'first'` / `'last'`; a `number`, **always a frame index** (whole numbers
+ * only, since a library caller computing `duration * 0.5` deserves an error, not a silent unit change); `{ frame }` /
+ * `{ seconds }` explicitly; or a `string` from a CLI flag or query param, parsed by {@link parseFrameSelector} (`'42'`
+ * a frame, `'2.5'` / `'2.5s'` times).
  */
 export type FrameSelector =
     | number
@@ -24,11 +17,7 @@ export type FrameSelector =
     | { frame: number }
     | { seconds: number };
 
-/**
- * A validated selector, before `fps` is known. Times stay in seconds here so a
- * caller can reject a malformed selector *before* paying for a browser
- * start-up, and convert once the project's frame rate has been read.
- */
+/** A validated selector before `fps` is known. Times stay in seconds so a caller can reject a malformed selector *before* paying for a browser start-up. */
 export type ParsedFrame = FrameSpec | { kind: 'time'; seconds: number };
 
 function invalid(raw: unknown): EngineError {

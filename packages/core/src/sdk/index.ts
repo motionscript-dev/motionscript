@@ -1,20 +1,9 @@
-// The curated public surface published as `@motionscript/sdk` (packages/sdk) and,
-// via this file, as `@motionscript/core/sdk`. A deliberate SUBSET of core's own
-// root barrel (`../index.ts`): no `Engine`/`Session`/platform seams, no
-// `@internal`-tagged descriptor plumbing. Every export here is named, traced to
-// its real declaring sub-barrel — never a wildcard — so nothing internal leaks
-// by accident. Keep this in lockstep with `packages/sdk/src/index.ts`, which
-// mirrors this exact named surface.
+// The curated public surface: published as `@motionscript/sdk`, a one-line passthrough of
+// `@motionscript/core/sdk` (this file). A deliberate subset of core's root barrel (`../index.ts`): no
+// `Engine`/`Session`/platform seams, no `@internal` descriptor plumbing. Every export is named from its
+// declaring sub-barrel, never a wildcard, so nothing internal leaks by accident.
 
-// =============================================================
-// Project
-//
-// A clip is **data**: a still is nodes and props, a composition is the same
-// nodes placed in time plus the commands that animate them, and an audio
-// document is that one tree over. A **project** is one list of tracks over those
-// clips, and it is what the runtime plays — a lone still or composition is sugar
-// for a project with one track (`asProjectDocument`).
-// =============================================================
+// A lone still or composition is sugar for a one-track project (`asProjectDocument`).
 export {
     isProjectDocument,
     asProjectDocument,
@@ -30,10 +19,8 @@ export type {
     ProjectDocument,
     Track,
 } from '../document';
-// `resolveProjectDocument`/`placeTracks` genuinely live in `../runtime` (session
-// resolution and track placement are runtime concerns) — deep-imported from
-// their concrete files rather than the runtime barrel, which also carries
-// `Engine`/`Session` and is never a source for this file.
+// `resolveProjectDocument`/`placeTracks` live in `../runtime` but are deep-imported from their files: the
+// runtime barrel also carries `Engine`/`Session` and is never a source here.
 export { resolveProjectDocument } from '../runtime/session';
 export { placeTracks } from '../runtime/placement';
 export type { TrackSpan } from '../runtime/placement';
@@ -46,13 +33,6 @@ export type {
 export type { NodeTime, AttachScope } from '../components/trees';
 export type { BoxBounds, Extents } from '../layout';
 
-// =============================================================
-// Assets
-//
-// The manifest a host builds a scene against — what images, video, audio and
-// fonts it references, resolved before render. An `Engine`'s manifest and
-// `@motionscript/headless`'s asset options both take this shape.
-// =============================================================
 export type {
     ImageMeta,
     VideoMeta,
@@ -62,32 +42,21 @@ export type {
     AssetManifest,
 } from '../assets';
 
-// =============================================================
-// The clip document
-//
-// The data half of the model. Node types are code — a component registered
-// under its key, which is also where a custom node joins the system — and
-// everything else is plain JSON: which nodes exist, what props they carry, and
-// what happens to them over time.
-// =============================================================
 export {
     validateDocument,
     assertValidDocument,
-    // Saved documents carry the format they were written in; these bring one
-    // forward, and a host rewriting stored node rows calls `migrateNodeProps`.
+    // Saved documents carry the format they were written in; these bring one forward, and a host rewriting stored
+    // node rows calls `migrateNodeProps`.
     DOCUMENT_FORMAT_VERSION,
     DocumentTooNewError,
     documentFormatVersion,
     migrateDocument,
     migrateNodeProps,
     missingNodeOf,
-    // The code half of the model, as one object an engine owns. Not a
-    // singleton: what a document can name is a property of the registry
-    // compiling it, so two engines in one process disagree freely.
+    // Not a singleton: what a document can name is a property of the registry compiling it.
     Registry,
 } from '../document';
-// The shader-pack vocabulary lives beside the rest of the fill/shader attribute
-// machinery, not in `../document`.
+// The shader-pack vocabulary lives beside the fill/shader attribute machinery, not in `../document`.
 export {
     normalizeShaderPack,
     resolveShaderProperties,
@@ -136,9 +105,8 @@ export type {
     ShaderPropertyValues,
 } from '../attributes';
 
-// Expressions: the string form of a prop that follows a variable — `"=4[g]+3"`.
-// `expressionOps` carries recognition, parsing and compiling, so a host can lint,
-// complete or rewrite one without reimplementing the grammar.
+// `expressionOps` carries recognition, parsing and compiling, so a host can lint or rewrite an expression
+// without reimplementing the grammar.
 export { expressionOps, ExpressionError } from '../document';
 export type {
     ParsedExpression,
@@ -147,14 +115,8 @@ export type {
     VariableResolver,
 } from '../document';
 
-// =============================================================
-// Components — the factories a node type is written with
-//
-// A component is one object literal: `key`, `state`, `commands`, `children`
-// and its tree's own fields (`measure`/`layout`/`render` for 2D). Behaviour is
-// spread in from modules (`...Paint.state`, `...Paint.commands`) and their
-// helpers called (`Paint.draw`, `Flow.measure`). See `packages/core/docs/why.md#node-types-are-factory-specs-not-decorated-classes`.
-// =============================================================
+// A component is one object literal; behaviour is spread in from modules (`...Paint.state`) and their helpers
+// called (`Paint.draw`). See `packages/core/docs/why.md#node-types-are-factory-specs-not-decorated-classes`.
 export { component2d } from '../components/factory/component2d';
 export { componentAudio } from '../components/factory/component-audio';
 export { component3d } from '../components/factory/component3d';
@@ -186,13 +148,7 @@ export type {
     RenderContext3D as SceneContext,
 } from '../components/factory/api';
 
-// =============================================================
-// Nodes — what code holding a built node names it as
-//
-// `Node` is dimension-agnostic (tree, props, tweens, context, clock); `Node2D`
-// adds layout and 2D drawing; `Node3D` and `NodeAudio` are the other trees.
 // Types only: a node type is a component, never a subclass.
-// =============================================================
 export type { Node, Node2D } from '../components/trees';
 export {
     // A clip's root container: layout frame, background paint and camera in
@@ -219,9 +175,6 @@ export type {
 } from '../components/trees';
 export type { ProviderProps, ThemeProviderProps } from '../components/builtins/providers/providers';
 
-// =============================================================
-// Nodes — Geometry
-// =============================================================
 export {
     Rect,
     Ellipse,
@@ -259,9 +212,6 @@ export type {
     MaskOptions,
 } from '../attributes';
 
-// =============================================================
-// Nodes — Layout
-// =============================================================
 export {
     Camera,
     // The stage's 2.5D camera for one subtree: its children orbited in depth.
@@ -273,9 +223,6 @@ export type {
     OrbitCameraProps,
 } from '../components/builtins/layout/layout';
 
-// =============================================================
-// Nodes — Text
-// =============================================================
 export { Text, RichText, NumberNode, DefaultTextStyle } from '../components/builtins/text/text';
 export type {
     TextProps,
@@ -296,22 +243,14 @@ export type {
     FontStyle,
 } from '../attributes';
 
-// =============================================================
-// Nodes — Media
-// =============================================================
 export { Video } from '../components/builtins/media/media';
 export type {
     VideoProps,
     VideoSegment,
 } from '../components/builtins/media/media';
 
-// =============================================================
-// Nodes — Audio
-// =============================================================
-// `SoundNode` plays a clip and `AudioBus` groups what feeds it — the third
-// scene graph, beside `Node2D` and `Node3D`. Levels are `Param`, so a fade is a
-// ramp (`ramp`/`hold`) or a transition rather than a `to()`: sound is
-// scheduled once, ahead of time, not written once per frame.
+// Levels are `Param`, so a fade is a ramp or transition rather than a `to()`: sound is scheduled once, ahead
+// of time.
 export type { NodeAudio } from '../components/trees';
 export { AudioBus, SoundNode } from '../components/builtins/audio/audio';
 export {
@@ -337,14 +276,8 @@ export type {
     RampKey,
 } from '../attributes';
 
-// =============================================================
-// 3D — the Canvas3D node and the Graphics3D API
-// =============================================================
-// There is one 3D node; everything inside it is described with `Graphics3D`.
-// `Geo`/`Mat`/`Tex` build the geometry/material/texture descriptors, and the lerps
-// are what make a Vector3/Euler/Quaternion prop interpolate rather than snap.
-// `Surface2D` is the 2D→3D bridge: a child of `Canvas3D` whose 2D content is
-// rasterized offscreen and bound to a material by `Tex.surface(name)`.
+// One 3D node; everything inside it is described with `Graphics3D`. `Surface2D` is the 2D to 3D bridge: a
+// child of `Canvas3D` whose 2D content is rasterized offscreen and bound to a material by `Tex.surface(name)`.
 export { Canvas3D } from '../components/builtins/three/canvas3d';
 export type { Node3D } from '../components/trees';
 // The 3D scene graph: components, each placed by its transform.
@@ -445,9 +378,6 @@ export type {
     ModelAnimation3D,
 } from '../render3d';
 
-// =============================================================
-// Rendering — Graphics2D builder, RenderContext2D & asset declaration
-// =============================================================
 export {
     Graphics2D,
     PathBuilder,
@@ -469,9 +399,6 @@ export type {
 // What a node's `declareAssets` declares into, and the async load a `loader` takes.
 export type { AssetScope, LoaderFn } from '../assets';
 
-// =============================================================
-// Fill & Color
-// =============================================================
 export {
     Fills,
     parseColor,
@@ -507,9 +434,6 @@ export type {
     FillSpace,
 } from '../attributes';
 
-// =============================================================
-// Shape Attributes — Stroke, Shadow, Corners
-// =============================================================
 export {
     resolveStroke,
     strokeOps,
@@ -548,12 +472,8 @@ export type {
     NodeEffect,
 } from '../attributes';
 
-// =============================================================
-// Layout Attributes — Vector2, Size, Insets, Alignment, Flow
-//
-// `flowOps` is the layout a container runs on its children, as plain data in
-// and boxes out — so a custom node can lay out what it draws the same way.
-// =============================================================
+// `flowOps` is the layout a container runs on its children, as plain data in and boxes out, so a custom node
+// can lay out what it draws the same way.
 export {
     lerpVector2,
     sizeInputOps,
@@ -587,24 +507,13 @@ export type {
     SizeConstraints,
 } from '../layout';
 
-// =============================================================
-// 2.5D space — the stage's `space3D` camera
-//
-// `space3dOps` is the camera's own projection, for a host drawing over the
-// picture (a gizmo aiming the camera) rather than keeping a copy of it.
-// `SpaceCamera` is what a node returns from `_spaceCamera()` to open a 2.5D
-// space of its own.
-// =============================================================
+// `space3dOps` is the camera's own projection, for a host drawing over the picture rather than keeping a copy.
+// `SpaceCamera` is what a node returns from `_spaceCamera()` to open a 2.5D space.
 export { space3dOps } from '../attributes/layout/space3d';
 export type { LookAt, SpaceCamera, SpaceCameraProps, SpacePoint } from '../attributes/layout/space3d';
 
-// =============================================================
-// Effects & Media Adjustments
-//
-// `describeEffect` / `effectDescriptors` describe each built-in effect's
-// fields (kind, default, range, unit, inspector hints) as plain JSON, so a
-// host builds its effect UI from the engine rather than a copy of it.
-// =============================================================
+// `describeEffect`/`effectDescriptors` describe each built-in effect's fields as plain JSON, so a host builds
+// its effect UI from the engine.
 export { describeEffect, effectDescriptors } from '../attributes';
 export type {
     EffectDescriptor,
@@ -622,10 +531,6 @@ export {
     VideoAdjustments,
     AdjustmentChain,
     VideoAdjustmentChain,
-    /** @deprecated Renamed to {@link Adjustments}. Removed in the next major. */
-    ImageFilters,
-    /** @deprecated Renamed to {@link VideoAdjustments}. Removed in the next major. */
-    VideoFilters,
 } from '../attributes';
 
 export type {
@@ -771,13 +676,6 @@ export type {
     LutEffect,
 } from '../attributes';
 
-// =============================================================
-// Animation — interpolation
-//
-// There are no `sequence`/`parallel`/`wait` primitives: a command carries its
-// own placement, so sequencing is `at + duration`, running two together is a
-// shared `at`, and a wait is a gap between them.
-// =============================================================
 export {
     lerpNumber,
 } from '../tween';
@@ -789,17 +687,9 @@ export type {
     TweenOptions,
 } from '../tween';
 
-// An animation as a **value** rather than as control flow: a declared duration
-// plus `at(t)`, so a host can ask what it looks like at a time instead of
-// running it to one. That is what lets a host place one on a timeline, and what
-// makes a scene scrub in constant time rather than replay. A component's
-// `commands` return one, and the command registry — and a host listing what a
-// node can do — reads them.
-//
-// One command shape, always: `node.to(a, 1)` is a single command, not a builder
-// you can append to. Two of them are sequenced by where they sit on the
-// timeline, which is what makes a scene's shape editable rather than implied by
-// the order of calls in a function body.
+// An animation as a value: a declared duration plus `at(t)`, so a host can ask what it looks like at a time
+// instead of running it to one. A component's `commands` return one. One command shape, always: `node.to(a,
+// 1)` is a single command, not a builder; sequencing is by timeline placement.
 export {
     getCommandMeta,
     isCommand,
@@ -810,9 +700,6 @@ export {
 } from '../tween';
 export type { Command, CommandArgs, CommandMeta, CommandOptions } from '../tween';
 
-// =============================================================
-// Animation — Easing
-// =============================================================
 export {
     linear,
     easeIn,
@@ -825,9 +712,6 @@ export type {
     StandardEase
 } from '../tween';
 
-// =============================================================
-// Utilities
-// =============================================================
 export {
     createRef,
     clamp,
@@ -847,19 +731,9 @@ export type {
     ParseCSVOptions,
 } from '../util';
 
-// =============================================================
-// Editor selection — node boxes, hit testing, transient overrides
-// =============================================================
-// The geometry an editor needs to lay a selection gizmo over the canvas: where a
-// node's pixels landed, and which node is under a point. Both are pure functions
-// over a scene's node tree, so a host can use them directly; a player embedding
-// reaches the same thing through `useMotionPlayer` (`getNodeBox`, `pickNode`,
-// `setNodeOverride`). Points and boxes are in viewport space — origin at the
-// viewport centre, y-up.
-//
-// These genuinely live in `../runtime` (node hit-testing and the transient
-// override store are runtime concerns) — deep-imported from their concrete
-// files, never the runtime barrel itself.
+// Pure functions over a scene's node tree, in viewport space (origin at the viewport centre, y-up); a player
+// embedding reaches the same through `useMotionPlayer`. They live in `../runtime` but are deep-imported from
+// their files, never the runtime barrel.
 export { nodeTypeIsA, parentIssue, placementIssues, siblingIssue } from '../document/placement';
 export type { PlacementIssue, PlacementOptions } from '../document/placement';
 
@@ -883,5 +757,3 @@ export type {
 export type {
     TreeState,
 } from '../project';
-/** @deprecated Kept until 1.0; see `../renamed-scene-names`. */
-export type { SceneDocument, SceneEffect } from '../renamed-scene-names';

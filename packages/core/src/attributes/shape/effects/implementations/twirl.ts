@@ -1,23 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { CENTER, defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Twirl / swirl — the content is rotated about `center` by an amount that falls
- * off with distance, so the middle spins and the rim stays put.
- *
- * The falloff is what separates this from simply rotating the node: rotation is
- * rigid, this shears. Everything inside `radius` twists by a fraction of `angle`
- * that reaches full strength at the centre and zero at the rim, which is what
- * makes it read as a vortex rather than a transform.
- *
- * Animating `angle` past a full turn keeps winding — there is no wrap point, so
- * a long tween produces an ever-tightening spiral.
- */
+/** Twirl / swirl: the content rotates about `center` by an amount that falls off with distance (full `angle` at the centre, zero at the rim of `radius`), so it shears like a vortex rather than rotating rigidly. There is no wrap point: animating `angle` past a full turn keeps winding into an ever-tighter spiral. */
 export interface TwirlEffect extends ModedEffect, EffectFields<typeof twirlSpec.params> {
     type: "twirl";
 }
 
-/** The {@link TwirlEffect} spec: its parameters, defaults and ranges. */
 export const twirlSpec = defineEffect({
     type: "twirl",
     group: "distort",

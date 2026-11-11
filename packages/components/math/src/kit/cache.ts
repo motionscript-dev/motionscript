@@ -1,44 +1,24 @@
-/**
- * A bounded, least-recently-used memo.
- *
- * Sits under `geometry.ts`, and imports nothing, so it is testable in bare Node:
- * everything else in this package reaches MathJax's browser adaptor at module
- * scope, which means a test that touches it needs a DOM. The one piece of logic
- * here worth being sure about — what gets thrown away when the memo is full —
- * is exactly the piece that does not need one.
- *
- * Least-recently-used rather than oldest-first, and that matters for the shape
- * of work this sees. A `Latex` node re-resolves its formula whenever `fontSize`
- * changes, so animating the size of one formula inserts a fresh key every frame
- * and would, under a first-in-first-out rule, walk the whole memo out of it in a
- * couple of seconds — including the entries for every *other* formula in the
- * scene, none of which had done anything wrong. Touching an entry on read keeps
- * the formulas that are actually being asked for ahead of the ones streaming
- * past.
- */
+// Imports nothing, so it is testable in bare Node (the rest of the package reaches MathJax's browser adaptor).
 
 export interface BoundedCache<T> {
     get(key: string): T | undefined;
     set(key: string, value: T): void;
-    /** Entries held. For tests and for anyone measuring. */
     readonly size: number;
 }
 
 /**
- * @param limit Most entries to hold. One more arriving evicts the least
- *              recently read or written.
+ * A least-recently-used memo holding at most `limit` entries. LRU rather than
+ * first-in-first-out: an animated `fontSize` inserts a fresh key every frame and
+ * would walk every other formula's entry out of a FIFO memo within seconds.
  */
 export function createBoundedCache<T>(limit: number): BoundedCache<T> {
-    // Insertion order is the eviction order, which is what makes a plain `Map`
-    // an LRU as long as every read re-inserts.
+    // A plain `Map` is an LRU as long as every read re-inserts.
     const entries = new Map<string, T>();
 
     return {
         get(key) {
             if (!entries.has(key)) return undefined;
             const value = entries.get(key) as T;
-            // Delete-then-set moves the key to the end, so the next eviction
-            // takes the genuinely coldest entry rather than the oldest one.
             entries.delete(key);
             entries.set(key, value);
             return value;
@@ -58,4 +38,32 @@ export function createBoundedCache<T>(limit: number): BoundedCache<T> {
             return entries.size;
         },
     };
+}
+
+/** What `compute` returns, or the error it throws, remembered under `key` so a failure is not re-derived every frame. */
+export function remember<T>(cache: BoundedCache<T | Error>, key: string, compute: () => T): T | Error {
+    const hit = cache.get(key);
+    if (hit !== undefined) return hit;
+    let result: T | Error;
+    try {
+        result = compute();
+    } catch (error) {
+        result = error instanceof Error ? error : new Error(String(error));
+    }
+    cache.set(key, result);
+    return result;
+}
+
+/**
+ * A parser memoised per `(params, source)`: an unchanged equation is the
+ * identical object, and empty text fails as "Empty equation". `read` gets the trimmed text.
+ */
+export function memoParse<T>(limit: number, read: (text: string, params: readonly string[]) => T): (source: string, params?: readonly string[]) => T | Error {
+    const cache = createBoundedCache<T | Error>(limit);
+    return (source, params = []) =>
+        remember(cache, `${params.join(",")}|${source}`, () => {
+            const text = source.trim();
+            if (text === "") throw new Error("Empty equation");
+            return read(text, params);
+        });
 }

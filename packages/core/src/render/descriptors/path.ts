@@ -48,23 +48,12 @@ export type PathBounds = readonly [number, number, number, number];
 
 export interface PathState extends ShapeState {
     data: PathData;
-    /**
-     * Explicit frame to center the path against, as [minX, minY, maxX, maxY] in
-     * the path's own coordinate space. When set, the path is shifted so this
-     * box's center lands on the local origin — instead of the path centering on
-     * its *own* bbox.
-     *
-     * Use this when several paths share one layout frame (e.g. per-glyph LaTeX
-     * tokens). Passing the same whole-shape bounds to every path keeps their
-     * relative positions intact, where per-path self-centering would collapse
-     * them onto a single point. When unset, the path centers on its own bbox.
-     */
+    /** Explicit frame to centre the path against, as [minX, minY, maxX, maxY] in the path's own space; its centre lands on the local origin instead of the path's own bbox centre. For paths sharing one layout frame (per-glyph LaTeX tokens): the same whole-shape bounds on each keeps the relative positions that self-centring would collapse. */
     centerBounds?: PathBounds;
 }
 
 export function withPathDescriptor(descriptor: Partial<PathState>): PathState {
     return {
-        opacity: descriptor.opacity ?? 1,
 
         rotation: descriptor.rotation ?? 0,
         scale: descriptor.scale ?? 1,

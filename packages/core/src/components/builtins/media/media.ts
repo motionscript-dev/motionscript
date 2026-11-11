@@ -19,11 +19,7 @@ import * as Paint from "@/components/modules/paint";
 import { internalsOf } from "@/components/factory/views";
 import type { RectProps } from "@/components/builtins/geometry/geometry";
 
-/**
- * Video: a rect painted with a playing picture under its fill, and the
- * picture's sound. Its sound plays from `play`; a `video` row with no `play`
- * of its own gets one per segment, or one over its span while it plays.
- */
+/** Video: a rect painted with a playing picture under its fill, plus the picture's sound. Sound plays from `play`; a `video` row with no `play` gets one per segment, or one over its span while it plays. */
 
 const video = {
     src: Types.custom<string | undefined>(undefined),
@@ -90,7 +86,7 @@ function pictureOf(host: object, s: VideoState, elapsed: number): VideoFillResol
     if (kept && kept.key === key) return kept.fill;
     const prop: VideoFillProp = {
         type: "video", src: s.src, fit: s.fit, crop: s.crop, zoom: s.zoom, anchor: s.anchor, matrix: s.matrix,
-        filters: s.filters as never, playing: s.playing, timestamp: s.timestamp ?? scheduled,
+        preset: { adjustments: s.filters }, playing: s.playing, timestamp: s.timestamp ?? scheduled,
         trimStart: s.trimStart, trimEnd: s.trimEnd, speed: s.speed, loop: s.loop, duration: s.duration,
     };
     const fill = resolveFill(prop as FillProp) as VideoFillResolved;
@@ -133,7 +129,7 @@ export const Video = component2d({
     load: (loader, state) => {
         if (!state.src) return;
         loader.fill(resolveFill({
-            type: "video", src: state.src, filters: state.filters, trimStart: state.trimStart, trimEnd: state.trimEnd,
+            type: "video", src: state.src, preset: { adjustments: state.filters }, trimStart: state.trimStart, trimEnd: state.trimEnd,
         } as unknown as FillProp));
     },
     measure: (measurer, state, children) => Flow.measure(measurer, state, children, Paint.inset(state)),
@@ -172,12 +168,7 @@ export interface VideoProps extends RectProps {
     filters?: VideoAdjustment;
     /** Whether playback advances with the node's clock (drives both picture and sound). Default true. */
     playing?: boolean;
-    /**
-     * Explicit source time to show, in seconds. Omit it (the default) and the
-     * picture is timed from the moment this node appeared; set it to drive the
-     * playhead yourself, and set it to `null` to hand the playhead back to the
-     * clock (`set()` merges a partial, so `undefined` won't clear it).
-     */
+    /** Explicit source time to show, in seconds. Omitted, the picture is timed from the moment this node appeared; set it to drive the playhead, or `null` to hand it back to the clock (`set()` merges a partial, so `undefined` won't clear it). */
     timestamp?: number | null;
     trimStart?: number;
     trimEnd?: number;
@@ -192,63 +183,28 @@ export interface VideoProps extends RectProps {
     muted?: boolean;
     /** Audio effects applied to the video's sound track (gain, eq, echo, …). */
     audioEffects?: AudioEffectsInput;
-    /**
-     * The node id of an `AudioBus` in this clip to route the video's sound into.
-     *
-     * A `Video` is a `Node2D`, so it cannot be parented under a bus the way a
-     * `SoundNode` is — its audio is welded to its picture, which has to stay in
-     * the visual tree. Naming one instead is what lets a video's dialogue sit on
-     * the same bus as everything else, so ducking the whole group is still one
-     * edit — and it is the *same* id a `SoundNode` under that bus writes as its
-     * `parentId`, rather than a second vocabulary for "which bus". An id matching
-     * no bus routes straight to the master, the same as no bus at all.
-     */
+    /** The node id of an `AudioBus` in this clip to route the video's sound into. A `Video` is a `Node2D` so can't sit under a bus, its audio being welded to its picture; naming one (the same id a `SoundNode` under that bus writes as `parentId`) lets dialogue share a bus, so ducking the group is one edit. An id matching no bus routes to the master. */
     bus?: string;
     /**
-     * An explicit **playback schedule**: the stretches of this node's own clock
-     * during which the clip advances, and where in the source each one starts.
-     *
-     * Omit it (the default) and playback is what it has always been — the clip
-     * runs from the moment the node appears, at `speed`, until it or the node
-     * runs out. Give it, and `playing`/`timestamp` are both superseded: the
-     * picture takes its source time from whichever segment covers the current
-     * `elapsed`, and the sound is scheduled one clip per segment.
-     *
-     * It exists because a **pause** cannot be expressed any other way. `playing:
-     * false` holds the clip's *first* frame, because with playback derived
-     * linearly from the clock there is nothing else it could hold; and the sound
-     * runs on the node's own clock regardless, so a picture frozen by any means
-     * would drift away from it. A schedule states the one thing both halves need
-     * and neither could infer — that a paused stretch consumes no source — so
-     * they cannot come apart.
-     *
-     * Still a pure function of the clock, which is the property everything else
-     * here is built on: frame *N* is identical however the playhead reached it,
-     * so a scrub, a playthrough and an export agree.
+     * An explicit **playback schedule**: stretches of this node's own clock during which the clip advances, and where in
+     * the source each starts. Omitted, the clip runs from the moment the node appears, at `speed`. Given, `playing` and
+     * `timestamp` are superseded: the picture takes its source time from the segment covering the current `elapsed`, and
+     * sound is scheduled one clip per segment. It exists because a **pause** can't be expressed otherwise: `playing: false`
+     * holds the first frame and the sound runs on the node's clock regardless, so a frozen picture would drift from it. A
+     * schedule states that a paused stretch consumes no source, so they can't come apart. Still a pure function of the
+     * clock: scrub, playthrough and export agree.
      */
     segments?: readonly VideoSegment[];
 
 }
 
-/**
- * One stretch of a {@link Video}'s own clock during which its source advances —
- * see {@link VideoProps.segments}.
- *
- * Trim and loop are applied *on top* of this, by the same code that applies them
- * to unscheduled playback, so a schedule says when the clip is running and the
- * clip's own props go on saying which part of the file it is running through.
- */
+/** One stretch of a {@link Video}'s own clock during which its source advances (see {@link VideoProps.segments}). Trim and loop apply on top, so a schedule says when the clip runs and the clip's props say which part of the file it runs through. */
 export interface VideoSegment {
     /** Second on the node's own clock (`NodeTime.elapsed`) this segment begins. */
     at: number;
     /** Source in-point for it, in seconds. */
     from: number;
-    /**
-     * How long it runs, in seconds of the node's clock.
-     *
-     * `Infinity` for a clip left running — the same open sentinel
-     * `AudioRequest.endAt` uses — which resolves against the clip's length.
-     */
+    /** How long it runs, in seconds of the node's clock; `Infinity` for a clip left running (the open sentinel `AudioRequest.endAt` uses), resolved against the clip's length. */
     duration: number;
     /** Playback rate through it. Defaults to the node's own `speed`. */
     speed?: number;

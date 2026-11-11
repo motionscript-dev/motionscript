@@ -7,72 +7,29 @@ import { bundlePage } from './page-bundle.js';
 import type { Bridge, ConcatRequest, ExportRequest, ScreenshotRequest } from './page-bridge.js';
 import { splitFrames } from './segments.js';
 
-/**
- * How the page's bridge is reached from an `evaluate` callback.
- *
- * `globalThis`, not `window`: the callback's *source* is compiled here, where
- * this package deliberately has no DOM lib, and in the page the two are the same
- * object anyway.
- */
+/** `globalThis`, not `window`: callbacks' source is compiled here where there is no DOM lib, and in the page the two are the same object. */
 type BridgeHost = typeof globalThis & { __motionScript?: Bridge };
 
-/** How long to wait for the bundle to evaluate and publish the bridge. */
 const BRIDGE_READY_TIMEOUT_MS = 60_000;
 
-/**
- * A synthetic origin the page is served from.
- *
- * A real origin rather than `about:blank` or a `data:` URL, because those cannot
- * carry response headers and cannot host relative asset URLs — and rather than a
- * localhost server, because a socket means a port, and a port means the
- * free-port-then-bind race the previous driver wrote twenty lines of comment
- * about. `page.route` fulfils from memory with neither.
- */
+/** A synthetic origin: unlike `about:blank`/`data:` it can carry headers and host relative asset URLs, and unlike a localhost server it needs no port (so no free-port-then-bind race). `page.route` fulfils from memory. */
 const ORIGIN = 'https://motion-script.local';
 
 export interface ServerEngineOptions {
     /** The project entry to render. Defaults to `<projectRoot>/src/project.ts`. */
     entry?: string;
-    /** Project root, used to find the entry and the assets directory. */
     projectRoot?: string;
-    /** Directory served at the origin root, for the assets a scene names. */
     assetsDir?: string;
-    /**
-     * Draw on SwiftShader's WebGPU adapter rather than the machine's GPU: a host
-     * without one (CI) needs it, and a pixel-diff wants it for determinism.
-     *
-     * A GPU frame and a SwiftShader frame **do not match**, so anything comparing
-     * renders must fix this and record which mode produced a baseline.
-     */
+    /** Draw on SwiftShader's WebGPU adapter rather than the GPU (needed on CI, deterministic for pixel diffs). A GPU frame and a SwiftShader frame **do not match**, so comparisons must fix this and record which mode made a baseline. */
     softwareRender?: boolean;
-    /**
-     * Launch a windowed Chromium rather than a headless one; it needs a display
-     * (on Linux, run under `xvfb-run`). Headless Chromium on Linux reads a
-     * WebGPU canvas back empty on SwiftShader's adapter, while buffers and
-     * textures work, so a WebGPU renderer draws blank frames there.
-     */
+    /** Launch windowed Chromium (needs a display; on Linux run under `xvfb-run`). Headless Chromium on Linux reads a WebGPU canvas back empty on SwiftShader's adapter, so a WebGPU renderer draws blank frames there. */
     headed?: boolean;
-    /** Where the built page bundle is cached. */
     cacheDir?: string;
-    /**
-     * Asset metadata the page's catalog resolves `src` values against.
-     *
-     * Required for fonts: an undeclared family is never fetched, and the browser
-     * shapes against a fallback rather than failing.
-     */
+    /** Asset metadata the page's catalog resolves `src` against. Required for fonts: an undeclared family is never fetched and the browser shapes against a fallback. */
     manifest?: unknown;
     /** Extra files to serve at the origin, by path. Overrides `assetsDir`. */
     serve?: Record<string, string>;
-    /**
-     * Called for every warning and error the page logs.
-     *
-     * The reason this exists rather than the driver just writing them to stderr:
-     * a browser's failures are mostly **soft**. An undeclared font shapes against
-     * a fallback, an undeclared image draws nothing — each a warning and a wrong
-     * frame, where the Node path would have thrown. A harness that compares
-     * pixels has to be able to turn those back into failures, and only it knows
-     * which ones matter.
-     */
+    /** Called for every warning and error the page logs. Browser failures are mostly **soft** (an undeclared font shapes against a fallback, an undeclared image draws nothing), so a pixel-comparing harness needs this to turn them back into failures. */
     onPageMessage?: (message: { type: string; text: string }) => void;
 }
 
@@ -91,34 +48,17 @@ export interface ServerImage {
 }
 
 export interface ServerVideoOptions extends Omit<ExportRequest, 'frames'> {
-    /**
-     * Pages to render in at once, each encoding one contiguous run of the frames,
-     * joined without re-encoding. Default 1. The extra pages stay open for the
-     * next export.
-     */
+    /** Pages to render in at once, each encoding one contiguous run of frames, joined without re-encoding (default 1). Extra pages stay open for the next export. */
     concurrency?: number;
 }
 
 /**
- * Renders a project from Node by driving the **browser** engine in a headless
- * page.
+ * Renders a project from Node by driving the **browser** engine in a headless page, so a server export and a user's
+ * preview are the same code (`Canvas3D` draws nothing under an in-process CPU path and `loadAudio` throws there).
  *
- * The point is parity, not portability: `Canvas3D` draws nothing under the
- * in-process CPU path and `loadAudio` throws there, so a server export and a
- * user's preview are currently different pictures. Here they are the same code.
- *
- * ### It is an RPC client, not a `core.Engine`
- *
- * The five platform seams live *inside the page*; Node holds a proxy. So this
- * deliberately does not extend `Engine` — it exposes the same operations with the
- * same names, and every one of them is async because each is a round trip.
- * Unifying the two behind one interface is worth doing and is not done here.
- *
- * ### Bytes cross base64-encoded
- *
- * Playwright cannot round-trip a `Uint8Array` through `evaluate`, so a frame
- * comes back a third larger than it is. Fine per still; sized before trusting it
- * for a long video.
+ * An RPC client, not a `core.Engine`: the platform seams live inside the page, so every operation is async and this
+ * deliberately does not extend `Engine`. Bytes cross base64-encoded (Playwright cannot round-trip a `Uint8Array`
+ * through `evaluate`), a third larger than the frame: size it before trusting it for a long video.
  */
 export class MotionScriptServerEngine {
     private browser: Browser | null = null;
@@ -147,7 +87,6 @@ export class MotionScriptServerEngine {
         return this.starting;
     }
 
-    /** The default project's track ids, in paint order. */
     async listTracks(): Promise<string[]> {
         const page = await this.ready();
         return page.evaluate(() => (globalThis as BridgeHost).__motionScript!.listTracks());
@@ -163,7 +102,6 @@ export class MotionScriptServerEngine {
         return page.evaluate(() => (globalThis as BridgeHost).__motionScript!.fps);
     }
 
-    /** Render one frame and bring back its encoded bytes. */
     async renderImage(options: ServerImageOptions = {}): Promise<ServerImage> {
         const page = await this.ready();
         const request: ScreenshotRequest = {
@@ -183,7 +121,6 @@ export class MotionScriptServerEngine {
         };
     }
 
-    /** Render the timeline to an encoded video, in `concurrency` pages at once. */
     async renderVideo(options: ServerVideoOptions = {}): Promise<Uint8Array> {
         const { concurrency = 1, ...rest } = options;
         // As JSON text: Playwright walks an object argument on this thread, which
@@ -214,12 +151,7 @@ export class MotionScriptServerEngine {
         return this.page;
     }
 
-    /**
-     * Each range of frames encoded in a page of its own, then joined in the first,
-     * under one audio track mixed over the whole timeline. `null` when there is
-     * nothing to split, or when the segments came out encoded differently and so
-     * cannot be joined.
-     */
+    /** Each range of frames encoded in a page of its own, joined in the first under one audio track mixed over the whole timeline. `null` when there is nothing to split or the segments came out encoded differently. */
     private async renderSplit(page: Page, request: ExportRequest, concurrency: number): Promise<Uint8Array | null> {
         const { document } = request;
         const totalFrames = await page.evaluate(
@@ -230,9 +162,7 @@ export class MotionScriptServerEngine {
         if (ranges.length < 2) return null;
         const pages = await this.pages(ranges.length);
 
-        // A container holds one decoder configuration per track, so every segment
-        // asks for the same encoder; the default bitrate is a function of the
-        // output size and frame rate, which every segment shares.
+        // A container holds one decoder configuration per track, so every segment asks for the same encoder.
         const segment: ExportRequest = {
             ...request,
             codec: request.codec ?? 'avc',
@@ -293,8 +223,7 @@ export class MotionScriptServerEngine {
             this.page = await this.bootPage(browser, projectRoot, bundle.code);
             this.source = { projectRoot, code: bundle.code };
         } catch (err) {
-            // A failed boot owns nothing: close what it opened, so a retry starts
-            // from nothing and `close()` has no orphan to miss.
+            // A failed boot owns nothing: close what it opened so a retry starts clean and `close()` has no orphan.
             this.page = null;
             this.browser = null;
             await browser.close().catch(() => undefined);
@@ -327,10 +256,7 @@ export class MotionScriptServerEngine {
         page.on('pageerror', (err) => {
             process.stderr.write(`[motionscript page] ${err.message}\n`);
         });
-        // Forwarded too, not just uncaught errors: a render that silently draws
-        // nothing reports itself through `console.warn` (a missing font, an
-        // undeclared asset), and losing that leaves an all-black frame with no
-        // explanation anywhere on the Node side.
+        // Forwarded too, not just uncaught errors: a render that silently draws nothing reports itself via `console.warn` (missing font, undeclared asset).
         page.on('console', (message) => {
             if (message.type() !== 'error' && message.type() !== 'warning') return;
             if (this.options.onPageMessage) {
@@ -358,10 +284,7 @@ export class MotionScriptServerEngine {
                 });
             }
             if (url.pathname === '/esbuild.wasm') {
-                // Only ever fetched if a project actually registers a
-                // source-string node — browser's own lazy default compiler
-                // (dynamic-nodes.ts) doesn't import esbuild-wasm at all
-                // otherwise.
+                // Only fetched if a project registers a source-string node; the lazy default compiler (dynamic-nodes.ts) otherwise never imports esbuild-wasm.
                 return route.fulfill({
                     status: 200,
                     contentType: 'application/wasm',
@@ -409,9 +332,7 @@ export class MotionScriptServerEngine {
             throw new EngineError('START_FAILED', `The project entry failed to load: ${detail}`);
         }
 
-        // Checked by capability rather than a version number: the driver and the
-        // page bundle are built from the same source tree here, but a stale cache
-        // entry is exactly the case a number would fail to catch.
+        // Checked by capability, not version number: a stale cache entry is exactly what a version would miss.
         const missing = await page.evaluate(() => {
             const bridge = (globalThis as unknown as { __motionScript?: Partial<Bridge> }).__motionScript;
             if (!bridge) return 'bridge not installed';
@@ -439,21 +360,12 @@ export class MotionScriptServerEngine {
     }
 
     /**
-     * Chromium flags, and why each is load-bearing.
-     *
-     * `--headless=new` with `headless: false`: Playwright's `headless: true`
-     * selects the *old* headless mode, which always falls back to SwiftShader —
-     * so an export there is far slower than the same render in a real browser.
-     *
-     * The GPU trio is not about speed. `packages/browser/vitest.config.ts` documents
-     * that without them headless Chromium has no GPU process to encode video
-     * with, and the failure is disguised: `VideoEncoder.isConfigSupported` still
-     * answers `supported: true`, then the first real `encode()` takes the whole
-     * page down with an error nowhere near the cause.
-     *
-     * SwiftShader's WebGPU adapter leaves GL to the default: `--use-angle=swiftshader`
-     * (Windows) and `--enable-features=Vulkan` (Linux) each leave the page with
-     * no adapter, and on a host without a GPU, GL falls back to SwiftShader anyway.
+     * Chromium flags, each load-bearing. `--headless=new` with `headless: false`: Playwright's `headless: true` picks
+     * the *old* mode, which always falls back to SwiftShader (far slower). The GPU trio is not about speed: without it
+     * headless Chromium has no GPU process to encode video with, disguised because `VideoEncoder.isConfigSupported`
+     * still answers true and the first `encode()` takes the page down (see `packages/browser/vitest.config.ts`).
+     * GL is left at its default: `--use-angle=swiftshader` (Windows) and `--enable-features=Vulkan` (Linux) each
+     * leave the page with no WebGPU adapter.
      */
     private launchOptions(): Parameters<typeof chromium.launch>[0] {
         const options = this.chromiumOptions();
@@ -492,13 +404,7 @@ function esbuildWasmPath(): string {
     return fileURLToPath(url);
 }
 
-/**
- * Serve one file from the assets directory, or 404.
- *
- * A path that leaves the directory is a 404 rather than a read: the page is
- * ours, but the paths in it come from a document. Containment is checked on the
- * real path as well, so a symlink inside the directory cannot reach out of it.
- */
+/** Serves one file from the assets directory, or 404. A path leaving the directory is a 404 (paths come from a document), also checked on the real path so a symlink cannot reach out. */
 export async function serveFile(
     route: Parameters<Parameters<Page['route']>[1]>[0],
     assetsDir: string,

@@ -141,5 +141,3 @@ export const RectangularGrid = ItemGrid.define(component2d({
 }), arranger)
 
 export type RectangularGrid = NodeOf<typeof RectangularGrid>
-/** What a call or a document row may set. */
-export type RectangularGridProps = NonNullable<Parameters<typeof RectangularGrid>[0]>

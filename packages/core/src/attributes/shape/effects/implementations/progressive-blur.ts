@@ -1,37 +1,14 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { CENTER, defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * How the blur ramp is laid out across the node.
- *
- * - `"linear"` — the ramp runs along `angle`, so the blur builds from one edge
- *   toward the other. The gradient/fade-to-blur strip under a toolbar or over
- *   the bottom of a hero image.
- * - `"radial"` — the ramp runs outward from `center`, so the middle stays sharp
- *   and the surround softens. A cheap depth-of-field / tilt-shift.
- */
+/** How the blur ramp is laid out: `"linear"` runs along `angle` (the fade-to-blur strip under a toolbar), `"radial"` runs outward from `center` (sharp middle, soft surround: a cheap tilt-shift). */
 export type ProgressiveBlurShape = "linear" | "radial";
 
-/**
- * Blur whose radius *ramps* across the node instead of being uniform.
- *
- * A plain blur is a constant; this interpolates from `startRadius` to `radius`
- * between `start` and `end` along the ramp, which is what makes content appear
- * to dissolve into softness rather than simply being out of focus.
- *
- * **In `mode: 'backdrop'` this is the frosted panel with a falloff** — the
- * translucent bar whose blur fades out at its edge instead of stopping at a hard
- * line. That is the case a plain backdrop blur cannot express, and the reason
- * this effect exists.
- *
- * Cost scales with `samples`, which are spent on the *widest* part of the ramp;
- * pixels below `start` return the source untouched without sampling at all.
- */
+/** Blur whose radius *ramps* from `startRadius` to `radius` between `start` and `end` along the ramp, so content dissolves into softness. **In `mode: 'backdrop'` this is the frosted panel with a falloff** (blur fading out at the edge, which a plain backdrop blur cannot express). Cost scales with `samples`, spent on the *widest* part of the ramp; pixels below `start` return the source untouched. */
 export interface ProgressiveBlurEffect extends ModedEffect, EffectFields<typeof progressiveBlurSpec.params> {
     type: "progressiveBlur";
 }
 
-/** The {@link ProgressiveBlurEffect} spec: its parameters, defaults and ranges. */
 export const progressiveBlurSpec = defineEffect({
     type: "progressiveBlur",
     group: "blur",
@@ -42,7 +19,7 @@ export const progressiveBlurSpec = defineEffect({
     params: {
         /** Blur spread in px at the far end of the ramp. */
         radius: param.number({ default: 24, min: 0, unit: "px", label: "endBlur", order: 2 }),
-        /** Blur spread in px at the near end of the ramp (0: sharp, what it did before the field existed). */
+        /** Blur spread in px at the near end of the ramp (0 is sharp). */
         startRadius: param.number({ default: 0, min: 0, unit: "px", label: "startBlur", order: 1 }),
         /** Ramp layout. */
         shape: param.choice(["linear", "radial"] satisfies ProgressiveBlurShape[], { default: "linear", control: "segmented", label: "rampShape", optionsLabel: "rampShape", order: 0 }),

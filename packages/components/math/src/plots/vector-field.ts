@@ -14,21 +14,17 @@ import {
     type StrokeResolved as _StrokeResolved,
 } from "@motionscript/sdk";
 import type { CoordinateMap } from "../kit/coords";
-import { drawField, FIELD_COMMANDS, FIELD_STATE, traceField, type FieldDrawing, type FieldProps, type FieldValues, type FieldSampler, type FieldStroke } from "../kit/field-mark";
+import { drawField, FIELD_COMMANDS, FIELD_STATE, traceField, type FieldDrawing, type FieldValues, type FieldSampler, type FieldStroke } from "../kit/field-mark";
 import { PLOT_COLOR } from "../kit/furniture";
+import { radians } from "../kit/geometry";
 import { inkSize, reading, traced, type MarkReading } from "../kit/mark";
-
-export interface VectorFieldProps extends FieldProps {
-    spacing?: number;
-    arrowScale?: number;
-}
 
 /** Past this many arrows the spacing is widened, so a field over a huge range is still a field and not a wash. */
 const MAX_ARROWS = 2400;
 /** An arrow's head, as a share of its length and in pixels at most, and the half-angle it opens to. */
 const HEAD_SHARE = 0.38;
 const HEAD_MAX = 11;
-const HEAD_ANGLE = (26 * Math.PI) / 180;
+const HEAD_ANGLE = radians(26);
 
 const state = {
     ...FIELD_STATE,
@@ -50,11 +46,7 @@ const ARROWS: FieldDrawing<ArrowsValues> = {
 
 const traceArrows = (s: ArrowsValues, read: MarkReading) => traceField("vectorField", ARROWS, s, read);
 
-/**
- * A grid of arrows showing a vector field, two parts in x and y: `(-y, x)`.
- * Each arrow is centred on its point and is as long as the field is strong
- * there, up to the spacing.
- */
+/** A grid of arrows showing a vector field, `(-y, x)`: each is centred on its point and as long as the field is strong there, up to the spacing. */
 export const VectorField = traced(component2d({
     key: "vectorField",
     state,

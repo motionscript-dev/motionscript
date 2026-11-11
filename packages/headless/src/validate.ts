@@ -11,13 +11,7 @@ function invalid(message: string): EngineError {
     return new EngineError('INVALID_OPTION', message);
 }
 
-/**
- * Validate a codec name.
- *
- * Accepting free text here is the point: a service takes this from a request
- * body, and rejecting it at the edge with `INVALID_OPTION` beats letting the
- * page throw halfway through a render.
- */
+/** Validates a codec name. Free text is accepted on purpose: a service takes this from a request body, and rejecting it at the edge with `INVALID_OPTION` beats the page throwing mid-render. */
 export function parseCodec(raw: unknown): VideoCodec | undefined {
     if (raw === undefined || raw === null || raw === '') return undefined;
     const value = String(raw).trim().toLowerCase();
@@ -27,11 +21,7 @@ export function parseCodec(raw: unknown): VideoCodec | undefined {
     return value as VideoCodec;
 }
 
-/**
- * Parse a bitrate in bits per second, accepting the `k`/`M` suffixes anyone
- * would actually reach for — `40M` is how this number is written everywhere
- * else, and `40000000` is easy to mistype by an order of magnitude.
- */
+/** Parses a bitrate in bits per second, accepting `k`/`M` suffixes (`40M` is how it is written everywhere, and `40000000` is easy to mistype by an order of magnitude). */
 export function parseBitrate(raw: unknown): number | undefined {
     if (raw === undefined || raw === null || raw === '') return undefined;
     if (typeof raw === 'number') {
@@ -81,11 +71,7 @@ export function parseScale(raw: unknown, label = 'scale'): number {
     return value;
 }
 
-/**
- * Supersampling factor. Bounded at 4 because the cost is quadratic: at 5x a
- * 1080p frame is rendered at 5400p, which is a way to turn a render into a
- * timeout rather than a way to improve it.
- */
+/** Supersampling factor, bounded at 4 because the cost is quadratic (5x renders a 1080p frame at 5400p: a timeout, not an improvement). */
 export function parseSupersample(raw: unknown): number | undefined {
     if (raw === undefined || raw === null || raw === '') return undefined;
     const value = Number(raw);

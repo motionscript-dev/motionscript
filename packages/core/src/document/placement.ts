@@ -2,49 +2,35 @@ import type { Registry } from "./registry";
 import { ROOT_NODE_ID, type NodeSpec } from "./types";
 
 /**
- * Where a node type may go, read off the registry without building anything:
- * the answer a host needs before it offers a type under a parent, accepts a
- * drop, or lets an assistant create a row.
+ * Where a node type may go, read off the registry without building anything: what a host needs before offering
+ * a type under a parent, accepting a drop, or letting an assistant create a row.
  *
- * Four things decide it. A parent that takes no children takes none. The two
- * trees do not mix: a `Node3D` lives under a Canvas 3D or another 3D node, and
- * nothing else does. A type that names where it goes ({@link
- * NodeTypeDescriptor.within}) goes only there, and a {@link
- * NodeTypeDescriptor.closed} parent takes only the types that name it. Those
- * are about the parent; {@link NodeTypeDescriptor.beside} is about the
- * siblings, and is kept apart because a host can meet it by adding one.
+ * A parent that takes no children takes none. The two trees do not mix (a `Node3D` lives under a Canvas 3D or
+ * another 3D node, and nothing else does). A type naming where it goes ({@link NodeTypeDescriptor.within})
+ * goes only there, and a {@link NodeTypeDescriptor.closed} parent takes only the types that name it. {@link
+ * NodeTypeDescriptor.beside} is about siblings and kept apart because a host can meet it by adding one.
  *
- * Only a leaf is enforced when a document is built: a component declaring
- * `allowedChildren: []` throws on a child. A node in any other wrong place
- * builds and, as a rule, draws nothing; this says why.
+ * Only a leaf is enforced when a document is built (`allowedChildren: []` throws on a child); a node in any
+ * other wrong place builds and as a rule draws nothing, and this says why.
  */
 
-/** Why a node of a type is not where it can work. */
 export type PlacementIssue =
-    /** The parent takes no children. */
     | { kind: "leaf"; parent: string }
-    /** A 3D node outside a 3D tree, or anything else inside one. */
     | { kind: "dimension"; parent: string | null }
-    /** It goes inside one of `within`, and the parent is none of them. */
     | { kind: "within"; within: readonly string[] }
-    /** The parent takes only the types that name it. */
     | { kind: "closed"; parent: string }
-    /** It needs one of `beside` under the same parent, and there is none. */
     | { kind: "beside"; beside: readonly string[] };
 
 export interface PlacementOptions {
     /**
-     * A host's own sense of one type standing for another, beside the
-     * registry's: a copy of a component it made under a new key is still that
+     * A host's own sense of one type standing for another: a copy of a component under a new key is still that
      * component to whatever goes inside it.
      */
     isA?: (type: string, name: string) => boolean;
 }
 
-/** The one core type whose children are of the other dimension. */
 const CANVAS_3D = "canvas3d";
 
-/** Whether `type` is `name`, or is built on it through `parentKey`. */
 export function nodeTypeIsA(registry: Registry, type: string, name: string): boolean {
     const seen = new Set<string>();
     for (let at: string | undefined = type; at !== undefined && !seen.has(at); at = registry.describe(at)?.parentKey) {
@@ -58,11 +44,7 @@ function among(registry: Registry, type: string, names: readonly string[], optio
     return names.some((name) => nodeTypeIsA(registry, type, name) || options.isA?.(type, name) === true);
 }
 
-/**
- * Why a node of `child` cannot go directly inside one of `parent`, or `null`
- * when it can. A `null` parent is the document's own root, which is 2D and
- * names nothing.
- */
+/** A `null` parent is the document's own root, which is 2D and names nothing. */
 export function parentIssue(
     registry: Registry,
     child: string,
@@ -86,7 +68,7 @@ export function parentIssue(
     return null;
 }
 
-/** The sibling `child` needs that `siblings`, the types already under its parent, do not include; `null` when it needs none or has one. */
+/** `null` when it needs none or has one. */
 export function siblingIssue(
     registry: Registry,
     child: string,
@@ -99,9 +81,8 @@ export function siblingIssue(
 }
 
 /**
- * Every node of `nodes` that is not where its type says it goes, by id, with
- * the first reason. A node of an unregistered type is left out: that is a build
- * error, and says so itself.
+ * With the first reason. A node of an unregistered type is left out: that is a build error, and says so
+ * itself.
  */
 export function placementIssues(
     registry: Registry,

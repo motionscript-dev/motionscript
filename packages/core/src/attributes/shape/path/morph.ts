@@ -1,29 +1,11 @@
 /**
- * Path morphing — smooth interpolation between two arbitrary path shapes.
- *
- * Lerping two SVG paths command-by-command only works when they happen to share
- * the same command structure; in general one path is a triangle and the other a
- * star with a different number of points, different command types, a different
- * start point, and the opposite winding. Naively pairing commands produces
- * kinks, self-intersections, and points that fly across the canvas.
- *
- * This module reshapes both paths into a common, directly-interpolatable form —
- * the same approach GSAP's MorphSVGPlugin uses:
- *
- *  1. {@link cubics} converts each path into a list of {@link CubicSubpath}s.
- *     Every drawing command (L/H/V/Q/A/Z-close) is rewritten as a cubic Bézier, so
- *     a subpath becomes a uniform chain of cubics described purely by anchor and
- *     control points.
- *  2. {@link plan} pairs the two paths' subpaths (padding the shorter side
- *     with degenerate, collapsed subpaths so every subpath has a partner),
- *     equalizes the number of cubics in each pair by subdividing the coarser
- *     subpath along its perimeter, and — for closed rings — rotates and optionally
- *     reverses one ring so the two start at the same place and wind the same way.
- *  3. {@link lerpPathData} samples that aligned correspondence at a given `t`,
- *     interpolating every control point with {@link lerpVector2}.
- *
- * The result is a {@link PathCommand} list (one `M` + N `C`s per subpath) that the
- * existing renderer draws unchanged.
+ * Path morphing: interpolation between two arbitrary path shapes (the GSAP MorphSVGPlugin approach). Commands can't be
+ * lerped pairwise (different counts, types, start points, winding), so both paths are reshaped into a common form:
+ *  1. {@link cubics} rewrites each path as {@link CubicSubpath}s (every drawing command becomes a cubic Bézier).
+ *  2. {@link plan} pairs subpaths (padding the shorter side with collapsed ones), equalizes cubic counts by
+ *     subdividing the coarser along its perimeter, and rotates/reverses closed rings to start and wind together.
+ *  3. {@link lerpPathData} samples that correspondence at `t`, lerping every control point.
+ * The result is a {@link PathCommand} list (one `M` + N `C`s per subpath) the renderer draws unchanged.
  */
 import { Vector2, lerpVector2 } from "@/attributes/layout/vector2";
 import { PathCommand, PathData } from "@/render/descriptors/path";
@@ -31,17 +13,7 @@ import { distance, cubicPoint } from "./bezier";
 import { commands, contourSegments, contours, segmentCubics } from "./walk";
 import type { Cubic, CubicSubpath, MorphPlan } from "./types";
 
-/**
- * A path as cubic subpaths — one of the two boundaries where geometry is
- * deliberately flattened to a single curve type.
- *
- * A morph has to pair segments up and interpolate them, which needs both sides
- * speaking one language, so an arc becomes cubics here (and only here, and in
- * the anchor model). This used to carry the sixth copy of the pen walk; the one
- * thing it got wrong that the shared walk does not is `Z`, which it marked
- * without closing the run — so `M0 0 L10 0 Z L20 0` came back as one subpath
- * where SVG says two.
- */
+/** A path as cubic subpaths: one of the two boundaries where geometry is deliberately flattened to a single curve type (an arc becomes cubics here and in the anchor model only). */
 export function cubics(d: PathData | null | undefined): CubicSubpath[] {
     const out: CubicSubpath[] = [];
     for (const contour of contours(d)) {
@@ -60,7 +32,6 @@ export function cubics(d: PathData | null | undefined): CubicSubpath[] {
     return out;
 }
 
-/** First anchor of a subpath (the implicit `M` target). */
 function startPoint(cubics: Cubic[]): Vector2 {
     return cubics[0].p0;
 }
@@ -84,9 +55,6 @@ function centroid(cubics: Cubic[]): Vector2 {
     return { x: x / cubics.length, y: y / cubics.length };
 }
 
-// --- Subdivision: grow a subpath to a target number of cubics ---------------
-
-/** Split one cubic at parameter `t` into two cubics tracing the same curve (De Casteljau). */
 function splitCubic(c: Cubic, t: number): [Cubic, Cubic] {
     const a = lerpVector2(c.p0, c.c1, t);
     const b = lerpVector2(c.c1, c.c2, t);
@@ -100,16 +68,10 @@ function splitCubic(c: Cubic, t: number): [Cubic, Cubic] {
     ];
 }
 
-/**
- * Subdivide `cubics` until it has exactly `target` cubics (target ≥ current).
- * Splits are spread across the longest segments first so the added anchor points
- * land roughly evenly along the perimeter — the key to a smooth morph, since each
- * added point becomes a correspondence point with the other shape.
- */
+/** Subdivides until it has exactly `target` cubics (>= current), splitting the longest segments first so added anchors land evenly along the perimeter; each becomes a correspondence point with the other shape. */
 function subdivideTo(cubics: Cubic[], target: number): Cubic[] {
     let work = cubics.slice();
     while (work.length < target) {
-        // Find the longest cubic and split it in half.
         let longest = 0;
         let maxLen = -1;
         for (let i = 0; i < work.length; i++) {
@@ -122,9 +84,6 @@ function subdivideTo(cubics: Cubic[], target: number): Cubic[] {
     return work;
 }
 
-// --- Ring alignment: rotate + reverse a closed subpath ----------------------
-
-/** Reverse a chain of cubics so it traces the same shape in the opposite direction. */
 function reverseCubics(cubics: Cubic[]): Cubic[] {
     const out: Cubic[] = [];
     for (let i = cubics.length - 1; i >= 0; i--) {
@@ -134,7 +93,6 @@ function reverseCubics(cubics: Cubic[]): Cubic[] {
     return out;
 }
 
-/** Rotate a closed ring so it begins at cubic index `offset` (wraps around). */
 function rotateCubics(cubics: Cubic[], offset: number): Cubic[] {
     if (offset === 0) return cubics.slice();
     return cubics.slice(offset).concat(cubics.slice(0, offset));
@@ -151,13 +109,7 @@ function anchorCost(a: Cubic[], b: Cubic[]): number {
     return cost;
 }
 
-/**
- * Align a closed `to` ring against a fixed `from` ring (same cubic count). Tries
- * every rotation offset, in both winding directions, and keeps whichever pairs the
- * anchor points with the least total travel. This is what lets two shapes whose
- * points are listed in any order — or that wind in opposite directions — morph
- * without spinning or folding through themselves.
- */
+/** Aligns a closed `to` ring against a fixed `from` ring (same cubic count): tries every rotation offset in both windings and keeps the one with least total anchor travel, so any point order or winding morphs without spinning or folding. */
 function alignClosedRing(from: Cubic[], to: Cubic[]): Cubic[] {
     const n = from.length;
     let best = to;
@@ -176,22 +128,13 @@ function alignClosedRing(from: Cubic[], to: Cubic[]): Cubic[] {
     return best;
 }
 
-/**
- * For an open subpath, only the winding can be flipped (rotation would change the
- * shape). Pick the direction whose endpoints best match the `from` subpath.
- */
+/** For an open subpath only the winding can flip (rotating would change the shape): picks the direction whose endpoints best match `from`. */
 function alignOpenSubpath(from: Cubic[], to: Cubic[]): Cubic[] {
     const reversed = reverseCubics(to);
     return anchorCost(from, to) <= anchorCost(from, reversed) ? to : reversed;
 }
 
-// --- Degenerate subpaths (for count mismatches) -----------------------------
-
-/**
- * A subpath collapsed onto a single point `at`, with `count` zero-length cubics.
- * Pairing a real subpath with one of these makes it grow out of / shrink into a
- * point, which is how added or removed subpaths animate.
- */
+/** A subpath collapsed onto point `at` with `count` zero-length cubics: pairing a real subpath with one makes it grow out of / shrink into a point (added or removed subpaths). */
 function degenerateSubpath(at: Vector2, count: number): Cubic[] {
     const cubics: Cubic[] = [];
     for (let i = 0; i < count; i++) {
@@ -200,14 +143,7 @@ function degenerateSubpath(at: Vector2, count: number): Cubic[] {
     return cubics;
 }
 
-// --- Subpath pairing --------------------------------------------------------
-
-/**
- * Greedily pair `from` subpaths with the nearest unused `to` subpath (by centroid),
- * so morphing maps each shape onto its closest counterpart rather than by list
- * order. Leftover subpaths on either side are paired with a degenerate partner
- * collapsed at their own centroid, so they grow/shrink in place.
- */
+/** Greedily pairs `from` subpaths with the nearest unused `to` subpath (by centroid), not by list order. Leftovers on either side pair with a degenerate partner at their own centroid and grow/shrink in place. */
 function pairSubpaths(
     fromSubs: CubicSubpath[],
     toSubs: CubicSubpath[],
@@ -250,18 +186,11 @@ function pairSubpaths(
     return pairs;
 }
 
-// --- Building the morph plan ------------------------------------------------
-
-/**
- * Build a reusable {@link MorphPlan} aligning `from` to `to`. All the expensive
- * work — converting to cubics, pairing subpaths, equalizing counts, and rotating
- * rings — happens here once; {@link sample} then samples it cheaply per frame.
- */
+/** Builds a reusable {@link MorphPlan}. All the expensive work (cubics, pairing, equalizing, ring alignment) happens once here; {@link sample} is cheap per frame. */
 export function plan(from: PathCommand[], to: PathCommand[]): MorphPlan {
     const fromSubs = cubics(from);
     const toSubs = cubics(to);
 
-    // Both empty → nothing to morph.
     if (fromSubs.length === 0 && toSubs.length === 0) {
         return { pairs: [] };
     }
@@ -279,7 +208,6 @@ export function plan(from: PathCommand[], to: PathCommand[]): MorphPlan {
     const subPairs = pairSubpaths(fromSubs, toSubs);
 
     const pairs = subPairs.map(({ from: f, to: t }) => {
-        // Equalize cubic counts by subdividing the coarser side.
         const count = Math.max(f.cubics.length, t.cubics.length);
         const fromCubics = subdivideTo(f.cubics, count);
         let toCubics = subdivideTo(t.cubics, count);
@@ -298,9 +226,6 @@ export function plan(from: PathCommand[], to: PathCommand[]): MorphPlan {
     return { pairs };
 }
 
-// --- Sampling ---------------------------------------------------------------
-
-/** Interpolate a single cubic's four points. */
 function lerpCubic(from: Cubic, to: Cubic, t: number): Cubic {
     return {
         p0: lerpVector2(from.p0, to.p0, t),
@@ -310,16 +235,7 @@ function lerpCubic(from: Cubic, to: Cubic, t: number): Cubic {
     };
 }
 
-/**
- * Sample a {@link MorphPlan} at progress `t` (0 → `from`, 1 → `to`), producing a
- * fresh {@link PathCommand} list: one `M`, one `C` per cubic, and a trailing `Z`
- * for closed subpaths.
- *
- * Closed subpaths emit `Z` rather than a final line back to the start. The ring's
- * last cubic already lands on its first anchor, so `Z` adds no length; what it does
- * is tell the renderer the contour is closed, which is what makes the stroke join
- * cleanly at the seam instead of drawing two unjoined end caps there.
- */
+/** Samples a {@link MorphPlan} at progress `t` into a fresh {@link PathCommand} list. Closed subpaths end with `Z` rather than a line back to the start: the last cubic already lands on the first anchor, and `Z` makes the stroke join cleanly at the seam instead of two unjoined caps. */
 export function sample(plan: MorphPlan, t: number): PathCommand[] {
     const out: PathCommand[] = [];
     for (const pair of plan.pairs) {
@@ -337,16 +253,7 @@ export function sample(plan: MorphPlan, t: number): PathCommand[] {
     return out;
 }
 
-// --- Public tween entry point ----------------------------------------------
-
-/**
- * The morph plan is built from a `(from, to)` pair, which is constant for the
- * duration of one tween while `t` sweeps 0→1. {@link lerp} is invoked once
- * per frame with that same pair, so we cache the most recent plan to avoid
- * rebuilding it (subdivision + ring alignment is the costly part) every frame.
- * A one-entry cache is enough: tweens run one at a time per property and call us
- * with monotonically advancing `t` against fixed endpoints.
- */
+/** One-entry plan cache: a tween holds its `(from, to)` pair fixed while `t` sweeps 0→1 and {@link lerp} runs per frame, so rebuilding (subdivision + ring alignment) every frame is avoided. */
 let cachedPlan: { from: PathData; to: PathData; plan: MorphPlan } | null = null;
 
 function planFor(from: PathData, to: PathData): MorphPlan {
@@ -358,21 +265,7 @@ function planFor(from: PathData, to: PathData): MorphPlan {
     return built;
 }
 
-/**
- * Smoothly interpolate between two path shapes — the {@link PathData} tween used
- * by `Path`'s animatable `d` property and usable directly as a `LerpFunction`.
- *
- * `from`/`to` may be SVG `d` strings or {@link PathCommand} arrays and need not
- * share structure, command count, subpath count, point order, or winding — the
- * shapes are reconciled into a common cubic correspondence first (see the module
- * overview). At `t = 0` and `t = 1` the endpoints are returned verbatim so the
- * start and end frames are pixel-exact; in between, a morphed command list is
- * produced.
- *
- * @param from Source path (the shape at `t = 0`).
- * @param to   Target path (the shape at `t = 1`).
- * @param t    Progress in `[0, 1]`.
- */
+/** The {@link PathData} tween used by `Path`'s animatable `d` (usable as a `LerpFunction`). Endpoints need not share structure; they are reconciled into a cubic correspondence. At `t = 0` and `1` the endpoints are returned verbatim so the first and last frames are pixel-exact. */
 export function lerp(from: PathData, to: PathData, t: number): PathData {
     if (t <= 0) return from;
     if (t >= 1) return to;

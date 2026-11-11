@@ -5,7 +5,6 @@ export interface BlurEffect extends ModedEffect, EffectFields<typeof blurSpec.pa
     type: "blur";
 }
 
-/** The {@link BlurEffect} spec: its parameters, defaults and ranges. */
 export const blurSpec = defineEffect({
     type: "blur",
     group: "blur",

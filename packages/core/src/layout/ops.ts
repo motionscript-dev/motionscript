@@ -1,17 +1,4 @@
-/**
- * Every layout operation, on one object — for the node tree, and for anything a
- * node lays out itself, like a row of `Graphics2D` shapes inside `renderSelf`.
- *
- * It takes plain data and returns boxes, and writes to nothing it is handed: a
- * node keeps its own measure between passes. Its `resolve`/`lerp` pair is the
- * `flow` prop's, which is how a tween between two modes lives in the prop's value
- * and a seek that restores the prop restores the blend with it.
- *
- * Boxes are centred on the content box and y-up — the space `Graphics2D` draws
- * in. `Node2D` converts once, where it hands a box to a child.
- *
- * Each method is the module function of the same name.
- */
+/** Every layout operation on one object, for the node tree and for anything a node lays out itself (a row of `Graphics2D` shapes in `renderSelf`). Takes plain data, returns boxes, writes nothing it is handed. Its `resolve`/`lerp` pair is the `flow` prop's, so a tween between modes lives in the prop's value and a seek restores the blend. Boxes are centred on the content box and y-up (`Graphics2D` space); `Node2D` converts once where it hands a box to a child. */
 import { alignmentOps } from "@/attributes/layout/alignment";
 import { insetsOps, type InsetsResolved } from "@/attributes/layout/insets";
 import { sizeInputOps, type Size2D, type SizeInput } from "@/attributes/layout/size";
@@ -26,14 +13,8 @@ import { measureFreeform, placeFreeform } from "./freeform";
 import { measureGrid, placeGrid } from "./grid";
 import type { FlowMeasure, FlowMode, FlowResolved, FlowSettings, FlowSpace, LayoutItem } from "./types";
 
-/** The `flow` attribute's operations beyond `resolve`/`lerp`. */
 export interface FlowOps {
-    // ── Arranging ──────────────────────────────────────────────────────────
-    /**
-     * Lay `items` out in a box of `box`'s size, inset by `settings.padding`.
-     * Boxes come back centred on `box` and y-up. Pass a `measurer` when an item
-     * measures text.
-     */
+    /** Lays `items` out in a box of `box`'s size, inset by `settings.padding`; boxes come back centred on `box` and y-up. Pass a `measurer` when an item measures text. */
     arrange<I extends LayoutItem>(
         settings: FlowSettings, items: readonly I[], box: Size2D, measurer?: MeasureContext2D,
     ): BoxBounds[];
@@ -45,14 +26,9 @@ export interface FlowOps {
     place(measure: FlowMeasure, settings: FlowSettings, inner: Size2D): BoxBounds[];
     /** Whether `measure` still holds for a content box of `inner`'s size. */
     reusable(measure: FlowMeasure, inner: Size2D): boolean;
-    /**
-     * Where `settings` would put one more item of `size` in a content box of
-     * `inner`'s size, centred and y-up like `place`; `null` when they arrange
-     * their items in a run or a grid, where the slot depends on the others.
-     */
+    /** Where `settings` would put one more item of `size`, centred and y-up like `place`; `null` for a run or grid, where the slot depends on the others. */
     freeSlot(settings: FlowSettings, inner: Size2D, size: Size2D): BoxBounds | null;
 
-    // ── Sizing a container ─────────────────────────────────────────────────
     /** The content box a `width` × `height` container measures its items in. */
     contentBox(
         sizing: Pick<LayoutItem, "width" | "height">, constraints: SizeConstraints, padding: InsetsResolved,
@@ -62,7 +38,6 @@ export interface FlowOps {
         sizing: Pick<LayoutItem, "width" | "height">, constraints: SizeConstraints, padding: InsetsResolved, hug: Size2D,
     ): Size2D;
 
-    // ── Diagnostics ────────────────────────────────────────────────────────
     /** What is wrong with a run laid out in a box of `box`'s size, or `null`. */
     collapsedRun(measure: FlowMeasure, box: Size2D): string | null;
 }
@@ -135,14 +110,7 @@ function size(
     };
 }
 
-/**
- * A run laid out in a box of length 0 on its main axis, with items that have a
- * size. Always a bug, and a quiet one: a run is placed from the box's centre, so
- * its first item's leading edge lands on the centre and everything after follows —
- * content displaced by half a box it does not visibly have, which reads as "the
- * scene loaded at 0,0" rather than as a layout fault. A box holding only collapsed
- * items is legitimately empty: an animated insert or remove mid-flight.
- */
+/** A run laid out in a box of length 0 on its main axis, with items that have a size. Always a bug, and a quiet one: a run places from the box's centre, so content is displaced by half a box it does not visibly have ("the scene loaded at 0,0"). A box holding only collapsed items is legitimately empty (an animated insert or remove mid-flight). */
 function collapsedRun(measure: FlowMeasure, box: Size2D): string | null {
     if (measure.mode !== "horizontal" && measure.mode !== "vertical") return null;
     if ((measure.mode === "horizontal" ? box.width : box.height) > 0) return null;

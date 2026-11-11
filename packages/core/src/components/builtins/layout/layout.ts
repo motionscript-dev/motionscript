@@ -102,12 +102,7 @@ export type RotatedBox = NodeOf<typeof RotatedBox>;
 export interface CameraProps extends ShapeProps {
     /** Magnification factor. Values > 1 zoom in; < 1 zoom out. */
     zoom: number;
-    /**
-     * World-space point that maps to the centre of the camera viewport — what
-     * the camera is pointed at. Same name and meaning as
-     * `Graphics3D.perspective({ lookAt })`, so a 2D and a 3D camera are aimed
-     * with the same word.
-     */
+    /** World-space point mapped to the camera viewport's centre (what it is pointed at); same name and meaning as `Graphics3D.perspective({ lookAt })`. */
     lookAt: Vector2;
     /** Rotation of the camera view in degrees (clockwise). */
     heading: number;
@@ -137,15 +132,4 @@ export interface OrbitCameraProps extends Node2DProps {
     dolly: number;
     /** Degrees per second the camera orbits on its own — a turntable. */
     orbitSpeed: number;
-}
-
-// Adjust this import path if needed
-
-export interface RotatedBoxProps extends Node2DProps {
-    /** 
-     * Visual rotation angle in degrees. Unlike standard `rotation`, 
-     * animating this ALSO dynamically calculates a new bounding box 
-     * for the flex/layout engine. 
-     */
-    angle: number;
 }

@@ -7,51 +7,35 @@ import { caretCount, type TextBlockSource } from "@/render/text-layout";
 import { renderMatrix } from "./node-picking";
 
 /**
- * Where a Text node's caret slots landed on screen — the measurement a host
- * needs to draw its own text cursor and selection over the rendered glyphs.
+ * The measurement a host needs to draw its own text cursor and selection over the rendered glyphs. In viewport
+ * space, as {@link NodeBox}, so a caret and its selection box come out of the same walk and cannot disagree.
  *
- * **Space.** Viewport space, exactly as {@link NodeBox}: origin at the viewport
- * centre, y-up, viewport units, camera folded in. A caret and the selection box
- * around it therefore come out of the same walk and cannot disagree.
- *
- * **Why the host draws it.** Anything approximating glyph positions outside the
- * shaper — a DOM input laid over the canvas, say — drifts from the render the
- * moment the font, the line height or the wrapping does, and CSS `line-height`
- * and the renderer's height multiplier are not the same quantity to begin with. Handing
- * over the real slots means the rendered text stays the thing being edited.
+ * The host draws from these rather than approximating glyph positions itself: a DOM input laid over the canvas
+ * drifts the moment the font, line height or wrapping does, and CSS `line-height` and the renderer's height
+ * multiplier are not the same quantity.
  */
 export interface NodeTextLayout {
-    /** Structural path of the node measured, as {@link NodeBox.path}. */
     path: string;
-    /** The string the slots describe. */
     text: string;
     /**
-     * Every caret slot, in offset order: `carets[i]` sits before character `i`,
-     * and the last sits after the final character — so there are `text.length + 1`
-     * of them, and a caret offset is always a valid index.
-     *
-     * Each is a *segment*, not a point, because a rotated node's cursor is a
-     * rotated line: draw from `top` to `bottom`.
+     * `carets[i]` sits before character `i` and the last after the final character, so there are `text.length + 1`
+     * and an offset is always a valid index. Each is a segment, not a point: a rotated node's cursor is a rotated
+     * line, drawn from `top` to `bottom`.
      */
     carets: TextCaret[];
     /**
-     * Line ranges over caret offsets, for Home/End and vertical arrow keys. A
-     * hard line break belongs to neither line, so `lines[n].end` and
-     * `lines[n + 1].start` differ by one where the break is.
+     * For Home/End and vertical arrow keys. A hard line break belongs to neither line, so `lines[n].end` and
+     * `lines[n + 1].start` differ by one there.
      */
     lines: { start: number; end: number }[];
 }
 
-/** One caret slot: the line an editor would draw for a cursor at this offset. */
 export interface TextCaret {
-    /** Character offset this slot sits before. */
     offset: number;
-    /** Top and bottom of the cursor, viewport space. */
     top: Vector2;
     bottom: Vector2;
 }
 
-/** One line's worth of a selected range, as a quad in viewport space. */
 export interface TextRangeQuad {
     topLeft: Vector2;
     topRight: Vector2;
@@ -60,13 +44,9 @@ export interface TextRangeQuad {
 }
 
 /**
- * Measure `node`'s caret slots in viewport space, or `null` when it has none to
- * report — not a {@link Text}, nothing shaped yet, or a shape the caret model
- * doesn't cover (see {@link RenderContext2D.layoutTextBlock}).
- *
- * The block-local layout comes from the backend, because that is where glyphs
- * are actually positioned; everything below is the same mapping
- * {@link nodeBox} applies to a node's corners.
+ * `null` when it has none to report: not a {@link Text}, nothing shaped yet, or a shape the caret model does
+ * not cover (see {@link RenderContext2D.layoutTextBlock}). The block-local layout comes from the backend,
+ * where glyphs are positioned.
  */
 export function nodeTextLayout(
     node: Node2D,
@@ -80,11 +60,11 @@ export function nodeTextLayout(
     if (!block) return null;
 
     const m = renderMatrix(node);
-    // The block is laid out about the node's own origin — which is also where
-    // `_localBounds` centres the box, and what `verticalAlign` offsets it from —
-    // so a block-local offset is a node-local one, unshifted. Block coordinates are already canvas (y-down), which is
-    // the space the matrix works in, so unlike `worldAnchors` (which takes y-up
-    // corner offsets) only the *result* is flipped back to y-up viewport space.
+    /**
+     * The block is laid out about the node's own origin, which is also where `_localBounds` centres the box, so a
+     * block-local offset is a node-local one. Block coordinates are canvas y-down, the space the matrix works in,
+     * so unlike `worldAnchors` only the result is flipped to y-up.
+     */
     const at = (x: number, y: number): Vector2 => {
         const p = applyToPoint(m, { x, y });
         return { x: p.x, y: -p.y };
@@ -108,14 +88,9 @@ export function nodeTextLayout(
 }
 
 /**
- * The caret offset nearest `point` (viewport space) — what a click or a drag
- * over the rendered text should place the cursor at.
- *
- * Nearest *slot*, by distance to the caret segment rather than to its midpoint:
- * a click below a short first line should land on that line's nearest slot, and
- * midpoints would pull it toward whichever line's centre happened to be closer.
- * Segment distance also keeps this correct for rotated and scaled text without
- * needing a separate case, since the slots arrive already transformed.
+ * Nearest slot by distance to the caret segment, not its midpoint: a click below a short first line should
+ * land on that line's nearest slot, and midpoints would pull it toward whichever line's centre is closer. It
+ * also stays correct for rotated and scaled text, since the slots arrive transformed.
  */
 export function caretOffsetAt(layout: NodeTextLayout, point: Vector2): number {
     let best = 0;
@@ -131,12 +106,8 @@ export function caretOffsetAt(layout: NodeTextLayout, point: Vector2): number {
 }
 
 /**
- * The quads covering `[start, end)`, one per line the range touches — what a
- * host fills to draw a selection highlight.
- *
- * Per line rather than one box for the whole range, because a range spanning a
- * line break covers two disjoint areas and a single enclosing box would paint
- * over the gap between them.
+ * One per line the range touches, because a range spanning a line break covers two disjoint areas and one
+ * enclosing box would paint over the gap.
  */
 export function caretRangeQuads(
     layout: NodeTextLayout,
@@ -162,7 +133,6 @@ export function caretRangeQuads(
     return quads;
 }
 
-/** Distance from `p` to the segment `a`–`b`. */
 function distanceToSegment(p: Vector2, a: Vector2, b: Vector2): number {
     const dx = b.x - a.x;
     const dy = b.y - a.y;

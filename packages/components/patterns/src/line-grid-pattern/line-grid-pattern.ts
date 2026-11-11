@@ -86,11 +86,7 @@ export const LineGridPattern = component2d({
 });
 
 export type LineGridPattern = NodeOf<typeof LineGridPattern>;
-/** What a call or a document row may set. */
-export type LineGridPatternProps = NonNullable<Parameters<typeof LineGridPattern>[0]>;
 
-// One multi-subpath path per group, so each stroke paints its lines as a union with no
-// destructive boolean op (which would erase open lines).
 function gridPaths(
     width: number,
     height: number,

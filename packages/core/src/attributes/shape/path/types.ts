@@ -1,8 +1,5 @@
 /**
- * Every type the path module names, in one place.
- *
- * The vocabulary is small and it is worth seeing all of it at once, because the
- * whole module is four representations and the conversions between them:
+ * The path module's types: four representations and the conversions between them.
  *
  *     PathData ─▶ PathCommand[] ─▶ PathContour[] ─┬─▶ CubicSubpath[]  (morph)
  *      a string      as written      the normal   └─▶ VectorPath      (editing)
@@ -10,16 +7,9 @@
  */
 import type { Vector2 } from "@/attributes/layout/vector2";
 
-// ── Geometry ───────────────────────────────────────────────────────────────
+// `Extents` is `@/layout/bounds`'s: a path's bounding box and a node's are the same idea.
 
-// `Extents` — the `{ minX, minY, maxX, maxY }` box — is `@/layout/bounds`'s,
-// not a second copy. A path's bounding box and a node's are the same idea, and
-// the two were already the same four fields under two names.
-
-/**
- * A single cubic Bézier: start anchor `p0`, controls `c1`/`c2`, end anchor `p1`.
- * The end anchor of one cubic is the start of the next within a subpath.
- */
+/** A cubic Bézier; the end anchor of one is the start of the next within a subpath. */
 export interface Cubic {
     p0: Vector2;
     c1: Vector2;
@@ -27,7 +17,6 @@ export interface Cubic {
     p1: Vector2;
 }
 
-/** An SVG `A` command re-expressed as the ellipse arc it names. */
 export interface ArcParams {
     cx: number;
     cy: number;
@@ -41,21 +30,7 @@ export interface ArcParams {
     dtheta: number;
 }
 
-// ── The normal form ────────────────────────────────────────────────────────
-
-/**
- * One piece of a contour, keeping its own kind.
- *
- * Normalizing everything to cubics would be simpler by one dimension and wrong
- * in a way that shows on screen: an arc is not a cubic, so `length`, `sampler`,
- * `dash` and `trim` would all inherit an approximation only *morph* and the
- * anchor model actually need.
- *
- * Plain data, not a bundle of closures: `contours` runs inside `measure()` on
- * every layout pass, and arc-length parameterization is the expensive part of
- * path geometry. Nothing here samples a curve — `Extents` come from
- * closed-form extrema, and arc length is a separate, lazy table.
- */
+/** One piece of a contour, keeping its own kind: normalizing to cubics would make `length`, `sampler`, `dash` and `trim` inherit an approximation only morph and the anchor model need. Plain data, not closures: `contours` runs inside `measure()` on every layout pass, so nothing here samples a curve (extents are closed-form, arc length a separate lazy table). */
 export type PathSegment =
     | { kind: "line"; from: Vector2; to: Vector2 }
     | { kind: "quad"; from: Vector2; c: Vector2; to: Vector2 }
@@ -65,25 +40,12 @@ export type PathSegment =
         rx: number; ry: number; rotation: number; largeArc: 0 | 1; sweep: 0 | 1;
     };
 
-/**
- * One connected run — everything between an `M` and the next one.
- *
- * `start` is carried separately because a contour can legitimately have no
- * segments: a lone `M` is a real thing to write, it occupies a point that bounds
- * must account for, and the anchor model round-trips it as a single anchor.
- *
- * The closing edge of a `closed` contour is **not** in `segments` — `closed`
- * carries it. Storing it would mean a zero-length segment whenever the geometry
- * already ends where it started, which is most of the time.
- */
+/** One connected run (an `M` to the next). `start` is separate because a contour may have no segments: a lone `M` occupies a point bounds must account for. The closing edge of a `closed` contour is **not** in `segments` (it would be a zero-length segment whenever the geometry already ends where it started). */
 export interface PathContour {
     start: Vector2;
     segments: PathSegment[];
-    /** Whether the run ended with a `Z`. */
     closed: boolean;
 }
-
-// ── Arc-length measurement ─────────────────────────────────────────────────
 
 export interface SegmentMetric {
     segment: PathSegment;
@@ -106,7 +68,6 @@ export interface PathMetric {
     length: number;
 }
 
-/** A point on the path with the unit tangent direction there. */
 export interface PathFrame {
     x: number;
     y: number;
@@ -116,23 +77,13 @@ export interface PathFrame {
 }
 
 export interface PathSampler {
-    /** Total arc length across all contours. */
     readonly length: number;
-    /**
-     * Point and unit tangent at arc-length distance `d` from the path start.
-     * `d` is clamped to `[0, length]`. Returns `null` only for a degenerate
-     * (zero-length) path. Keeps an internal cursor so repeated calls with
-     * non-decreasing `d` are amortized O(1).
-     */
+    /** Point and unit tangent at arc-length `d` (clamped to `[0, length]`), `null` only for a zero-length path. Keeps an internal cursor, so calls with non-decreasing `d` are amortized O(1). */
     frameAt(d: number): PathFrame | null;
 }
 
-// ── Morphing ───────────────────────────────────────────────────────────────
-
-/** A connected run of cubics (one `M` followed by curves), optionally closed. */
 export interface CubicSubpath {
     cubics: Cubic[];
-    /** True for subpaths that ended with a `Z` — eligible for rotation/reversal. */
     closed: boolean;
 }
 
@@ -142,33 +93,16 @@ export interface MorphPlan {
     pairs: Array<{
         from: Cubic[];
         to: Cubic[];
-        /**
-         * Whether the sampled subpath should be closed with a `Z`. A pair is
-         * closed when both sides were closed rings — a closed shape morphing to
-         * another closed shape stays closed, so the stroke forms a proper join
-         * at the seam instead of leaving two unconnected free ends.
-         */
+        /** A pair is closed when both sides were closed rings, so the stroke joins at the seam instead of leaving two free ends. */
         closed: boolean;
     }>;
 }
 
-// ── The editable anchor model ──────────────────────────────────────────────
-
 /**
- * One anchor on a subpath, with the two control points that shape the segments
- * meeting at it.
- *
- * Handles are **absolute** points in the same space as {@link PathAnchor.point},
- * not offsets from it. That is what an SVG cubic stores, so serializing is a
- * copy rather than an addition, and it is the space a canvas editor drags them
- * in — an offset model would convert twice per pointer event for no gain.
- *
- * `null` means "no handle on this side", which draws as a straight segment. A
- * corner point has both null; a smooth point has both, mirrored through the
- * anchor; an asymmetric point has both, pointing opposite ways at different
- * lengths. The model does not record which of the three a point *is* — that is
- * derived from the handles, so a file cannot claim to be smooth while holding
- * handles that aren't.
+ * One anchor with the two control points of the segments meeting at it. Handles are **absolute** points in the same
+ * space as {@link PathAnchor.point} (what an SVG cubic stores and the canvas editor drags), not offsets. `null` means
+ * no handle on that side (a straight segment). Corner, smooth and asymmetric are not recorded; they derive from the
+ * handles, so a file cannot claim to be smooth while holding handles that aren't.
  */
 export interface PathAnchor {
     point: Vector2;
@@ -178,14 +112,11 @@ export interface PathAnchor {
     outHandle: Vector2 | null;
 }
 
-/** A single contiguous run of anchors — one `M …` in the `d` string. */
 export interface PathSubpath {
     anchors: PathAnchor[];
-    /** Whether the last anchor joins back to the first (`Z`). */
     closed: boolean;
 }
 
-/** A whole path: zero or more subpaths. */
 export type VectorPath = PathSubpath[];
 
 /** Scale and offset applied on each axis, as `pathOps.normalize` reports it. */
@@ -200,5 +131,4 @@ export interface PathNormalization {
     centerY: number;
 }
 
-// ── The operation surface ──────────────────────────────────────────────────
 

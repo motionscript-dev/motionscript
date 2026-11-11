@@ -14,13 +14,7 @@ import type { Color } from "@/attributes/shape/fill/color/parser";
 /** Options accepted by every `Camera3D` node and by {@link Scene3D.perspective}. */
 type ParamsOf<T extends { type: string }> = Omit<T, "type">;
 
-/**
- * One recorded operation in a {@link Scene3D}.
- *
- * A superset of {@link Graphics3DOp}: everything a node draws, plus the four
- * things that describe the scene around it — the `push`/`pop` nesting the node
- * tree produces, the lights in it, and where it is viewed from.
- */
+/** One recorded operation: everything a node draws ({@link Graphics3DOp}) plus `push`/`pop` nesting, lights and the camera. */
 export type Scene3DOp =
     | { kind: "push"; transform?: Transform3D }
     | { kind: "pop" }
@@ -29,26 +23,15 @@ export type Scene3DOp =
     | Graphics3DOp;
 
 /**
- * A recorded 3D scene — and the {@link RenderContext3D} that records it.
+ * A recorded 3D scene and the {@link RenderContext3D} that records it (as `Graphics2D` is both builder and thing
+ * handed to a backend): a `Node3D` tree draws into it, yielding a flat op list plus scene-wide settings that a
+ * renderer replays. A `Canvas3D` normally opens one per frame; building one by hand lets a scene be shaded
+ * through any 2D shape:
  *
- * One value plays both parts, exactly as `Graphics2D` is both the builder and the
- * thing handed to a backend. A `Node3D` tree draws into it, and the result is a
- * flat op list plus a handful of scene-wide settings that a renderer replays.
- *
- * Almost always produced for you: a `Canvas3D` opens one per frame, walks its
- * `Node3D` children through it and paints the result through its own path. The
- * builder surface below is the escape hatch — it is what lets a scene be shaded
- * through *any* 2D shape rather than only a rect:
- *
- *   const scene = new Scene3D()
- *       .perspective({ orbit: 30, elevation: 20, distance: 6 })
- *       .light({ type: "ambient", intensity: 0.4 })
- *       .draw(new Graphics3D().box({ width: 2, fill: "tomato" }));
- *
+ *   const scene = new Scene3D().perspective({ distance: 6 }).draw(new Graphics3D().box({ fill: "tomato" }));
  *   Text({ text: "DEPTH", fontSize: 320, fill: scene })
  *
- * A bare `Scene3D` coerces to a `canvas3D` fill the way a bare CSS string coerces
- * to a solid one, so `fill={scene}` and `fill={["#0b0d12", scene]}` both work.
+ * A bare `Scene3D` coerces to a `canvas3D` fill, so `fill={scene}` and `fill={["#0b0d12", scene]}` both work.
  */
 export class Scene3D extends RenderContext3D {
     private _ops: Scene3DOp[] = [];
@@ -60,18 +43,11 @@ export class Scene3D extends RenderContext3D {
     private _post: PostEffect3D[] = [];
     /** Open `push` count, so {@link assertBalanced} can report a leak. */
     private _depth = 0;
-    /**
-     * The `shadow` of each open node scope, innermost last (`undefined` for a
-     * scope that states none). What a drawable that states none of its own takes.
-     */
+    /** The `shadow` of each open node scope, innermost last; what a drawable stating none of its own takes. */
     private _shadowScopes: (Shadow3D | undefined)[] = [];
 
-    // ─── Node scopes ─────────────────────────────────────────────────────────
-
     override begin(state: Node3DRenderState): void {
-        // The node's id rides on the transform's `key`, which is the renderer's
-        // identity slot — so a group is cached against the node that opened it
-        // rather than against its index among its siblings.
+        // The node's id rides on the transform's `key` (the renderer's identity slot), so a group is cached against the node that opened it, not its index among siblings.
         this._ops.push({ kind: "push", transform: { ...state.transform, key: state.id } });
         this._shadowScopes.push(state.transform?.shadow);
         this._depth++;
@@ -83,21 +59,7 @@ export class Scene3D extends RenderContext3D {
         this._depth--;
     }
 
-    // ─── Drawables ───────────────────────────────────────────────────────────
-
-    /**
-     * Splice what a node draws into the scene at the current scope.
-     *
-     * The ops are copied rather than referenced: a `Graphics3D` is rebuilt every
-     * frame, so there is nothing to share, and a flat list is what the renderer
-     * walks.
-     *
-     * A drawable that states no `shadow` of its own takes the one of the node
-     * scope it is drawn in. That is what carries a node's `shadow` to its mesh: the
-     * node's scope becomes a group, and a renderer reads casting and receiving off
-     * the mesh, never off a group, so the scope's value would otherwise never be
-     * seen. A `shadow` on the op itself wins.
-     */
+    /** Splices what a node draws into the scene at the current scope. Ops are copied: a `Graphics3D` is rebuilt every frame and the renderer walks a flat list. A drawable stating no `shadow` takes its node scope's, since a renderer reads casting/receiving off the mesh, never a group; a `shadow` on the op wins. */
     override draw(graphics: Graphics3D): this {
         const ops = graphics.ops();
         const scope = this._shadowScopes[this._shadowScopes.length - 1];
@@ -112,14 +74,10 @@ export class Scene3D extends RenderContext3D {
         return this;
     }
 
-    // ─── Lights ──────────────────────────────────────────────────────────────
-
     override light(light: LightData3D, transform?: Transform3D): this {
         this._ops.push({ kind: "light", light, transform });
         return this;
     }
-
-    // ─── Camera ──────────────────────────────────────────────────────────────
 
     override camera(camera: CameraData3D): this {
         this._camera = camera;
@@ -137,11 +95,7 @@ export class Scene3D extends RenderContext3D {
         return this.camera({ type: "orthographic", ...options } as OrthographicCameraData3D);
     }
 
-    // ─── Scene settings ──────────────────────────────────────────────────────
-    //
-    // Fields rather than ops: a scene has exactly one fog and one environment.
-    // Recording them positionally would imply an ordering that doesn't exist.
-    // Last writer wins.
+    // Fields, not ops: a scene has one fog and one environment, and recording them positionally would imply an ordering that doesn't exist. Last writer wins.
 
     override fog(fog: FogData3D | Color | null): this {
         if (fog === null) {
@@ -197,8 +151,6 @@ export class Scene3D extends RenderContext3D {
         return this;
     }
 
-    // ─── Consumption ─────────────────────────────────────────────────────────
-
     /** The recorded ops, in order. Replayed by the renderer. */
     ops(): readonly Scene3DOp[] {
         return this._ops;
@@ -224,22 +176,12 @@ export class Scene3D extends RenderContext3D {
         return this._post;
     }
 
-    /**
-     * True when nothing would be drawn — no mesh, light or other drawable. The
-     * node skips the whole 3D pass (and the WebGL context entirely) in that case.
-     */
+    /** True when nothing would be drawn (no mesh, light or other drawable); the node then skips the whole 3D pass. */
     isEmpty(): boolean {
         return !this._ops.some((op) => DRAWABLE_KINDS.has(op.kind));
     }
 
-    /**
-     * Throw if `push` and `pop` are unbalanced. Called once by the consumer before
-     * replay, so a mismatched scope fails loudly rather than silently reparenting
-     * everything after it.
-     *
-     * A `Node3D` tree cannot get this wrong — `begin`/`end` are bracketed by the
-     * walk — so in practice this catches a hand-built scene.
-     */
+    /** Throws if `push` and `pop` are unbalanced, so a mismatched scope fails loudly rather than silently reparenting everything after it. A `Node3D` walk brackets `begin`/`end` itself, so this catches hand-built scenes. */
     assertBalanced(): void {
         if (this._depth !== 0) {
             const verb = this._depth > 0 ? "unclosed begin()" : "extra end()";

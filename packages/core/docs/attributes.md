@@ -72,7 +72,6 @@ A shader pack (`shaders/pack.ts`) has `scope: 'fill'` or `'effect'`, a `source` 
 - **Uniform mistakes never throw.** A non-finite or non-numeric uniform warns once (`[shader] ...`) and is dropped; a uniform and a `struct Params` member that disagree are a `params` render issue; a structural pack mistake throws. `i32`/`u32` members work. A fill source returns **premultiplied** RGBA and must not apply the layer's `opacity` (the paint already carries it).
 - **Path memos assume immutability.** `contours` memoises 32 entries (a string by value, an array by reference); `lerp` caches one plan keyed by `(from, to)` identity. Never edit a `PathCommand[]` in place after passing it in. A tweened path hands a fresh array every frame, so it misses the contour memo and ages out of it.
 - **`pathOps` validates nothing and never throws on a string.** A scanner stops at the first unreadable token and keeps the complete commands before it. `lerp` returns `from` at `t <= 0` and `to` at `t >= 1`; between, `M`/`C`/`Z` only. `SAMPLE_STEPS` (50) is shared by `length`, `sampler`, `dash` and `trim`; `fromAnchors` keeps 5 decimals. SVG arc `sweep` and tangents follow y down.
-- **Deprecated, removed in the next major**: `ImageFilters`, `VideoFilters` (use `Adjustments`, `VideoAdjustments`), the `filters` prop of image and video fills (use `preset.adjustments`).
 
 ## Where to look
 

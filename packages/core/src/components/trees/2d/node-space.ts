@@ -16,12 +16,7 @@ import { Clip } from "@/render/clip";
 import { PathBuilder } from "@/render/descriptors/path-builder";
 import type { Node2D } from "./node2d";
 
-/**
- * Companion for {@link Node2D}'s 2.5D space: where a node sits in one for a
- * frame, and the order a space's siblings paint in. The renderer and picking
- * both build frames through here, so a box drawn around a node cannot disagree
- * with where it was painted.
- */
+/** Companion for {@link Node2D}'s 2.5D space: where a node sits in one for a frame and the order siblings paint in. The renderer and picking both build frames here, so a box around a node can't disagree with where it was painted. */
 
 /** Where one node sits in a space for one frame. */
 /** @internal */
@@ -40,11 +35,7 @@ export interface SpaceFrame {
     /** No tilt and no depth: the node lies in its parent's plane. */
     readonly flat: boolean;
     readonly plane: SpacePlane;
-    /**
-     * False when the node is edge-on or wholly behind the camera, so it has
-     * nothing of its own to draw — and no usable matrix to push, which is why its
-     * children, placed by their own frames, are still drawn.
-     */
+    /** False when the node is edge-on or wholly behind the camera: nothing of its own to draw and no usable matrix to push, though its children (placed by their own frames) are still drawn. */
     readonly paints: boolean;
     readonly facesAway: boolean;
     /** Confines the node's own paint to what is in front of the lens, while the lens is passing through it. */
@@ -111,14 +102,7 @@ export function spaceChildFrame(parent: SpaceFrame, child: Node2D): SpaceFrame {
     };
 }
 
-/**
- * The frame `node` is placed by, or `null` when it is in no space — the walk
- * picking takes, where the renderer threads frames down as it goes.
- *
- * A node is in a space when some ancestor opens one and every node between the
- * two hands its children on through {@link Node2D._rendersChildrenInSpace};
- * a mask or a nested camera flattens its subtree into its own plane instead.
- */
+/** The frame `node` is placed by, or `null` when in no space: the walk picking takes (the renderer threads frames down). In a space when an ancestor opens one and every node between hands its children on via {@link Node2D._rendersChildrenInSpace}; a mask or nested camera flattens its subtree into its own plane. */
 /** @internal */
 export function spaceFrameOf(node: Node2D): SpaceFrame | null {
     const chain: Node2D[] = [];
@@ -144,10 +128,7 @@ export function spaceFrameForChildren(parent: Node2D): SpaceFrame | null {
     return spaceFrameOf(parent);
 }
 
-/**
- * The order `children` paint in, far to near, as indices. Siblings that all lie
- * in their parent's plane need no test and keep their authored order.
- */
+/** The order `children` paint in, far to near, as indices; siblings all in their parent's plane need no test and keep authored order. */
 /** @internal */
 export function spaceChildOrder(frames: readonly SpaceFrame[]): number[] {
     if (frames.length < 2 || frames.every((f) => f.flat)) return frames.map((_, i) => i);
@@ -160,11 +141,7 @@ function inkBox(node: Node2D): { x: number; y: number; width: number; height: nu
     return { x: b.x, y: -b.y, width: b.width, height: b.height };
 }
 
-/**
- * Grown past the ink by this much, plus half the box: a shadow, a stroke or a
- * glow spilling past a node must not be cut along its edge while the lens is
- * passing through it.
- */
+/** Grown past the ink by this, plus half the box: a shadow, stroke or glow must not be cut along the edge while the lens passes through. */
 const NEAR_CUT_MARGIN = 128;
 
 function nearCutClip(screen: Matrix2D, box: { x: number; y: number; width: number; height: number }): Clip | null {

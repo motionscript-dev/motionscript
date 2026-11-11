@@ -7,13 +7,11 @@ import { nodeSpan, ROOT_NODE_ID, type CommandSpec, type NodeSpan, type NodeSpec 
 /** What the planner needs to know about code, so it can be exercised without a registry. */
 export interface PatchEnvironment {
     traits(spec: CommandSpec, target: NodeSpec | undefined): CommandTraits | null;
-    /** Node ids the command's args name (`moveTo`'s `target`). Absent names none. */
     nodeRefs?(spec: CommandSpec, target: NodeSpec | undefined): readonly string[];
     isContextProvider(type: string): boolean;
     isLayoutNeutralProp(type: string, key: string): boolean;
     /** Whether a new `key` on `row` is written onto its live node rather than a new one. Absent writes none in place. */
     writesInPlace?(row: NodeSpec, key: string): boolean;
-    /** The live instance's constructor, or `undefined` when there is none to compare. */
     ctorOf(id: string): unknown;
     registeredCtor(type: string): unknown;
     /** A type's tree; `"audio"` rows are left out of layout decisions. Absent treats every type as laid out. */
@@ -26,17 +24,13 @@ export interface TimelinePatch {
     diff: ClipDiff;
     added: ReadonlySet<string>;
     removed: ReadonlySet<string>;
-    /** Kept ids that get a new instance. */
     reinstantiate: ReadonlySet<string>;
-    /** Kept ids whose changed props are all placement, written onto the live instance instead. */
     inPlace: ReadonlySet<string>;
     detach: ReadonlySet<string>;
-    /** Nodes whose command chains are rebuilt; may include the root `""`. */
     dirtyNodes: ReadonlySet<string>;
     dirtyVariables: ReadonlySet<string>;
-    /** Clean chains that must run for dirty ones to build against the right values; empty means none. */
+    /** Clean chains that must run for dirty ones to build against the right values. */
     replay: ReadonlySet<string> | "all";
-    /** Arrival baselines to take during the walk, ascending by `at`. */
     captures: ReadonlyArray<{ at: number; id: string }>;
     layoutChanged: boolean;
 }
@@ -49,18 +43,15 @@ export interface PatchOptions {
 }
 
 /**
- * A rebuild of a small clip is not cheaper than patching it: the runtime also
- * throws away the track's asset index, sweeps it again and republishes it.
+ * A rebuild of a small clip is not cheaper than patching it: the runtime also throws away the track's asset
+ * index, sweeps it again and republishes it.
  */
 export const MIN_REBUILD_NODES = 16;
 
 /**
- * Plan an in-place update of a built clip from `prev` to `next`, or `null` when
- * only a rebuild is sound.
- *
- * Every rule errs towards doing more: a node marked dirty that did not need it
- * costs one chain rebuild, while one missed renders a frame that disagrees with
- * a fresh build of the same document.
+ * `null` when only a rebuild is sound. Every rule errs towards doing more: a node marked dirty that did not
+ * need it costs one chain rebuild, while one missed renders a frame that disagrees with a fresh build of the
+ * same document.
  */
 export function planTimelinePatch(
     prev: DocIndex,
@@ -98,7 +89,6 @@ export function planTimelinePatch(
         if (id !== ROOT_NODE_ID && prev.nodes.has(id)) kept.push(id);
     }
 
-    // ── Re-instantiation ────────────────────────────────────────────────────
     const R = new Set<string>();
     const isProvider = (id: string) => {
         const a = prev.nodes.get(id)?.type;
@@ -136,7 +126,6 @@ export function planTimelinePatch(
         if (targeted(id) && prev.initialKey(id) !== next.initialKey(id)) reinstantiate(id);
     }
 
-    // ── Dirty chains ────────────────────────────────────────────────────────
     const DN = new Set<string>();
     const DV = new Set<string>();
     const mark = (id: string) => {
@@ -157,8 +146,10 @@ export function planTimelinePatch(
         for (const spec of prev.commandsAt(at)) mark(prev.targetOf(spec));
         for (const spec of next.commandsAt(at)) mark(next.targetOf(spec));
     }
-    // An unlimited loop is built to fill the clip it found, so a clip that grew
-    // or shrank rebuilds it — nothing on the command itself changed.
+    /**
+     * An unlimited loop is built to fill the clip it found, so a clip that grew or shrank rebuilds it though
+     * nothing on the command changed.
+     */
     if (diff.duration) {
         for (const spec of next.commands.values()) {
             if (spec.loop?.count === null) mark(next.targetOf(spec));
@@ -188,8 +179,7 @@ export function planTimelinePatch(
         || [...respec].some((id) => laidOutEither(id) && respecTouchesLayout(prev.nodes.get(id)!, next.nodes.get(id)!, env))
         || (diff.rootChanged && respecTouchesLayout(prevRoot, nextRoot, env));
 
-    // Nodes whose prop values over time may differ from the live build: anything
-    // reading one of them through `[key.prop]` builds its chain from different values.
+    /** Anything reading one of them through `[key.prop]` builds its chain from different values. */
     const valueChanged = new Set<string>([...added, ...removed, ...presenceChanged, ...inPlace]);
     if (diff.rootChanged) valueChanged.add(ROOT_NODE_ID);
     const aimed = [...nodeReaders(prev, env), ...nodeReaders(next, env)];
@@ -254,7 +244,6 @@ export function planTimelinePatch(
     if (R.size > limit) return null;
     for (const id of R) inPlace.delete(id);
 
-    // ── Replay ──────────────────────────────────────────────────────────────
     let replay: Set<string> | "all";
     const dirtyTargets = [...DN, ...DV];
     if (dirtyTargets.some((id) => anyCommand(next, nextTraits, id, (t) => t.readsLayout || !t.known))) {
@@ -287,7 +276,6 @@ export function planTimelinePatch(
         }
     }
 
-    // ── Structure ───────────────────────────────────────────────────────────
     const detach = new Set<string>([...removed, ...R]);
     for (const parent of reorderedParents) {
         for (const child of next.children(parent)) if (prev.nodes.has(child)) detach.add(child);
@@ -327,8 +315,8 @@ function structurallyFaulty(index: DocIndex): boolean {
 }
 
 /**
- * Every command's traits, or `null` when one cannot be patched at all: it does
- * not resolve, it changes structure, or its target is not the kind its scope names.
+ * `null` when one cannot be patched at all: it does not resolve, it changes structure, or its target is not
+ * the kind its scope names.
  */
 function traitsOf(index: DocIndex, env: PatchEnvironment): Map<string, CommandTraits> | null {
     const out = new Map<string, CommandTraits>();
@@ -343,7 +331,6 @@ function traitsOf(index: DocIndex, env: PatchEnvironment): Map<string, CommandTr
     return out;
 }
 
-/** Each command target paired with a node its args name. */
 function nodeReaders(index: DocIndex, env: PatchEnvironment): Array<{ reader: string; ref: string }> {
     if (!env.nodeRefs) return [];
     const out: Array<{ reader: string; ref: string }> = [];
@@ -354,7 +341,6 @@ function nodeReaders(index: DocIndex, env: PatchEnvironment): Array<{ reader: st
     return out;
 }
 
-/** Whether `id` or any ancestor of it is in `set`. */
 function lineageIn(index: DocIndex, id: string, set: ReadonlySet<string>): boolean {
     const seen = new Set<string>();
     let cursor: string | undefined = id;
@@ -388,7 +374,6 @@ function onlyPropsDiffer(a: NodeSpec, b: NodeSpec): boolean {
         && sa.start === sb.start && sa.end === sb.end;
 }
 
-/** Whether every prop the row changed is a literal placement value it still sets. */
 function placementOnly(prev: DocIndex, next: DocIndex, id: string, env: PatchEnvironment): boolean {
     const a = prev.nodes.get(id)!;
     const b = next.nodes.get(id)!;

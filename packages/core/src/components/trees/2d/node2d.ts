@@ -51,27 +51,17 @@ import { MeasureContext2D } from "@/render/measure-context";
 import { flowOps } from "@/layout/ops";
 import type { FlowMeasure, FlowSettings } from "@/layout/types";
 
-/**
- * Stand-in for a node's reference rects when the context never reads them.
- * Shared and empty — `computeSpaceRects` returns the same shape for a node with
- * no parent, so consumers already handle it.
- */
+/** Shared empty stand-in when the context never reads reference rects; the shape `computeSpaceRects` returns for a parentless node. */
 const NO_SPACE_RECTS: SpaceRects = {};
 
 /** The node centre in the normalised `[-1, 1]` alignment space — `pivot`'s own default. */
 const ORIGIN_2D: Vector2 = { x: 0, y: 0 };
 
 /**
- * Where a parent puts a child beyond the box it laid it out in: the turn, size,
- * tilt, depth and fade of a slot in an arrangement — a ring of cards, tiles on a
- * sphere. Applied about the box's centre and *before* the child's own
- * transform, so the child's `x`/`y`/`rotation`/`scale`, and every command on
- * them, keep working relative to the slot.
- *
- * Answered by the parent ({@link Node2D._placementOf}) rather than written onto
- * the child, so a child moved to another parent cannot carry a stale slot, and
- * read by the renderer, picking and `global` alike, so a selection box lands on
- * the pixels.
+ * A slot's turn, size, tilt, depth and fade in a parent's arrangement (a ring of cards, tiles on a
+ * sphere). Applied about the box centre and before the child's own transform, so the child's
+ * `x`/`y`/`rotation`/`scale` and their commands stay relative to the slot. Answered by the parent
+ * ({@link Node2D._placementOf}) rather than stored on the child, so a reparented child can't carry a stale slot.
  */
 export interface ChildPlacement {
     /** In-plane turn, degrees clockwise. */
@@ -87,24 +77,18 @@ export interface ChildPlacement {
 }
 
 /**
- * A parent's own coordinates for where its children sit — the units of a graph,
- * say. Position only: a child keeps its size, turn and scale, so a label on a
- * plot follows the plot's range without being stretched by it.
- *
- * Answered by the parent ({@link Node2D._planeOf}) for the reasons a slot is,
- * and read by the renderer, picking, `global` and `moveTo({ target })` alike.
+ * A parent's own coordinates for where its children sit (graph units, say). Position only: a child
+ * keeps its size, turn and scale. Answered by the parent ({@link Node2D._planeOf}), like a slot.
  */
 export interface ChildPlane {
     /** A child's `x`/`y` as a pixel offset, y-up, from the centre of its layout box. */
     toOffset(x: number, y: number): Vector2;
-    /** The inverse: the `x`/`y` that put a child at that offset. */
     toCoords(x: number, y: number): Vector2;
 }
 
 /**
- * A point of a node an editor can drag to set one of its `Vector2` props: the
- * two ends of an arrow. `at` is in the node's own frame, y-up from its origin,
- * the frame {@link Node2D._localBounds} is in.
+ * A point an editor can drag to set one of the node's `Vector2` props. `at` is in the node's own
+ * frame, y-up from its origin, the frame {@link Node2D._localBounds} is in.
  */
 export interface NodeHandle {
     readonly prop: string;
@@ -137,24 +121,15 @@ export interface ChildSpace {
 
 const NO_CONTENT: Size2D = { width: 0, height: 0 };
 
-// WorldTransform, PropInput, and PropInputs now live in dedicated
-// modules (see imports above) and are re-exported below so existing
-// `from ".../node2d"` imports keep resolving.
 export { Node } from "@/components/trees/node/node";
 export type { NodeChildren, NodeConfig, NodeMetadata, NodeDimension, NodeProps } from "@/components/trees/node/node";
 export type { WorldTransform } from "@/attributes/layout/world-transform";
 export type { PropInput, PropInputs } from "@/attributes/properties/inputs";
 
-/**
- * The camera props a node pushes around its children — the three inputs
- * `RenderContext2D.beginCamera` takes beyond the viewport rect. See
- * {@link Node2D._cameraScope}.
- */
 /** @internal */
 export interface CameraScope {
     /** World point (y-up) the viewport centres on — what the camera is aimed at. */
     lookAt: Vector2;
-    /** Uniform zoom factor. */
     zoom: number;
     /** Viewport rotation in degrees; the renderer applies it as `rotate(-heading)`. */
     heading: number;
@@ -165,22 +140,9 @@ export interface Node2DProps extends NodeProps {
     y: number; // 0 is center, negative is down, positive is up
     width: SizeInput;
     height: SizeInput;
-    /**
-     * Per-child weight for the gap this node contributes to its parent's flex
-     * run, `[0, 1]`. See the property's own note — set it to collapse a child
-     * without the surrounding gap popping.
-     */
+    /** Weight `[0, 1]` for the gap this child contributes to its parent's flex run; collapse a child without the gap popping. */
     gapScale: number;
-    /**
-     * Sets `width` and `height` to the same value in one go. Pure sugar: at
-     * construction time, an author-facing `size` is expanded into `width`/
-     * `height` before either is applied. Explicit `width` or `height` takes
-     * precedence over `size` (mirroring `padding`'s side-vs-shorthand rule),
-     * so `{ size: 200, width: 100 }` yields `width: 100, height: 200`.
-     * Reactive bindings and `to()`/`set()` targets both work the same as
-     * `width`/`height` — `size: 'fill'`, `size: () => ...`, or
-     * `node.to({ size: 300 }, 0.5)` are all valid.
-     */
+    /** Sugar for `width` and `height`; an explicit `width` or `height` wins (`{ size: 200, width: 100 }` is 100 by 200). */
     size: SizeInput;
     scale: number;
     rotation: number;
@@ -188,31 +150,19 @@ export interface Node2DProps extends NodeProps {
     /** Layer blend mode. `'pass-through'` (default) does not isolate the node — its opacity scales each child/fill while they blend against the backdrop. Any other mode isolates the node and blends its flattened result against the backdrop. */
     blend: NodeBlendMode;
     effects: Effect;
-    /** Inner spacing between this node's edges and its content/children. */
     padding: Insets;
     /** When true, content drawn outside this node's outline is clipped away (see {@link Node2D.clipSelf}). */
     clip: boolean;
     /**
-     * Pivot point for rotation and scale. Either a **named alignment** (`'center'`,
-     * `'topRight'`, `'bottomLeft'`, … — the node `align` vocabulary) or an explicit
-     * {@link Vector2}: `(0,0)`=center, `(-1,1)`=top-left, `(1,-1)`=bottom-right. Set
-     * automatically when an alignment *positioning* prop is used.
+     * Pivot for rotation and scale: a named alignment (`'center'`, `'topRight'`, ...) or a normalised
+     * {@link Vector2} (`(0,0)` centre, `(-1,1)` top-left). Set automatically when an alignment positioning prop is used.
      */
     pivot: Alignment;
 
-    // ---- Mirrors and the third dimension -----------------------------------
-    // A node is a flat plane, and these are the CSS transform functions that
-    // still apply to one: the two mirrors, the two out-of-plane rotations, a
-    // push along the view axis and the perspective that makes it read as depth.
-    // `rotation` supplies the Z axis (see `transform3D` for why there is no
-    // `rotationZ` beside it), and every one of them turns about `pivot` — or
-    // about `transformOrigin`, where that is set.
+    // Mirrors and the third dimension: the CSS transform functions that still apply to a flat plane.
+    // `rotation` supplies the Z axis (see `transform3D`); every one turns about `pivot`, or `transformOrigin` where set.
 
-    /**
-     * Mirror the node (and its whole subtree) across its vertical centre line.
-     * The same thing CSS's `scaleX(-1)` is: text reads backwards, a left-pointing
-     * arrow points right, and nothing about the node's box or its layout moves.
-     */
+    /** Mirror across the vertical centre line (CSS `scaleX(-1)`); the box and layout don't move. */
     flipHorizontal: boolean;
     /** Mirror across the horizontal centre line — CSS's `scaleY(-1)`. See {@link flipHorizontal}. */
     flipVertical: boolean;
@@ -221,88 +171,29 @@ export interface Node2DProps extends NodeProps {
     /** Tilt about the vertical axis, in **degrees**. Positive swings the right edge away from the viewer. */
     rotationY: number;
     /**
-     * In-plane rotation belonging to the 3D transform, in **degrees** clockwise —
-     * the Z axis of the `rotateX · rotateY · rotateZ` block.
-     *
-     * **Not a second name for {@link rotation}.** The two are independent numbers
-     * and editing one never moves the other. What separates them is which side of
-     * the geometry/paint line they fall on: `rotation` turns the node's *shape*,
-     * so its box turns with it and everything reading that box follows, while
-     * this is part of the projection, which is paint (see `Node2D._localMatrix`).
-     * Turning a node with `rotation` turns its selection outline; turning it with
-     * `rotationZ` spins the picture inside a box that stays where it was.
-     *
-     * They compose the only way two rotations about one axis can — they add.
+     * In-plane rotation of the 3D transform, degrees clockwise. Independent of {@link rotation}, which
+     * turns the node's shape (box and selection outline); this is paint-only and spins the picture inside a
+     * box that stays put. They add.
      */
     rotationZ: number;
-    /**
-     * Push along the view axis, in px — CSS's `translateZ`. Positive brings the
-     * node toward the viewer, so it projects larger.
-     *
-     * **Inert without {@link perspective}.** With no perspective the projection is
-     * parallel and z is simply dropped, exactly as in CSS: there is no viewpoint
-     * for a thing to be nearer to.
-     */
+    /** Push along the view axis, px (CSS `translateZ`); positive is toward the viewer. Inert without {@link perspective}. */
     depth: number;
     /**
-     * Distance from the viewer to the plane the node sits in, in px. `0` (the
-     * default) is no perspective at all — a parallel projection, where a tilt
-     * squashes the node evenly rather than making its far edge recede.
-     *
-     * Smaller is more dramatic: the node subtends more of the field of view, so
-     * the convergence is stronger. Somewhere around 800–1500 reads like a page
-     * on a desk; a few hundred reads like a wide-angle lens.
-     *
-     * Declared per node rather than inherited from an ancestor, which is where
-     * CSS puts it. A scene graph has no viewport element to hang it on, and a
-     * node that carries its own is one that can be handed around, nested and
-     * animated without its depth depending on where it was dropped.
+     * Distance from the viewer to the node's plane, px. `0` (default) is a parallel projection: a tilt
+     * squashes evenly instead of receding. Smaller is more dramatic (~800-1500 reads like a page on a desk).
+     * Per node, not inherited as in CSS: a scene graph has no viewport element, and a node carrying its own
+     * can be nested and animated without its depth depending on where it was dropped.
      */
     perspective: number;
-    /**
-     * Whether the node still paints once it has turned past edge-on and is
-     * showing its back — CSS's `backface-visibility`, defaulted the CSS way
-     * (`visible`).
-     *
-     * Set it `false` for the card-flip: two nodes back to back, one at
-     * `rotationY: 0` and one at `180`, each hidden exactly while the other faces
-     * out. The test is the tilt alone (see `facesAway`) — a {@link flipHorizontal}
-     * mirrors the node without turning it around, so it does not hide it.
-     */
+    /** Whether the node paints once turned past edge-on (CSS `backface-visibility`, default visible); `false` gives the card flip. Decided by tilt alone (see `facesAway`), so {@link flipHorizontal} doesn't hide it. */
     backfaceVisible: boolean;
-    /**
-     * The point every rotation, scale and mirror turns about — CSS's
-     * `transform-origin`, in the same `[-1, 1]` vocabulary as {@link pivot}
-     * (a named alignment, or a {@link Vector2} where `(0,0)` is the centre).
-     *
-     * Unset (the default) it *is* the pivot, so a node keeps turning about
-     * whatever its alignment positioning gave it and nothing changes. Set, it wins
-     * for the whole transform rather than for the 3D half of it — one origin, the
-     * way CSS has one. A second origin that only some of the rotations respected
-     * would produce a picture nobody could predict.
-     */
+    /** Origin every rotation, scale and mirror turns about (CSS `transform-origin`), same vocabulary as {@link pivot}. Unset it is the pivot; set it wins for the whole transform, so there is one origin as in CSS. */
     transformOrigin: Alignment;
-    /**
-     * All of the above in one bag — construction sugar, expanded into the
-     * individual props before anything reads them (exactly as {@link size} is
-     * expanded into `width`/`height`), so `set()`, `to()` and reactive callbacks
-     * all behave identically whichever form is used.
-     *
-     * ```ts
-     * Rect({ transform3D: { rotationX: 45, rotationY: -17, perspective: 900 } })
-     * card().to({ transform3D: { rotationY: 180 } }, 0.8)
-     * ```
-     *
-     * `rotationZ` is the block's own in-plane rotation and is **not** the node's
-     * {@link rotation} under another name — see its note for what separates them.
-     */
+    /** The 3D props in one bag: construction sugar expanded into the individual props before anything reads them, like {@link size}. Its `rotationZ` is not {@link rotation}. */
     transform3D: NodeTransform3D;
 
-    // ---- Alignment-based positioning -----------------------------------------
-    // Pass any one of these instead of (or in addition to) x/y.
-    // The node will reactively offset itself so the named alignment lands at the
-    // given scene-space position. Callbacks are supported and re-evaluated
-    // whenever the referenced value or this node's layout changes.
+    // Alignment positioning: any one of these, instead of or beside x/y, offsets the node so the alignment
+    // lands at the scene-space point. Callbacks re-evaluate when the value or this node's layout changes.
     center: Vector2 | (() => Vector2);
     topLeft: Vector2 | (() => Vector2);
     topRight: Vector2 | (() => Vector2);
@@ -313,17 +204,10 @@ export interface Node2DProps extends NodeProps {
     centerLeft: Vector2 | (() => Vector2);
     centerRight: Vector2 | (() => Vector2);
 
-    /**
-     * Proportional share of the free space along the parent's main axis,
-     * relative to sibling `fill` children (like Flutter's `Expanded(flex:)`).
-     * Only meaningful when this node fills the main axis — in a row that's
-     * `width:'fill'`, in a column `height:'fill'`. Two siblings with `flex` 2
-     * and 1 split the free space 2:1. Defaults to 1. Specifying `flex` without
-     * an explicit `width`/`height` defaults both to `'fill'`.
-     */
+    /** Share of free main-axis space relative to sibling `fill` children (Flutter's `Expanded(flex:)`), default 1. Setting it without `width`/`height` defaults both to `'fill'`. */
     flex: number;
 
-    // ---- Grid placement (only read by a parent whose `flow` is 'grid') -------
+    // Grid placement, read only by a parent whose `flow` is 'grid'.
     /** 1-based column index for explicit grid placement. Undefined = auto-placed. */
     column: number;
     /** 1-based row index for explicit grid placement. Undefined = auto-placed. */
@@ -335,72 +219,26 @@ export interface Node2DProps extends NodeProps {
 }
 
 /**
- * The 2D tree's base: what every `component2d` lowers onto, and the scene root
- * ({@link Canvas2D}). It wires together three systems:
- *
- * **Properties** — each declared prop is backed by a {@link PropSlot}, which
- * holds either a value or a thunk. {@link set} updates props imperatively, and
- * a callback `() => expr` binds one to a derived value.
- *
- * **Tweening** — `to({ data, duration, easing })` returns a {@link Command}
- * that animates props to target values, evaluable at a time via `at(t)`.
- * `moveTo`, `fadeTo`, `rotateTo`, `scaleTo` and the rest wrap it.
- *
- * **Layout** — `measure()` is called top-down to resolve sizes, then
- * `layout()` places the node in its allocated `BoxBounds` and its children in
- * its content box.
- *
- * ### Built-in visual props
- * | prop      | default  | unit / notes                          |
- * |-----------|----------|---------------------------------------|
- * | `x`       | 0        | horizontal offset in scene pixels     |
- * | `y`       | 0        | vertical offset (positive = up)       |
- * | `width`   | `'fill'` | `SizeInput`: px, `'fill'`, `'auto'`  |
- * | `height`  | `'fill'` | same                                  |
- * | `size`    | —        | sugar: sets `width` and `height` together |
- * | `scale`   | 1        | uniform scale factor                  |
- * | `rotate`  | 0        | degrees, clockwise                    |
- * | `opacity` | 1        | 0–1                                   |
- * | `blend`   | `'pass-through'` | layer blend mode (`NodeBlendMode`) |
- * | `effects` | []       | post-process / blend effects          |
- * | `padding` | 0        | inner spacing, all four edges         |
+ * The 2D tree's base: what every `component2d` lowers onto, and the scene root ({@link Canvas2D}).
+ * Props are {@link PropSlot}-backed (a value or a thunk); `to()` returns a {@link Command}; `measure()`
+ * runs top-down, then `layout()` places the node and its children.
  */
 export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     get dimension(): NodeDimension { return "2d"; }
 
-    /**
-     * This node's parent, when that parent is itself 2D.
-     *
-     * A `Node2D` can only ever be adopted by another `Node2D` (see
-     * {@link Node.acceptsChild}), so this is `null` only for a detached node or
-     * the root — but it is typed honestly rather than cast, because the base
-     * tree holds both dimensions.
-     */
+    /** Null only for a detached node or the root; the base tree holds both dimensions, so this is typed rather than cast. */
     protected get parent2D(): Node2D | null {
         const parent = this._parent;
         return parent instanceof Node2D ? parent : null;
     }
 
-    /**
-     * This node's parent, narrowed to the 2D tree.
-     *
-     * Only a `Node2D` can adopt a `Node2D` (see {@link Node.acceptsChild}), so
-     * this never hides a real parent — it just spares every 2D caller a cast.
-     */
+    /** Narrowed to the 2D tree: only a `Node2D` can adopt a `Node2D` (see {@link Node.acceptsChild}). */
     override get parent(): Node2D | null {
         if (_observer !== null) _observer.read(this._structureSlot());
         return this.parent2D;
     }
 
-    /**
-     * This node's children **in the 2D tree**.
-     *
-     * `Canvas3D` is the one node that holds both dimensions, and its `Node3D`
-     * children are not part of the 2D tree — they describe a scene it paints,
-     * not boxes it lays out — so they are reached through its own accessor
-     * instead. Every other node's list is already 2D, and this returns the live
-     * array untouched in that case rather than allocating a copy per read.
-     */
+    /** Children in the 2D tree. `Canvas3D` also holds `Node3D` children outside it (reached through its own accessor); otherwise the live array is returned uncopied. */
     override get children(): Node2D[] {
         if (_observer !== null) _observer.read(this._structureSlot());
         const all = this._children;
@@ -415,23 +253,16 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     constructor(props?: NodeConfig<any, P>) {
         super(props);
 
-        // Expand the `size` and `transform3D` sugar into the props they name
-        // before anything reads either — in place, so the single object `super()`
-        // retained as `_props` already carries the expanded values.
+        // Expand the `size`/`transform3D` sugar in place, so the `_props` object `super()` kept carries the expanded values.
         if (props) {
             size2DOps.expand(props as Record<string, unknown>);
             expandTransform3D(props as Record<string, unknown>);
         }
 
-        // Fires the ref, adopts the seed, and applies every `property` default.
-        // Deferred to here rather than run by `super()` because the cells those
-        // props write into are this class's own fields, and a subclass's field
-        // initializers only run once `super()` has returned.
+        // Deferred from `super()`: the cells these props write into are this class's own fields, which only initialize after `super()` returns.
         this.initProps(props);
 
-        // Specifying `flex` signals intent to fill the parent's main axis, so an
-        // unspecified width/height defaults to 'fill' (flex is a no-op on a
-        // fixed/hug axis) and skips the has-children default below.
+        // `flex` signals intent to fill the main axis, so an unset width/height defaults to 'fill' and skips the has-children default.
         if (props && (props as any).flex !== undefined) {
             if (props.width === undefined) this.applyProp("width", "fill", { tween: sizeInputOps.lerp });
             if (props.height === undefined) this.applyProp("height", "fill", { tween: sizeInputOps.lerp });
@@ -439,9 +270,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
             this.applyDefaultSize(props);
         }
 
-        // Alignment-based positioning: validate, derive pivot, bind x/y. The pivot
-        // and centre offset math lives in alignmentOps (shared with the
-        // `to()` path); here we use its reactive binding form.
+        // Alignment positioning: validate, derive pivot, bind x/y reactively (the `to()` path uses the one-shot form).
         if (props) {
             alignmentOps.validateProps(props as Record<string, unknown>);
             const alignmentKey = alignmentOps.findKey(props as Record<string, unknown>);
@@ -458,19 +287,10 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         this.adoptChildrenProp(props);
     }
 
-    /**
-     * The 2D half of `set()`: `size` and `transform3D` are sugar with no slot of
-     * their own, so they are distributed into the props that do have one before
-     * the generic write loop runs.
-     */
     override set(props: { [K in keyof P]?: P[K] | (() => P[K]) }): void {
-        // `size` has no slot of its own — it's sugar written straight to
-        // width/height (explicit width/height in the same call still wins).
+        // `size` has no slot; write it to width/height (explicit width/height in the same call wins).
         const sizeVal = (props as any).size;
-        // Same for `transform3D`, but expanded up front rather than after the
-        // loop: its fields are real props, so distributing them into `props`
-        // first means the generic loop writes them like any other key. Only the
-        // present-and-an-object case allocates, which is the rare one.
+        // `transform3D` is expanded up front so the generic loop writes its fields; only the rare object case allocates.
         if ((props as any).transform3D !== undefined) {
             props = { ...props };
             expandTransform3D(props as Record<string, unknown>);
@@ -482,53 +302,26 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         }
     }
 
-    /**
-     * The 2D half of `_prepareStep`: expand the positional sugar into the props
-     * that actually have cells, then let the base resolve the step.
-     *
-     * `to` is mutated in place, so the base sees the expanded target — which is
-     * why this can run entirely before `super`.
-     */
     override _prepareStep(to: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper {
-        // `size` has no slot of its own — expand it into width/height targets
-        // before anchor validation and the per-key tween setup below see it.
-        // `transform3D` is sugar in the same way, so it expands here too and its
-        // fields tween individually, exactly as if they had been named directly.
+        // Expand the sugar before anchor validation and per-key tween setup see it.
         size2DOps.expand(to as Record<string, unknown>);
         expandTransform3D(to as Record<string, unknown>);
 
-        // `pivot`: an explicit, transient origin for *this step's* rotation and
-        // scale — `moveTo`/`rotateTo`/`scaleTo`'s own option (see their object-form
-        // overloads below), or just as well a bare key on a `to()` target. Not a
-        // real prop — nothing on the node holds a value named `pivot` that a tween
-        // interpolates — so it's read and stripped before anything else here (the
-        // alignment validation included) ever sees it.
+        // `pivot` is a transient origin for this step's rotation and scale (the object-form option of
+        // moveTo/rotateTo/scaleTo, or a bare `to()` key). Not a prop, so strip it before anything else sees it.
         const explicitPivot = (to as { pivot?: Alignment }).pivot;
         if (explicitPivot !== undefined) delete (to as { pivot?: Alignment }).pivot;
 
         alignmentOps.validateProps(to as Record<string, unknown>);
 
-        // If an alignment key is in the tween target, resolve it to x/y targets and
-        // set the transform origin (one-shot form of the shared alignment math in
-        // alignmentOps).
+        // An alignment key in the target resolves to x/y targets plus a transform origin (one-shot alignmentOps math).
         const alignmentKey = alignmentOps.findKey(to as Record<string, unknown>);
         if (alignmentKey) {
             const raw = (to as any)[alignmentKey] as Vector2;
             const { pivot, x, y } = alignmentOps.resolveTargetOnce(alignmentKey, this._layoutBounds.get(), raw);
-            // Was `this._writeProp('pivot', pivot)`. `pivot` is the node's
-            // *permanent* rotation/scale origin — set once, reactively, at
-            // construction (see `alignmentOps.bindTarget`) from whichever alignment prop
-            // positions it there. A *tween's* target used to overwrite that
-            // permanent value with its own alignment every time one was used to
-            // state a position, which means a `moveTo` aligned differently from
-            // the node quietly re-pointed every rotation that ran after it.
-            // `transformOrigin` (see its own doc) is the right prop for this
-            // instead: it wins for the whole transform without being the node's
-            // one true pivot. An explicit `pivot` given on this same step (via
-            // `moveTo`/`rotateTo`/`scaleTo`'s object form) overrides the
-            // alignment-derived value in turn — the point a position is stated
-            // against and the point a rotation turns about are two different
-            // questions once a step can state them separately.
+            // Written to `transformOrigin`, not `pivot`: `pivot` is the node's permanent origin, set at construction,
+            // and a tween's alignment must not re-point later rotations. An explicit step `pivot` overrides the
+            // alignment-derived value: where a position is stated against and where a rotation turns are separate questions.
             this._writeProp('transformOrigin', explicitPivot !== undefined ? alignmentOps.resolve(explicitPivot) : pivot);
             (to as any).x = x;
             (to as any).y = y;
@@ -539,23 +332,15 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return super._prepareStep(to, duration, easing);
     }
 
-    /**
-     * A component's paint entries declare themselves, so only a node painting
-     * something its attributes do not describe has anything to add.
-     */
+    /** Effects are the only assets a bare node declares; component paint entries declare their own. */
     override declareAssets(assets: AssetScope): void {
         assets.effects(this.effects as NodeEffect[]);
     }
 
-    /** Sample this node's own derived render state for the current frame. */
     override _sample(): void {
         this._sampleMotion();
     }
 
-    /**
-     * Record this node's current position as the motion history's previous
-     * frame, stamped `at`, deriving no velocity — see the base's note.
-     */
     override _primeMotion(at: number): void {
         const r = this.layoutBounds;
         const o = this._offset();
@@ -568,8 +353,6 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
             at,
         );
     }
-
-    // ---- Visual properties ------------------------------------------------
 
     declare x: number;
     declare y: number;
@@ -584,47 +367,22 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
 
     declare readonly pivot: Alignment;
 
-    // ---- Mirrors and the third dimension -----------------------------------
-    // See the matching entries on Node2DProps for what each one means. The
-    // angles and depth are plain numeric cells, so they tween like x/y/rotation
-    // do; the booleans snap at the end of a tween the way every other discrete
-    // cell does. `perspective` is the one exception — see {@link lerpPerspective}.
+    // Mirrors and the third dimension (see Node2DProps). Angles and depth tween like x/y; booleans snap at the end of a
+    // tween; `perspective` tweens in reciprocal space ({@link lerpPerspective}).
 
-    /** Mirror across the vertical centre line. See {@link Node2DProps.flipHorizontal}. */
     declare flipHorizontal: boolean;
-    /** Mirror across the horizontal centre line. See {@link Node2DProps.flipVertical}. */
     declare flipVertical: boolean;
-    /** Tilt about the horizontal axis, degrees. See {@link Node2DProps.rotationX}. */
     declare rotationX: number;
-    /** Tilt about the vertical axis, degrees. See {@link Node2DProps.rotationY}. */
     declare rotationY: number;
     /** The 3D block's in-plane rotation, degrees — distinct from {@link rotation}. See {@link Node2DProps.rotationZ}. */
     declare rotationZ: number;
-    /** Push along the view axis, px. See {@link Node2DProps.depth}. */
     declare depth: number;
-    /**
-     * Viewer distance in px; `0` is a parallel projection. See
-     * {@link Node2DProps.perspective}.
-     *
-     * Tweened in reciprocal space ({@link lerpPerspective}), not linearly: the
-     * renderer's own projection math varies with `1/perspective`, so a plain
-     * lerp of the raw distance sweeps through the near-zero numbers next to
-     * "off" and flashes an exaggerated, near-degenerate projection right at the
-     * start of a `0 → n` tween (or the end of an `n → 0` one) before settling
-     * to the depth actually asked for.
-     */
+    /** Tweened in reciprocal space ({@link lerpPerspective}): the projection varies with `1/perspective`, so a linear lerp flashes a near-degenerate projection at the start of a `0 -> n` tween. */
     declare perspective: number;
-    /** Whether the node paints while showing its back. See {@link Node2DProps.backfaceVisible}. */
     declare backfaceVisible: boolean;
     /**
-     * The point the transform turns about, overriding {@link pivot}. See
-     * {@link Node2DProps.transformOrigin}.
-     *
-     * `undefined` until set — that absence *is* "follow the pivot", which no
-     * default value could say, since every alignment is a real point including the
-     * centre. Same shape as the `column`/`row` cells above. Declared with a plain
-     * `property` rather than `alignmentProperty()` for exactly that reason: that one
-     * folds a missing `default` back onto `'center'`.
+     * `undefined` means "follow the pivot", which no default could say since every alignment is a real point.
+     * Hence a plain `property`, not `alignmentProperty()` (which folds a missing default to `'center'`).
      */
     declare transformOrigin: Alignment | undefined;
 
@@ -632,22 +390,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     declare clip: boolean;
 
     declare flex: number;
-    /**
-     * Per-child weight for the flex gap this node contributes to its parent's
-     * main axis, in `[0, 1]`. Default `1` = a full gap on each side (normal
-     * layout). Driven `0 → 1` (insert) / `1 → 0` (remove) by the animated
-     * `addChildAt`/`removeChildAt` overloads so the surrounding gap opens/closes
-     * in lockstep with the child's box instead of popping — see
-     * {@link addChildAtAnimated}. Read only by flex containers off their
-     * children.
-     *
-     * Rarely set by hand, but it has to be *settable*: a host collapsing a child
-     * in place rather than removing it — which is what makes a show/hide a value
-     * a time can produce instead of an effect that has to have run — needs the
-     * gap to close with it. Declared on {@link Node2DProps} for that reason; it
-     * used to be reachable only through a cast, which is why the lifecycle
-     * helpers carry one.
-     */
+    /** Flex gap weight `[0, 1]`, default 1. The animated `addChildAt`/`removeChildAt` drive it so the gap opens and closes with the child's box (see {@link addChildAtAnimated}); settable so a host can collapse a child in place. */
     declare gapScale: number;
     declare column: number | undefined;
     declare row: number | undefined;
@@ -657,64 +400,27 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     private readonly _layoutBounds = new PropSlot<BoxBounds>({ x: 0, y: 0, width: 0, height: 0 }, this, LAYOUT_SLOT);
 
     /**
-     * The size limits and the measurer threaded through this node's last
-     * {@link measure} pass.
-     *
-     * Retained so off-tree work can measure a not-yet-attached child *in
-     * isolation* — the animated child-insert in `node-lifecycle.ts` needs a hug
-     * child's natural size without putting it in this node's flow first, or the
-     * siblings shift for a frame. Undefined until this node is first measured.
-     *
-     * One object rather than two loose fields, because the two are only ever
-     * useful together and were previously reached through a
-     * `{ constraints?; _lastScope? }` structural cast from two other modules —
-     * a cast that would have gone on compiling through any rename.
+     * Limits and measurer from the last {@link measure} pass, so off-tree work (the animated child-insert in
+     * `node-lifecycle.ts`) can size a detached hug child without shifting siblings. Undefined until measured.
      *
      * @internal
      */
     lastMeasure?: { constraints: SizeConstraints; measurer: MeasureContext2D };
 
-    /**
-     * The box the last layout pass allocated this node: its size, and where it
-     * sits in its parent's space (canvas y-down).
-     *
-     * Reactive — a read inside a binding is tracked, so a prop bound to another
-     * node's box re-evaluates when that box moves.
-     *
-     * **Public, and a single member.** It used to be a `protected layoutRect`
-     * plus a public `measuredRect` alias that existed only so the picking walk
-     * could reach it — and, in practice, a `(node as any).layoutRect` cast in
-     * every test that needed a box. Two names for one value, one of them
-     * reachable only by lying to the compiler, is worse than the thing
-     * `protected` was buying. Writing it is still {@link setLayoutBounds}, which
-     * is where the layout engine's invariants live.
-     */
+    /** The box the last layout pass allocated: size, and position in the parent's space (canvas y-down). Reactive. Written only via {@link setLayoutBounds}, where the layout invariants live. */
     get layoutBounds(): BoxBounds { return this._layoutBounds.get(); }
 
-    /**
-     * {@link flattenChildrenProp}, narrowed to the children this node will
-     * actually lay out — a 3D or audio child sits in the same `children` prop but
-     * takes no part in 2D layout, so it can't inform the size defaults either.
-     */
+    /** {@link flattenChildrenProp} narrowed to children that take part in 2D layout (not 3D or audio). */
     protected static flowChildrenProp(props: { children?: unknown } | undefined): Node2D[] {
         return Node2D.flattenChildrenProp(props).filter((c): c is Node2D => c instanceof Node2D);
     }
 
-    /**
-     * True if any of `children` requests `"fill"` on `axis` — the signal a
-     * component's size default reads to decide whether hugging on that axis
-     * would strand the child with no space to fill into.
-     */
+    /** True if any child requests `"fill"` on `axis`, so a size default can avoid hugging a child that would have nothing to fill. */
     protected static hasFillChild(children: Node2D[], axis: "width" | "height"): boolean {
         return children.some((c) => (axis === "width" ? c.width : c.height) === "fill");
     }
 
-    /**
-     * Default for `width`/`height`: hug-to-content when the node is given
-     * children, fill-the-parent when it's empty. Called once from the
-     * constructor (skipped when `flex` is set, since that already implies
-     * 'fill'); `component2d` replaces it with the component rule.
-     */
+    /** Hug when given children, fill when empty. Skipped when `flex` is set (implies `'fill'`); `component2d` replaces it with the component rule. */
     protected applyDefaultSize(props?: NodeConfig<any, P>): void {
         const hasChildren = Node2D.flowChildrenProp(props).length > 0;
         const defaultSize = hasChildren ? "hug" : "fill";
@@ -722,35 +428,16 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         if (!props || props.height === undefined) this.applyProp("height", defaultSize, { tween: sizeInputOps.lerp });
     }
 
-    // ---- Motion helpers ---------------------------------------------------
-    //
-    // Each returns the `Command` it delegates to rather than wrapping it in
-    // anything, because the wrapper would discard the thing worth having: a
-    // `Command` can be *evaluated* at a time, and anything that merely advances
-    // can only be run to one.
+    // Each helper returns its `Command` unwrapped: a `Command` can be evaluated at a time, anything that only advances can't.
 
     /**
-     * Animate `x`/`y` to the given position, along `path`, or onto another node.
-     * `pivot` (optional) sets {@link Node2DProps.transformOrigin} — the point
-     * later rotate/scale turn about — independent of the node's own permanent
-     * {@link pivot}, and it carries forward like any other prop until something
-     * restates it.
+     * Animate `x`/`y` to a position, along `path`, or onto another node. `pivot` sets
+     * {@link Node2DProps.transformOrigin} (carried forward until restated), not the permanent {@link pivot}.
      *
-     * `path` replaces the destination rather than qualifying it — stating both is
-     * an error, since the path's own end is where the move ends — and the node
-     * walks it by **arc length**, so easing shapes the travel rather than the
-     * curve's parameter. Its coordinates *are* `x`/`y` values, in the same y-up
-     * space a `PathCommand[]` is authored in library-wide: the path says where
-     * the node is at `t`, not how far it has come from wherever the previous
-     * command left it.
-     *
-     * `target` is a node id and `targetAnchor` the point of its box to land on
-     * (centre when absent), resolved when the command is built — so moving the
-     * target re-aims the move with nothing to re-author, and a target absent at
-     * that moment leaves the node where it is. Like `path`, it replaces `x`/`y`.
-     * Given a `path` as well, the path is turned and scaled about its own start
-     * until its end lands on the target, which is exact where the two already
-     * agree and keeps the curve's shape where the target has since moved.
+     * `path` or `target` replaces the `x`/`y` destination (stating both is an error). A path is walked by arc
+     * length and its coordinates are `x`/`y` values in the library-wide y-up space. `target` is a node id and
+     * `targetAnchor` the point of its box (centre when absent), resolved when the command is built; an absent
+     * target leaves the node in place. With both, the path is turned and scaled about its start until its end lands on the target.
      *
      * @example
      * node.moveTo({ data: { x: 200, y: 100, pivot: 'topRight' }, duration: 0.5 });
@@ -802,51 +489,26 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         }, args.duration, args.easing);
     }
 
-    /** Animate `opacity` to the target value, in `[0, 1]`. */
     fadeTo(args: CommandArgs<{ opacity: number }> & { duration: number }): Command<P> {
         return this.to({ data: args.data as Partial<P>, duration: args.duration, easing: args.easing });
     }
 
-    /**
-     * Animate `rotation` to the target angle (degrees, clockwise). `pivot`
-     * (optional) behaves as in {@link moveTo}.
-     *
-     * @example
-     * node.rotateTo({ data: { rotation: 180, pivot: 'topRight' }, duration: 0.6 });
-     */
+    /** Animate `rotation` (degrees, clockwise); `pivot` behaves as in {@link moveTo}. */
     rotateTo(args: CommandArgs<{ rotation: number; pivot?: Alignment }> & { duration: number }): Command<P> {
         return this.to({ data: args.data as Partial<P>, duration: args.duration, easing: args.easing });
     }
 
-    /**
-     * Animate `scale` to the target factor. `pivot` (optional) behaves as in
-     * {@link moveTo}.
-     *
-     * @example
-     * node.scaleTo({ data: { scale: 2, pivot: 'topRight' }, duration: 0.4 });
-     */
+    /** Animate `scale`; `pivot` behaves as in {@link moveTo}. */
     scaleTo(args: CommandArgs<{ scale: number; pivot?: Alignment }> & { duration: number }): Command<P> {
         return this.to({ data: args.data as Partial<P>, duration: args.duration, easing: args.easing });
     }
 
-    /**
-     * Animate the box: `width`, `height` and `padding`, whichever are given.
-     * A size keyword (`'fill'`, `'hug'`) snaps; a number interpolates.
-     *
-     * @example
-     * node.layoutTo({ data: { width: 640, height: 360 }, duration: 0.5 });
-     */
+    /** Animate `width`, `height` and `padding`, whichever are given. A size keyword (`'fill'`, `'hug'`) snaps; a number interpolates. */
     layoutTo(args: CommandArgs<{ width?: SizeInput; height?: SizeInput; padding?: Insets }> & { duration: number }): Command<P> {
         return this.to({ data: _stated(args.data) as Partial<P>, duration: args.duration, easing: args.easing });
     }
 
-    /**
-     * Swell to `factor` times the node's size and settle back: a nudge of the
-     * eye toward it. It ends as it began, so nothing after it needs restating.
-     *
-     * @example
-     * node.pulse({ data: { factor: 1.3 }, duration: 0.6 });
-     */
+    /** Swell to `factor` times the size and settle back; ends as it began. */
     pulse(args: CommandArgs<{ factor?: number }> & { duration: number }): Command<P> {
         const rest = this.scale;
         const factor = args.data?.factor ?? 1.2;
@@ -857,13 +519,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         );
     }
 
-    /**
-     * Rock about the node's own turn, `angle` degrees each way for `turns`
-     * swings, building up and dying away. It ends as it began.
-     *
-     * @example
-     * node.wiggle({ data: { angle: 10, turns: 4 }, duration: 0.8 });
-     */
+    /** Rock about the node's own turn, `angle` degrees each way for `turns` swings, building up and dying away; ends as it began. */
     wiggle(args: CommandArgs<{ angle?: number; turns?: number }> & { duration: number }): Command<P> {
         const rest = this.rotation;
         const angle = args.data?.angle ?? 8;
@@ -875,12 +531,9 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         );
     }
 
-    /** Animate the `effects` stack to another one. */
     effectTo(args: CommandArgs<{ effects: Effect }> & { duration: number }): Command<P> {
         return this.to({ data: _stated(args.data) as Partial<P>, duration: args.duration, easing: args.easing });
     }
-
-    // ---- Layout queries ---------------------------------------------------
 
     get measuredWidth(): number {
         return this.layoutBounds.width;
@@ -890,9 +543,8 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return this.layoutBounds.height;
     }
 
-    // ---- Alignment points ----------------------------------------------------
-    // All getters read `layoutBounds` and the x/y/rotation props, and a bound prop
-    // recomputes on every read — so a callback built from them is always current.
+    // Alignment points: getters read `layoutBounds` and x/y/rotation, and a bound prop recomputes on every read,
+    // so a callback built from them stays current.
 
     /** Rotate offset (ox, oy) by this node's rotation (degrees clockwise) around the node center. */
     private _rotateOffset(ox: number, oy: number): Vector2 {
@@ -946,36 +598,16 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return this._rotateOffset(r.width / 2, 0);
     }
 
-    // ---- Global (world-space) transform -----------------------------------
-    // The local alignment getters above are relative to this node's *parent*; their
-    // global counterparts below fold in the full ancestor chain so a node can be
-    // aligned to another regardless of where each sits in the tree:
-    //   new Rect({ x: () => other().global.x, y: () => other().global.y })
-    // Each read walks this node's and every ancestor's live
-    // layout/x/y/rotation/scale/pivot props, so a binding over them stays current.
+    // Global (world-space) transform: unlike the parent-relative alignment getters above, these fold in the full
+    // ancestor chain. Each read walks live props, so a binding over them stays current.
 
     /**
-     * This node's local transform in canvas (y-down) space — position, rotation,
-     * scale, about its origin. Composed with the parent chain by
-     * {@link worldMatrix}, and the matrix every world-space *reading* of the node
-     * comes from: {@link global}, `runtime/node-picking.ts`, and so any editor
-     * overlay drawn on top of a scene.
+     * This node's local transform in canvas (y-down) space; {@link worldMatrix} composes it up the chain, and
+     * every world-space reading comes from it ({@link global}, `runtime/node-picking.ts`, editor overlays).
      *
-     * **It is flat, deliberately, and the renderer's is not.** A node that
-     * mirrors or tilts ({@link Node2DProps.rotationX}, {@link Node2DProps.perspective},
-     * {@link Node2DProps.flipHorizontal}, …) is *painted* through a projected
-     * matrix, but goes on measuring, reporting and hit-testing as the upright
-     * rectangle it was — see {@link applyTransform}.
-     *
-     * That is a choice, not an oversight. Everything that reads a node's box
-     * reads it to put a handle on: a selection outline, a resize grip, a rotation
-     * dial, `other.global.topRight` as an alignment target. Those all mean
-     * something on a rectangle and stop meaning it on a trapezoid — a "width"
-     * handle on a foreshortened edge does not correspond to any number, and a
-     * corner that has swung behind the viewer has no screen position at all.
-     * Letting the projection through would make the tilt a thing that quietly
-     * breaks every other tool in the editor; keeping the geometry flat makes it
-     * exactly what it looks like, a way of drawing the node.
+     * Deliberately flat: a node that mirrors or tilts is painted through a projected matrix (see
+     * {@link applyTransform}) but measures and hit-tests as its upright rectangle, because handles, outlines and
+     * alignment targets mean nothing on a trapezoid (a foreshortened "width" edge, a corner behind the viewer).
      */
     /** @internal Composed with the camera scopes in between by `runtime/node-picking.ts`. */
     _localMatrix(): Matrix2D {
@@ -990,9 +622,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         }
         const cx = (r?.x ?? 0) + ox;
         const cy = (r?.y ?? 0) - oy;
-        // The accessor stores the resolved normalised pivot via the mapper.
-        // No projection: see the note above for why a node's *geometry* stays
-        // flat while its paint does not.
+        // No projection: geometry stays flat while paint does not (see above).
         return localMatrix(
             cx, cy, this.rotation, this.scale, this._transformOrigin(),
             r?.width ?? 0, r?.height ?? 0,
@@ -1004,31 +634,21 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return this.parent2D?._placementOf(this) ?? null;
     }
 
-    /**
-     * The slot this node places `child` in beyond its layout box, or `null` —
-     * the default — when the box says it all. A layout that turns, scales or
-     * fades each of its children answers here, and the renderer, picking and
-     * `global` all follow. See {@link ChildPlacement}.
-     */
+    /** The slot this node places `child` in beyond its layout box, or `null` when the box says it all. The renderer, picking and `global` follow it. See {@link ChildPlacement}. */
     /** @internal */
     _placementOf(_child: Node2D): ChildPlacement | null {
         return null;
     }
 
-    /**
-     * The coordinates `child`'s `x`/`y` are in, or `null` — the default — when
-     * they are pixels. A `null` child asks for one that is not here yet: where
-     * a host would drop or paste it. See {@link ChildPlane}.
-     */
+    /** The coordinates `child`'s `x`/`y` are in, or `null` for pixels. A `null` child asks for a not-yet-added one (where a host would drop or paste it). See {@link ChildPlane}. */
     /** @internal */
     _planeOf(_child: Node2D | null): ChildPlane | null {
         return null;
     }
 
     /**
-     * Where its own layout would centre a child of `size` that is not here yet,
-     * y-down from its centre, or `null` when it arranges its children in a run
-     * or a grid (the run decides) or has not laid any out.
+     * Where its own layout would centre a not-yet-added child of `size`, y-down from its centre; `null` when it
+     * arranges children in a run or grid (the run decides) or has laid none out.
      */
     /** @internal */
     _slotFor(size: Size2D): Vector2 | null {
@@ -1037,11 +657,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return space && box ? { x: space.inner.x + box.x, y: space.inner.y - box.y } : null;
     }
 
-    /**
-     * Where its centre sits from the point its `x`/`y` place, in its parent's
-     * frame, y-down, at `rotation` and `scale`: what turning or scaling about an
-     * off-centre pivot adds.
-     */
+    /** Where its centre sits from the point `x`/`y` place, in the parent's frame (y-down), at `rotation` and `scale`: what turning about an off-centre pivot adds. */
     /** @internal */
     _centreShift(rotation = this.rotation, scale = this.scale): Vector2 {
         const r = this.layoutBounds;
@@ -1063,11 +679,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
 
     private readonly _offsetScratch: Vector2 = { x: 0, y: 0 };
 
-    /**
-     * This node's `x`/`y` as the pixel offset its parent sees. Every position
-     * read goes through here, which is what keeps paint, picking and `global`
-     * agreeing under a {@link ChildPlane}. The result is reused: read it at once.
-     */
+    /** `x`/`y` as the pixel offset the parent sees; every position read goes through here so paint, picking and `global` agree under a {@link ChildPlane}. The result is reused: read it at once. */
     /** @internal */
     _offset(): Vector2 {
         const plane = this.parent2D?._planeOf(this);
@@ -1079,9 +691,8 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     }
 
     /**
-     * The flat part of this node's slot, as the frame its own `x`/`y` move in —
-     * the layout box's centre, turned and scaled by the slot. `null` when it has
-     * no slot. With `paint`, the slot's tilt as well, which only paint sees.
+     * The flat part of this node's slot: the layout box's centre turned and scaled by the slot, or `null` with
+     * no slot. With `paint`, also the slot's tilt, which only paint sees.
      */
     /** @internal Also the plane `runtime/node-picking.ts` drags a placed node across. */
     _slotMatrix(paint = false): Matrix2D | null {
@@ -1102,28 +713,19 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return nodeSpaceMatrix(r?.x ?? 0, r?.y ?? 0, slot.rotation, slot.scale, 0, 0, slotProjection(slot));
     }
 
-    /**
-     * The point this node's transform turns about, normalised: `transformOrigin`
-     * where one is set, the alignment-derived `pivot` otherwise. One resolution,
-     * read by {@link _localMatrix} and {@link applyTransform} alike.
-     */
+    /** `transformOrigin` where set, else the alignment-derived `pivot`; read by {@link _localMatrix} and {@link applyTransform} alike. */
     private _transformOrigin(): Vector2 {
         return (this.transformOrigin as Vector2 | undefined) ?? (this.pivot as Vector2);
     }
 
-    // Reused for the same reason `_transformScratch` is: `_localMatrix` runs once
-    // per ancestor per `global` read, and the two functions that take a
-    // Projection3D read it synchronously and never retain it.
+    // Reused like `_transformScratch`: `_localMatrix` runs per ancestor per `global` read, and the Projection3D
+    // consumers read it synchronously without retaining it.
     private readonly _projectionScratch: Projection3D = {
         rotationX: 0, rotationY: 0, rotationZ: 0, depth: 0, perspective: 0,
         flipHorizontal: false, flipVertical: false,
     };
 
-    /**
-     * This node's out-of-plane fields, gathered for the matrix builders — and for
-     * the backface test. A space root overrides it, because its 3D props aim the
-     * camera rather than turn the root.
-     */
+    /** Out-of-plane fields for the matrix builders and the backface test. A space root overrides it: its 3D props aim the camera rather than turn the root. */
     protected _projection(): Projection3D {
         const p = this._projectionScratch;
         p.rotationX = this.rotationX;
@@ -1158,11 +760,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         );
     }
 
-    /**
-     * This node's full transform in canvas (y-down) world space — the product of
-     * every ancestor's local matrix from the root down to this node. Walks the
-     * live parent chain on every call, reading each node's transform props.
-     */
+    /** Product of every ancestor's local matrix, root down; walks the live parent chain per call. */
     protected worldMatrix(): Matrix2D {
         const local = this._localMatrix();
         const parent = this.parent2D;
@@ -1170,39 +768,17 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     }
 
     /**
-     * Resolved world-space transform — the same alignment points and metrics as the
-     * local getters (`center`, `topRight`, `rotation`, …) but folded through the
-     * full ancestor chain, so values are absolute scene coordinates rather than
-     * parent-relative ones. See {@link WorldTransform}. Every field is reactive.
+     * Absolute scene coordinates for the alignment points and metrics, folded through the ancestor chain; every
+     * field is reactive. See {@link WorldTransform}.
      *
-     * @example
-     * // Read another node's absolute corner, regardless of its parent:
-     * const p = other.global.topRight;   // world-space {x, y}
-     *
-     * ### Reading vs. placing
-     * `global` is for *reading* world coordinates. `x`/`y` (and the alignment props)
-     * are **parent-relative**, so assigning a world value to them does not by
-     * itself place this node in world space — it offsets it from this node's own
-     * parent. To land exactly on another node regardless of either parent,
-     * subtract this node's parent's world contribution:
-     *
-     * @example
-     * // Place this node's origin exactly on `other`, any parent:
-     * new Rect({
-     *   x: () => other.global.x - (myParent.global.x),
-     *   y: () => other.global.y - (myParent.global.y),
-     * });
-     *
-     * When both nodes share the same parent origin (e.g. both at the scene root),
-     * `x: () => other.global.x` already lands on target with no compensation.
+     * For reading only: `x`/`y` are parent-relative, so landing on `other` under a different parent needs
+     * `x: () => other.global.x - myParent.global.x` (a shared parent origin needs no compensation).
      */
     get global(): WorldTransform {
         const r = this.layoutBounds;
         const anchors = worldAnchors(this.worldMatrix(), (r?.width ?? 0) / 2, (r?.height ?? 0) / 2);
 
-        // Accumulate ancestor rotation/scale/opacity up the chain (rotation sums,
-        // scale and opacity multiply — all match the renderer's nested transforms
-        // and its pass-through alpha fold).
+        // Rotation sums; scale and opacity multiply, matching the renderer's nested transforms and pass-through alpha fold.
         let rotation = 0;
         let scale = 1;
         let opacity = 1;
@@ -1223,10 +799,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         };
     }
 
-    /**
-     * The `x`/`y` that put this node on `anchor` of the node `id` names, in this
-     * tree — or `null` when there is no such 2D node here right now.
-     */
+    /** The `x`/`y` that put this node on `anchor` of node `id`, or `null` if no such 2D node is here right now. */
     private _pointOnNode(id: string, anchor: Alignment | undefined): Vector2 | null {
         const target = findNode2D(this, id);
         if (!target) return null;
@@ -1247,9 +820,8 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return parent?._planeOf(this)?.toCoords(x, y) ?? { x, y };
     }
 
-    // `child` typed to the shared base because that is what a tree holds; the
-    // guard below rejects a `Node3D` before it can land in a tree that would
-    // never draw it. Registered as a command on {@link Node}, which owns the instant insert.
+    // Typed to the shared base because a tree holds both dimensions; the guard rejects a Node3D before it lands where
+    // it would never draw. Registered as a command on {@link Node}, which owns the instant insert.
     override addChildAt(args: CommandArgs<{ child: Node; index: number }> & { duration?: undefined }): void;
     override addChildAt(args: CommandArgs<{ child: Node; index: number }> & { duration: number }): Command<Record<string, never>>;
     override addChildAt(args: CommandArgs<{ child: Node; index: number }>): void | Command<Record<string, never>> {
@@ -1259,8 +831,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
             this._insertChildAt(child, index);
             return;
         }
-        // Past the guard, so this is a 2D child: the animated insert measures it
-        // off-tree, which only a laid-out node can do.
+        // Past the guard this is a 2D child; the animated insert measures it off-tree, which only a laid-out node can do.
         return addChildAtAnimated(this, child as Node2D, index, args.duration, args.easing);
     }
 
@@ -1281,31 +852,20 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return removeChildAtAnimated(this, index, args.duration, args.easing);
     }
 
-    // ---- Rendering --------------------------------------------------------
-
-    // Reused each frame so applyTransform doesn't allocate a fresh descriptor
-    // per node per frame. ctx.transform reads it synchronously and never retains
-    // it, so a single mutated instance is safe.
+    // Reused per frame so applyTransform doesn't allocate a descriptor per node per frame; ctx.transform reads it synchronously and never retains it.
     private readonly _transformScratch: TransformState = {
         x: 0, y: 0, width: 0, height: 0,
         scale: 1, rotation: 0, opacity: 1, blend: 'pass-through',
         effects: [], pivot: { x: 0, y: 0 },
     };
 
-    // ---- Motion sampling --------------------------------------------------
-    // Per-node motion (velocity/direction/speed/angular/scale) is sampled once
-    // per frame from ellapse() (see its call site) as a backward difference
-    // against the previous frame. Sampling every advanced frame — not just
-    // rendered ones — is what keeps velocity correct through a scrub/rewind,
-    // which advances through frames without rendering them. Because ellapse()
-    // runs before the frame's generator.next(), x/y here hold the *previous*
-    // frame's value, so the velocity trails the rendered position by one frame;
-    // the lag is constant and identical forward vs. scrub. Layout-dependent
-    // fields (rects) can't be resolved here — layout hasn't run for advanced-
-    // but-unrendered frames — so renderState() fills those in at draw time,
-    // leaving the motion fields untouched.
+    // Motion (velocity/direction/speed/angular/scale) is sampled once per frame from ellapse() as a backward
+    // difference, on every advanced frame (not just rendered ones) so velocity stays right through a scrub.
+    // ellapse() runs before the frame's generator.next(), so x/y hold the previous frame's value: velocity trails
+    // the rendered position by one constant frame. Layout-dependent fields (rects) can't resolve here, since layout
+    // hasn't run for advanced-but-unrendered frames; renderState() fills them at draw time.
 
-    /** Rolling history for the backward-difference velocity estimate. Allocated once (not per frame); mutated in place by {@link _sampleMotion}. */
+    /** Allocated once; mutated in place by {@link _sampleMotion}. */
     private readonly _motionHistory: MotionHistory = createMotionHistory();
 
     /** Reused per-node state handed to `ctx.begin()` (mirrors `_transformScratch`). */
@@ -1322,19 +882,13 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     };
 
     /**
-     * Compute this frame's motion (velocity/direction/speed/angular/scale) into
-     * {@link _renderState} as a backward difference against the previous frame,
-     * and roll the history forward. Velocity is `0`/`{0,0}` when no trustworthy
-     * delta exists — the first frame, or after a non-monotonic time jump (only
-     * `0 < dt <= MAX` is trusted, so a scrub that resets the clock reads as
-     * "unknown" rather than a spurious huge velocity). The world position
-     * matches {@link applyTransform} (`layoutBounds + x`, `layoutBounds - y`,
-     * y-down). Called via {@link _sample} every frame; layout-dependent fields
-     * (`rects`/`elapsed`) are filled in by {@link renderState} at draw time.
+     * Computes motion into {@link _renderState} as a backward difference against the previous frame, then rolls the
+     * history. Velocity is zero when no trustworthy delta exists (first frame, or a non-monotonic time jump: only
+     * `0 < dt <= MAX` is trusted, so a scrub doesn't read as a huge velocity). World position matches
+     * {@link applyTransform} (y-down).
      */
     protected _sampleMotion(): void {
-        // Resolve the reactive world position (y-down, matching applyTransform);
-        // the backward-difference math lives in sampleMotion (no per-frame alloc).
+        // Reactive world position (y-down, as applyTransform); the math lives in sampleMotion (no per-frame alloc).
         const r = this.layoutBounds;
         const o = this._offset();
         const x = (r?.x ?? 0) + o.x;
@@ -1343,18 +897,9 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     }
 
     /**
-     * Push this node's transform (position, scale, rotate, opacity, effects).
-     *
-     * The decomposed fields are the whole story for a node in its own plane, and
-     * that path is untouched: the backend translates, rotates and scales exactly
-     * as it always has. A node that mirrors or tilts hands over a precomposed
-     * {@link TransformState.matrix} instead, built by the same `localMatrix`
-     * {@link _localMatrix} calls — with the out-of-plane half switched on.
-     *
-     * **This is the one place that half is applied.** The mirrors and the tilt
-     * are paint, not geometry: the node goes on measuring and hit-testing as the
-     * upright rectangle it was, and only what is drawn is projected. See
-     * {@link _localMatrix} for why.
+     * Pushes this node's transform. A node in its own plane passes the decomposed fields; one that mirrors or tilts
+     * passes a precomposed {@link TransformState.matrix}. This is the one place the out-of-plane half is applied:
+     * mirrors and tilt are paint, not geometry (see {@link _localMatrix}).
      */
     protected applyTransform(ctx: RenderContext2D): void {
         const r = this.layoutBounds;
@@ -1395,59 +940,29 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     /** What the node paints over its children, clipped to its silhouette: the root's overlay. */
     protected renderOverlay(ctx: RenderContext2D): void { }
 
-    /**
-     * This node's outline as a {@link Clip}: the boundary `clip` confines its
-     * children to, and the silhouette its backdrop effects are confined to.
-     * `null` (the default) is no outline, so its children render unclipped and
-     * it gets no backdrop effects. A component answers with the shape its
-     * `render` paints.
-     */
+    /** Outline as a {@link Clip}: confines children when `clip` is set and bounds backdrop effects. `null` (default) is no outline. A component answers with the shape its `render` paints. */
     protected clipSelf(): Clip | null { return null; }
 
     /**
-     * The camera scope this node pushes around its **children** (`beginCamera`),
-     * or `null` when it pushes none. Only {@link Canvas2D} and a component whose
-     * `render` opens a camera answer, each non-null exactly when it actually
-     * opens one — so a consumer can reproduce the renderer's transform *and* its
-     * viewport clip without knowing which types have a camera.
-     *
-     * Read by `runtime/node-picking.ts`: a camera is applied at render time only,
-     * so it is not part of {@link worldMatrix}, and a node's on-screen box would
-     * be offset without it. `@internal`.
+     * The camera scope pushed around this node's children (`beginCamera`), or `null`; non-null exactly when the node
+     * opens one, so a consumer can reproduce the renderer's transform and viewport clip. Read by
+     * `runtime/node-picking.ts`: a camera applies at render time only, so it isn't part of {@link worldMatrix}.
      */
     /** @internal */
     _cameraScope(): CameraScope | null { return null; }
 
-    /**
-     * The camera this node opens a 2.5D space with, or `null` when it opens none.
-     * Only a space root overrides it: its children, and theirs, are then placed
-     * in one 3D frame and seen through this camera. See `node-space.ts`.
-     */
+    /** The camera this node opens a 2.5D space with, or `null`; only a space root overrides it. See `node-space.ts`. */
     /** @internal */
     _spaceCamera(): SpaceCamera | null { return null; }
 
-    /**
-     * Whether this node hands its children on into the space it sits in. False
-     * for a node that composites its children itself — a mask, a boolean, a
-     * nested camera — which flattens its subtree into its own plane, where the
-     * per-node 3D rules apply again. Picking reads it; the renderer gets the same
-     * answer because such a node never reaches the base {@link renderChildren}.
-     */
+    /** Whether children pass on into the space this node sits in. False for a node that composites its children itself (mask, boolean, nested camera), flattening them into its own plane. Picking reads it; the renderer agrees because such a node never reaches the base {@link renderChildren}. */
     /** @internal */
     _rendersChildrenInSpace(): boolean { return true; }
 
     /** @internal Set by the parent for the length of this node's render while it is inside a space. */
     _spaceFrame: SpaceFrame | null = null;
 
-    /**
-     * Whether the renderer confines this node's children to its own box — either
-     * because `clip` is set *and* the node has an outline to clip to (a bare
-     * `clip` with no {@link clipSelf} is a no-op, see {@link applyClip}), or
-     * because it opens a camera scope, which clips to the viewport rect.
-     *
-     * Read by `runtime/node-picking.ts`: a point outside a confining node cannot
-     * hit anything inside it, so the whole subtree is skipped. `@internal`.
-     */
+    /** Whether the renderer confines children to this node's box: `clip` set with an outline to clip to (a bare `clip` without {@link clipSelf} is a no-op, see {@link applyClip}), or a camera scope clipping to the viewport. Picking skips a whole subtree outside a confining node. */
     /** @internal */
     _confinesChildren(): boolean {
         if (this._cameraScope() !== null) return true;
@@ -1457,17 +972,9 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     }
 
     /**
-     * Whether `local` — a point in this node's local space (centred on the node,
-     * y-up, rotation and scale already removed) — is inside the node, within
-     * `tolerance` scene units of its edge.
-     *
-     * The default is the layout box, which is the right answer for containers,
-     * text, and media: their box *is* their extent. A component narrows it to
-     * the outline its `render` paints.
-     *
-     * `tolerance` is grab-slop, applied outward. An editor passes its
-     * zoom-corrected pixel slop so the grab area stays constant on screen
-     * regardless of preview zoom.
+     * Whether `local` (node-centred, y-up, rotation and scale removed) is inside the node within `tolerance` scene
+     * units of its edge, applied outward as grab-slop (an editor passes a zoom-corrected value). Defaults to the
+     * layout box; a component narrows it to the outline its `render` paints.
      */
     protected hitTestSelf(local: Vector2, tolerance: number): boolean {
         const b = this._localBounds();
@@ -1476,22 +983,10 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     }
 
     /**
-     * The extent of this node's ink in its own local space — what an editor draws
-     * a selection box around, and the region the default {@link hitTestSelf}
-     * grabs.
-     *
-     * The returned {@link BoxBounds} is **y-up and relative to the node's own
-     * centre**: `x`/`y` are where the ink's centre sits relative to the node,
-     * normally `(0, 0)`. That is a different space from `layoutBounds`, which is
-     * the same type but canvas y-down and relative to the parent — see
-     * `BoxBounds`, which deliberately does not encode a space.
-     *
-     * Defaults to the layout box, centred on the node, which is right for every
-     * node whose drawing fills its cell. It is a separate seam from the layout
-     * rect because for some nodes the two genuinely differ: a boolean group or
-     * a mask is drawn where its children's ink is, which can be both a different
-     * size *and* off-centre from its own cell. A component's `bounds` answers
-     * here, fixing the box and the grab region together without perturbing layout.
+     * Extent of the node's ink in its own space, **y-up and relative to the node's centre** (unlike `layoutBounds`,
+     * canvas y-down relative to the parent): what an editor boxes and the default {@link hitTestSelf} grabs.
+     * Defaults to the layout box. Separate from the layout rect because a boolean group or mask draws where its
+     * children's ink is, possibly off-centre; a component's `bounds` answers here without perturbing layout.
      */
     /** @internal */
     _localBounds(): BoxBounds {
@@ -1503,12 +998,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return this.hitTestSelf(local, tolerance);
     }
 
-    /**
-     * Open `clipSelf()`'s outline as a clip scope, confining whatever is drawn
-     * until the matching `ctx.endClip()` to the shape. Returns `true` when a
-     * clip was actually opened (so the caller knows to close it) and `false`
-     * when the node has no outline (the default).
-     */
+    /** Opens `clipSelf()`'s outline as a clip scope; returns whether one was opened (so the caller closes it). */
     protected applyClip(ctx: RenderContext2D): boolean {
         const clip = this.clipSelf();
         if (!clip || clip.isEmpty()) return false;
@@ -1516,43 +1006,22 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return true;
     }
 
-    /**
-     * Apply backdrop effects (any `mode: "backdrop"` effect — blur, grayscale, …;
-     * plus magnify and backdrop shader) beneath this node, clipped to its
-     * silhouette, before the node's own content is drawn — so the content
-     * underneath is filtered/warped while the node's own edges stay sharp. One
-     * backdrop effect scope, confined to the silhouette clip, runs the lot; the
-     * renderer routes each effect to a filter or shader pass. A no-op for nodes
-     * without a {@link clipSelf} outline (there's no silhouette to confine to).
-     */
+    /** Backdrop effects (blur, magnify, backdrop shader, ...) beneath the node, confined to its silhouette, so content underneath is filtered while the node's own edges stay sharp. One scope runs them all; no-op without a {@link clipSelf} outline. */
     private applyBackdropEffects(ctx: RenderContext2D): void {
         const effects = this.effects as NodeEffect[];
-        // Bail before building the silhouette. `applyBackdropEffectsImpl` returns
-        // immediately when there are no backdrop effects, but by then `clipSelf()`
-        // has already allocated a Clip and its op list for a node that will never
-        // use it — and a node with no effects at all is the overwhelmingly common
-        // case, so that allocation was pure waste on nearly every node, every frame.
+        // Bail before building the silhouette: `clipSelf()` allocates a Clip and op list, and a node with no effects is the overwhelmingly common case.
         if (effects.length === 0) return;
         applyBackdropEffectsImpl(ctx, effects, this.clipSelf(), this.layoutBounds?.width ?? 0, this.layoutBounds?.height ?? 0);
     }
 
-    /**
-     * Run `body` (this node's own painting + children) inside the node's effect
-     * scopes, so effects behave identically however a node draws. The caller
-     * has already pushed the node's transform ({@link applyTransform}).
-     * Outermost-first: {@link applyBackdropEffects} beneath the node, confined
-     * to its {@link clipSelf} silhouette, then a `foreground` effect scope
-     * capturing everything `body` paints.
-     */
+    /** Runs `body` (own painting + children) inside the effect scopes, outermost first: {@link applyBackdropEffects} beneath the node, then a `foreground` scope capturing everything `body` paints. The caller has already pushed {@link applyTransform}. */
     protected renderContentWithEffects(ctx: RenderContext2D, body: () => void): void {
         this.applyBackdropEffects(ctx);
         applyContentEffectScope(ctx, this.effects as NodeEffect[], this.layoutBounds?.width ?? 0, this.layoutBounds?.height ?? 0, body);
     }
 
     protected renderChildren(ctx: RenderPass2D): void {
-        // A node opening a space of its own flattens its subtree into its own
-        // plane, whatever space it sits in — the same answer picking's
-        // `spaceFrameOf` gives, which asks for a camera before anything else.
+        // A node opening its own space flattens its subtree into its own plane, whatever space it sits in (as picking's `spaceFrameOf` does, checking for a camera first).
         const camera = this._spaceCamera();
         if (camera) {
             this._renderInSpace(ctx, spaceRootFrame(this, camera));
@@ -1566,12 +1035,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         for (const child of this._children) if (child instanceof Node2D) child.render(ctx);
     }
 
-    /**
-     * Paint the children placed in `frame`, far to near rather than in authored
-     * order — each with its frame set for exactly the length of its own render,
-     * so a node reached any other way (a mask's children, a `Tex.surface`
-     * source) draws flat.
-     */
+    /** Paints children placed in `frame` far to near, each with its frame set only for its own render, so a node reached any other way (a mask's children, a `Tex.surface` source) draws flat. */
     /** @internal A space root opens its space through this. */
     protected _renderInSpace(ctx: RenderPass2D, frame: SpaceFrame): void {
         const children: Node2D[] = [];
@@ -1604,65 +1068,32 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         }
     }
 
-    /**
-     * This node's per-frame render state, resolved for the scope {@link render}
-     * is about to open.
-     *
-     * Motion was already sampled when the clock advanced; only the
-     * layout-dependent fields are filled in here, where layout is current.
-     */
+    /** Per-frame render state for the scope {@link render} opens. Motion was sampled when the clock advanced; only layout-dependent fields are filled here. */
     private renderState(ctx: RenderContext2D): NodeRenderState {
         const s = this._renderState;
-        // Skipped for contexts that never resolve a `space:'parent'` fill — the
-        // precomp pass walks every node's render every frame purely to discover
-        // assets, and this is an object allocation per node per frame that nothing
-        // there would ever read.
+        // Skipped when the context never resolves `space:'parent'` fills: the precomp pass walks every node purely to discover assets, so this would be a per-node per-frame allocation nothing reads.
         s.rects = ctx.readsSpaceRects ? this._spaceRects() : NO_SPACE_RECTS;
         s.elapsed = this._time.elapsed;
         return s;
     }
 
-    /**
-     * Reference rects for fills with `space:'parent'`, expressed in this node's
-     * local space (origin = this node's positioned centre, y-down to match the
-     * canvas). The viewport (`space:'global'`) is resolved by the renderer, which
-     * knows the surface size. Rotation/scale of this node are not folded in —
-     * the rect is the axis-aligned parent box, which is what gradients expect.
-     */
+    /** Reference rects for `space:'parent'` fills, in this node's local space (origin at its positioned centre, y-down). The viewport (`space:'global'`) is the renderer's job. This node's rotation/scale aren't folded in: the rect is the axis-aligned parent box, which gradients expect. */
     protected _spaceRects(): SpaceRects {
         const o = this._offset();
         return computeSpaceRects(this.parent2D?.layoutBounds, this.layoutBounds, o.x, o.y);
     }
 
-    /**
-     * Draw this node and its subtree: the skip checks, then this node's draw
-     * scope around {@link renderContent}.
-     *
-     * Takes a {@link RenderPass2D} rather than a bare {@link RenderContext2D}
-     * because opening this node's draw scope is *this* method's job; what it
-     * calls is handed the narrower surface, so nothing below can open one.
-     */
+    /** Draws this node and its subtree: skip checks, then this node's draw scope around {@link renderContent}. Takes a {@link RenderPass2D} because opening the scope is this method's job; callees get the narrower surface so nothing below can open one. */
     render(ctx: RenderPass2D): void {
-        // Not in the tree ⇒ no box, no surface, nothing to draw.
         if (!this.mounted) return;
-        // A subtree at zero opacity paints nothing, so on a context that only
-        // draws what can be seen there is no reason to walk it. Not a niche case:
-        // a chart carries a full second axis at `opacity: 0` purely to reserve a
-        // gutter, and every cross-fade spends its first and last frames here.
-        //
-        // `drawsVisibleOnly` is false on the tracking walk, which must still
-        // descend — an invisible node's font and images have to be discovered or
-        // they will not have loaded by the time it fades in. See the flag's doc.
+        // A zero-opacity subtree paints nothing, so a visible-only context needn't walk it (a chart's reserved-gutter axis,
+        // cross-fades). `drawsVisibleOnly` is false on the tracking walk, which must still descend so an invisible
+        // node's fonts and images are discovered before it fades in.
         if (ctx.drawsVisibleOnly && this.opacity * (this._placement()?.opacity ?? 1) <= 0) return;
-        // Hidden by the editor. Same exemption as the two checks around it: the
-        // tracking walk still descends, or a node hidden and shown again would
-        // come back before its fonts and images had been discovered.
+        // Hidden by the editor; same tracking-walk exemption, so a node hidden then shown has its assets discovered.
         if (ctx.drawsVisibleOnly && this.hidden) return;
-        // A node that has turned past edge-on and declines to show its back
-        // paints nothing either — same reasoning, same walk skipped, and the same
-        // exemption for the tracking pass, which still has to discover the assets
-        // of a card that is currently face-down and will be face-up in a moment.
-        // In a space the camera decides which way a node faces, not its own tilt.
+        // Past edge-on and declining to show its back paints nothing either (same tracking-walk exemption: a face-down
+        // card's assets must still be discovered). In a space the camera decides facing, not the node's own tilt.
         const frame = this._spaceFrame;
         if (ctx.drawsVisibleOnly && !this.backfaceVisible && this._facesAway(frame)) return;
         // Edge-on or behind the lens, a node whose children lie in its own plane
@@ -1683,16 +1114,11 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         }
     }
 
-    /**
-     * Everything this node paints: its transform, its effect envelope, its own
-     * drawing, its children and its overlay. A component's `render` replaces it,
-     * keeping every guard {@link render} performs above it.
-     */
+    /** Everything this node paints: transform, effect envelope, own drawing, children, overlay. A component's `render` replaces it, keeping every guard {@link render} performs above it. */
     protected renderContent(ctx: RenderPass2D): void {
         this.applyTransform(ctx);
         const frame = this._spaceFrame;
-        // Edge-on or behind the lens: nothing of its own to draw and no plane to
-        // draw it on, but its children are placed by frames of their own.
+        // Edge-on or behind the lens: no plane of its own, but its children are placed by frames of their own.
         if (frame && !frame.paints) {
             this.renderChildren(ctx);
             return;
@@ -1700,9 +1126,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         const cut = frame?.nearCut ?? null;
         this.renderContentWithEffects(ctx, () => {
             this._paintInFront(ctx, cut, () => this.renderSelf(ctx));
-            // Confine children to this node's outline. Built once from clipSelf();
-            // skipped when the node has no outline (clipped === false) so the
-            // endClip() below stays balanced.
+            // Built once from clipSelf(); `clipped` is false with no outline, keeping endClip() balanced.
             const clipped = this.clip && this.applyClip(ctx);
             this.renderChildren(ctx);
             if (clipped) ctx.endClip();
@@ -1717,28 +1141,15 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         return facesAway(p.rotationX, p.rotationY);
     }
 
-    // ---- Layout -----------------------------------------------------------
-
     /** What {@link measure} hands {@link layoutChildren} within a pass; consumed there. */
     private _flowMeasure: FlowMeasure<Node2D> | null = null;
 
-    /**
-     * The content box its children were last placed in, y-down from this
-     * node's centre, and the flow that placed them: what {@link _slotFor}
-     * answers from. A component's flow layout records it too (`Flow.layout`).
-     */
+    /** The content box children were last placed in (y-down from this node's centre) and the flow that placed them; what {@link _slotFor} answers from. A component's flow layout records it too (`Flow.layout`). */
     /** @internal */
     _childSpace: ChildSpace | null = null;
     private _flowWarned = false;
 
-    /**
-     * Record this node's allocated bounds without touching children.
-     *
-     * Compared field by field, because every caller builds a fresh object literal,
-     * so identity always differs — including on every frame of a node that is
-     * simply sitting still. Skipping the write keeps the object stable for the
-     * aliasing reason below.
-     */
+    /** Records the allocated bounds without touching children. Compared field by field (callers build fresh literals, so identity always differs, even for a node sitting still) to keep the object stable for the aliasing reason below. */
     protected setLayoutBounds(rect: BoxBounds): void {
         const current = this._layoutBounds.get();
         if (
@@ -1747,68 +1158,41 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
             && current.width === rect.width
             && current.height === rect.height
         ) return;
-        // Stores the *new* object rather than mutating the old one in place:
-        // `layoutBounds` is handed out by `get()` to its public reader, to
-        // `computeSpaceRects` and to bound anchor computations, and mutating it
-        // under them would be an aliasing change none of them could see coming.
+        // Stores the new object rather than mutating: `layoutBounds` is handed to its public reader, `computeSpaceRects`
+        // and bound anchors, and mutating it would alias under all of them.
         this._layoutBounds.set(rect);
     }
 
-    /**
-     * The children this node lays out itself — its 2D children, minus the hidden
-     * ones. Every measure and layout pass in a container iterates *this*, not
-     * `children`.
-     *
-     * Returns the live array untouched in the common case, so an ordinary tree
-     * allocates nothing per pass.
-     */
+    /** Children this node lays out itself: its 2D children minus hidden ones. Measure and layout iterate this, not `children`. Returns the live array when nothing is filtered, so an ordinary tree allocates nothing per pass. */
     flowChildren(): Node2D[] {
         const children = this._children;
-        // Only a hidden child — or a 3D child under a `Canvas3D` — can leave the
-        // flow, and both are rare enough to be worth checking for before
-        // allocating.
+        // Only a hidden child, or a 3D child under a `Canvas3D`, leaves the flow; both rare enough to check before allocating.
         let i = 0;
         for (; i < children.length; i++) {
             const child = children[i];
             if (!(child instanceof Node2D) || child.hidden) break;
         }
         if (i === children.length) return children as Node2D[];
-        // A hidden child gives up its cell *and* its gap — `display: none`, not
-        // `visibility: hidden`. Leaving the slot would put a hole in a row
-        // wherever someone folded a layer away.
+        // A hidden child gives up its cell and its gap (`display: none`, not `visibility: hidden`).
         return children.filter((c): c is Node2D => c instanceof Node2D && !c.hidden);
     }
 
-    /**
-     * The inset children are laid out within. A node with a stroke to clear adds
-     * the part of it that intrudes (see `Paint.inset`).
-     */
+    /** The inset children are laid out within; a node with a stroke to clear adds the part that intrudes (see `Paint.inset`). */
     effectivePadding(): InsetsResolved {
         return this.padding as InsetsResolved;
     }
 
-    /**
-     * How this node arranges its children: centred freeform. The root answers
-     * with its own layout props; a component lays its children out with `Flow`.
-     */
+    /** Centred freeform by default. The root answers with its layout props; a component lays children out with `Flow`. */
     protected flowArrangement(): FlowSettings {
         return DEFAULT_FLOW;
     }
 
-    /** Record `rect`, then place the flow children in it — see {@link layoutChildren}. */
     layout(rect: BoxBounds, scope: MeasureContext2D): void {
         this.setLayoutBounds(rect);
         this.layoutChildren(rect, scope);
     }
 
-    /**
-     * Place the flow children in `rect`'s content box by {@link flowArrangement}.
-     *
-     * Reuses what {@link measure} found when the box is the one it measured in —
-     * or, on an axis that hugs, exactly what it hugged — and measures again
-     * otherwise: a parent laying this node out at a size it did not measure it
-     * for would leave the children arranged for the wrong box.
-     */
+    /** Places flow children in `rect`'s content box by {@link flowArrangement}. Reuses {@link measure}'s result when the box is the one it measured in (or exactly what an axis hugged), else re-measures: a box the node wasn't measured for would leave the children arranged wrong. */
     protected layoutChildren(rect: BoxBounds, scope: MeasureContext2D): void {
         const pending = this._flowMeasure;
         this._flowMeasure = null;
@@ -1827,8 +1211,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
                 hugHeight: this.height === "hug",
             }, scope);
 
-        // The boxes are y-up from the content box's centre; a layout rect is y-down
-        // from this node's.
+        // Boxes are y-up from the content box's centre; a layout rect is y-down from this node's.
         const boxes = flowOps.place(measured, settings, inner);
         for (let i = 0; i < boxes.length; i++) {
             const box = boxes[i];
@@ -1845,14 +1228,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         console.warn(`[motionscript] "${this.className}" ${warning}`);
     }
 
-    /**
-     * Resolve `width`/`height`, measuring the flow children by
-     * {@link flowArrangement}: a `'hug'` axis wraps what they come to, plus this
-     * node's padding. What it finds is kept for {@link layoutChildren}.
-     *
-     * Only flow children are measured: a canvas-pinned child is sized against the
-     * canvas, so hugging it would shrink-wrap a box this node never contains.
-     */
+    /** Resolves `width`/`height`: a `'hug'` axis wraps the flow children (by {@link flowArrangement}) plus padding; the result is kept for {@link layoutChildren}. Only flow children are measured: a canvas-pinned child is sized against the canvas, so hugging it would wrap a box this node never contains. */
     measure(constraints: SizeConstraints, scope: MeasureContext2D): Partial<Size2D> {
         this.lastMeasure = { constraints, measurer: scope };
         const padding = this.effectivePadding();
@@ -1866,8 +1242,6 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         this._flowMeasure = measured;
         return flowOps.size(this, constraints, padding, measured.hug);
     }
-
-    // ---- Reparenting ------------------------------------------------------
 
     reparent(args: CommandArgs<{ newParent: Node2D }> & { duration?: undefined }): void;
     reparent(args: CommandArgs<{ newParent: Node2D }> & { duration: number }): Command<Record<string, never>>;
@@ -1908,9 +1282,7 @@ declareMembers(Node2D, {
         default: undefined,
         // `null` is unset too: a document read back from JSON has no `undefined`.
         mapper: (v) => (v == null ? undefined : alignmentOps.resolve(v)),
-        // Tweening *into* an origin from "no origin set" starts where it ends —
-        // there is no point to travel from, and snapping to the target's own
-        // start is the one reading that isn't an invented one.
+        // Tweening into an origin from "none" starts where it ends: there is no point to travel from.
         tween: (from, to, t) => alignmentOps.lerp(from ?? to ?? ORIGIN_2D, to ?? ORIGIN_2D, t),
     }),
     clip: property({ default: false }),
@@ -1971,10 +1343,7 @@ function findUnder(at: Node, id: string): Node2D | null {
     return null;
 }
 
-/**
- * Where `node`'s frame sits in `host`'s, wherever each is in the tree: its
- * centre as an offset (y-up) from `host`'s, and its turn and scale relative to it.
- */
+/** Where `node`'s frame sits in `host`'s: its centre as a y-up offset, and its turn and scale relative to it. */
 export function frameIn(host: Node2D, node: Node2D): Vector2 & Pick<WorldTransform, "rotation" | "scale"> {
     const there = node.global;
     const here = host.global;

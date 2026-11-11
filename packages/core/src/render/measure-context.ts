@@ -1,37 +1,13 @@
 import type { FontStyle } from "@/attributes/text/types";
 import type { Size2D } from "@/attributes/layout/size";
 
-/**
- * Text measurement, as a node sees it.
- *
- * The one thing layout cannot do for itself: how wide a run of text comes out
- * is a property of the shaper, which lives in the backend. Every `measure` and
- * `layout` pass is threaded one of these so a node can ask before it draws —
- * `RenderContext2D` implements it, so a node measures through the same object
- * it paints with and there is no separate measurement pass.
- *
- * **An interface, and deliberately this small.** A node needs exactly one
- * question answered here. Glyph *positions* — what an on-canvas caret needs —
- * are a different question with a different audience (an editor, not a node),
- * so they live on {@link RenderContext2D.layoutTextBlock} instead. Keeping them
- * apart is what lets a host supply a measurer without also having to be a
- * renderer.
- */
+/** Text measurement as a node sees it: how wide a run comes out is the shaper's property (in the backend), so every `measure`/`layout` pass is threaded one of these. `RenderContext2D` implements it, so a node measures through the object it paints with. Deliberately this small: glyph *positions* (an on-canvas caret) have a different audience (an editor), so they live on {@link RenderContext2D.layoutTextBlock}, which lets a host supply a measurer without being a renderer. */
 export interface MeasureContext2D {
     /**
-     * The size, in pixels, of `text` shaped at `fontSize` in the given face:
-     * its advance width and the height of the line box the shaper produced.
-     *
-     * **Both dimensions, because the shaper already knows both.** It used to
-     * return the width alone, which left every caller that needed a height to
-     * reconstruct one from `fontSize × lineHeight` — an approximation that
-     * disagrees with the shaper the moment a fallback face, a different
-     * ascent/descent or a script with taller glyphs is involved. Handing back
-     * what was measured costs nothing and cannot drift.
-     *
-     * `text` is measured as a single unwrapped run: no `maxWidth`, no alignment.
-     * A block's real layout — where lines break, where each caret sits — is
-     * `RenderContext2D.layoutTextBlock`.
+     * The size in pixels of `text` shaped at `fontSize` in the given face: advance width and the line box height the
+     * shaper produced. Both dimensions, since rebuilding height from `fontSize × lineHeight` disagrees with the shaper
+     * once a fallback face, different ascent/descent or taller glyphs are involved. `text` is measured as a single
+     * unwrapped run (no `maxWidth`, no alignment); a block's real layout is `RenderContext2D.layoutTextBlock`.
      *
      * @param text          The string to measure.
      * @param fontSize      Size in pixels.

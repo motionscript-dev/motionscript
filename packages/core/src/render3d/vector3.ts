@@ -1,11 +1,7 @@
 import { lerpNumber } from "@/tween/lerp";
 import type { AttributeOps } from "@/attributes/shared/operators";
 
-/**
- * A 3D point or offset. The 3D counterpart to core's {@link Vector2}
- * (`attributes/layout/vector2.ts`), kept structurally identical so the same
- * plain-object idiom works in both dimensions.
- */
+/** A 3D point or offset: core's {@link Vector2} one dimension up, in the same plain-object idiom. */
 export interface Vector3 {
     x: number;
     y: number;
@@ -24,7 +20,6 @@ export type Vector3Input = Vector3 | readonly [number, number, number] | number;
 
 const ZERO: Vector3 = { x: 0, y: 0, z: 0 };
 
-/** Normalize any {@link Vector3Input} to a concrete {@link Vector3}. */
 export function resolveVector3(input: Vector3Input | undefined): Vector3 {
     if (input === undefined) return { ...ZERO };
     if (typeof input === "number") return { x: input, y: input, z: input };
@@ -33,15 +28,7 @@ export function resolveVector3(input: Vector3Input | undefined): Vector3 {
     return { x: v.x ?? 0, y: v.y ?? 0, z: v.z ?? 0 };
 }
 
-/**
- * Component-wise lerp between two positions. `t=0` returns `from`, `t=1`
- * returns `to`.
- *
- * Pass this as a prop's `tween` so 3D vectors actually animate:
- * `property({ default: …, tween: lerpVector3 })` — or a `Types.vector3` entry,
- * which carries it already. Without one `to()` **leaves the prop alone**, having
- * nothing to interpolate two vectors with.
- */
+/** Component-wise lerp (`t=0` is `from`, `t=1` is `to`). Pass as a prop's `tween` so 3D vectors animate (`property({ default, tween: lerpVector3 })`, or a `Types.vector3` entry); without one `to()` leaves the prop alone. */
 export function lerpVector3(from: Vector3, to: Vector3, t: number): Vector3 {
     return {
         x: lerpNumber(from.x, to.x, t),
@@ -65,16 +52,7 @@ export function resolveOptionalVector3(input: Vector3Input | undefined): Vector3
     return input === undefined ? undefined : resolveVector3(input);
 }
 
-/**
- * Lerp for a vector prop that may be unset — a node's `lookAt`, a camera's or
- * light's `target`.
- *
- * With no start value there is nothing to blend from. `unset: "origin"` treats it
- * as the origin, which is what the renderer uses for `target`; `unset: "snap"`
- * holds it unset and swaps at the end, which is the only honest reading for
- * `lookAt` (an unset `lookAt` is "do not aim", not "aim at the origin"). A `to`
- * that ends unset leaves the start value in place, as every other prop does.
- */
+/** Lerp for a vector prop that may be unset (a node's `lookAt`, a camera's or light's `target`). With no start value, `unset: "origin"` blends from the origin (the renderer's reading for `target`); `unset: "snap"` holds it unset and swaps at the end, the only honest reading for `lookAt` (unset is "do not aim"). A `to` that ends unset leaves the start in place. */
 export function lerpOptionalVector3(
     from: Vector3 | undefined,
     to: Vector3 | undefined,
@@ -90,22 +68,12 @@ export function lerpOptionalVector3(
 /** The order Euler angles are applied in. Matches three's own naming. */
 export type EulerOrder = "XYZ" | "YXZ" | "ZXY" | "ZYX" | "YZX" | "XZY";
 
-/**
- * An Euler rotation in **degrees**, to match the engine's 2D `rotation`.
- * The renderer converts to radians — authors never write `Math.PI`.
- */
+/** An Euler rotation in **degrees** (matching 2D `rotation`); the renderer converts. */
 export interface Euler3 extends Vector3 {
     order?: EulerOrder;
 }
 
-/**
- * Component-wise lerp of two Euler rotations, in degrees. `order` is discrete,
- * so it snaps at the halfway point rather than blending.
- *
- * Euler interpolation gimbals near the poles and takes the "wrong" path for
- * rotations past 180°. For a tumble, hold a {@link Quaternion} prop and use
- * {@link slerpQuaternion} instead.
- */
+/** Component-wise lerp of two Euler rotations in degrees; `order` is discrete and snaps at the halfway point. Euler interpolation gimbals near the poles and takes the "wrong" path past 180°: for a tumble use a {@link Quaternion} prop and {@link slerpQuaternion}. */
 export function lerpEuler3(from: Euler3, to: Euler3, t: number): Euler3 {
     return {
         x: lerpNumber(from.x, to.x, t),
@@ -125,7 +93,6 @@ export const euler3Ops: AttributeOps<Vector3Input | Euler3, Euler3> = {
     lerp: lerpEuler3,
 };
 
-/** A rotation as a unit quaternion. */
 export interface Quaternion {
     x: number;
     y: number;
@@ -133,18 +100,9 @@ export interface Quaternion {
     w: number;
 }
 
-/** The identity rotation. */
 export const IDENTITY_QUATERNION: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
 
-/**
- * Shortest-arc spherical linear interpolation — the correct tween for a
- * quaternion. A component-wise lerp is *not* correct: it leaves the unit
- * hypersphere, so the rotation speed varies and the result needs renormalizing.
- *
- * Negates `to` when the pair points away from each other (`dot < 0`) so the
- * rotation always takes the short way round; falls back to a normalized linear
- * blend when the two are nearly parallel and `sin(theta)` would underflow.
- */
+/** Shortest-arc spherical lerp, the correct quaternion tween (a component-wise lerp leaves the unit hypersphere, so rotation speed varies). Negates `to` when `dot < 0` so the rotation takes the short way; falls back to a normalized linear blend when nearly parallel and `sin(theta)` would underflow. */
 export function slerpQuaternion(from: Quaternion, to: Quaternion, t: number): Quaternion {
     let { x, y, z, w } = to;
     let dot = from.x * x + from.y * y + from.z * z + from.w * w;

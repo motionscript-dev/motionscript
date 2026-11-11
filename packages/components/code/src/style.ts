@@ -1,40 +1,22 @@
 import { Highlighter, Tag, tagHighlighter, tags as t } from "@lezer/highlight";
 
-/**
- * A single style rule: map one or more Lezer highlight {@link Tag}s to a color.
- * This mirrors a `@codemirror/language` HighlightStyle entry, but instead of
- * emitting CSS class names it carries the color directly — we render to a canvas,
- * not the DOM, so there is no stylesheet to resolve against.
- */
+/** Lezer highlight {@link Tag}s mapped to a color; a canvas has no stylesheet, so the color is carried directly. */
 export interface CodeStyleRule {
     tag: Tag | readonly Tag[];
     color: string;
 }
 
-/**
- * A code theme: an ordered list of tag→color rules plus a fallback color for any
- * text the parser produces no highlight tag for (operators, punctuation, plain
- * identifiers in some grammars, etc.). Pass a custom one via the Code node's
- * `theme` prop to recolor highlighting without touching the highlighter wiring.
- *
- * @remarks
- * Later rules win when several match the same tag, matching how
- * `@lezer/highlight`'s {@link tagHighlighter} resolves precedence.
- */
+/** Ordered tag rules plus a fallback color; later rules win when several match a tag, as in {@link tagHighlighter}. */
 export interface CodeHighlightStyle {
-    /** Stable name, used to register the style and to refer to it from a `theme` prop. */
+    /** Registers the style and names it in a `theme` prop. */
     name: string;
-    /** Color applied to text with no matching tag. */
+    /** For text with no matching tag. */
     defaultColor: string;
     rules: CodeStyleRule[];
 }
 
-/**
- * Motion Canvas's default highlight palette (a Nord-derived theme), ported from
- * `@motion-canvas/2d`'s DefaultHighlightStyle so highlighting matches Motion
- * Canvas token-for-token. Colors and tag groupings are kept identical; only the
- * shape changes (color strings in place of CSS rules).
- */
+// The default palette is ported from `@motion-canvas/2d`; the GitHub and VS Code ones are adapted from
+// `@uiw/codemirror-theme-github` and `-vscode`, with their DOM-only style props dropped.
 export const DefaultHighlightStyle: CodeHighlightStyle = {
     name: "motion-canvas-default",
     defaultColor: "#d8dee9",
@@ -77,12 +59,6 @@ export const DefaultHighlightStyle: CodeHighlightStyle = {
     ],
 };
 
-/**
- * GitHub Dark highlight palette, adapted from `@uiw/codemirror-theme-github`.
- * `defaultColor` is GitHub's editor foreground (`#c9d1d9`), used for any text the
- * parser tags don't cover. DOM-only style props (backgroundColor, textDecoration,
- * fontWeight, fontStyle) are dropped — we only color tokens on the canvas.
- */
 export const GithubDarkStyle: CodeHighlightStyle = {
     name: "github-dark",
     defaultColor: "#c9d1d9",
@@ -102,11 +78,6 @@ export const GithubDarkStyle: CodeHighlightStyle = {
     ],
 };
 
-/**
- * GitHub Light highlight palette, adapted from `@uiw/codemirror-theme-github`.
- * `defaultColor` is GitHub's editor foreground (`#24292e`). See {@link GithubDarkStyle}
- * for the note on dropped DOM-only style props.
- */
 export const GithubLightStyle: CodeHighlightStyle = {
     name: "github-light",
     defaultColor: "#24292e",
@@ -127,11 +98,6 @@ export const GithubLightStyle: CodeHighlightStyle = {
     ],
 };
 
-/**
- * VS Code Dark+ highlight palette, adapted from the `@uiw/codemirror-theme-vscode`
- * snippet. `defaultColor` is VS Code's editor foreground (`#9cdcfe`). DOM-only
- * style props are dropped; later rules win, matching {@link tagHighlighter}.
- */
 export const VscodeDarkStyle: CodeHighlightStyle = {
     name: "vscode-dark",
     defaultColor: "#9cdcfe",
@@ -166,11 +132,6 @@ export const VscodeDarkStyle: CodeHighlightStyle = {
     ],
 };
 
-/**
- * VS Code Light+ highlight palette, adapted from the `@uiw/codemirror-theme-vscode`
- * snippet. `defaultColor` is VS Code's editor foreground (`#383a42`). See
- * {@link VscodeDarkStyle} for the note on dropped DOM-only style props.
- */
 export const VscodeLightStyle: CodeHighlightStyle = {
     name: "vscode-light",
     defaultColor: "#383a42",
@@ -205,11 +166,6 @@ export const VscodeLightStyle: CodeHighlightStyle = {
     ],
 };
 
-/**
- * The built-in themes, keyed by their string name. {@link CodeThemeName} is the
- * union of these keys — pass one of those strings (or any {@link CodeHighlightStyle}
- * object) to a Code node's `theme` prop.
- */
 export const BUILTIN_THEMES = {
     // Literal keys (not computed from `.name`) so `keyof` yields a string-literal
     // union for CodeThemeName; these must stay in sync with each style's `name`.
@@ -223,27 +179,16 @@ export const BUILTIN_THEMES = {
 /** Names of the built-in themes, e.g. `'github-dark' | 'github-light'`. */
 export type CodeThemeName = keyof typeof BUILTIN_THEMES;
 
-/**
- * What a Code node's `theme` prop accepts: a built-in theme name (with
- * autocomplete), any other registered theme name, or a {@link CodeHighlightStyle}
- * object passed inline. The `string & {}` keeps the literal-name suggestions while
- * still allowing arbitrary registered names.
- */
+/** A built-in name, any registered name, or a style inline; `string & {}` keeps the autocomplete for the built-in names. */
 export type CodeTheme = CodeThemeName | (string & {}) | CodeHighlightStyle;
 
-// Cache one compiled Highlighter per style *object*. Compiling builds a tag-rule
-// matcher; the parsed result is pure data so it's safe to share across Code nodes.
-// Keyed by the object rather than its `name`: two styles may share a name (an
+// One compiled Highlighter per style *object*, keyed by the object rather than its `name`: two styles may share a name (an
 // inline theme, or one re-registered under the same name with new colours), and
 // the second must not colour with the first one's rules. A WeakMap, so a style
 // nothing refers to any more takes its matcher with it.
 const compiledByStyle = new WeakMap<CodeHighlightStyle, Highlighter>();
 
-/**
- * Compile a {@link CodeHighlightStyle} into a `@lezer/highlight` {@link Highlighter}
- * whose "class" output is the literal color string for each tag. Cached per style
- * object so repeated lookups (every tokenize) don't rebuild the matcher.
- */
+/** A {@link Highlighter} whose "class" output is the color string for each tag. */
 export function compileStyle(style: CodeHighlightStyle): Highlighter {
     const cached = compiledByStyle.get(style);
     if (cached) return cached;

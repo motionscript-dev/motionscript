@@ -538,7 +538,7 @@ describe('the render methods', () => {
         const still = await subject.renderImage({}).then(() => null, (error: unknown) => error);
         const video = await subject.renderVideo({}).then(() => null, (error: unknown) => error);
 
-        // Neither is wrapped, and `toRenderError` is not applied.
+        // Neither is wrapped.
         expect(still).toBe(pageFailure);
         expect(video).toBe(pageFailure);
         expect(isEngineError(still)).toBe(false);

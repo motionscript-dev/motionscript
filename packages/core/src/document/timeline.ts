@@ -23,53 +23,6 @@ import { planTimelinePatch, type PatchEnvironment, type TimelinePatch } from "./
 import type { CommandSpec, EaseSpec, NodeSpec, NodeSpan, VisualDocument, VariableSpec } from "./types";
 import { documentDuration, effectiveSpanIn, isStillDocument, nodeSpan, ROOT_NODE_ID } from "./types";
 
-/**
- * A compiled clip document: the thing that answers "what does this look like
- * at `t`" without having rendered `t - 1`.
- *
- * This is the whole reason the document model exists. A generator could
- * only be *advanced*, so a backward seek meant tearing the tree down and
- * replaying from frame 0, and a clip's duration was unknowable without running
- * it to the end. A timeline is built once and evaluated in any order, at any
- * time, as many times as you like — which is what makes scrubbing cheap, export
- * parallelizable, and a frame reproducible.
- *
- * ### The two phases, and why `from` needs both
- *
- * **Build** instantiates every node the document mentions and parents it.
- *
- * **Compile** then walks the commands in `at` order and asks each one's factory
- * for a {@link Command}. That order is load-bearing: a command's *start* value
- * is read from the node at the moment it is constructed (`node.to({x: 100})`
- * snapshots whatever `x` is now), so each command has to be built with the node
- * in the state its predecessors left. Compile therefore runs every command to
- * `at(1)` before building the next — see {@link compile}. Once built, a
- * `Command.at(t)` is pure, and the mutations compile caused are undone by
- * restoring the baseline.
- *
- * Building is O(commands) and happens once. Evaluating is what happens per
- * frame, and is O(commands) with no allocation, except that a command marked
- * settling is held at its end values once finished — see `settled-index.ts`.
- *
- * ### Variables and expressions
- *
- * A third thing gets built alongside the tree: one {@link PropSlot} per declared
- * {@link VariableSpec}, and a binding on every prop whose authored value is an
- * expression (`"=4[g]+3"` — see `document/expression.ts`). Those two together
- * are how one command drives many nodes.
- *
- * A binding is a thunk that reads the variable, and a bound prop recomputes on
- * every read — so `variableTo` writing the slot is visible to every prop that
- * names it, with nothing to invalidate and no edge to declare. A node driven
- * only by expressions is not in the animated list at all: there is no baseline
- * to restore, because nothing overwrote it.
- *
- * A reference spelled with a dot (`"=[card.x]+20"`) reads another node's prop
- * instead, through the same machinery — see `ClipTimeline._resolveVariable`
- * for why that one resolves at read time rather than at compile time.
- */
-
-/** A sound a placed command plays: from `at` to `until` in clip seconds, or to its own end. */
 export interface PlacedSound {
     readonly node: Node;
     readonly at: number;
@@ -78,33 +31,21 @@ export interface PlacedSound {
     readonly options: SoundOptions;
 }
 
-/**
- * Something a build stepped around instead of failing on: a row of a type the
- * registry lacks, built as a placeholder, or a command no one could run, left out.
- */
 export interface TimelineIssue {
     code: "unknown-node-type" | "unknown-command";
     message: string;
-    /** The row built as a placeholder, or the node a skipped command targets. */
     nodeId?: string;
     commandId?: string;
-    /** The node type or command type that is unknown. */
     type: string;
 }
 
-/** A placed command as the runtime outside the timeline sees it. */
 export interface PlacedCommandInfo {
     readonly spec: CommandSpec;
-    /** Seconds from clip start. */
     readonly start: number;
-    /** Seconds. Zero is a stamp — it applies in full from `start` onward. */
+    /** Zero is a stamp: it applies in full from `start` onward. */
     readonly duration: number;
-    /**
-     * Seconds from which it writes: `start`, or for an entrance the earlier time
-     * its first frame is held from (see {@link ClipTimeline._holdEntrances}).
-     */
+    /** `start`, or for an entrance the earlier time its first frame is held from. */
     readonly holdFrom: number;
-    /** Every slot building it and running it to its end wrote. */
     readonly writes: ReadonlySet<PropSlot<unknown>>;
     readonly readsLayout: boolean;
 }
@@ -117,32 +58,19 @@ interface PlacedCommand extends PlacedCommandInfo {
     /** Its neighbours decide it, so it is worked out again after every compile and update. */
     holdFrom: number;
     readonly entrance: boolean;
-    /** What it acts on, so the animated lists can be rebuilt without resolving it again. */
     readonly owner: LiveNode | LiveVariable;
 }
 
-/**
- * A live variable: a slot nothing draws, that props read through an expression.
- *
- * A plain {@link PropSlot} rather than a node, because that is all a variable
- * needs to be. A prop bound to `() => slot.get()` re-reads it every time it is
- * read, so a `variableTo` writing this slot is picked up by every prop naming it
- * — with nothing in the node layer, the layout pass or the renderer knowing
- * variables exist.
- */
+/** A plain slot: a prop bound to `() => slot.get()` re-reads it, so nothing in the node layer knows variables exist. */
 interface LiveVariable {
     spec: VariableSpec;
     /** Kept across an update: every binding compiled against it captured {@link read}, which reads this. */
     cell: PropSlot<unknown>;
-    /** What an expression calls. Stable across the life of the build. */
     read: () => unknown;
-    /** Handed to a variable command's factory. */
     target: VariableTarget;
-    /** The declared value, restored before every evaluation. */
     baseline: unknown;
 }
 
-/** What `build` records about one node so evaluation can find and reset it. */
 interface LiveNode {
     spec: NodeSpec;
     node: Node;
@@ -151,37 +79,23 @@ interface LiveNode {
     initialStackDepth: number;
     /** What evaluation restores: {@link initial}, or the node as it arrived when it enters later. */
     baseline: PropLayer;
-    /** Depth of the node's save stack at the baseline — see {@link ClipTimeline._restoreBaselines}. */
     baseStackDepth: number;
-    /**
-     * Whether the row is in the tree, as a slot, so a `[key.prop]` read taken under
-     * an observer depends on it — the node answering can come and go.
-     */
+    /** A slot, so a `[key.prop]` read under an observer depends on it: the node answering can come and go. */
     presence: PropSlot<boolean>;
 }
 
-/** One stop of an update's walk: a command to build or replay, or an arrival baseline to take. */
 interface WalkStep {
     at: number;
     spec?: CommandSpec;
     capture?: string;
 }
 
-/** Resolve an {@link EaseSpec} to the function the tween actually calls. */
 function resolveEase(ease: EaseSpec | undefined, registry: Registry): EasingFunction | undefined {
     if (!ease) return undefined;
     return easeOfSpec(ease, (key) => registry.ease(key), () => registry.easeKeys());
 }
 
-/**
- * Order commands for compilation and evaluation.
- *
- * By `at`, then by the order they appear in the document. The tiebreak matters:
- * two commands sharing an `at` is how the model spells "in parallel", and when
- * both write the same prop the later one in the array wins — the same
- * last-writer rule `commandParallel` already uses, so the two compose
- * predictably.
- */
+/** By `at`, then document order: commands sharing an `at` run in parallel and the later one wins a shared prop, as in `commandParallel`. */
 function inTimelineOrder(commands: readonly CommandSpec[]): CommandSpec[] {
     return commands
         .map((spec, index) => ({ spec, index }))
@@ -206,20 +120,13 @@ function heldIf(held: boolean, made: Command<Record<string, unknown>> | void): C
     return held && made ? settling(made) : made;
 }
 
-/** The scene root when a document doesn't author one explicitly. */
 function defaultRootSpec(): NodeSpec {
     return { id: ROOT_NODE_ID, type: "canvas2d", parentId: null, layerOrder: 0, props: {} };
 }
 
 /**
- * Split the scene root — the row with {@link ROOT_NODE_ID} and `type: "canvas2d"`
- * — out of the document's nodes.
- *
- * The root is an ordinary row, not a special field, but it is not an ordinary
- * *child*: it is the canvas itself, not something `build` instantiates or
- * `syncPresence` parents. Every other place that walks the nodes needs it removed
- * first; this is the one place that removal happens, synthesizing the default
- * when the document left it out.
+ * Split out the scene root, which is the canvas itself: not something `build` instantiates or `syncPresence`
+ * parents. Synthesizes the default when the document left it out.
  */
 function splitRoot(specs: NodeSpec[]): { root: NodeSpec; rest: NodeSpec[] } {
     const rest: NodeSpec[] = [];
@@ -234,25 +141,19 @@ function splitRoot(specs: NodeSpec[]): { root: NodeSpec; rest: NodeSpec[] } {
     return { root: root ?? defaultRootSpec(), rest };
 }
 
-/**
- * When each node is in the tree.
- *
- * Read off the document rather than accumulated during playback: a span of
- * `[2, 5)` says the node is present at every seek in it, whether the playhead
- * arrived from 1s or from 9s. A still's nodes carry no span, so they are present
- * always.
- */
+/** Read off the document, not accumulated in playback, so a seek lands the same from any direction. A still's nodes carry no span: always present. */
 function presenceOf(doc: VisualDocument): Map<string, NodeSpan> {
     const spans = new Map<string, NodeSpan>();
     for (const node of doc.nodes) spans.set(node.id, nodeSpan(node));
-    // The root is always present; it is not synced like an ordinary child.
     spans.delete(ROOT_NODE_ID);
     return spans;
 }
 
 /**
- * The clip document, compiled and evaluable, over the one canvas it builds
- * into — its live nodes, presence and baselines all belong to that tree.
+ * A compiled clip document, evaluable at any time in any order. Commands are built in `at` order, each run to
+ * `at(1)` before the next is built, because a command reads its start value from the node when constructed;
+ * the restored baseline undoes that. Expressions bind props to variable slots and recompute on read, so a
+ * node driven only by expressions is never restored.
  */
 export class ClipTimeline {
     constructor(doc: VisualDocument, registry: Registry, private readonly canvas: Canvas2D) {
@@ -274,15 +175,13 @@ export class ClipTimeline {
         this._duration = documentDuration(doc);
     }
 
-    /** How long the scene runs. Read by the runtime after {@link build}. */
     get duration(): number {
         return this._duration;
     }
 
-    /** Instantiate the tree into the canvas. Once per timeline: the nodes it makes belong to that canvas. */
+    /** Once per timeline: the nodes it makes belong to that canvas. */
     build(): void {
-        // Variables first: everything below may compile an expression, and an
-        // expression resolves its `[id]`s the moment it is compiled.
+        // Variables first: an expression resolves its `[id]`s the moment it compiles.
         this._buildVariables();
 
         this._pristineRoot = captureLayer(this.canvas as unknown as ReactiveHost);
@@ -300,9 +199,7 @@ export class ClipTimeline {
             });
         }
 
-        // Record what each parent built for itself *before* any document child
-        // lands, so a composite node's own children keep their indices. A
-        // document child is always placed after them.
+        // Before any document child lands, so a composite's own children keep their indices.
         this._baseChildCount.set(ROOT_NODE_ID, this.canvas._allChildren.length);
         for (const [id, entry] of this._live) {
             this._baseChildCount.set(id, entry.node._allChildren.length);
@@ -310,9 +207,7 @@ export class ClipTimeline {
 
         this.syncPresence(0);
 
-        // The root's baseline is captured too: `targetId: null` commands animate
-        // the camera and the scene fill, and those need resetting like anything
-        // else.
+        // The root's baseline too: `targetId: null` commands animate the camera and scene fill.
         this._root = {
             spec: this._rootSpec,
             node: this.canvas,
@@ -334,15 +229,9 @@ export class ClipTimeline {
     }
 
     /**
-     * Build every command against the laid-out tree, then put the tree back.
-     *
-     * Separate from {@link build} because a command may read post-layout state to
-     * decide what it animates *from*: an animated `removeChildAt` pins the
-     * departing child to its rendered width, which is zero until layout runs.
-     *
-     * `settle` re-lays the tree out. It runs whenever the walk brings a node in or
-     * takes one out, so a command is built against the tree as it stands at its
-     * own `at` — see {@link _compileCommands}.
+     * Build every command against the laid-out tree, then put the tree back. Separate from {@link build} because a
+     * command may read post-layout state (an animated `removeChildAt` pins the departing child to its rendered
+     * width, zero until layout runs). `settle` re-lays out whenever the walk changes the tree.
      */
     compile(settle: () => void = () => { }): void {
         this._settled = null;
@@ -354,22 +243,18 @@ export class ClipTimeline {
         this._indexSettled();
     }
 
-    /** What a variable holds at the last evaluated time. For a host's inspector. */
     variableValue(id: string): unknown {
         return this._vars.get(id)?.cell.get();
     }
 
-    /** Every variable this document declares, in declaration order. */
     variables(): readonly VariableSpec[] {
         return this._varSpecs;
     }
 
-    /** The time the tree's presence was last synced to. */
     get presenceTime(): number {
         return this._presenceIndex().time;
     }
 
-    /** Every sound a placed command plays, in clip seconds, with the node that plays it. */
     commandSounds(): PlacedSound[] {
         const out: PlacedSound[] = [];
         for (const placed of this._placed) {
@@ -388,12 +273,10 @@ export class ClipTimeline {
         return out;
     }
 
-    /** Every compiled command, in timeline order — the indices {@link evaluateAt} reports writes under. */
     placedCommands(): readonly PlacedCommandInfo[] {
         return this._placed;
     }
 
-    /** What the build stepped around — see {@link TimelineIssue}. Placeholders first, in row order. */
     issues(): TimelineIssue[] {
         const out: TimelineIssue[] = [];
         for (const { spec, node } of this._live.values()) {
@@ -411,16 +294,9 @@ export class ClipTimeline {
     }
 
     /**
-     * Put every node into the state it holds at `seconds`.
-     *
-     * A pure function of `seconds`: called in any order, repeatedly, and with
-     * time going backwards. Restoring the baseline first is what makes it so —
-     * without it a prop written by a command that has *not started yet* would
-     * keep whatever the last evaluation left, and the same frame would look
-     * different depending on how the playhead reached it.
-     *
-     * `onWrite` reports each slot a command writes, with its index in
-     * {@link placedCommands}; the baseline restore is not reported.
+     * Pure in `seconds`: any order, either direction. Restoring the baseline first is what makes it so, or a prop
+     * written by a not-yet-started command would keep the last evaluation's value. `onWrite` reports each
+     * command write (not the restore) with its index in {@link placedCommands}.
      */
     evaluateAt(seconds: number, onWrite?: (index: number, slot: PropSlot<unknown>) => void): void {
         if (onWrite) {
@@ -443,24 +319,17 @@ export class ClipTimeline {
             const local = seconds < placed.start ? 0
                 : placed.duration > 0 ? (seconds - placed.start) / placed.duration
                     : 1;
-            // A finished command is held at `at(1)` rather than dropped, so a prop
-            // written early and never touched again keeps its value — the same
-            // rule `commandSequence` uses.
+            // Held at `at(1)` once finished, so an early write persists (as in `commandSequence`).
             placed.command.at(clamp01(local));
         }
     }
 
     /**
-     * Add and remove document nodes so the tree matches `seconds`. Returns whether
-     * anything moved.
-     *
-     * Separate from {@link evaluateAt} because it is structural: it changes what
-     * layout walks, not what a prop holds. Called ahead of the evaluation for
-     * the same time.
+     * Add and remove document nodes so the tree matches `seconds`; returns whether anything moved. Structural, so
+     * separate from {@link evaluateAt}: it changes what layout walks. Call it ahead of the evaluation.
      */
     syncPresence(seconds: number): boolean {
         const rows = this._presenceIndex().crossed(seconds);
-        // Nothing to do on the overwhelming majority of frames.
         if (rows.length === 0) return false;
 
         const arrivals: PresenceRow[] = [];
@@ -484,10 +353,8 @@ export class ClipTimeline {
             this._parentNodeOf(entry.spec)?.remove(entry.node);
         }
 
-        // Insert after whatever the parent built for itself, at the row's place
-        // among the siblings present, so `layerOrder` really is sibling order and a
-        // composite's own children keep their indices. Ascending per parent, so
-        // every sibling before a row is already in place when it lands.
+        // After whatever the parent built for itself, at the row's place among present siblings. Ascending per
+        // parent, so every earlier sibling is already in place.
         arrivals.sort(byDocumentOrder);
         const byParent = new Map<SiblingCounts, PresenceRow[]>();
         for (const row of arrivals) {
@@ -512,17 +379,11 @@ export class ClipTimeline {
         return true;
     }
 
-    /** The node a row built, mounted or not; the canvas for the root. */
     liveNode(id: string): Node | undefined {
         return id === ROOT_NODE_ID ? this.canvas : this._live.get(id)?.node;
     }
 
-    /**
-     * What a row holds before any command has acted on it: its props as it
-     * arrived, or as built for one that has not arrived yet. The same at every
-     * time, which is what tells it from the node's live props. A bound prop is
-     * read through its binding, so it answers for the tree as it stands.
-     */
+    /** A row's props before any command acted on it; the same at every time, unlike the live props. A bound prop answers through its binding. */
     baselineProps(id: string): Record<string, unknown> | undefined {
         const entry = id === ROOT_NODE_ID ? this._root : this._live.get(id);
         if (!entry) return undefined;
@@ -628,27 +489,21 @@ export class ClipTimeline {
     }
 
     private _doc: VisualDocument;
-    /** The vocabulary this document is compiled against — see `document/registry.ts`. */
     private readonly _registry: Registry;
-    /** The scene root row — see {@link splitRoot}. */
     private _rootSpec: NodeSpec;
     private _specs: NodeSpec[];
     private _varSpecs: readonly VariableSpec[];
     private _spans: Map<string, NodeSpan>;
     private _duration: number;
-    /** The current document's index, built on the first {@link planUpdate}. */
     private _docIndex: DocIndex | null = null;
     /** The canvas's cells before the root row was applied — what a patched root row resets to. */
     private _pristineRoot: PropLayer = NO_LAYER;
 
-    /** Live nodes by id, valid between {@link build} and the next rebuild. */
     private readonly _live = new Map<string, LiveNode>();
-    /** Live variables by id, same lifetime as {@link _live}. */
     private readonly _vars = new Map<string, LiveVariable>();
     /** Node ids by {@link NodeSpec.key}. Read off the document, so it needs no build. */
     private readonly _keyed: Map<string, string>;
     private _placed: PlacedCommand[] = [];
-    /** Commands left out of {@link _placed}, by id — see {@link issues}. */
     private readonly _skipped = new Map<string, TimelineIssue>();
     /** Built after every compile and update, when any placed command is marked settling (`tween/command`). */
     private _settled: SettledIndex | null = null;
@@ -656,61 +511,33 @@ export class ClipTimeline {
     private _wholeRestore: LiveNode[] = [];
     /** …and, on every other animated node, the baseline of each slot a marked command writes. */
     private _slotRestore: SlotBaseline[] = [];
-    /** The scene root (`targetId: null`), plus its baseline. */
     private _root: LiveNode | null = null;
     /**
-     * Only the nodes some command writes to. Everything else keeps its authored
-     * props for the life of the scene, so restoring it every frame would be pure
-     * waste — and on a large static scene that waste is most of the frame.
-     *
-     * A prop bound to a variable needs no restoring at all, which falls out of
-     * this for free: the binding *is* the per-frame recompute, so a node driven
-     * only by expressions never enters this list.
+     * Only nodes some command writes: restoring static nodes every frame is most of the frame on a large scene. A
+     * prop bound to a variable needs no restore (the binding is the recompute), so expression-only nodes never enter.
      */
     private _animated: LiveNode[] = [];
-    /** Only the variables some command writes to. Same reasoning. */
     private _animatedVars: LiveVariable[] = [];
-    /**
-     * Slots on a part a node built for itself that some command writes, restored
-     * alongside {@link _animated}. A part is no document row, so its baseline is
-     * the slot's state the first time a command wrote it — see {@link _notePartWrite}.
-     */
+    /** Slots on a part a node built for itself that a command writes. A part is no row; see {@link _notePartWrite}. */
     private _animatedParts: PropSlot<unknown>[] = [];
     private readonly _partBaselines = new WeakMap<PropSlot<unknown>, PropSnapshot<unknown>>();
     /** Children each parent built for itself, which the document must not disturb. */
     private readonly _baseChildCount = new Map<string, number>();
-    /** Node ids currently in the tree, so presence only churns when it changes. */
     private readonly _present = new Set<string>();
-    /** Node ids whose baseline was taken while mounted — see {@link _compileCommands}. */
     private _baselined = new Set<string>();
-    /**
-     * Rows present at time 0 that a lifecycle command (`removeChildAt`,
-     * `reparent`) took out of the parent their row names, as compile left them.
-     * Presence only moves a row across its own span, so nothing else would put
-     * one back before its command starts.
-     */
+    /** Rows present at 0 that a lifecycle command (`removeChildAt`, `reparent`) took out of their parent. Presence only moves a row across its own span. */
     private _displaced: LiveNode[] = [];
     /** Rows that arrived, or were built, while an ancestor was out of the tree and wait for it — see {@link _baselineArrival}. */
     private readonly _unmounted = new Set<string>();
     private _presence: PresenceIndex | null = null;
-    /** The rows the last {@link syncPresence} brought in, in document order. */
     private _arrived: readonly PresenceRow[] = [];
 
     /**
-     * What a compiled expression resolves a reference against: a variable, or —
-     * spelled with a dot — another node's prop.
+     * A reference with a dot (`[card.x]`) reads another node's prop; without one, a variable.
      *
-     * The dot is the whole discriminator, and it has to be: a node is not a value,
-     * so `[card]` could never mean one, while a variable reference never carries a
-     * prop. `document/validate.ts` reads the same split.
-     *
-     * A node reference resolves **late**. Nothing about the node is looked up here:
-     * `build` binds in document order, so the node named may not exist yet, and
-     * `syncPresence` adds and removes nodes as time moves, so one that exists can
-     * still be legitimately absent at *t*. The thunk therefore does the lookup on
-     * every read and answers `undefined` for a node that is not there — which is
-     * `NaN` through arithmetic, loud in the first frame, and an unset prop on its
-     * own. Throwing instead would make an `add` at 2s a crash at 0s.
+     * A node reference resolves late, on every read: `build` binds in document order and presence changes with
+     * time, so the node may not exist yet or be absent at *t*. It answers `undefined` (`NaN` through arithmetic,
+     * loud in the first frame) rather than throwing, which would make an `add` at 2s a crash at 0s.
      */
     private readonly _resolveVariable: VariableResolver = (name) => {
         const dot = name.indexOf(".");
@@ -723,14 +550,7 @@ export class ClipTimeline {
         return this._vars.get(name)?.read;
     };
 
-    /**
-     * The live node `id` names, or `undefined` while it is unbuilt or out of the
-     * tree.
-     *
-     * Gated on `mounted` rather than on {@link _present}, which is only settled at
-     * the end of {@link syncPresence} — so a prop read *during* the insertion walk
-     * would see an out-of-date answer.
-     */
+    /** Gated on `mounted`, not {@link _present}, which only settles at the end of {@link syncPresence}: a read mid-insertion would be stale. */
     private _nodeById(id: string): Node | undefined {
         if (id === ROOT_NODE_ID) return this.canvas;
         const entry = this._live.get(id);
@@ -753,7 +573,6 @@ export class ClipTimeline {
         this.canvas.set({ ...literal, ...bindings } as never);
     }
 
-    /** A row's node with its literal props passed to the constructor and its expressions bound after. */
     private _instantiate(spec: NodeSpec, rows: readonly NodeSpec[] = this._specs): Node {
         const props = migrateNodeProps(this._registry, spec.type, spec.props).props;
         const { literal, bindings, hasBindings } = expressionOps.bindProps(props, this._resolveVariable);
@@ -770,14 +589,7 @@ export class ClipTimeline {
         return node;
     }
 
-    /**
-     * Create a slot per declared variable.
-     *
-     * The slot is created once per build and lives for the whole scene: a
-     * variable has no presence span (see {@link VariableSpec}), so there is
-     * nothing to sync and nothing that can be missing when an expression
-     * compiled against it runs.
-     */
+    /** One slot per variable for the whole build: a variable has no presence span. */
     private _buildVariables(): void {
         for (const spec of this._varSpecs) {
             if (this._vars.has(spec.id)) {
@@ -807,15 +619,9 @@ export class ClipTimeline {
     }
 
     /**
-     * Put every animated node back to its authored state.
-     *
-     * The save stack is truncated alongside the props, and that is not
-     * housekeeping. `save`/`restore` are commands, so a `save` re-runs on every
-     * evaluation of a frame after it — without the truncation the stack would
-     * grow by one layer per frame forever, and a later `restore` would pop a
-     * layer pushed by some *other* seek instead of the one its own `save` made.
-     * Truncating is what keeps the pair a function of the chain rather than of
-     * how the playhead got here.
+     * Put every animated node back to its authored state. The save stack is truncated with the props: `save` and
+     * `restore` are commands, so a `save` re-runs on every evaluation and the stack would grow per frame, and a
+     * `restore` would pop another seek's layer.
      */
     private _restoreBaselines(nodes: readonly LiveNode[] = this._animated): void {
         // Structure before props: a node put back is attached, and the baseline is
@@ -838,16 +644,10 @@ export class ClipTimeline {
     }
 
     /**
-     * Build every command, in timeline order, against a node already holding
-     * what its predecessors left.
-     *
-     * The tree is moved to each command's `at` before it is built: an unmounted
-     * node hands back an inert stepper and the command caches it, so a tween on a
-     * node that enters at 2s built against the t=0 tree would never move. A node
-     * entering here is baselined on arrival, before anything has touched it.
-     *
-     * The tree is re-laid-out only where something reads it — see
-     * {@link _settleWindows}.
+     * Build every command, in timeline order, against a node holding what its predecessors left. The tree moves to
+     * each command's `at` first: an unmounted node hands back an inert stepper the command caches, so a tween on a
+     * node entering at 2s built against the t=0 tree would never move. Arrivals are baselined here, before
+     * anything touches them. Re-layout only where something reads it ({@link _settleWindows}).
      */
     private _compileCommands(settle: () => void): void {
         if (isStillDocument(this._doc)) return;
@@ -909,7 +709,6 @@ export class ClipTimeline {
         }
     }
 
-    /** The present rows whose node is no longer under the parent its row names. */
     private _collectDisplaced(): LiveNode[] {
         const out: LiveNode[] = [];
         for (const id of this._present) {
@@ -921,10 +720,7 @@ export class ClipTimeline {
         return (this._displaced = out);
     }
 
-    /**
-     * Put displaced rows back where {@link syncPresence} would have inserted them.
-     * Returns whether any moved.
-     */
+    /** Put displaced rows back where {@link syncPresence} would have inserted them. */
     private _restoreDisplaced(entries: readonly LiveNode[]): boolean {
         let moved = false;
         for (const entry of entries) {
@@ -940,7 +736,6 @@ export class ClipTimeline {
         return moved;
     }
 
-    /** The node a row's `parentId` names: the canvas for the root, `undefined` while that row is unbuilt. */
     private _declaredParent(id: string): Node | undefined {
         const parentId = this._presenceIndex().row(id)?.siblings.parentId;
         if (parentId === undefined) return undefined;
@@ -948,13 +743,9 @@ export class ClipTimeline {
     }
 
     /**
-     * Take the baseline of a row that has just arrived, if it is mounted.
-     *
-     * A baseline is the node as it stands once attached: an unmounted node's cells
-     * hold pre-attach values, without what it inherits from its ancestors. A row
-     * can arrive while an ancestor is still out of the tree (a child entering
-     * before its parent), so its baseline waits in {@link _unmounted} until
-     * {@link _baselineMounted} finds it mounted.
+     * A baseline is the node as attached: an unmounted node's cells hold pre-attach values, lacking what it inherits.
+     * A row arriving while an ancestor is out of the tree (a child entering before its parent) waits in
+     * {@link _unmounted} for {@link _baselineMounted}.
      */
     private _baselineArrival(id: string): void {
         const entry = this._live.get(id);
@@ -967,7 +758,6 @@ export class ClipTimeline {
         this._unmounted.delete(id);
     }
 
-    /** Baseline the rows that arrived unmounted and have since been mounted by an ancestor arriving. */
     private _baselineMounted(): void {
         for (const id of this._unmounted) {
             const entry = this._live.get(id);
@@ -982,25 +772,16 @@ export class ClipTimeline {
     }
 
     /**
-     * Build one command against the tree as it stands and run it to its end —
-     * which is what leaves its target where the next command's `from` must start.
-     * Undone wholesale by {@link _restoreBaselines}. Throws when its target names
-     * no row, for a node-scoped command of any kind. A command its target's type
-     * does not publish, or any aimed at a placeholder, is skipped and recorded
-     * (`null`) unless the registry is strict.
-     *
-     * The running-to-`at(1)` cannot be skipped: `node.to({ x: 100 })` reads `x`
-     * when the command is *constructed*, so a chain built against the untouched
-     * tree would give every step the same `from` and each would jump back to the
-     * start.
+     * Build one command against the current tree and run it to its end, leaving its target where the next
+     * command's `from` must start: `node.to({ x: 100 })` reads `x` at construction, so skipping this would give
+     * every chained step the same `from`. Undone by {@link _restoreBaselines}. Throws when the target names no
+     * row; a command its target's type lacks, or any aimed at a placeholder, is skipped and recorded (`null`)
+     * unless the registry is strict.
      */
     private _buildPlaced(spec: CommandSpec): PlacedCommand | null {
-        // Resolved in two tiers. The global table holds only what must resolve
-        // *without* a node — the variable-scoped commands, whose target is not a
-        // node at all, and the generic prop writers. That is why it is consulted
-        // first: `scope` is what decides whether there is a node to look anything
-        // up on. Everything else is a method on the target's own type, where it
-        // cannot collide with another type's command of the same name.
+        // The global table is consulted first: it holds only what resolves without a node (variable-scoped
+        // commands, generic prop writers), and `scope` decides whether there is a node to look up. Everything
+        // else is a method on the target's own type.
         let entry = this._registry.command(spec.type);
         if (entry?.scope !== "variable") {
             const missing = missingNodeOf(this._targetOrThrow(spec).node);
@@ -1026,11 +807,8 @@ export class ClipTimeline {
         const duration = spec.duration ?? 0;
         const easing = resolveEase(spec.easing, this._registry);
         const recorder = new WriteRecorder(this._notePartWrite);
-        // Applied inside `buildToEnd`, so the `at(1)` that leaves the target where
-        // the next command's `from` starts is the *loop's* end — which for an odd
-        // number of `alternate` passes is back where it began. A looped command
-        // then carries the span of every pass, which is what the placed duration
-        // has to be for a seek into the fourth repetition to land in it.
+        // Applied inside `buildToEnd`, so `at(1)` is the loop's end (back at the start for an odd number of
+        // `alternate` passes). A looped command carries every pass's span, so a seek into the fourth repetition lands in it.
         const loop = loopRepeats(spec.loop) ? spec.loop : undefined;
         const repeat = (made: Command<Record<string, unknown>> | void) =>
             (made && loop ? loopCommand(made, loop, this._unlimitedFill(spec.at)) : made);
@@ -1066,15 +844,9 @@ export class ClipTimeline {
     }
 
     /**
-     * Hold each entrance's first frame back from its `at`, so the node it brings in
-     * never shows at rest ahead of it.
-     *
-     * Back to the later of the moment its target arrives and the latest end of an
-     * earlier command writing any slot it writes. Stopping there keeps placement
-     * order honest: a command the entrance would otherwise overwrite still shows,
-     * and an entrance after an exit keeps the node gone in between. A command on
-     * the same node that writes other slots (a `moveTo` while it waits) does not
-     * stop it.
+     * Hold each entrance's first frame back from its `at` so its node never shows at rest ahead of it: back to the
+     * later of the target's arrival and the latest end of an earlier command writing a slot it writes. A command
+     * writing other slots on the same node (a `moveTo` while it waits) does not stop it.
      */
     private _holdEntrances(): void {
         const ended = new Map<PropSlot<unknown>, number>();
@@ -1095,33 +867,16 @@ export class ClipTimeline {
         }
     }
 
-    /**
-     * Seconds an unlimited loop starting at `at` has to fill.
-     *
-     * The clip's own length, which `documentDuration` answers counting one pass
-     * of every unlimited loop — so a scene made of nothing but a spinner is one
-     * turn long, and that same spinner in a ten-second scene turns for ten
-     * seconds rather than stretching the scene to forever.
-     */
+    /** `documentDuration` counts one pass of an unlimited loop: a lone spinner is one turn, in a ten-second scene it turns for ten. */
     private _unlimitedFill(at: number): number {
         return Math.max(0, this._duration - at);
     }
 
     /**
-     * Put everything a command writes into the restore lists — its target, and
-     * any *other* node it wrote.
-     *
-     * A command is not confined to its target: `Cursor.click` names a control and
-     * throws it, the way the lifecycle commands tween the child they move. Only
-     * the target used to be restored, which left the other node holding whatever
-     * the last evaluation happened to leave — a frame that depends on how the
-     * playhead reached it, which is the one thing the whole design forbids.
-     *
-     * `writes` is already recorded (see {@link WriteRecorder}) and a slot carries
-     * its owner, so this needs no declaration from the command. A variable's slot
-     * arrives as {@link PlacedCommand.owner}. A slot on a part a node built for
-     * itself has no row to be restored through, so it is restored on its own, to
-     * the state {@link _notePartWrite} saw before any command wrote it.
+     * Put everything a command writes into the restore lists. A command is not confined to its target
+     * (`Cursor.click` throws a control), and an unrestored node would hold the last evaluation's value, making a
+     * frame depend on how the playhead got there. A slot on a part a node built has no row, so it is restored on
+     * its own to the state {@link _notePartWrite} saw.
      */
     private _touch(placed: PlacedCommand, touched: Set<TouchedOwner>): void {
         this._touchOwner(placed.owner, touched);
@@ -1146,13 +901,9 @@ export class ClipTimeline {
     }
 
     /**
-     * Save a part's slot the first time a command is about to write it.
-     *
-     * Called by the observer *before* the write lands, while a command is built:
-     * every earlier command has run to its end by then, but none of them wrote
-     * this slot, so what it holds is what the part was built with (plus whatever
-     * the command's own factory primed, which is part of the command, not of the
-     * part).
+     * Save a part's slot the first time a command is about to write it. Called before the write lands, while a
+     * command is built: earlier commands have run to their end but none wrote this slot, so it holds what the
+     * part was built with.
      */
     private readonly _notePartWrite = (slot: PropSlot<unknown>): void => {
         const host = slot._host;
@@ -1161,28 +912,15 @@ export class ClipTimeline {
         this._partBaselines.set(slot, slot.snapshot());
     };
 
-    /**
-     * Compile the expressions in a binding command's args.
-     *
-     * A command declaring `binds` is saying its args *are* a props diff that
-     * reaches `node.set()` — `set` is the only built-in that does — where a
-     * function is a binding.
-     */
+    /** A command declaring `binds` has args that are a props diff reaching `node.set()`, where a function is a binding. */
     private _bindArgs(args: Record<string, unknown>): Record<string, unknown> {
         const { literal, bindings } = expressionOps.bindProps(args, this._resolveVariable, "args");
         return { ...literal, ...bindings };
     }
 
     /**
-     * Refuse an expression in a command that cannot bind one.
-     *
-     * An expression is a *binding*: it says a prop follows a variable for as
-     * long as it is set. A tween's destination is a **value** — `to` reads it
-     * once, when the command compiles, to work out what it is interpolating
-     * towards — so a formula there could only ever mean "the value this happened
-     * to have at build time", which is never what anyone writing it meant.
-     * Failing here rather than coercing is the same call `NodeSpec.type` makes:
-     * a document that half-renders is worse than one that refuses to.
+     * A tween's destination is a value read once at compile, so an expression there could only mean its build-time
+     * value. Fail rather than coerce, as `NodeSpec.type` does.
      */
     private _assertNoExpressions(spec: CommandSpec): void {
         const found = expressionOps.collect(spec.args, "args");
@@ -1244,7 +982,6 @@ export class ClipTimeline {
         return target;
     }
 
-    /** Resolve a command's `targetId` to a live node, or `null` if it names nothing. */
     private _targetOf(spec: CommandSpec): { id: string; node: Node; entry: LiveNode } | null {
         if (spec.targetId === null) {
             return this._root ? { id: ROOT_NODE_ID, node: this._root.node, entry: this._root } : null;
@@ -1313,12 +1050,10 @@ export class ClipTimeline {
         return out;
     }
 
-    /** Built on first use, from the rows as they stand. */
     private _presenceIndex(): PresenceIndex {
         return this._presence ??= new PresenceIndex(this._specs, this._spans);
     }
 
-    /** The live node a spec's `parentId` names, or the scene root. */
     private _parentNodeOf(spec: NodeSpec): Node | undefined {
         if (spec.parentId === null) return this.canvas;
         return this._live.get(spec.parentId)?.node;
@@ -1341,7 +1076,6 @@ export class ClipTimeline {
         };
     }
 
-    /** Write the props `entry`'s row changed since `was` as its new initial values. */
     private _writeInPlace(entry: LiveNode, was: NodeSpec): void {
         const changed: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(entry.spec.props)) {
@@ -1529,11 +1263,7 @@ export class ClipTimeline {
     }
 }
 
-/**
- * What to say when a command type the format no longer has fails to resolve.
- * A document written before nodes carried their own spans is otherwise a
- * "no command" error that names nothing it could be fixed with.
- */
+/** A document written before nodes carried spans would otherwise get a "no command" error naming nothing fixable. */
 const LEGACY_COMMAND_HINTS: Readonly<Record<string, string>> = {
     add: "A node is a row in `nodes`, entering at its `startAt`.",
     remove: "A node leaves at its `endAt`.",
@@ -1544,10 +1274,8 @@ const NO_LAYER: PropLayer = new Map();
 
 const PROP_DIFF_COMMANDS: ReadonlySet<string> = new Set(["to", "set"]);
 
-/** What {@link ClipTimeline._touch} dedupes: an owner, or a part's slot. */
 type TouchedOwner = LiveNode | LiveVariable | PropSlot<unknown>;
 
-/** Records what building one command wrote, and whether it read a laid-out box. */
 class WriteRecorder implements SlotObserver {
     readonly writes = new Set<PropSlot<unknown>>();
     readonly reads = new Set<PropSlot<unknown>>();
@@ -1599,7 +1327,6 @@ interface SlotBaseline {
     baseline: PropSnapshot<unknown>;
 }
 
-/** The baseline of each of `slots`, or `null` when one isn't among the node's props. */
 function slotBaselines(entry: LiveNode, slots: ReadonlySet<PropSlot<unknown>> | undefined): SlotBaseline[] | null {
     if (!slots) return [];
     const cells = (entry.node as unknown as ReactiveHost).__cells?.slots;
@@ -1634,17 +1361,13 @@ function disposeBuilt(node: Node, isDocumentNode: (node: Node) => boolean): void
     node.dispose();
 }
 
-/** One document row's place in a {@link PresenceIndex}. */
 interface PresenceRow {
     id: string;
     start: number;
     end: number;
-    /** Position in the document's rows. */
     order: number;
-    /** Position among its parent's document children, in `layerOrder` order. */
     slot: number;
     siblings: SiblingCounts;
-    /** The last {@link PresenceIndex.crossed} pass that collected this row. */
     pass: number;
 }
 
@@ -1679,15 +1402,8 @@ class SiblingCounts {
     private readonly _tree: Int32Array;
 }
 
-/**
- * Every span boundary, sorted by time, and a cursor at the last time synced.
- *
- * Moving to another time visits only the rows with a boundary between the two, in
- * either direction and however far — which is what keeps a scrub, and a compile
- * walking its commands, from rescanning every node per step.
- */
+/** Every span boundary sorted by time, with a cursor at the last time synced: a move visits only rows with a boundary between, however far. */
 class PresenceIndex {
-    /** The last time {@link crossed} was asked for. Nothing is present before the first. */
     time = -Infinity;
 
     constructor(specs: readonly NodeSpec[], spans: ReadonlyMap<string, NodeSpan>) {
@@ -1750,11 +1466,9 @@ class PresenceIndex {
 
     private readonly _events: { time: number; row: PresenceRow }[] = [];
     private readonly _rows = new Map<string, PresenceRow>();
-    /** How many events are at or before {@link time}. */
     private _cursor = 0;
     private _pass = 0;
 
-    /** The first event after `seconds` — every event before it has happened by then. */
     private _upperBound(seconds: number): number {
         let lo = 0;
         let hi = this._events.length;

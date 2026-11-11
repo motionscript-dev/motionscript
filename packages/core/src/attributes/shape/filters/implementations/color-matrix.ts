@@ -1,13 +1,7 @@
 import type { FilterData } from "../registry";
 import { lerpNumber } from "@/tween/lerp";
 
-/**
- * Applies an arbitrary 4×5 color transform.
- *
- * The matrix is row-major with rows [R, G, B, A], each row being
- * [rScale, gScale, bScale, aScale, bias]. Useful for tinting,
- * channel swaps, or any effect not covered by the named filters.
- */
+/** An arbitrary 4×5 row-major colour transform: rows [R, G, B, A], each `[rScale, gScale, bScale, aScale, bias]`. For tints, channel swaps, anything the named filters don't cover. */
 export interface ColorMatrixFilter {
     type: 'colorMatrix';
     /** 4×5 row-major color matrix. */

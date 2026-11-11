@@ -18,7 +18,7 @@ import { at, make, render } from './harness.fixtures';
  */
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 const ROW = 16 * 1.6;

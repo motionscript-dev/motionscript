@@ -1,5 +1,6 @@
 import {
   Types,
+  clamp,
   component2d,
   fillOps,
   type Fill,
@@ -19,83 +20,55 @@ import {
   type EnvelopeBar,
 } from "./envelope"
 import {
-  clamp01,
   groupByPaint,
   layOutBars,
   livePaintKey,
   paintBars,
-  voiceColor,
+  voiceFill,
   type WaveformAlignment,
   type WaveformStyle,
 } from "./shared"
 
 /**
- * A **live audio visualiser**: bars that move with the recording as it plays.
+ * A visualiser whose bars move with the recording: a picture of this moment
+ * where {@link FullWaveform} is of the file. The bars are sampled from a baked
+ * envelope at the node's own elapsed time, so a frame is a pure function of time
+ * and an export, which has no playback to analyse and may render out of order,
+ * draws what the preview drew.
  *
- * The thing every podcast-to-video tool puts beside the artwork. It is not a
- * picture of the file — that is {@link FullWaveform} — it is a picture of *this
- * moment*, and what it is for is making a static frame of a talking head feel
- * like it is playing.
- *
- * ## "Live" without listening
- *
- * Nothing here reads an audio device. The bars are sampled out of a baked
- * envelope at the node's own elapsed time, which is what makes the visualiser
- * survive the thing it exists for: an **export**, where there is no playback to
- * analyse and frames may be rendered out of order or in parallel. A frame is a
- * pure function of its time, so scrubbing back and forth over the visualiser
- * redraws exactly what it drew the first time — which an analyser node, by
- * construction, cannot promise. See {@link AudioEnvelope}.
- *
- * ## The speaker filter
- *
- * `speaker` narrows the node to one voice of a diarized recording, and it
- * is the reason this node knows about transcripts at all. Two visualisers beside
- * two headshots, each filtered to its own host, is a podcast edit that would
- * otherwise be done by hand for every turn — and because the filter *silences*
- * rather than skips (see {@link forSpeaker}), the quiet host visibly stops
- * talking instead of vanishing. Nothing about that requires the words: only who
- * is talking when, which is what the diarizer produces.
- *
- * A filter naming a voice the recording doesn't have draws a resting row rather
- * than everything — a picture of "this person never speaks here", which is
- * true, where falling back to the unfiltered mix would be a silent lie about
- * whose voice you were watching.
+ * `speaker` narrows the node to one voice of a diarized recording; it silences
+ * the other voices (see {@link forSpeaker}) so the quiet host visibly stops. A
+ * voice the recording does not have draws a resting row, not the unfiltered mix,
+ * which would be a silent lie about whose voice you are watching.
  */
 export const LiveWaveform = component2d({
   key: "liveWaveform",
   state: {
-    /** The baked recording. See {@link AudioEnvelope} for why it is baked. */
+    /** The baked recording; see {@link AudioEnvelope}. */
     envelope: Types.custom<AudioEnvelope>(EMPTY_ENVELOPE),
-    /** How many bars the visualiser is made of. */
     bars: 48,
-    /** Space between bars, as a fraction of the pitch. */
+    /** Space between bars as a fraction of the pitch. */
     gap: 0.35,
     radius: 4,
-    /** How many seconds of audio are on screen at once. */
+    /** Seconds of audio on screen at once. */
     window: 3,
-    /** Seconds into the file the node's first frame shows. */
+    /** Seconds into the file the first frame shows. */
     offset: 0,
-    /** Advance with the scene clock. Off freezes the picture at `offset`. */
+    /** Advance with the scene clock; off freezes the picture at `offset`. */
     playing: true,
-    /** Multiplies every magnitude before it is clamped. */
     gain: 1.4,
-    /** How much of the box a silent bar still occupies, `0`–`1`. */
+    /** The share of the box a silent bar still occupies, `0`-`1`. */
     floor: 0.04,
     align: Types.custom<WaveformAlignment>("center"),
     style: Types.custom<WaveformStyle>("bars"),
-    /**
-     * Show only this voice's activity, by index into the recording's own
-     * numbering. `-1` — the default — is every voice.
-     */
+    /** Show only this voice, by index into the recording's own numbering; `-1` is every voice. */
     speaker: -1,
     /** Colour each bar by whoever is speaking in it. */
     byVoice: false,
-    /** A colour per voice index. Short or empty falls back to the palette. */
+    /** A colour per voice index; short or empty falls back to the palette. */
     voiceColors: Types.custom<string[]>([]),
     fill: Types.custom<Fill, FillResolved[]>("#6366f1", { resolve: fillOps.resolve, lerp: fillOps.lerp }),
   },
-  // Nothing declares a component's paints but itself.
   load: (loader, state) => loader.fill(state.fill),
   render: (ctx, state) => {
     drawBars(ctx, state)
@@ -104,7 +77,6 @@ export const LiveWaveform = component2d({
 })
 
 export type LiveWaveform = NodeOf<typeof LiveWaveform>
-export type LiveWaveformProps = NonNullable<Parameters<typeof LiveWaveform>[0]>
 
 interface LiveState {
   readonly envelope: AudioEnvelope
@@ -124,15 +96,7 @@ interface LiveState {
   readonly fill: FillResolved[]
 }
 
-/**
- * The second of the recording the visualiser is showing.
- *
- * Off the node's own clock rather than the scene's, which is what "from the
- * moment this node appeared" means — the same clock the engine's own
- * `Video` times its picture from, and the same one that makes a node dropped
- * halfway through a clip start its recording at its entrance rather than
- * partway in.
- */
+/** The second of the recording on show, off the node's own clock (as `Video`'s is), so a node entering halfway through a clip starts its recording at its entrance. */
 function at(ctx: RenderContext, s: LiveState): number {
   return s.offset + (s.playing ? Math.max(0, ctx.time.elapsed) : 0)
 }
@@ -146,9 +110,7 @@ function drawBars(ctx: RenderContext, s: LiveState): void {
   const now = at(ctx, s)
   const voice = s.speaker < 0 ? null : Math.round(s.speaker)
 
-  // The window is centred on the playhead, so the bars run *toward* the
-  // middle and away again — the arrangement every mixer's meter uses, and the
-  // one that reads as sound arriving rather than as a strip scrolling past.
+  // Centred on the playhead, so sound reads as arriving rather than a strip scrolling past.
   const sampled = forSpeaker(
     sampleEnvelope(s.envelope, now - span / 2, now + span / 2, count),
     voice
@@ -175,24 +137,12 @@ function drawBars(ctx: RenderContext, s: LiveState): void {
   }
 }
 
-/** See `FullWaveform`'s paints — a voice is a hue, never a gradient. */
 function paintFor(s: LiveState, key: string): Fill {
   if (key === "all") return s.fill
-  const voice = Number(key.slice("voice:".length))
-  if (!Number.isFinite(voice) || voice < 0) return s.fill
-  return s.voiceColors[voice] ?? voiceColor(voice)
+  return voiceFill(key, s.voiceColors, s.fill)
 }
 
-/**
- * Rolls the ends of a window off toward silence.
- *
- * What separates the `line` style from `bars`: a hard-edged window makes the
- * loud bar entering at the right edge appear from nothing, which reads as a
- * glitch rather than as sound arriving. Fading the outer fifth turns the same
- * data into a shape that grows out of the baseline — the profile a spectrum
- * display has, and the reason it looks like one object rather than a row of
- * separate meters.
- */
+/** Fades the outer fifth of the window to silence, the `line` style: a hard edge makes a loud bar appear from nothing, which reads as a glitch. */
 function taper(bars: readonly EnvelopeBar[]): EnvelopeBar[] {
   const count = bars.length
   if (count < 3) return [...bars]
@@ -200,7 +150,7 @@ function taper(bars: readonly EnvelopeBar[]): EnvelopeBar[] {
 
   return bars.map((bar, i) => {
     const fromEnd = Math.min(i, count - 1 - i)
-    const weight = clamp01(fromEnd / edge)
+    const weight = clamp(fromEnd / edge, 0, 1)
     return { magnitude: bar.magnitude * weight, speaker: bar.speaker }
   })
 }

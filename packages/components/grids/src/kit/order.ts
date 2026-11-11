@@ -1,11 +1,8 @@
 /**
- * A grid's `order` lists items in slot order: slot `k` holds item `order[k]`.
- * These keep it a permutation whatever it was written as — a stale entry past
- * the count, a repeat, or nothing at all — so a child added or removed never
- * leaves a slot empty or two items in one.
+ * `order` lists items in slot order (slot `k` holds item `order[k]`), repaired into a
+ * permutation of `0..count-1` — valid entries first, then the rest — so a stale entry, a
+ * repeat or a child added or removed never leaves a slot empty or doubled.
  */
-
-/** `order` repaired into a permutation of `0..count-1`: its valid entries first, then the rest in item order. */
 export function normalizeOrder(order: readonly number[] | undefined, count: number): number[] {
   const out: number[] = []
   const taken = new Array<boolean>(count).fill(false)

@@ -1,7 +1,6 @@
 /**
- * Test-only helpers for checking an in-place timeline update against a fresh
- * build of the same document: a harness that builds, evaluates and updates a
- * timeline the way `ClipInstance` does, a per-path snapshot of the tree, and a
+ * Helpers for checking an in-place timeline update against a fresh build of the same document: a harness that
+ * builds, evaluates and updates a timeline as `ClipInstance` does, a per-path snapshot of the tree, and a
  * registry that counts constructions.
  */
 import { expect } from "vitest";
@@ -20,10 +19,7 @@ import type { RuntimeScope } from "@/runtime/clip-instance";
 import { runtimeScope } from "@/runtime/document.fixtures";
 import { ContextMap } from "@/util/context";
 
-/**
- * Every time a document can change — a command's start or end, a node's arrival or
- * departure — plus `0` and its end, sorted.
- */
+/** A command's start or end, a node's arrival or departure, plus `0` and the end, sorted. */
 export function documentKeyTimes(doc: VisualDocument): number[] {
     const duration = documentDuration(doc);
     const times = new Set<number>([0, duration]);
@@ -42,7 +38,6 @@ export function documentKeyTimes(doc: VisualDocument): number[] {
     return [...times].filter((t) => t >= 0 && t <= duration).sort((a, b) => a - b);
 }
 
-/** What {@link snapshotClip} drives: a `ClipInstance`, or a {@link TimelineClip}. */
 export interface SnapshotSource {
     readonly canvas: Node;
     attach(seconds: number): void;
@@ -50,7 +45,6 @@ export interface SnapshotSource {
     layout(): void;
 }
 
-/** A timeline over its canvas, driven the way `ClipInstance` drives one. */
 export class TimelineClip implements SnapshotSource {
     readonly canvas: Canvas2D;
     readonly timeline: ClipTimeline;
@@ -69,7 +63,7 @@ export class TimelineClip implements SnapshotSource {
         this.layout();
     }
 
-    /** The update `ClipInstance.update` performs: `null` when the plan says rebuild. */
+    /** `null` when the plan says rebuild. */
     update(next: VisualDocument): TimelinePatch | null {
         const patch = this.timeline.planUpdate(next);
         if (!patch) return null;
@@ -84,7 +78,6 @@ export class TimelineClip implements SnapshotSource {
         this.timeline.evaluateAt(seconds);
     }
 
-    /** Attach, evaluate and lay out, as a frame seek does. */
     seek(seconds: number): void {
         this.attach(seconds);
         this.evaluateAt(seconds);
@@ -108,7 +101,6 @@ export class TimelineClip implements SnapshotSource {
 
 export interface NodeSnapshot {
     className: string;
-    /** Only for a document row; a composite's own children carry a per-instance UUID. */
     id?: string;
     mounted: boolean;
     properties: Record<string, unknown>;
@@ -121,7 +113,7 @@ export interface ClipSnapshot {
     variables: Record<string, unknown>;
 }
 
-/** The tree at each time, by structural path (`""`, `"0"`, `"0.2"`), plus every variable's value. */
+/** By structural path (`""`, `"0"`, `"0.2"`), plus every variable's value. */
 export function snapshotClip(clip: SnapshotSource, times: readonly number[]): ClipSnapshot[] {
     const timeline = (clip as { timeline?: ClipTimeline }).timeline ?? (clip as unknown as { _timeline: ClipTimeline })._timeline;
     return times.map((time) => {
@@ -149,7 +141,6 @@ export function snapshotClip(clip: SnapshotSource, times: readonly number[]): Cl
     });
 }
 
-/** Every `step` seconds over `[0, duration]`, each key time, and a hair either side of each. */
 export function sampleTimes(duration: number, step = 0.1, keyTimes: readonly number[] = []): number[] {
     const times = new Set<number>();
     for (let k = 0; k * step <= duration + 1e-9; k++) times.add(Number((k * step).toFixed(6)));
@@ -164,9 +155,8 @@ export function sampleTimes(duration: number, step = 0.1, keyTimes: readonly num
 const CONSTRUCTED = new WeakMap<Registry, string[]>();
 
 /**
- * A registry whose rect, ellipse, text and default-text-style types log the id
- * of every instance they construct. Subclasses, so the registry no longer treats
- * their props as layout-neutral — a counted update may replay more than a plain one.
+ * Subclasses, so the registry stops treating their props as layout-neutral: a counted update may replay more
+ * than a plain one.
  */
 export function countingRegistry(): { registry: Registry; constructed: string[] } {
     const constructed: string[] = [];
@@ -188,24 +178,19 @@ export function countingRegistry(): { registry: Registry; constructed: string[] 
 
 export interface IncrementalOptions {
     registry?: Registry;
-    /** Assert the plan asks for a rebuild instead of comparing. */
     expectRebuild?: boolean;
-    /** Times `prev` is evaluated at before the update, so the update starts from a used tree. */
+    /** Times `prev` is evaluated at before the update, so it starts from a used tree. */
     dirtyAt?: readonly number[];
 }
 
 export interface IncrementalResult {
     patch: TimelinePatch | null;
-    /** Ids constructed by the update, when the registry came from {@link countingRegistry}. */
     constructed: string[];
     incremental: TimelineClip;
     fresh?: TimelineClip;
 }
 
-/**
- * Build `prev`, use it, update it to `next`, and require every sampled frame to
- * match a fresh build of `next`.
- */
+/** Every sampled frame must match a fresh build of `next`. */
 export function expectIncrementalMatchesFresh(
     prev: VisualDocument,
     next: VisualDocument,

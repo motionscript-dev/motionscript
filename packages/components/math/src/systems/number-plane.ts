@@ -4,7 +4,8 @@ import {
     Types,
     type Extents,
     type NodeOf,
-    type Stroke,
+    type Stroke as _Stroke,
+
     type StrokeResolved,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Color as _Color,
@@ -31,17 +32,7 @@ import { fieldParams, parseField } from "../kit/field";
 import { AXIS_COLOR } from "../kit/furniture";
 import { lerpSource, readSource, type PlotSource } from "../kit/source";
 import { drawSystem, plotArea, systemLayout, systemOpenPlane, systemProvides, systemSize } from "../kit/system";
-import { AXES, AXES_COMMANDS, axesFurniture, axesMap, axesOf, loadAxes, type Axes2dProps, type AxesValues, type AxisLayout } from "./axes2d";
-
-export interface NumberPlaneProps extends Axes2dProps {
-    grid?: boolean;
-    gridStroke?: Stroke;
-    minorStroke?: Stroke;
-    minorDivisions?: number;
-    matrix?: Matrix2 | readonly (readonly number[])[];
-    warp?: string | PlotSource;
-    ghost?: boolean;
-}
+import { AXES, AXES_COMMANDS, axesFurniture, axesMap, axesOf, loadAxes, type AxesValues, type AxisLayout } from "./axes2d";
 
 const state = {
     ...AXES,
@@ -73,13 +64,7 @@ type PlaneValues = AxesValues & {
     readonly ghost: boolean;
 };
 
-/**
- * Axes over a full grid, with square units unless told otherwise: the plane
- * vectors and transformations are drawn on. Its `matrix` shears, turns or
- * squeezes the whole plane about its origin, and its `warp` bends it by a
- * function of its own points; the grid, the axes and everything on the plane
- * go with it.
- */
+/** Axes over a full grid with square units: the plane vectors and transformations are drawn on. `matrix` and `warp` move the grid, the axes and everything on the plane. */
 export const NumberPlane = component2d({
     key: "numberPlane",
     state,

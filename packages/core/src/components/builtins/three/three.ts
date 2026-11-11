@@ -17,15 +17,10 @@ import { defined, optional, optionalColor, optionalNumber, optionalVector3, stat
 import type { Node3DProps } from "@/components/trees/three/node3d";
 import type { Texture3D } from "@/render3d/texture";
 
-/**
- * The 3D tree: groups, meshes and the other drawables, lights, the camera, fog
- * and the environment. Each draws the `Graphics3D` or scene call its class did.
- */
+/** The 3D tree: groups, meshes, other drawables, lights, camera, fog and environment. */
 
 export const Group3D = component3d({ key: "group3d" });
 export type Group3D = NodeOf<typeof Group3D>;
-
-// ---- meshes -----------------------------------------------------------------
 
 const mesh = { geometry: optional<Geometry3D>(), ...Material.state };
 
@@ -126,8 +121,6 @@ export const Tube3D = shape3d("tube3d", "tube", {
 }, ["points", "radius", "segments", "closed"]);
 export type Tube3D = NodeOf<typeof Tube3D>;
 
-// ---- other drawables ----------------------------------------------------------
-
 export const Instances3D = component3d({
     key: "instances3d",
     state: { ...mesh, instances: optional<readonly Transform3D[]>(), colors: optional<readonly Color[]>() },
@@ -193,15 +186,10 @@ export const Model3D = component3d({
 export type Model3D = NodeOf<typeof Model3D>;
 
 /**
- * A loaded model with its animation restated as two flat entries: `clip` (a
- * clip name, or its index in the file as a string; empty is the first) and
- * `clipTime` (seconds into it). The timeline tweens a number, and
- * `Model3D.animation` is a list of records, so "play the walk cycle" is a tween
- * of `clipTime` here. The clip is still sampled at an explicit time, so seeking
- * and playing to a frame give the same pose.
- *
- * Before a file is picked it draws an unlit wireframe unit box: a node that
- * records no geometry has no box to pick, select or outline. Not registered: an
+ * A loaded model with its animation as two flat entries, `clip` (a name, or the index as a string; empty is the
+ * first) and `clipTime` (seconds), since the timeline tweens a number but `Model3D.animation` is a list of records.
+ * Still sampled at an explicit time, so seeking and playing give the same pose. Before a file is picked it draws an
+ * unlit wireframe unit box, as a node recording no geometry has no box to pick or outline. Not registered: an
  * editor's node, not document API.
  */
 export const ModelView3D = component3d({
@@ -233,8 +221,6 @@ function modelClip(clip: string): string | number | undefined {
     const index = Number(trimmed);
     return Number.isInteger(index) && index >= 0 ? index : trimmed;
 }
-
-// ---- lights -------------------------------------------------------------------
 
 /** A light that casts no shadow unless asked: shadow maps cost a render each. */
 const castsNoShadow = { shadow: false } as const;
@@ -286,8 +272,6 @@ export const AreaLight3D = component3d({
     render: (ctx, s) => ctx.light(stated<LightData3D>("area", s, ["color", "intensity", "width", "height"])),
 });
 export type AreaLight3D = NodeOf<typeof AreaLight3D>;
-
-// ---- camera, fog, environment -------------------------------------------------
 
 const CAMERA_KEYS = ["target", "orbit", "elevation", "distance", "fov", "frustumHeight", "near", "far", "zoom"] as const;
 const ORBIT_KEYS = ["orbit", "elevation", "distance"] as const;
@@ -377,27 +361,13 @@ export type Environment3D = NodeOf<typeof Environment3D>;
 
 // What code building a 3D node names its props as.
 
-/** Params of a geometry descriptor, minus its discriminant. */
 type ParamsOf<G extends { type: string }> = Omit<G, "type">;
 /** A light's params, minus its discriminant and its shadow, which is a node prop of its own. */
 type LightParamsOf<L extends { type: string }> = Omit<L, "type" | "shadow">;
 
 export type Group3DProps = Node3DProps;
 
-/**
- * The material shorthand, as node props.
- *
- * Exactly the keys {@link MaterialShorthand3D} promotes onto the `Graphics3D`
- * sugar methods, so `Box3D({ fill: "red", roughness: 0.3 })` and
- * `g3.box({ fill: "red", roughness: 0.3 })` describe the same mesh — and each is
- * a real prop here, so any of them can be tweened.
- *
- * Ten props, where there were twenty-four. What went is everything that was a
- * renderer knob rather than a design decision — `depthWrite`, `depthTest`,
- * `alphaTest`, `toneMapped`, `polygonOffset`, `dithering` — which now live only
- * on a `Mat.*` descriptor passed through {@link material}; plus `transparent`,
- * which is derived; plus five texture slots, which are fills.
- */
+/** The material shorthand as node props: exactly the keys {@link MaterialShorthand3D} promotes onto `Graphics3D` sugar methods, so `Box3D({ fill: "red" })` and `g3.box({ fill: "red" })` describe the same mesh, and each is tweenable. Renderer knobs (`depthWrite`, `alphaTest`, ...) live only on a `Mat.*` descriptor passed through {@link material}; `transparent` is derived; texture slots are fills. */
 export interface Material3DProps {
     /** A full descriptor (or an array, for multi-material). Wins over the rest. */
     material: Material3D | readonly Material3D[] | undefined;
@@ -430,71 +400,33 @@ export interface Mesh3DProps extends Node3DProps, Partial<Material3DProps> {
     geometry: Geometry3D;
 }
 
-// ─── box ─────────────────────────────────────────────────────────────────────
-
 export interface Box3DProps extends Mesh3DProps, Partial<ParamsOf<BoxGeometry3D>> { }
-
-// ─── sphere ──────────────────────────────────────────────────────────────────
 
 export interface Sphere3DProps extends Mesh3DProps, Partial<ParamsOf<SphereGeometry3D>> { }
 
-// ─── plane ───────────────────────────────────────────────────────────────────
-
 export interface Plane3DProps extends Mesh3DProps, Partial<ParamsOf<PlaneGeometry3D>> { }
-
-// ─── cylinder ────────────────────────────────────────────────────────────────
 
 export interface Cylinder3DProps extends Mesh3DProps, Partial<ParamsOf<CylinderGeometry3D>> { }
 
-// ─── cone ────────────────────────────────────────────────────────────────────
-
 export interface Cone3DProps extends Mesh3DProps, Partial<ParamsOf<ConeGeometry3D>> { }
-
-// ─── torus ───────────────────────────────────────────────────────────────────
 
 export interface Torus3DProps extends Mesh3DProps, Partial<ParamsOf<TorusGeometry3D>> { }
 
-// ─── torus knot ──────────────────────────────────────────────────────────────
-
 export interface TorusKnot3DProps extends Mesh3DProps, Partial<ParamsOf<TorusKnotGeometry3D>> { }
-
-// ─── circle ──────────────────────────────────────────────────────────────────
 
 export interface Circle3DProps extends Mesh3DProps, Partial<ParamsOf<CircleGeometry3D>> { }
 
-// ─── ring ────────────────────────────────────────────────────────────────────
-
 export interface Ring3DProps extends Mesh3DProps, Partial<ParamsOf<RingGeometry3D>> { }
-
-// ─── capsule ─────────────────────────────────────────────────────────────────
 
 export interface Capsule3DProps extends Mesh3DProps, Partial<ParamsOf<CapsuleGeometry3D>> { }
 
-// ─── polyhedron ──────────────────────────────────────────────────────────────
-
 export interface Polyhedron3DProps extends Mesh3DProps, Partial<ParamsOf<PolyhedronGeometry3D>> { }
-
-// ─── extrude ─────────────────────────────────────────────────────────────────
 
 export interface Extrude3DProps extends Mesh3DProps, Partial<ParamsOf<ExtrudeGeometry3D>> { }
 
-// ─── lathe ───────────────────────────────────────────────────────────────────
-
 export interface Lathe3DProps extends Mesh3DProps, Partial<ParamsOf<LatheGeometry3D>> { }
 
-// ─── tube ────────────────────────────────────────────────────────────────────
-
 export interface Tube3DProps extends Mesh3DProps, Partial<ParamsOf<TubeGeometry3D>> { }
-
-/**
- * The drawables that aren't a single mesh: instanced copies, point clouds,
- * polylines, sprites and loaded models.
- *
- * Each is the node form of the matching `Graphics3D` method, so what it draws and
- * what a builder chain draws are the same descriptor.
- */
-
-// ─── instances ───────────────────────────────────────────────────────────────
 
 export interface Instances3DProps extends Mesh3DProps {
     /** Per-instance placement. Its length drives the instance count. */
@@ -503,31 +435,19 @@ export interface Instances3DProps extends Mesh3DProps {
     colors: readonly Color[] | undefined;
 }
 
-// ─── points ──────────────────────────────────────────────────────────────────
-
 export type Points3DProps = Mesh3DProps;
-
-// ─── line ────────────────────────────────────────────────────────────────────
 
 export interface Line3DProps extends Node3DProps {
     /** The polyline's vertices. Give this or {@link geometry}, not both. */
     points: readonly Vector3Input[];
-    /**
-     * An explicit geometry to draw the lines of — `Geo.edges(...)` for a wireframe
-     * outline, say. Wins over {@link points}.
-     */
+    /** An explicit geometry to draw the lines of (`Geo.edges(...)` for a wireframe outline); wins over {@link points}. */
     geometry: Geometry3D;
-    /** Join the last point back to the first. */
     closed: boolean;
-    /** Treat the points as disjoint start/end pairs rather than one path. */
     segments: boolean;
-    /** The line's paint. */
     stroke: LineStroke3D | undefined;
     opacity: number | undefined;
     material: Material3D | undefined;
 }
-
-// ─── sprite ──────────────────────────────────────────────────────────────────
 
 export interface Sprite3DProps extends Node3DProps {
     /** What the billboard shows — the same value a 2D `fill` takes. */
@@ -536,106 +456,51 @@ export interface Sprite3DProps extends Node3DProps {
     material: Material3D | undefined;
 }
 
-// ─── model ───────────────────────────────────────────────────────────────────
-
 export interface Model3DProps extends Node3DProps {
-    /**
-     * Path to a glTF/GLB file. **Only glTF/GLB loads**: any other format, an OBJ
-     * included, resolves to an empty slot and draws nothing.
-     */
+    /** Path to a glTF/GLB file. **Only glTF/GLB loads**; any other format (an OBJ included) resolves to an empty slot and draws nothing. */
     src: string;
-    /**
-     * Baked animation clips, each sampled at an **explicit** time — which is what
-     * keeps a model identical whether the frame was played forward or scrubbed to.
-     */
+    /** Baked animation clips, each sampled at an **explicit** time so a model is identical whether played forward or scrubbed to. */
     animation: readonly ModelAnimation3D[] | ModelAnimation3D | undefined;
     /** Replace materials on the loaded graph, keyed by mesh or material name. */
     override: Readonly<Record<string, Material3D>> | undefined;
 }
 
-export interface ModelView3DProps extends Model3DProps {
-  /**
-   * Which baked clip to sample — a clip name, or its index in the file as a
-   * string. Empty means the first clip.
-   */
-  clip: string
-  /** Seconds into that clip. Animate this to play it. */
-  clipTime: number
-}
-
-// ─── ambient ─────────────────────────────────────────────────────────────────
-
 export interface AmbientLight3DProps extends Node3DProps, Partial<LightParamsOf<AmbientLightData3D>> { }
-
-// ─── hemisphere ──────────────────────────────────────────────────────────────
 
 export interface HemisphereLight3DProps extends Node3DProps, Partial<LightParamsOf<HemisphereLightData3D>> { }
 
-// ─── directional ─────────────────────────────────────────────────────────────
-
 export interface DirectionalLight3DProps extends Node3DProps, Partial<LightParamsOf<DirectionalLightData3D>> { }
-
-// ─── point ───────────────────────────────────────────────────────────────────
 
 export interface PointLight3DProps extends Node3DProps, Partial<LightParamsOf<PointLightData3D>> { }
 
-// ─── spot ────────────────────────────────────────────────────────────────────
-
 export interface SpotLight3DProps extends Node3DProps, Partial<LightParamsOf<SpotLightData3D>> { }
-
-// ─── area ────────────────────────────────────────────────────────────────────
 
 export interface AreaLight3DProps extends Node3DProps, Partial<LightParamsOf<AreaLightData3D>> { }
 
 /**
- * The camera — where the scene is viewed from.
- *
- * **One node, two projections.** `<Camera3D type="orthographic">` is the flat
- * one; there is no second class, because a perspective and an orthographic
- * camera are one object with a projection setting, which is how every editor
- * presents it and how a scene switching between them has to be written.
+ * The camera: where the scene is viewed from. One node for both projections (`type="orthographic"` is the flat one),
+ * as a perspective and an orthographic camera are one object with a projection setting.
  *
  *   Camera3D({ target: [0, 0.2, 0], orbit: -18, elevation: 12, distance: 13, fov: 42 })
  *
- *   cam().to({ data: { orbit: 160, elevation: 30 }, duration: 4, easing: easeInOut("quad") });
+ * `target`/`orbit`/`elevation`/`distance` place the camera in polar coordinates around what it looks at, which is
+ * what a camera move almost always is (via `position` it is a sin/cos pair recomputed every frame). `position` and
+ * `lookAt` still work for a pinned shot; setting any polar field takes over, so the two are never half applied.
+ * Parenting to a moving `Group3D` carries the shot with the rig.
  *
- * ── Orbit, not trigonometry ───────────────────────────────────────────────────
- * `target`/`orbit`/`elevation`/`distance` place the camera in polar coordinates
- * around the thing it is looking at, which is what a camera move almost always
- * *is*. Written through `position` the same move is a `Math.sin`/`Math.cos` pair
- * recomputed every frame in a prop binding — which is exactly what every scene
- * did before this existed.
- *
- * `position` and `lookAt` still work and are right for a shot pinned to
- * something; setting any polar field takes over, so the two can never be half
- * applied. Either way the camera is a node, so parenting it to a moving
- * `Group3D` carries the shot with the rig.
- *
- * ── What is derived ───────────────────────────────────────────────────────────
- * `near`/`far` come from the scene's own bounds unless you set them, and the
- * aspect ratio always tracks the viewport's layout box — it was a prop whose
- * documentation said "don't set this", and setting it stretched the render.
- * An asymmetric orthographic frustum is a `params` override rather than four
- * more fields.
- *
- * A scene with no camera gets a sensible default framing. A scene that declares
- * more than one keeps the last, since there is only ever one view.
+ * `near`/`far` come from the scene bounds unless set, and aspect always tracks the viewport's layout box. An
+ * asymmetric orthographic frustum is a `params` override. A scene with no camera gets a default framing; with
+ * several, the last wins.
  */
 export interface Camera3DProps extends Node3DProps {
     /** `"perspective"` (default) or `"orthographic"`. */
     type: CameraData3D["type"];
-    /**
-     * The point the camera looks at, and orbits around.
-     *
-     * On its own it is `lookAt` under a name that reads right beside `orbit`;
-     * together with any of the three below it is also the centre they turn about.
-     */
+    /** The point the camera looks at and orbits around: `lookAt` under a name that reads right beside `orbit`, and the centre they turn about when any polar field is set. */
     target: Vector3Input | undefined;
     /** Azimuth around {@link target}, in **degrees**. */
     orbit: number | undefined;
     /** Angle above the horizon, in **degrees**. */
     elevation: number | undefined;
-    /** Distance from {@link target}. */
     distance: number | undefined;
     /** Perspective only: vertical field of view in **degrees**. Default 50. */
     fov: number | undefined;
@@ -646,29 +511,10 @@ export interface Camera3DProps extends Node3DProps {
     zoom: number | undefined;
 }
 
-/**
- * The two scene-wide nodes that are left: fog and environment.
- *
- * `Shadows3D`, `ToneMapping3D` and `PostEffects3D` used to be here and are now
- * props on `Canvas3D`. They were never scene *objects* — a viewport's shadow
- * quality, its tone curve and its post chain are settings of the thing doing the
- * rendering, and writing them as nodes meant a node with no position whose
- * duplicates silently did nothing. `Background3D` is gone entirely: what is drawn
- * behind a 3D scene is the viewport's own 2D `fill`.
- *
- * These two stay nodes because they *are* about the space: fog is a property of
- * the air in it, and an environment is the sky around it. Both are still
- * positionless, so declaring two of the same kind is not an error but only the
- * last takes effect.
- *
- *   Fog3D({ near: 5, far: 30 })
- *   Environment3D({ preset: "studio" })
- */
-
-// ─── fog ─────────────────────────────────────────────────────────────────────
+/** The two scene-wide nodes, fog and environment. Nodes because they are about the space (fog the air, environment the sky); positionless, so declaring two of a kind is not an error but only the last takes effect. Shadows, tone mapping and post effects are `Canvas3D` props, and the backdrop is the viewport's 2D `fill`. */
 
 export interface Fog3DProps extends Node3DProps {
-    /** Defaults to the viewport's own fill — see below. */
+    /** Defaults to the viewport's own fill. */
     color: Color | undefined;
     /** Distance at which fog starts. Linear fog. */
     near: number | undefined;
@@ -678,18 +524,13 @@ export interface Fog3DProps extends Node3DProps {
     density: number | undefined;
 }
 
-// ─── environment ─────────────────────────────────────────────────────────────
-
 export interface Environment3DProps extends Node3DProps {
     /**
      * A 360° panorama — `.hdr`/`.exr` for real IBL, or a plain image.
      * **Inert today**: no backend loads it, so only `preset` renders.
      */
     src: string | undefined;
-    /**
-     * Six cubemap faces, in three's order: +X, −X, +Y, −Y, +Z, −Z.
-     * **Inert today**: no backend loads them, so only `preset` renders.
-     */
+    /** Six cubemap faces in three's order: +X, −X, +Y, −Y, +Z, −Z. **Inert today**: no backend loads them. */
     faces: readonly string[] | undefined;
     /** A generated studio interior. Needs no asset. The only environment that renders. */
     preset: "studio" | undefined;

@@ -1,57 +1,31 @@
 import type { Euler3, Quaternion, Vector3Input } from "./vector3";
 
-/**
- * Tuning for the shadow a *light* casts.
- *
- * Two knobs where three has seven: `mapSize`, `near`, `far`, `bias` and
- * `normalBias` are all derived by the renderer. `bias` in particular existed only
- * to fight shadow acne, its right value is a function of the scene's scale, and
- * `-0.0005` is not a number any author should be asked to discover.
- * {@link params} is applied straight onto the light's own `shadow` object for the
- * rare scene that needs to override one.
- */
+/** Shadow tuning for a light. `mapSize`, `near`, `far`, `bias` and `normalBias` are derived by the renderer (the right bias depends on scene scale); {@link params} is applied straight onto the light's `shadow` object for the rare scene that overrides one. */
 export interface ShadowOptions3D {
     /** 0 hard-edged → 1 very soft. Default 0.5. */
     softness?: number;
-    /**
-     * Half-extent of a directional light's orthographic shadow frustum, in world
-     * units. Sized to the scene's own bounds when omitted — too large and the
-     * shadow is blocky, too small and it clips.
-     */
+    /** Half-extent of a directional light's orthographic shadow frustum, world units. Sized to the scene bounds when omitted; too large is blocky, too small clips. */
     extent?: number;
     /** Escape hatch, assigned onto the renderer's shadow object. */
     params?: Record<string, unknown>;
 }
 
 /**
- * A node's relationship to shadows.
+ * A node's relationship to shadows. Objects default to `true` (cast and receive) with the viewport's own `shadows`
+ * switch deciding, so enabling shadows is enough without tagging every mesh. For a light it says whether it casts a
+ * shadow map, and the object form tunes that map.
  *
- * One control rather than the two booleans three has, because for an *object*
- * "casts" and "receives" are almost never wanted apart, and defaulting both to
- * `false` (as three does) means a scene with shadows enabled and a light casting
- * them still renders nothing until every mesh is tagged. Here the default is
- * `true` and the viewport's own `shadows` switch is what decides — so turning
- * shadows on turns shadows on.
- *
- * For a *light* the same prop says whether it casts a shadow map, and the object
- * form carries that map's tuning. One name, because it is one question — "what
- * does this node do about shadows" — asked of two kinds of node.
- *
- * Note that every light casting by default is a real cost once shadows are on: a
- * point light needs a six-face cube map. Turn the fill lights off with
- * `shadow={false}` and leave the key light casting, which is what a lighting
- * setup does anyway.
+ * Every light casting by default is a real cost once shadows are on (a point light needs a six-face cube map):
+ * turn fill lights off with `shadow={false}` and leave the key light casting.
  */
 export type Shadow3D = boolean | "cast" | "receive" | ShadowOptions3D;
 
-/** True when this mode casts. */
 export function shadowCasts(mode: Shadow3D | undefined): boolean {
     if (mode === undefined || mode === true) return true;
     if (mode === false) return false;
     return mode === "cast" || typeof mode === "object";
 }
 
-/** True when this mode receives. */
 export function shadowReceives(mode: Shadow3D | undefined): boolean {
     if (mode === undefined || mode === true) return true;
     if (mode === false) return false;
@@ -65,36 +39,20 @@ export function resolveShadowOptions3D(mode: Shadow3D | undefined): ShadowOption
 }
 
 /**
- * Placement of a single 3D object. Every field is optional; an omitted field
- * means identity, so `{}` is a valid no-op transform.
- *
- * Rotation is in **degrees** — the engine's 2D `rotation` is degrees, so 3D
- * matches and authors never write `Math.PI`. The renderer converts.
- *
- * There is no `key` here. Reconciler identity is derived: a node stamps its own
- * id on the scope it opens, and a drawable is keyed by that id plus a content
- * signature, so a builder that emits ops conditionally reuses the right cache
- * entry without anything being written by hand. See the reconciler.
+ * Placement of a single 3D object; an omitted field means identity, so `{}` is a no-op. Rotation is in **degrees**
+ * (matching 2D `rotation`); the renderer converts. No hand-written key: a node stamps its id on the scope it opens,
+ * and a drawable is keyed by that id plus a content signature, so conditional builders reuse the right cache entry.
  */
 export interface Transform3D {
     /** Position in the parent's local space. Default origin. */
     position?: Vector3Input;
-    /**
-     * Euler rotation in **degrees**, applied in `order` (default `"XYZ"`).
-     * Ignored when {@link quaternion} is set.
-     */
+    /** Euler rotation in **degrees**, applied in `order` (default `"XYZ"`); ignored when {@link quaternion} is set. */
     rotation?: Vector3Input | Euler3;
-    /**
-     * Rotation as a unit quaternion. Wins over {@link rotation} — use it (with
-     * `slerpQuaternion`) for tumbles where Euler interpolation would gimbal.
-     */
+    /** Unit quaternion; wins over {@link rotation}. Use it (with `slerpQuaternion`) for tumbles where Euler would gimbal. */
     quaternion?: Quaternion;
     /** Per-axis scale; a scalar scales uniformly. Default 1. */
     scale?: Vector3Input;
-    /**
-     * World-space point to orient toward, applied after {@link position}.
-     * Wins over both {@link rotation} and {@link quaternion}.
-     */
+    /** World-space point to orient toward, applied after {@link position}; wins over {@link rotation} and {@link quaternion}. */
     lookAt?: Vector3Input;
     /** Hide without removing (keeps the cached object alive). Default true. */
     visible?: boolean;
@@ -103,11 +61,7 @@ export interface Transform3D {
     /** Draw-order override, for tuning transparent sorting. */
     renderOrder?: number;
     /**
-     * Node identity, stamped by the scene recorder rather than by an author.
-     *
-     * `Scene3D.begin` writes the recording node's id here so the renderer caches
-     * a group against the node that opened it. Nothing an author writes goes in
-     * this field.
+     * Node identity, stamped by `Scene3D.begin` so the renderer caches a group against the node that opened it; never written by an author.
      *
      * @internal
      */

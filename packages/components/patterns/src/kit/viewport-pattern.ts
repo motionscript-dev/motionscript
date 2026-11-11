@@ -25,24 +25,13 @@ import {
 } from "@motionscript/sdk";
 
 /**
- * What a background that fills whatever region is currently visible shares,
- * rather than a fixed rect: `GridPattern` is built from it, and so is a pattern
- * of your own. Spread `state` and `commands` in, pass `measure` and `layout`, and
- * draw with {@link draw}.
- *
- * Placed inside a `Camera`, the pattern is handed the world region the camera
- * can currently see (from its `zoom`/`lookAt`/`heading`), so it only ever
- * generates geometry for what's on screen, with no oversized node sized for the
- * worst-case pan and zoom. With no `Camera` above it, it fills its own box, so the
- * same pattern doubles as an ordinary full-bleed background.
- *
- * The pattern is itself a camera child, laid out at the camera's centre, so its
- * local draw space shares the world origin its siblings use. The visible region
- * is therefore expressed directly in that space: centred on the camera's
- * `lookAt`, sized to the inverse of the camera transform.
+ * What a pattern filling the camera's visible region shares: spread `state` and
+ * `commands` in, pass `measure` and `layout`, and draw with {@link draw}. Inside a
+ * `Camera` the pattern is handed the world region it can see, so it only generates
+ * geometry for what is on screen; with none it fills its own box. It is laid out at
+ * the camera's centre, so its draw space shares the world origin its siblings use.
+ * A pattern is a shape: paints, and children laid out like a rect's.
  */
-
-/** A pattern is a shape: paints, and children laid out like a rect's. */
 export const state = { ...Paint.state, ...Flow.state };
 
 export const commands = { ...Paint.commands };
@@ -57,10 +46,7 @@ export function layout(box: BoxBounds, s: ShapeState, children: readonly ChildVi
     return Flow.layout(box, s, children, Paint.inset(s));
 }
 
-/**
- * The region the pattern covers, in its own draw space: the world rect the
- * nearest `Camera` above it sees, or its own box when there is none.
- */
+/** The world rect the nearest `Camera` sees, in the pattern's draw space, else its own box. */
 export function visibleBounds(ctx: RenderContext): BoxBounds {
     const camera = ctx.ancestor(Camera);
     if (!camera) return { x: 0, y: 0, width: ctx.size.width, height: ctx.size.height };
@@ -69,12 +55,10 @@ export function visibleBounds(ctx: RenderContext): BoxBounds {
     const zoom = camera.state.zoom || 1;
     const heading = camera.state.heading;
 
-    // Inverse of the camera scale: a viewport `vw×vh` shows `vw/zoom × vh/zoom` of the world.
     const hw = vw / 2 / zoom;
     const hh = vh / 2 / zoom;
 
-    // With a heading the visible world rect is rotated; take its axis-aligned
-    // bounding box so the pattern covers the rotated viewport's full extent.
+    // With a heading the visible rect is rotated; its axis-aligned bounding box covers the full extent.
     let bw = hw;
     let bh = hh;
     if (heading !== 0) {
@@ -85,21 +69,15 @@ export function visibleBounds(ctx: RenderContext): BoxBounds {
         bh = hw * sin + hh * cos;
     }
 
-    // Centred on the camera's `lookAt`, in y-up world space (the descriptor
-    // convention; the renderer applies the single y-up→canvas flip when the
-    // pattern's shapes are drawn).
+    // Centred on the camera's `lookAt`, in y-up world space.
     const lookAt = camera.state.lookAt;
     return { x: lookAt.x, y: lookAt.y, width: bw * 2, height: bh * 2 };
 }
 
 /**
- * Paint `pattern` over the visible region, once per render, then the children.
- *
- * The pattern is clipped to the region, so geometry overscanned past the edge
- * (so thick lines slide out instead of popping) trims cleanly. Inside a camera
- * the viewport already clips, but this keeps edge strokes clean and bounds the
- * work with no camera too. A `centerBounds` for a path drawn here is
- * `[bounds.x - w/2, bounds.y - h/2, bounds.x + w/2, bounds.y + h/2]`.
+ * Paints `pattern` over the visible region, then the children. Clipped to the
+ * region so overscanned geometry trims cleanly even with no camera. A path drawn
+ * here takes `centerBounds` of `[bounds.x - w/2, bounds.y - h/2, bounds.x + w/2, bounds.y + h/2]`.
  */
 export function draw(ctx: RenderContext, pattern: (bounds: BoxBounds) => void): void {
     const bounds = visibleBounds(ctx);

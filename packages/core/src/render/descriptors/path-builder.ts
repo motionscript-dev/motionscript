@@ -1,12 +1,7 @@
 import { PathCommand } from "./path";
 import type { PathState } from "./path";
 
-/**
- * A full or partial revolution of an ellipse, in the same **y-up** space the
- * commands themselves are authored in (`y = 100` is 100px *above* the centre,
- * matching a node's `x`/`y`). Angles are degrees from 3 o'clock, positive
- * counter-clockwise — the vocabulary the `Ellipse` node already uses.
- */
+/** A full or partial revolution of an ellipse, in the **y-up** space commands are authored in (`y = 100` is 100px above the centre). Angles are degrees from 3 o'clock, counter-clockwise positive, as the `Ellipse` node. */
 export interface EllipseArc {
     /** Centre. Both default to the origin. */
     x?: number;
@@ -14,7 +9,6 @@ export interface EllipseArc {
     width: number;
     /** Defaults to `width`, i.e. a circle. */
     height?: number;
-    /** Where on the perimeter the curve starts. */
     startAngle?: number;
     /** Degrees travelled; negative goes clockwise. Past ±360 it keeps looping. */
     sweep?: number;
@@ -56,19 +50,7 @@ export class PathBuilder {
         return this._at(x, y);
     }
 
-    /**
-     * An **open** elliptical arc: the perimeter of {@link EllipseArc} from
-     * `startAngle` through `sweep` degrees.
-     *
-     * Continues the current subpath — a straight line joins the pen's position
-     * to the arc's start when the two differ — so `moveTo(...).arc(...)` is one
-     * unbroken curve, which is what a `moveTo` command following the path needs.
-     * A new `M` there would be a subpath break the walk teleports across.
-     *
-     * ```ts
-     * new PathBuilder().arc({ x: 0, y: 0, width: 400, startAngle: 180, sweep: -180 });
-     * ```
-     */
+    /** An **open** elliptical arc: the perimeter of {@link EllipseArc} from `startAngle` through `sweep` degrees. Continues the current subpath (a straight line joins the pen to the arc's start when they differ), so `moveTo(...).arc(...)` is one unbroken curve; a new `M` would be a subpath break the walk teleports across. */
     arc(arc: EllipseArc): this {
         const { cx, cy, rx, ry, from, sweep } = resolveArc(arc);
         const start = pointOn(cx, cy, rx, ry, from);
@@ -77,12 +59,7 @@ export class PathBuilder {
         return this._sweep(cx, cy, rx, ry, from, sweep);
     }
 
-    /**
-     * A **closed** subpath tracing an ellipse — the shape form of {@link arc}.
-     *
-     * A `sweep` short of a full turn closes across the chord back to the start;
-     * for a pie wedge or an annular sector, that is an `Ellipse` node's `ratio`.
-     */
+    /** A **closed** subpath tracing an ellipse. A `sweep` short of a full turn closes across the chord; for a pie wedge or annular sector use an `Ellipse` node's `ratio`. */
     ellipse(arc: EllipseArc): this {
         const { cx, cy, rx, ry, from, sweep } = resolveArc(arc);
         const start = pointOn(cx, cy, rx, ry, from);
@@ -112,12 +89,7 @@ export class PathBuilder {
         return this;
     }
 
-    /**
-     * Emit the arc as segments of at most a quarter turn. One `A` command cannot
-     * express a full revolution at all (its endpoints would coincide, leaving the
-     * arc undefined) and grows imprecise well before that, so the split is what
-     * makes `sweep` a real angle rather than a value capped just under 360.
-     */
+    /** Emits the arc as segments of at most a quarter turn: one `A` can't express a full revolution (coincident endpoints leave it undefined) and is imprecise well before that, so the split makes `sweep` a real angle. */
     private _sweep(cx: number, cy: number, rx: number, ry: number, from: number, sweep: number): this {
         if (sweep === 0) return this;
         const steps = Math.ceil(Math.abs(sweep) / 90);

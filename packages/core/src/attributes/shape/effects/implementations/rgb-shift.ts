@@ -1,23 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Per-channel spatial offset — the red/green/blue planes pulled apart along
- * independent vectors.
- *
- * Where `chromaticAberration` models a *lens*, so its fringing is symmetric and
- * driven by one distance and angle, this is the digital-artefact version: each
- * channel is displaced wherever you point it, including all three differently.
- * That freedom is what makes it the RGB-tear component of a glitch, and it is
- * why the two effects coexist rather than one subsuming the other.
- *
- * Offsets are in px and scale with the node, like every other px option.
- */
+/** Per-channel spatial offset: the red/green/blue planes pulled apart along independent vectors. Where `chromaticAberration` models a *lens* (symmetric fringing from one distance and angle), this is the digital-artefact version, each channel displaced wherever you point it: the RGB-tear of a glitch. Offsets are in px and scale with the node. */
 export interface RgbShiftEffect extends ModedEffect, EffectFields<typeof rgbShiftSpec.params> {
     type: "rgbShift";
 }
 
-/** The {@link RgbShiftEffect} spec: its parameters, defaults and ranges. */
 export const rgbShiftSpec = defineEffect({
     type: "rgbShift",
     group: "glitch",

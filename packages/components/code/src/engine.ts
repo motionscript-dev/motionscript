@@ -1,10 +1,6 @@
-// The Code "engine": syntax highlighting, tokenizing, layout, diffing, and
-// transition/phase scheduling — kept separate from node.ts so a copy of the node
-// can take just its declaration and import this behind
-// `@motionscript/code` instead. What gets copied is whatever this
-// package's registry.json declares, which for this component is node.ts;
-// src/tests/registry.test.ts checks that anything it
-// reaches for is either copied alongside it or re-exported from here.
+// Everything node.ts imports besides its own declaration, so a copy of the node can take
+// just node.ts and import this from `@motionscript/code`. registry.test.ts checks that
+// whatever node.ts reaches for is copied alongside it or re-exported from here.
 export * from './transitions';
 export * from './layout';
 export { drawCode } from './render';

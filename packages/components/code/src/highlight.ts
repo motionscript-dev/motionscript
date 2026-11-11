@@ -8,22 +8,7 @@ import {
     compileStyle,
 } from "./style";
 
-/**
- * Lezer-backed syntax highlighting for the Code component, replacing the former
- * Shiki wiring. This mirrors Motion Canvas's `LezerHighlighter`:
- *
- *  - {@link prepareHighlight} parses code once and builds a `from:to` → color map
- *    by walking {@link highlightTree}.
- *  - {@link tokenizeCode} splits code at parse-tree leaf boundaries.
- *  - {@link highlightAt} resolves the color (and run length) for a character index.
- *
- * Parsers load lazily and asynchronously (dynamic import) so the bundle doesn't
- * pull in every grammar. The node's asset loader awaits {@link ensureHighlighter}
- * before tokenizing; until a parser resolves, callers fall back to plain text and
- * re-tokenize once {@link canHighlight} returns true.
- */
-
-/** Dynamic-import factories for each supported language → a Lezer {@link Parser}. */
+// Dynamic imports keep the bundle from pulling in every grammar.
 const LANGUAGE_LOADERS: Record<string, () => Promise<Parser>> = {
     typescript: async () => (await import("@lezer/javascript")).parser.configure({ dialect: "ts" }),
     tsx: async () => (await import("@lezer/javascript")).parser.configure({ dialect: "ts jsx" }),
@@ -43,7 +28,6 @@ const LANGUAGE_LOADERS: Record<string, () => Promise<Parser>> = {
     yaml: async () => (await import("@lezer/yaml")).parser,
 };
 
-// Aliases so common language strings resolve to a loader above.
 const LANGUAGE_ALIASES: Record<string, string> = {
     ts: "typescript",
     js: "javascript",
@@ -81,17 +65,12 @@ function resolveLanguageKey(language: string): string {
     return LANGUAGE_ALIASES[key] ?? key;
 }
 
-// Loaded parsers and in-flight loads, keyed by resolved language key, so
-// concurrent Code nodes asking for the same language share one dynamic import.
+// Keyed by resolved language, so concurrent nodes share one import.
 const loadedParsers = new Map<string, Parser>();
 const inFlightLangs = new Map<string, Promise<Parser | null>>();
 
-export const DEFAULT_THEMES = [DefaultHighlightStyle.name];
 export const DEFAULT_LANGS = ["typescript", "javascript", "json", "python"];
 
-// Theme registry, seeded with the built-ins (Motion Canvas default + GitHub
-// dark/light). The `theme` prop is a string name or a CodeHighlightStyle object;
-// apps can register additional styles by name and reference them by that name.
 const themesByName = new Map<string, CodeHighlightStyle>(Object.entries(BUILTIN_THEMES));
 
 /** Register a custom {@link CodeHighlightStyle} so Code nodes can reference it by name. */
@@ -99,11 +78,7 @@ export function registerCodeTheme(style: CodeHighlightStyle): void {
     themesByName.set(style.name, style);
 }
 
-/**
- * Resolve a theme reference (a registered name, or a CodeHighlightStyle object)
- * to a concrete style. Unknown names fall back to the Motion Canvas default so a
- * stray theme string never throws, with one warning per name.
- */
+/** An unknown theme name falls back to the default style with one warning, never a throw. */
 export function resolveTheme(theme: CodeTheme): CodeHighlightStyle {
     if (typeof theme !== "string") return theme;
     const style = themesByName.get(theme);
@@ -116,24 +91,13 @@ export function resolveTheme(theme: CodeTheme): CodeHighlightStyle {
     return DefaultHighlightStyle;
 }
 
-/** Has `language` finished loading its parser? */
-function isLanguageLoaded(language: string): boolean {
-    return loadedParsers.has(resolveLanguageKey(language));
-}
-
 /**
- * Load the parsers for `langs` (themes are synchronous, so they're a no-op here
- * but kept in the signature for API parity with the former Shiki implementation).
- * Resolves once every requested language's parser is available. Unknown languages
- * resolve without loading anything — {@link canHighlight} stays false for them and
- * the node renders them as plain text, with one warning per language. A grammar
- * whose import is rejected is reported the same way and is tried again by the
- * next call.
+ * Resolves once every requested language's parser is loaded. An unknown language
+ * resolves without loading (`canHighlight` stays false and it draws as plain
+ * text); a grammar whose import rejects is reported the same way and retried by
+ * the next call. Each warns once.
  */
-export function ensureHighlighter(
-    _themes: string[] = DEFAULT_THEMES,
-    langs: string[] = DEFAULT_LANGS,
-): Promise<void> {
+export function ensureHighlighter(langs: string[] = DEFAULT_LANGS): Promise<void> {
     const jobs: Promise<unknown>[] = [];
 
     for (const lang of langs) {
@@ -142,7 +106,6 @@ export function ensureHighlighter(
 
         const loader = LANGUAGE_LOADERS[key];
         if (!loader) {
-            // Unsupported language; leave it unhighlighted, and say so.
             if (!PLAIN_LANGUAGES.has(key)) {
                 warnOnce(
                     "language",
@@ -177,33 +140,22 @@ export function ensureHighlighter(
     return jobs.length === 0 ? Promise.resolve() : Promise.all(jobs).then(() => undefined);
 }
 
-/**
- * Load a syntax-highlight language into the shared highlighter. Exposed so a Code
- * node's asset loader can run it on the timeline, and so apps can preload
- * languages explicitly. Returns once the parser is ready (or immediately for an
- * unsupported language). The `theme` arg is accepted for backwards compatibility.
- */
-export async function loadCodeLanguage(language: string, _theme?: string): Promise<void> {
-    await ensureHighlighter(DEFAULT_THEMES, [language]);
+/** Loads one language; resolves at once for an unsupported one. */
+export async function loadCodeLanguage(language: string): Promise<void> {
+    await ensureHighlighter([language]);
 }
 
-export async function initSyntaxHighlighter(
-    themes: string[] = DEFAULT_THEMES,
-    langs: string[] = DEFAULT_LANGS,
-): Promise<void> {
-    await ensureHighlighter(themes, langs);
+export async function initSyntaxHighlighter(langs: string[] = DEFAULT_LANGS): Promise<void> {
+    await ensureHighlighter(langs);
 }
 
-/** True once `language` can be tokenized (its parser has loaded). */
-export function canHighlight(language: string, _theme?: CodeTheme): boolean {
-    return isLanguageLoaded(language);
+/** True once `language`'s parser has loaded. */
+export function canHighlight(language: string): boolean {
+    return loadedParsers.has(resolveLanguageKey(language));
 }
 
-/** A parsed-and-prepared highlight cache for one snapshot of code. */
 interface HighlightCache {
     tree: Tree;
-    code: string;
-    // `${from}:${to}` node id → color, exactly as Motion Canvas keys it.
     colorLookup: Map<string, string>;
 }
 
@@ -211,12 +163,7 @@ function nodeId(from: number, to: number): string {
     return `${from}:${to}`;
 }
 
-/**
- * Parse `code` and build the per-node color map. Mirrors Motion Canvas's
- * `LezerHighlighter.prepare`: for each highlighted range, walk the subtree and
- * record the color against every contained node's `from:to` id, so a later
- * {@link highlightAt} lookup by `resolveInner` index finds it.
- */
+/** Maps every node inside a highlighted range to its color by `from:to` id, for {@link highlightAt}. */
 function prepareHighlight(code: string, language: string, style: CodeHighlightStyle): HighlightCache | null {
     const parser = loadedParsers.get(resolveLanguageKey(language));
     if (!parser) return null;
@@ -226,8 +173,7 @@ function prepareHighlight(code: string, language: string, style: CodeHighlightSt
     const colorLookup = new Map<string, string>();
 
     highlightTree(tree, highlighter, (from, to, classes) => {
-        // tagHighlighter emits our color string as the "class".
-        const color = classes;
+        const color = classes; // the tag highlighter emits the color as the "class"
         if (!color) return;
         const cursor = tree.cursorAt(from, 1);
         do {
@@ -235,32 +181,22 @@ function prepareHighlight(code: string, language: string, style: CodeHighlightSt
         } while (cursor.next() && cursor.to <= to);
     });
 
-    return { tree, code, colorLookup };
+    return { tree, colorLookup };
 }
 
-/**
- * Resolve the color and run length for the token starting at `index`. Mirrors
- * Motion Canvas's `LezerHighlighter.highlight`: resolve the innermost node, look
- * up its color, and report how far the run extends (`skipAhead`).
- */
+/** The color and run length (`skipAhead`) of the innermost node at `index`. */
 function highlightAt(index: number, cache: HighlightCache): { color: string | null; skipAhead: number } {
     const node = cache.tree.resolveInner(index, 1);
     const color = cache.colorLookup.get(nodeId(node.from, node.to));
     if (color) {
         return { color, skipAhead: node.to - index };
     }
-    // No color: skip past a childless (leaf) node so we don't re-resolve every char.
+    // Uncolored: skip a whole leaf rather than re-resolving every character.
     const skipAhead = node.firstChild ? 0 : node.to - index;
     return { color: null, skipAhead };
 }
 
-/**
- * Split `code` into structural tokens at parse-tree leaf boundaries, including the
- * gaps between leaves (whitespace/punctuation). Mirrors Motion Canvas's
- * `LezerHighlighter.tokenize`; this segmentation is what the token-level
- * append/insert/erase/replace animations diff against, so matching it keeps the
- * animation behavior identical to Motion Canvas.
- */
+/** Splits at parse-tree leaf boundaries, gaps between leaves included; the edit animations diff against this segmentation. */
 function tokenizeCode(code: string, language: string): string[] {
     const parser = loadedParsers.get(resolveLanguageKey(language));
     if (!parser) return [code];
@@ -283,13 +219,8 @@ function tokenizeCode(code: string, language: string): string[] {
 }
 
 /**
- * Tokenize `code` into per-line, colored tokens — the contract the rest of the
- * Code component consumes. Combines {@link tokenizeCode} (structural split) with
- * {@link highlightAt} (per-run color), then breaks tokens at newlines so each
- * output line is a row of single-line, single-color tokens.
- *
- * Callers must have checked {@link canHighlight} first; this returns a single
- * uncolored line per source line if the parser isn't loaded.
+ * Per-line rows of single-line, single-color tokens. Without a loaded parser it
+ * returns one uncolored token per source line, so callers check {@link canHighlight}.
  */
 export function highlightToTokens(
     code: string,
@@ -304,19 +235,15 @@ export function highlightToTokens(
     const pushLine = () => lines.push([]);
 
     if (!cache) {
-        // Parser unavailable: one uncolored token per source line.
         return code.split("\n").map(line => [{ content: line, color: style.defaultColor }]);
     }
 
-    // Walk the structural tokens, coloring each by its starting index and
-    // splitting on newlines so no token spans rows.
     let index = 0;
     for (const token of tokenizeCode(code, language)) {
         let offset = 0;
         while (offset < token.length) {
             const { color, skipAhead } = highlightAt(index + offset, cache);
-            // Extend the run as far as the highlight says, but never past this
-            // structural token and never across a newline (lines are drawn rows).
+            // A run never passes its structural token or a newline.
             let runEnd = offset + Math.max(skipAhead, 1);
             if (runEnd > token.length) runEnd = token.length;
             const newlineRel = token.indexOf("\n", offset);

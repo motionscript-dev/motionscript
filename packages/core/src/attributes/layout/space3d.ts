@@ -2,16 +2,7 @@ import { lerpNumber } from "@/tween/lerp";
 import type { Matrix2D, Projection3D } from "./matrix2d";
 import type { Vector2 } from "./vector2";
 
-/**
- * The maths of a 2.5D space: flat nodes placed in one 3D frame and seen through
- * a single orbiting camera, rather than each projecting through a perspective of
- * its own (see {@link import("./matrix2d").nodeProjectedMatrix}).
- *
- * Everything here works in the space root's canvas frame — x right, y **down**,
- * z toward the viewer, the frame `nodeProjectedMatrix` already tilts nodes in —
- * so a node's transform is the same rotation block with the perspective divide
- * lifted out and applied once, by the camera, to the whole scene.
- */
+/** The maths of a 2.5D space: flat nodes in one 3D frame seen through a single orbiting camera. Works in the space root's canvas frame (x right, y **down**, z toward the viewer), so a node's transform is {@link import("./matrix2d").nodeProjectedMatrix}'s rotation block with the perspective divide lifted out and applied once, by the camera. */
 
 /** A point a camera is aimed at. `z` is depth, toward the viewer, as a node's `depth` is. */
 export interface LookAt extends Vector2 {
@@ -26,14 +17,10 @@ export function lerpLookAt(from: LookAt, to: LookAt, t: number): LookAt {
 }
 
 /**
- * A space root's camera for one frame.
- *
- * `orbit`/`elevation` mean what they mean on `Camera3D` (`render3d/camera.ts`,
- * `resolveCameraPlacement`): orbit 0 is head-on, a positive orbit moves the
- * camera toward +x, a positive elevation lifts it. `perspective` is the camera's
- * distance from `lookAt` at `dolly: 0`, CSS's convention, so the focus plane
- * draws 1:1; `0` is a parallel projection. `zoom` and `heading` apply after the
- * projection, which makes them lens zoom and roll exactly.
+ * A space root's camera for one frame. `orbit`/`elevation` mean what they do on `Camera3D` (`render3d/camera.ts`):
+ * orbit 0 is head-on, positive orbit moves toward +x, positive elevation lifts. `perspective` is the distance from
+ * `lookAt` at `dolly: 0` (CSS convention, so the focus plane draws 1:1; `0` is parallel). `zoom` and `heading` apply
+ * after projection: lens zoom and roll.
  */
 /** @internal */
 export interface SpaceCamera {
@@ -45,7 +32,6 @@ export interface SpaceCamera {
     lookAt: LookAt;
     zoom: number;
     heading: number;
-    /** The viewport centre in the root's canvas frame. */
     viewportX: number;
     viewportY: number;
 }
@@ -53,9 +39,6 @@ export interface SpaceCamera {
 /** Row-major 3×4 affine transform: `[r00 r01 r02 tx, r10 r11 r12 ty, r20 r21 r22 tz]`. */
 /** @internal */
 export type Affine3 = readonly number[];
-
-/** @internal */
-export const IDENTITY_AFFINE3: Affine3 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0];
 
 /** @internal `a · b` — applies `b` first, the same order as `matrix2d`'s `multiply`. */
 export function multiplyAffine3(a: Affine3, b: Affine3): Affine3 {
@@ -71,13 +54,9 @@ export function multiplyAffine3(a: Affine3, b: Affine3): Affine3 {
 }
 
 /**
- * A node's transform in its parent's 3D frame — {@link import("./matrix2d").nodeProjectedMatrix}
- * without the perspective, which in a space belongs to the camera:
- *
- *   `T(cx + pivotX, cy + pivotY, depth) · Rx · Ry · Rz(rotation + rotationZ) · S(scale) · T(-pivot) · F(flip)`
- *
- * `p.perspective` is ignored. The scale is uniform in all three axes, so a
- * scaled group scales the depth its children sit at too.
+ * A node's transform in its parent's 3D frame: {@link import("./matrix2d").nodeProjectedMatrix} without the perspective,
+ * which in a space belongs to the camera: `T(cx + pivotX, cy + pivotY, depth) · Rx · Ry · Rz(rotation + rotationZ) ·
+ * S(scale) · T(-pivot) · F(flip)`. The scale is uniform in all three axes, so a scaled group scales its children's depth too.
  */
 /** @internal */
 export function nodeSpaceMatrix(
@@ -105,13 +84,7 @@ export function nodeSpaceMatrix(
     ];
 }
 
-/**
- * The camera's view of the root frame: `T(0, 0, dolly) · R(camera)ᵀ · T(-lookAt)`.
- *
- * Built from the camera's own axes rather than from a look-at basis, so there is
- * no pole to clamp: an elevation past 90° keeps turning rather than snapping to
- * an arbitrary roll.
- */
+/** The camera's view of the root frame: `T(0, 0, dolly) · R(camera)ᵀ · T(-lookAt)`. Built from the camera's own axes, not a look-at basis, so there is no pole to clamp: elevation past 90° keeps turning. */
 /** @internal */
 export function spaceViewMatrix(cam: SpaceCamera): Affine3 {
     const rad = Math.PI / 180;
@@ -129,15 +102,7 @@ export function spaceViewMatrix(cam: SpaceCamera): Affine3 {
     ];
 }
 
-/**
- * Project a view-space transform onto the screen: the homography that maps a
- * node's local `(x, y, 1)` to the root's canvas, perspective divide and the
- * camera's zoom and roll included.
- *
- * At rest — no orbit, elevation, dolly or `lookAt.z`, and a node with no depth
- * or tilt — this is exactly `cameraMatrix · local`, which is what makes turning
- * a space on invisible until something moves in depth.
- */
+/** Projects a view-space transform to the screen: the homography taking a node's local `(x, y, 1)` to the root's canvas, perspective divide, zoom and roll included. At rest it is exactly `cameraMatrix · local`, so turning a space on is invisible until something moves in depth. */
 /** @internal */
 export function spaceScreenMatrix(cam: SpaceCamera, view: Affine3): Matrix2D {
     const invP = cam.perspective > 0 ? 1 / cam.perspective : 0;
@@ -182,12 +147,7 @@ export interface SpacePlane {
     nz: number;
 }
 
-/**
- * `box` — the node's ink, centred and y-down in its local frame — through `view`.
- *
- * The normal is the transform's z column, which a mirror never touches: a flip
- * reflects the node without turning it around, so it cannot show its back.
- */
+/** `box` (the node's ink, centred and y-down) through `view`. The normal is the transform's z column, which a mirror never touches: a flip reflects without turning around, so it cannot show its back. */
 /** @internal */
 export function spacePlane(view: Affine3, box: { x: number; y: number; width: number; height: number }): SpacePlane {
     const hw = box.width / 2, hh = box.height / 2;
@@ -212,21 +172,13 @@ export function spacePlane(view: Affine3, box: { x: number; y: number; width: nu
     };
 }
 
-/**
- * Below this `w` a point is at or behind the camera. Not zero: a point just in
- * front of the lens projects so far out that float32 path maths loses it,
- * and at 1/100 the layer is already magnified a hundredfold — well past the edge
- * of any frame.
- */
+/** Below this `w` a point is at or behind the camera. Not zero: a point just in front of the lens projects so far out that float32 path maths loses it. */
 const NEAR_W = 0.01;
 
 /** Within this fraction of edge-on, a plane projects to a sliver narrower than a pixel. */
 const EDGE_ON = 1e-3;
 
-/**
- * How `plane` sits relative to the camera: `side` is positive when the camera
- * is in front of it, `edgeOn` when the camera lies (almost) in its plane.
- */
+/** `side` is positive when the camera is in front of `plane`; `edgeOn` when it lies (almost) in the plane. */
 /** @internal */
 export function cameraSide(cam: SpaceCamera, plane: SpacePlane): { side: number; edgeOn: boolean } {
     if (cam.perspective > 0) {
@@ -248,12 +200,7 @@ export function nearCoverage(cam: SpaceCamera, plane: SpacePlane): "all" | "some
     return inFront === 4 ? "all" : inFront === 0 ? "none" : "some";
 }
 
-/**
- * The part of `box` (local, y-down) that lies in front of the camera under the
- * homography `screen`, as a polygon in the same frame — or `null` when none of
- * it does. `margin` grows the box first, so a shadow or stroke spilling past the
- * node's ink is not cut along its edge.
- */
+/** The part of `box` (local, y-down) in front of the camera under homography `screen`, as a polygon in the same frame, or `null` when none is. `margin` grows the box first so a shadow or stroke past the ink isn't cut at its edge. */
 /** @internal */
 export function nearCutPolygon(
     screen: Matrix2D,
@@ -285,11 +232,7 @@ export function nearCutPolygon(
 /** Two points closer than this in view space (px) count as touching. */
 const SIDE_EPS = 0.01;
 
-/**
- * Which side of `a`'s plane `b` lies on, as seen from the camera:
- * `1` in front (toward the camera), `-1` behind, `0` straddling it or lying in
- * it. `camSide` is `a`'s {@link cameraSide}.
- */
+/** Which side of `a`'s plane `b` lies on from the camera: `1` in front, `-1` behind, `0` straddling or coplanar. `camSide` is `a`'s {@link cameraSide}. */
 function sideOf(a: SpacePlane, b: SpacePlane, camSide: number): number {
     let front = 0, back = 0;
     for (let i = 0; i < 4; i++) {
@@ -304,22 +247,16 @@ function sideOf(a: SpacePlane, b: SpacePlane, camSide: number): number {
     return 0;
 }
 
-/** Squared distance from the camera: larger is farther. */
 function farness(cam: SpaceCamera, p: SpacePlane): number {
     if (cam.perspective > 0) return p.cx * p.cx + p.cy * p.cy + (cam.perspective - p.cz) ** 2;
     return -p.cz;
 }
 
 /**
- * `-1` when `a` must paint before `b`, `1` after, `0` when either order is right
- * — coplanar siblings, which keep their authored order.
- *
- * A plane test first, since it is exact for anything that does not intersect:
- * whichever node lies wholly on the camera's side of the other's plane is in
- * front. Parallel layers — the whole of a parallax stack — always resolve here,
- * and so do coplanar ones, as a tie. Only planes that cut through each other fall
- * back to the distance of their centres, and no painter's order is right for
- * those anyway.
+ * `-1` when `a` must paint before `b`, `1` after, `0` when either order is right (coplanar siblings keep authored
+ * order). A plane test first, exact for anything that does not intersect: parallel layers (a parallax stack) and
+ * coplanar ones resolve there. Only planes cutting through each other fall back to centre distance; no painter's
+ * order is right for those anyway.
  */
 function compareInSpace(cam: SpaceCamera, a: SpacePlane, b: SpacePlane): number {
     const ca = cameraSide(cam, a);
@@ -367,12 +304,7 @@ function rootCamera(props: SpaceCameraProps): SpaceCamera {
     return { ...props, viewportX: 0, viewportY: 0 };
 }
 
-/**
- * The space's camera maths for a host drawing over the picture — a gizmo
- * aiming the camera, a guide marking where it looks — so it asks the renderer's
- * own arithmetic rather than keeping a copy that could drift from it. Points are
- * in viewport space: origin at the centre, y-up.
- */
+/** The space's camera maths for a host drawing over the picture (a gizmo aiming the camera), using the renderer's own arithmetic so it can't drift. Points are in viewport space: origin at the centre, y-up. */
 export const space3dOps = {
     lerpLookAt,
 
@@ -394,11 +326,7 @@ export const space3dOps = {
         };
     },
 
-    /**
-     * The displacement at the camera's focus — in the plane facing it through
-     * `lookAt` — that moves the picture there by `vector`. The inverse of a pan:
-     * a hand dragging the picture by `vector` moves `lookAt` by minus this.
-     */
+    /** The displacement at the camera's focus, in the plane facing it through `lookAt`, that moves the picture there by `vector`. Inverse of a pan: dragging the picture by `vector` moves `lookAt` by minus this. */
     focusVector(camera: SpaceCameraProps, vector: Vector2): SpacePoint {
         const cam = rootCamera(camera);
         const rad = (-cam.heading * Math.PI) / 180;
@@ -422,14 +350,7 @@ export const space3dOps = {
 /** Past this many siblings the pairwise order costs more than it is worth, and the centres decide. */
 const PAIRWISE_LIMIT = 96;
 
-/**
- * The order to paint siblings in, far to near, as indices into `planes`.
- *
- * Pairwise {@link compareInSpace} relations become edges, and a stable
- * topological sort that always takes the lowest ready index keeps `layerOrder`
- * wherever the geometry has no opinion. A cycle — three planes each overlapping
- * the next, which no painter's order can draw — is broken at its farthest node.
- */
+/** The order to paint siblings in, far to near, as indices into `planes`. Pairwise {@link compareInSpace} relations become edges and a stable topological sort taking the lowest ready index keeps `layerOrder` where geometry has no opinion. A cycle (which no painter's order can draw) is broken at its farthest node. */
 /** @internal */
 export function spacePaintOrder(cam: SpaceCamera, planes: readonly SpacePlane[]): number[] {
     const n = planes.length;

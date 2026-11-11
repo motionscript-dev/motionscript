@@ -36,12 +36,7 @@ export class NoAudioError extends Error {
     }
 }
 
-/**
- * Mix the timeline's audio and encode it alone: WAV, MP3 or M4A (AAC). Nothing
- * is drawn, so no frame is rendered and no GPU surface is made.
- *
- * @throws {NoAudioError} when nothing on the timeline plays, rather than writing a silent file.
- */
+/** Mixes the timeline's audio and encodes it alone (WAV, MP3 or M4A/AAC); nothing is drawn, so no frame is rendered and no GPU surface made. @throws {NoAudioError} when nothing plays, rather than writing a silent file. */
 export async function exportAudio(params: ExportAudioParams): Promise<Uint8Array | void> {
     const { format = "wav", audio = {}, onProgress, signal, returnBytes = false } = params;
     const spec = formatSpec(format);

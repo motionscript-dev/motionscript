@@ -3,7 +3,6 @@ import {
     Types,
     type NodeOf,
     type NodeView,
-    type PaintProps,
     type Vector2,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Fill as _Fill,
@@ -18,19 +17,12 @@ import {
 import { listed, omit, PAINT, PAINT_COMMANDS } from "../kit/component";
 import type { Interval } from "../kit/coords";
 import { curveValue } from "../kit/curve";
-import { lerpInterval, PLOT_COLOR, readInterval } from "../kit/furniture";
+import { intervalEntry, PLOT_COLOR } from "../kit/furniture";
 import { clamp } from "../kit/geometry";
 import { curveFor, PLANE_ENTRY, PLOT_REF } from "../kit/graph";
 import { drawMark, inkSize, reading, traced, type MarkReading } from "../kit/mark";
 
 export type RiemannSample = "left" | "right" | "center";
-
-export interface RiemannSumProps extends PaintProps {
-    on?: string;
-    domain?: Interval;
-    dx?: number;
-    sample?: RiemannSample;
-}
 
 /** More rectangles than this is a filled area with extra steps. */
 const MAX_RECTANGLES = 2000;
@@ -39,7 +31,7 @@ const state = {
     // Its rectangles are revealed by `dx`, not by trimming their outlines.
     ...omit(PAINT, "start", "end"),
     on: PLOT_REF,
-    domain: Types.custom<Interval>([0, 1], { resolve: readInterval, lerp: lerpInterval }),
+    domain: intervalEntry([0, 1]),
     /** Each rectangle's width, in graph units. */
     dx: Types.number(0.25, { min: 0.001 }),
     /** Where in its width a rectangle reads the curve's height. */

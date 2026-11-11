@@ -16,17 +16,10 @@ import { boundsOfRuns, runsToPath } from "./geometry";
 import type { GraphPlane } from "./graph";
 
 /**
- * A mark is a node drawn in graph coordinates: a plot, an area, an arrow
- * between two graph points. It answers with runs of pixel points and is
- * otherwise a shape, so its box is the tight box of its ink.
- *
- * Inside a coordinate system (or a plot) the holder lays it out on that ink,
- * calling the mark's own trace with its map, and the mark's `x`/`y` are a shift
- * in graph units. Outside one a graph unit is a pixel and `x`/`y` are the usual
- * offset.
+ * What a mark is traced through: the map, its own `x`/`y` as a shift, and the
+ * plane it reads curves from. A mark is a shape whose box is the tight box of its
+ * ink; outside a system a graph unit is a pixel and `x`/`y` the usual offset.
  */
-
-/** What a mark is traced through: the map, its own `x`/`y` as a shift, and the plane it reads curves from. */
 export interface MarkReading {
     readonly map: CoordinateMap;
     /** Zero outside a system, where `x`/`y` are pixels. */
@@ -94,7 +87,7 @@ export function graphPoint(read: MarkReading, runs: readonly (readonly Vector2[]
     return { x: point.x - read.shift.x, y: point.y - read.shift.y };
 }
 
-/** What a mark paints with: a shape's paints, any it withdrew left out. */
+/** What a mark paints with. */
 export interface MarkPaint {
     readonly fill?: Fill;
     readonly stroke?: Stroke;

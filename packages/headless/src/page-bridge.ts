@@ -1,25 +1,7 @@
-/**
- * The contract between the Node driver and the page it drives.
- *
- * Types only, in a file neither half's tsconfig has to make an exception for:
- * the harness compiles with the DOM lib and no Node types, the driver with Node
- * types and no DOM, and a shared *type* needs neither.
- */
+/** The contract between the Node driver and the page, types only in a file neither half's tsconfig must make an exception for (the harness has the DOM lib and no Node types, the driver the reverse). */
 
 export interface ScreenshotRequest {
-    /**
-     * The document to render, as JSON.
-     *
-     * The usual way in, and the reason the split between this and the entry is
-     * worth having: a **document is data**, so it crosses the process boundary
-     * freely and a caller can render anything at request time. Only *node types*
-     * are code, and code is what the entry is bundled for.
-     *
-     * A string is taken as the document's JSON text, which Playwright carries
-     * into the page far faster than an object of thousands of nodes.
-     *
-     * Omit to render the entry's own default project.
-     */
+    /** The document to render, as JSON: a **document is data**, so it crosses the process boundary freely (only *node types* are code, which the entry is bundled for). A string is taken as JSON text, which Playwright carries far faster than an object of thousands of nodes. Omit to render the entry's default project. */
     document?: unknown;
     frame: number | "first" | "last";
     scale?: number;
@@ -34,7 +16,6 @@ export interface ScreenshotResult {
 }
 
 export interface ExportRequest {
-    /** See {@link ScreenshotRequest.document}. */
     document?: unknown;
     scale?: number;
     /** Render at this multiple and downsample before encoding. The browser exporter's default is 2. */
@@ -67,14 +48,7 @@ export interface Bridge {
     fps: number;
     /** The default project's track ids, in paint order. */
     listTracks(): string[];
-    /**
-     * Declare the media a scene may name.
-     *
-     * Fonts above all: `ManifestAssetCatalog` throws for a `src` it has never
-     * heard of, so an undeclared face is never fetched — and unlike Node, where
-     * a missing face renders nothing and is obvious, a browser quietly shapes
-     * against a fallback. Either way the frame is wrong; only one of them says so.
-     */
+    /** Declares the media a scene may name. Fonts above all: `ManifestAssetCatalog` throws for an unknown `src`, so an undeclared face is never fetched, and a browser quietly shapes against a fallback where Node renders nothing: either way the frame is wrong, only one says so. */
     setManifest(manifest: unknown): void;
     screenshot(request: ScreenshotRequest): Promise<ScreenshotResult>;
     exportVideo(request: ExportRequest): Promise<string>;

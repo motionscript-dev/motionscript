@@ -5,7 +5,7 @@ import { layoutCode, type CodeMetrics } from '../layout';
 import { TokenAdvanceCache } from '../measure-cache';
 import { drawCode } from '../render';
 import { makeIdLine, makeIdToken, type IdLine } from '../tokens';
-import { phasesFor, smoothstep, windowProgress, type StructuralTransition, type TokenState } from '../transitions';
+import { defaultCodePhases, smoothstep, windowProgress, type StructuralTransition, type TokenState } from '../transitions';
 import { listingOf } from '../node';
 import { LINE_NUMBER_COLOR, Frame, advanceOf, at, make, render } from './harness.fixtures';
 
@@ -219,7 +219,7 @@ function editFrame(fromRows: string[][], toRows: string[][], progress: number, o
         addedIds: edit.addedIds,
         enteringLineIds: edit.newLineIds,
         fromColorById: edit.fromColorById,
-        phases: phasesFor(edit.removedIds.size > 0, edit.addedIds.size > 0),
+        phases: defaultCodePhases(edit.removedIds.size > 0, edit.addedIds.size > 0),
         progress,
         layoutKey: null,
         fromLayout: null,

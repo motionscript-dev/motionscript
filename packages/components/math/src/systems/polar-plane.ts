@@ -2,12 +2,13 @@ import {
     component2d,
     Graphics2D,
     Types,
-    type Color,
     type Extents,
     type NodeOf,
+    type Color as _Color,
+
     type NormalizedColor,
-    type PaintProps,
-    type Stroke,
+    type Stroke as _Stroke,
+
     type StrokeResolved,
     type Values,
     // Named so the emitted declaration reaches these through the sdk, not core.
@@ -21,20 +22,9 @@ import {
 import { listed, PAINT, PAINT_COMMANDS } from "../kit/component";
 import { cartesianMap, type CoordinateMap } from "../kit/coords";
 import { AXIS_COLOR, drawLabels, type Label } from "../kit/furniture";
+import { radians } from "../kit/geometry";
 import { drawSystem, systemLayout, systemMap, systemOpenPlane, systemProvides, systemSize } from "../kit/system";
 import { formatTick, ticksFor } from "../kit/ticks";
-
-export interface PolarPlaneProps extends PaintProps {
-    radius?: number;
-    ringStep?: number;
-    spokes?: number;
-    angleUnit?: "degrees" | "radians";
-    gridStroke?: Stroke;
-    labels?: boolean;
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-}
 
 /** How much room, in label sizes, the angles written round the outer ring take from the plane. */
 const LABEL_ROOM = 2.2;
@@ -59,11 +49,7 @@ const state = {
 
 type PolarValues = Values<typeof state>;
 
-/**
- * Rings and spokes about an origin: the plane a polar curve is read on.
- * Children sit in its graph coordinates, x and y in the units its rings count,
- * so a plot of `r = 1 + cos(theta)`, a point or an arrow goes on it as on axes.
- */
+/** Rings and spokes about an origin: the plane a polar curve is read on. Children sit in its graph coordinates, as on axes. */
 export const PolarPlane = component2d({
     key: "polarPlane",
     state,
@@ -107,7 +93,7 @@ function polarFurniture(map: CoordinateMap, s: PolarValues): Graphics2D[] {
     const reach = map.toPoint(radius, 0).x - centre.x;
     if (!(reach > 0)) return [];
     const at = (r: number, degrees: number) => {
-        const angle = (degrees * Math.PI) / 180;
+        const angle = radians(degrees);
         return map.toPoint(r * Math.cos(angle), r * Math.sin(angle));
     };
     const ring = (g: Graphics2D, r: number): Graphics2D => {
@@ -148,10 +134,10 @@ function polarFurniture(map: CoordinateMap, s: PolarValues): Graphics2D[] {
     }
     for (const degrees of turns) {
         const p = at(radius, degrees);
-        const cos = Math.cos((degrees * Math.PI) / 180);
-        const sin = Math.sin((degrees * Math.PI) / 180);
+        const cos = Math.cos(radians(degrees));
+        const sin = Math.sin(radians(degrees));
         labels.push({
-            text: s.angleUnit === "degrees" ? `${formatTick(degrees, 1)}°` : radians(degrees),
+            text: s.angleUnit === "degrees" ? `${formatTick(degrees, 1)}°` : radiansLabel(degrees),
             at: { x: p.x + cos * size * 0.6, y: p.y + sin * size * 1.05 },
             align: cos > 0.3 ? "left" : cos < -0.3 ? "right" : "center",
         });
@@ -161,7 +147,7 @@ function polarFurniture(map: CoordinateMap, s: PolarValues): Graphics2D[] {
 }
 
 /** An angle in degrees as a fraction of π: 90 is `π/2`, 240 is `4π/3`. */
-function radians(degrees: number): string {
+function radiansLabel(degrees: number): string {
     if (degrees === 0) return "0";
     let numerator = Math.round(degrees);
     let denominator = 180;

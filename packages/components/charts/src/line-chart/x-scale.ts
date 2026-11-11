@@ -1,29 +1,11 @@
 /**
- * What a line chart's x column *means* — the one question that has to be
- * answered before a row can be given a position along the bottom of the plot.
+ * What a line chart's x column means: a number (plotted as is), an instant
+ * (`Jan`, `2026-W12`; plotted by time, so a gap in the data reads as a gap), or
+ * anything else (the row's position, evenly spaced).
  *
- * A y column is always a magnitude. An x column is one of three things, and
- * which one is a property of the data rather than something the author states:
- *
- * - **numeric** — `0, 5, 10` — plot the number.
- * - **time** — `Jan`, `2026-03`, `2026-W12`, `2026-03-14` — plot the instant,
- *   so samples a month apart sit a month apart and a gap in the data reads as a
- *   gap.
- * - **ordinal** — anything else — plot the row's position, evenly spaced.
- *
- * Before this, every x column went through `num()`, which reads a non-numeric
- * cell as `0`. A `Month` column of `Jan…Dec` therefore stacked all twelve
- * points on one x and drew a vertical line — no error, no empty chart, just a
- * wrong picture. That is the failure this module exists to remove: every column
- * now plots as *something*, and the something is the reading a person would
- * give it.
- *
- * The captions come back off the rows rather than out of a formatter. A tick on
- * a time or ordinal scale is chosen *from the data* (see {@link XScale.ticks}),
- * so the label it wants is the cell the author wrote — `Jan`, not `1970-01-01`,
- * and `2026-W12`, not the Monday it resolves to. Only a tick that is not a
- * sample — an author-set range, or a `zoomTo` mid-flight — needs formatting,
- * and that is the one case {@link formatInstant} covers.
+ * A tick on a time or ordinal scale is a sample, so its caption is the cell the
+ * author wrote; only a tick that is not (an author-set range, a `zoomTo`
+ * mid-flight) is formatted, by {@link formatInstant}.
  */
 
 import type { DataRecord } from "@motionscript/sdk"
@@ -40,25 +22,17 @@ import { formatNumber } from "@motionscript/sdk/component"
 /** How an x column's cells become positions along the axis. */
 export type XScaleKind = "numeric" | "time" | "ordinal"
 
-/**
- * An x column resolved into positions, captions and ticks.
- *
- * The three kinds differ in all three answers, so they are three closures built
- * once per (data, column) rather than a kind tag every caller switches on.
- */
+/** An x column resolved into positions, captions and ticks: three closures built once per (data, column), not a tag callers switch on. */
 export interface XScale {
   kind: XScaleKind
   /** Position of row `index` along the axis, in this scale's own units. */
   at(index: number): number
-  /** `[min, max]` across the rows — the scale when no range is set. */
+  /** `[min, max]` across the rows: the scale when no range is set. */
   extent: Range
-  /** The caption for a tick at `value`. */
   label(value: number): string
   /** `divisions + 1` tick values spanning `range`, ends included. */
   ticks(range: Range, divisions: number): number[]
 }
-
-// ---- Time parsing --------------------------------------------------------
 
 const DAY = 86_400_000
 
@@ -77,29 +51,15 @@ const MONTHS = [
   "december",
 ]
 
-/**
- * The year a cell that names no year is dated into.
- *
- * Any year would place `Jan…Dec` in the right order at the right spacing; a
- * leap year is the one that also spaces February correctly against a column
- * that *does* carry years, so the two read alike.
- */
+/** The year a cell naming none is dated into; a leap year, so February spaces the same as in a column that carries years. */
 const NOMINAL_YEAR = 2024
 
-/**
- * Month index for any unambiguous abbreviation of a month name — `jan`, `sept`,
- * `january` — or -1.
- *
- * Three letters minimum, and then a prefix match, which is what lets `sept`
- * through without letting `janitor` through: a longer word has to still *be*
- * the month.
- */
+/** Month index for `jan`, `sept` or `january`, else -1: three letters minimum, then a prefix match, so `sept` passes and `janitor` does not. */
 function monthIndex(word: string): number {
   if (word.length < 3) return -1
   return MONTHS.findIndex((month) => month.startsWith(word))
 }
 
-/** The Monday of ISO week `week` in `year`, as an epoch timestamp. */
 function isoWeekStart(year: number, week: number): number {
   // ISO week 1 is the week containing 4 January, and weeks start on Monday.
   const jan4 = Date.UTC(year, 0, 4)
@@ -108,14 +68,10 @@ function isoWeekStart(year: number, week: number): number {
 }
 
 /**
- * One cell read as an instant, or `null` when it isn't one.
- *
- * Deliberately **not** `Date.parse`. That accepts `"5"`, `"Q3"` and a good deal
- * else besides, differs between engines on anything non-ISO, and reads a bare
- * `2026-03-14` as UTC but `2026/03/14` as local — three ways for a column to be
- * silently misread as time. Every form below is matched explicitly, and an
- * ambiguous all-numeric date (`03/04/2026` — March or April, depending on where
- * the author lives) is deliberately not one of them.
+ * One cell read as an instant, or `null`. Not `Date.parse`, which accepts `"5"`
+ * and `"Q3"`, differs between engines off ISO, and reads `2026-03-14` as UTC but
+ * `2026/03/14` as local. Every form is matched explicitly, and an ambiguous
+ * all-numeric date (`03/04/2026`) is not one of them.
  */
 export function parseInstant(raw: unknown): number | null {
   if (typeof raw !== "string") return null
@@ -169,14 +125,7 @@ export function parseInstant(raw: unknown): number | null {
   return null
 }
 
-/**
- * An instant captioned at the coarsest granularity the axis's own span can tell
- * apart — a decade of samples reads as years, a year of them as months.
- *
- * Only reached for a tick that is *not* one of the rows (an author-set range, a
- * `zoomTo` part-way through). A tick that is a sample is captioned with the
- * cell the author wrote; see the note at the top of this file.
- */
+/** An instant captioned at the coarsest granularity the span tells apart: a decade reads as years, a year as months. */
 export function formatInstant(value: number, span: number): string {
   const date = new Date(value)
   const year = date.getUTCFullYear()
@@ -187,16 +136,7 @@ export function formatInstant(value: number, span: number): string {
   return `${label} ${date.getUTCDate()}`
 }
 
-// ---- Column reading ------------------------------------------------------
-
-/**
- * Whether every non-empty cell of `field` holds a number.
- *
- * The same rule `numericFields` applies, asked of one column: a single text
- * cell in an otherwise numeric column takes the whole column off the numeric
- * scale, because plotting that row at 0 is the failure this module is here to
- * stop.
- */
+/** `numericFields`' rule for one column: a single text cell takes it off the numeric scale rather than plot that row at 0. */
 function isNumericColumn(data: DataRecord[], field: string): boolean {
   let sawValue = false
   for (const row of data) {
@@ -209,13 +149,9 @@ function isNumericColumn(data: DataRecord[], field: string): boolean {
 }
 
 /**
- * Every non-empty cell of `field` parsed as an instant, or `null` if any one of
- * them isn't one — in which case the column isn't a time column at all.
- *
- * A blank cell keeps its slot, so the returned list stays index-aligned with
- * the rows, and takes the nearest known instant: a hole in an x column is a row
- * whose date the file didn't say, and stacking it on the epoch would drag the
- * whole scale back fifty years to make room for it.
+ * Every non-empty cell as an instant, or `null` if any is not one. A blank cell
+ * keeps its slot and takes the nearest known instant: stacking it on the epoch
+ * would drag the whole scale back fifty years.
  */
 function instantColumn(data: DataRecord[], field: string): number[] | null {
   const parsed: (number | null)[] = []
@@ -250,23 +186,12 @@ function extentOf(values: number[]): Range {
 }
 
 /**
- * Ticks spanning `range`, each one **a sample** — a row the author can point at
- * in their file — placed as near as it can be to where an evenly spaced tick
- * would have gone.
- *
- * Two things have to hold at once, and picking either alone gets it wrong.
- * Ticks must be *samples*, because a caption between two of them has nothing to
- * say (two-thirds of the way through March is not a month, and on a category
- * column it is not anything at all). And they must be *spread*, because the
- * labels sit side by side in a row: taking every nth sample instead puts five
- * dates in the two weeks a burst of rows happens to cover and prints them on
- * top of each other, which is what a column with a gap in it does.
- *
- * Walking the targets rather than the samples is what satisfies both. A run of
- * rows too close together to caption collapses to one tick — consecutive
- * targets pick the same sample and the duplicate is dropped — so a chart asked
- * for five ticks across a gappy column draws four honest ones instead of five
- * overlapping.
+ * Ticks spanning `range`, each a sample, nearest to where an evenly spaced tick
+ * would go. They must be samples (a caption between two has nothing to say) and
+ * spread (every nth sample would print five dates on top of each other across a
+ * burst of rows), so this walks the evenly spaced targets, not the samples.
+ * Targets that pick the same sample collapse to one tick, so a gappy column
+ * draws fewer honest ticks rather than overlapping ones.
  */
 function sampledTicks(
   positions: number[],
@@ -290,10 +215,7 @@ function sampledTicks(
   return out
 }
 
-/**
- * The caption a tick carries on a sample-based scale: the cell of the row it
- * came from, or `fallback` when the tick isn't a sample after all.
- */
+/** The cell of the row a tick came from, or `fallback` when it is not a sample. */
 function labelBySample(
   positions: number[],
   captions: string[],
@@ -304,16 +226,10 @@ function labelBySample(
   return i >= 0 ? captions[i] : fallback(value)
 }
 
-/** Scales already resolved, by data array, then by field and pattern. */
+/** Resolved scales by data array, then by field and pattern. */
 const scales = new WeakMap<DataRecord[], Map<string, XScale>>()
 
-/**
- * How `field` positions the rows: the number it holds, the instant it names, or
- * failing both, the row's own place in the file.
- *
- * Kept per `data` array: a chart's bound props ask a dozen times a frame, and
- * parsing every row's instant each time was most of a frame.
- */
+/** Kept per `data` array: bound props ask a dozen times a frame, and parsing every row's instant each time was most of a frame. */
 export function resolveXScale(
   data: DataRecord[],
   field: string,
@@ -330,11 +246,7 @@ export function resolveXScale(
 function xScaleOf(
   data: DataRecord[],
   field: string,
-  /**
-   * The number-format pattern for a *numeric* column. Ignored by the other two
-   * kinds, and correctly so: a tick on those is captioned with the cell the
-   * author wrote, and `Jan` has no decimal places.
-   */
+  /** Number-format pattern for a numeric column only; ticks on the other kinds are the author's cells. */
   pattern?: string
 ): XScale {
   if (field !== "" && isNumericColumn(data, field)) {
@@ -345,8 +257,7 @@ function xScaleOf(
       extent: extentOf(positions),
       label: (value) =>
         pattern === undefined ? formatMarker(value) : formatNumber(value, pattern),
-      // Round numbers, evenly spaced — a continuous axis is read by its scale
-      // rather than by which samples happen to be on it.
+      // A continuous axis is read by its scale, not by which samples are on it.
       ticks: markerValues,
     }
   }
@@ -373,8 +284,7 @@ function xScaleOf(
   return {
     kind: "ordinal",
     at: (i) => i,
-    // `[0, n-1]` rather than the tidy `[0, n]`: the first and last rows sit on
-    // the plot's edges, which is where a reader looks for them.
+    // `[0, n-1]`, not `[0, n]`: the first and last rows sit on the plot's edges.
     extent: positions.length > 0 ? [0, positions.length - 1] : [0, 1],
     label: (value) => captions[Math.round(value)] ?? "",
     ticks: (range, divisions) => sampledTicks(positions, range, divisions),

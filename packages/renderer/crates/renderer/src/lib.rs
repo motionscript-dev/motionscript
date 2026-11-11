@@ -213,6 +213,7 @@ mod api {
         pub fn upload_image(&mut self, id: u32, source: JsValue, mipmaps: bool) -> Result<(), JsValue> {
             use wgpu::ExternalImageSource as S;
             self.surfaces.remove(&id);
+            self.gpu.drop_scene3d(id);
             let (src, w, h) = if let Some(b) = source.dyn_ref::<web_sys::ImageBitmap>() {
                 (S::ImageBitmap(b.clone()), b.width(), b.height())
             } else if let Some(f) = source.dyn_ref::<web_sys::VideoFrame>() {
@@ -255,6 +256,7 @@ mod api {
         /// `Tex.surface` source for 3D maps, and an image for image paints.
         pub fn set_surface(&mut self, id: u32, root: u32, width: u32, height: u32) {
             let (w, h) = (width.max(1), height.max(1));
+            self.gpu.drop_scene3d(id);
             self.gpu.ensure_surface(id, w, h);
             // Handed over again as it was (a host rebuilding its document every
             // frame): what it drew stands until its content changes.

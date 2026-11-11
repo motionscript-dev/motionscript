@@ -4,21 +4,12 @@ import type { EasingFunction } from "@/tween/ease/type";
 import { lerpNumber } from "@/tween/lerp";
 import type { AttributeOps } from "@/attributes/shared/operators";
 
-/**
- * One point of a {@link Ramp}: a value, placed `at` seconds after the start or
- * `before` seconds before the end, and the ease of the segment arriving at it
- * (linear when absent).
- */
+/** One point of a {@link Ramp}: a value placed `at` seconds after the start or `before` seconds before the end, plus the ease of the segment arriving at it (linear when absent). */
 export type RampKey =
     | { readonly at: number; readonly before?: undefined; readonly value: number; readonly ease?: EaseSpec }
     | { readonly before: number; readonly at?: undefined; readonly value: number; readonly ease?: EaseSpec };
 
-/**
- * Automation for one audio param, as plain JSON.
- *
- * A `before` key stays where it is when the clip is trimmed, which is what makes
- * "the last second" mean the last second of whatever length the clip has.
- */
+/** Automation for one audio param, as plain JSON. A `before` key stays put when the clip is trimmed, so "the last second" means the last second of any length. */
 export interface Ramp {
     readonly keys: readonly RampKey[];
 }
@@ -26,7 +17,6 @@ export interface Ramp {
 /** An audio param: a constant, or a {@link Ramp}. */
 export type Param = number | Ramp;
 
-/** A ramp key's time and ease, resolved against one length. */
 export interface ResolvedRampKey {
     readonly time: number;
     readonly value: number;
@@ -47,13 +37,7 @@ export type RampEase = EaseSpec | EasingFunction;
 
 const segmentsOf = new WeakMap<RampChain, readonly Segment[]>();
 
-/**
- * The fluent builder: `ramp(0, 1, 0.5).hold().ramp(1, 0, 1)`.
- *
- * Its one own field is `keys`, so it is a {@link Ramp} and serializes to one.
- * Segments before the first bare `hold()` are placed from the start, segments
- * after it from the end, and the hold stretches to fill whatever lies between.
- */
+/** The fluent builder `ramp(0, 1, 0.5).hold().ramp(1, 0, 1)`; its only own field is `keys`, so it is a {@link Ramp}. Segments before the first bare `hold()` place from the start, after it from the end, and the hold fills the middle. */
 export class RampChain implements Ramp {
     readonly keys: readonly RampKey[];
 
@@ -62,12 +46,10 @@ export class RampChain implements Ramp {
         this.keys = keysOf(segments);
     }
 
-    /** Append a ramp from `from` to `to` over `duration` seconds. */
     ramp(from: number, to: number, duration: number, options?: { readonly ease?: RampEase }): RampChain {
         return this._append({ from, to, duration, ease: specOf(options?.ease) });
     }
 
-    /** Append a hold: for `duration` seconds, or, bare, for whatever the clip leaves over. */
     hold(duration?: number): RampChain {
         return this._append({ duration });
     }
@@ -77,7 +59,6 @@ export class RampChain implements Ramp {
     }
 }
 
-/** A ramp from `from` to `to` over `duration` seconds. */
 export function ramp(from: number, to: number, duration: number, options?: { readonly ease?: RampEase }): RampChain {
     return new RampChain().ramp(from, to, duration, options);
 }
@@ -150,13 +131,7 @@ export function isRamp(p: unknown): p is Ramp {
 const LINEAR = linear();
 const resolved = new WeakMap<Ramp, { readonly length: number; readonly keys: readonly ResolvedRampKey[] }>();
 
-/**
- * The keys of `ramp` placed on a clip `length` seconds long, in time order.
- *
- * Every time is clamped to the clip, so a ramp longer than its clip is cut, not
- * squeezed. Keys whose anchors cross (a start key past an end key on a short
- * clip) are sorted by where they land, with a development warning.
- */
+/** The keys of `ramp` placed on a clip `length` seconds long, in time order. Times clamp to the clip (a longer ramp is cut, not squeezed); crossed anchors sort by where they land, with a development warning. */
 export function resolveRamp(ramp: Ramp, length: number): readonly ResolvedRampKey[] {
     const clip = Number.isFinite(length) && length > 0 ? length : 0;
     const cached = resolved.get(ramp);
@@ -196,12 +171,6 @@ export function sampleRamp(ramp: Ramp, t: number, length: number, fallback: numb
     return keys[keys.length - 1].value;
 }
 
-/** The value of `p` at `t`, for a number its own value. */
-export function sampleParam(p: Param, t: number, length: number, fallback: number): number {
-    return isRamp(p) ? sampleRamp(p, t, length, fallback) : p;
-}
-
-/** One representative number: the value itself, or the ramp's value at its start. */
 export function staticValue(p: Param, fallback = 0): number {
     if (!isRamp(p)) return p;
     let first: RampKey | undefined;
@@ -229,7 +198,6 @@ export function equalsParam(a: Param | undefined, b: Param | undefined): boolean
     return paramKey(a) === paramKey(b);
 }
 
-/** The audio-param attribute's op set: resolve is the identity, lerp is {@link lerpParam}. */
 export const audioParamOps: AttributeOps<Param, Param> = {
     resolve: (value) => value,
     lerp: lerpParam,
@@ -239,12 +207,7 @@ const INTEGRATION_STEP = 0.001;
 /** The most cells one table holds: past it a long source gets coarser cells, not a bigger table. */
 const MAX_CELLS = 20000;
 
-/**
- * `∫ 1/speed` tabulated once per ramp and source length: `clip[i]` is the clip
- * seconds spent by the start of cell `i`, so either direction is a lookup
- * rather than a walk from zero. A device asks hundreds of times a second of
- * clip while scheduling a rate, and walking from zero each time was quadratic.
- */
+/** `∫ 1/speed` tabulated once per ramp and source length: `clip[i]` is the clip seconds spent by the start of cell `i`, making either direction a lookup (walking from zero per query was quadratic). */
 interface SpeedTable {
     readonly step: number;
     readonly clip: Float64Array;
@@ -273,11 +236,7 @@ function speedTableOf(speed: Ramp, sourceLength: number, step: number): SpeedTab
     return table;
 }
 
-/**
- * Clip seconds spent playing the first `upper` source seconds under a speed
- * ramp: `∫ 1/speed(τ) dτ`. The ramp is placed on `sourceLength`, the source
- * seconds it is authored over, and speed is floored just above zero.
- */
+/** Clip seconds spent playing the first `upper` source seconds under a speed ramp: `∫ 1/speed(τ) dτ`, with the ramp placed on `sourceLength` and speed floored just above zero. */
 export function integrateSpeedToClipTime(speed: Ramp, sourceLength: number, upper: number = sourceLength, step = INTEGRATION_STEP): number {
     const end = Math.min(upper, sourceLength);
     if (end <= 0) return 0;

@@ -1,4 +1,4 @@
-import { Types, type Element, type Node2D, type Type } from "@motionscript/sdk"
+import { Types, type Element, type EntryOptions, type Node2D, type Type } from "@motionscript/sdk"
 
 /**
  * An entry made fresh for every node: each node gets its own array or box
@@ -18,3 +18,6 @@ export function fresh<T, In = T>(make: () => T, options?: { readonly resolve?: (
 export function asParts(nodes: readonly Node2D[]): readonly Element[] {
   return nodes as unknown as readonly Element[]
 }
+
+/** The argument every per-series command takes: an index into `series`, offered by name. */
+export const SERIES_ARG = Types.custom<number, number, EntryOptions & { readonly min: number; readonly step: number }>(0, { kind: "series", min: 0, step: 1 })

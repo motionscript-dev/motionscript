@@ -84,32 +84,3 @@ describe('intensity', () => {
         expect(mid.preset?.adjustments).toEqual([{ type: 'grayscale', amount: 1 }]);
     });
 });
-
-describe('the deprecated `filters` prop', () => {
-    it('is folded into the preset, so an old scene grades unchanged', () => {
-        const fill = fillOps.resolve(
-            Fills.image('photo.jpg', { filters: Adjustments.grayscale(1) }),
-        )[0] as ImageFillResolved;
-        expect(fill.preset).toEqual({
-            adjustments: [{ type: 'grayscale', amount: 1 }],
-            intensity: 1,
-        });
-    });
-
-    it('does not survive onto the resolved fill under its old name', () => {
-        const fill = fillOps.resolve(
-            Fills.image('photo.jpg', { filters: Adjustments.grayscale(1) }),
-        )[0] as ImageFillResolved & { filters?: unknown };
-        expect(fill.filters).toBeUndefined();
-    });
-
-    it('loses to `preset` when a fill somehow carries both', () => {
-        const fill = fillOps.resolve(
-            Fills.image('photo.jpg', {
-                filters: Adjustments.grayscale(1),
-                preset: { adjustments: Adjustments.blur(3) },
-            }),
-        )[0] as ImageFillResolved;
-        expect(fill.preset?.adjustments).toEqual([{ type: 'blur', radius: 3 }]);
-    });
-});

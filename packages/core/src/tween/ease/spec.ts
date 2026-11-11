@@ -3,26 +3,10 @@ import { curveEase, isEaseCurve, type CurvePoint } from "./curve";
 import { easeDescription } from "./describe";
 import type { EasingFunction } from "./type";
 
-/**
- * How something eases, as data.
- *
- * Mirrors the `linear`/`easeIn`/`easeOut`/`easeInOut` families in
- * `tween/ease/constants.ts` — `kind` picks the direction, `args` picks the
- * family and its knobs.
- *
- * `kind: "custom"` takes a drawn curve in `args`, or the key a host passed to
- * `Registry.addEase`/`RegistryOptions.eases` for an ease no standard family
- * expresses.
- */
+/** How something eases, as data: `kind` picks the direction and `args` the family and its knobs, mirroring the families in `tween/ease/constants.ts`. `kind: "custom"` takes a drawn curve in `args`, or the key of an ease the host passed to `Registry.addEase` / `RegistryOptions.eases`. */
 export interface EaseSpec {
     kind: "linear" | "in" | "out" | "inOut" | "custom";
-    /**
-     * Family and its parameters (`"quad"`, or `{ type: "back", overshoot: 2 }`)
-     * for every `kind` but `"custom"`, whose `args` is instead the drawn curve
-     * itself — a {@link CurvePoint} chain from (0, 0) to (1, 1), so the timing
-     * travels with the document — or the `Registry.addEase` key of a function
-     * the host registered.
-     */
+    /** Family and parameters (`"quad"`, or `{ type: "back", overshoot: 2 }`) for every `kind` but `"custom"`, whose `args` is the drawn curve itself (a {@link CurvePoint} chain from (0, 0) to (1, 1), so timing travels with the document) or a `Registry.addEase` key. */
     args?: EaseParams | CurvePoint[] | string;
 }
 

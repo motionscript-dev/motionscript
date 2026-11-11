@@ -5,7 +5,6 @@ export interface ScatterEffect extends ModedEffect, EffectFields<typeof scatterS
     type: "scatter";
 }
 
-/** The {@link ScatterEffect} spec: its parameters, defaults and ranges. */
 export const scatterSpec = defineEffect({
     type: "scatter",
     group: "glitch",

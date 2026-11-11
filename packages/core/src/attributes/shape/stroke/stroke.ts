@@ -3,14 +3,7 @@ import { FillResolved } from '../fill/union';
 import { Fill } from '../fill/chain';
 import type { AttributeOps } from '@/attributes/shared/operators';
 
-// ── Align ──────────────────────────────────────────────────────────────────
-
-/**
- * Where the stroke sits relative to the shape's edge. Resolves to a number in
- * the range `[-1, 1]`: -1 = fully inside the outline, 0 = centered (straddles the edge,
- * half in/half out), +1 = fully outside. Named values map to the endpoints;
- * intermediate numbers bias the stroke partway, like Figma's stroke alignment.
- */
+/** Where the stroke sits relative to the shape's edge, in `[-1, 1]`: -1 fully inside, 0 centred (straddling), +1 fully outside; named values map to the endpoints, intermediate numbers bias partway (like Figma's stroke alignment). */
 export type StrokeAlign = number | 'inside' | 'center' | 'outside';
 
 /** Resolve a loose `align` prop to a clamped number in [-1, 1]. */
@@ -25,17 +18,9 @@ export function resolveStrokeAlign(align: StrokeAlign | undefined, fallback: num
     return fallback;
 }
 
-// ── Cap & Join ───────────────────────────────────────────────────────────────
-
-/** How the ends of an open stroke are shaped. */
 export type StrokeCap = 'butt' | 'round' | 'square';
 
-/**
- * A shape one end of an open contour wears in place of a cap, sized by
- * `capScale`. `arrow` is an open chevron; `triangle` and `stealth` are filled
- * heads with their tip on the path's end; `dot`, `box`, `diamond` and `bar` sit
- * centred on it.
- */
+/** A shape one end of an open contour wears in place of a cap, sized by `capScale`: `arrow` is an open chevron, `triangle`/`stealth` filled heads with their tip on the path's end, `dot`/`box`/`diamond`/`bar` centred on it. */
 export type StrokeMarker = 'arrow' | 'triangle' | 'stealth' | 'dot' | 'box' | 'diamond' | 'bar';
 
 /** What one end of an open contour wears: a cap, or a marker. */
@@ -57,10 +42,8 @@ export function isStrokeMarker(end: StrokeEnd | undefined): end is StrokeMarker 
     return false;
 }
 
-/** How two stroke segments are joined at a corner. */
 export type StrokeJoin = 'miter' | 'round' | 'bevel';
 
-/** Normalise a loose `cap` prop, falling back when omitted/unknown. */
 export function resolveStrokeCap(cap: StrokeCap | undefined, fallback: StrokeCap): StrokeCap {
     if (cap == null) return fallback;
     switch (cap) {
@@ -71,12 +54,10 @@ export function resolveStrokeCap(cap: StrokeCap | undefined, fallback: StrokeCap
     return fallback;
 }
 
-/** Normalise a loose `startCap`/`endCap` prop, falling back when omitted/unknown. */
 export function resolveStrokeEnd(end: StrokeEnd | undefined, fallback: StrokeCap): StrokeEnd {
     return isStrokeMarker(end) ? end : resolveStrokeCap(end, fallback);
 }
 
-/** Normalise a loose `join` prop, falling back when omitted/unknown. */
 export function resolveStrokeJoin(join: StrokeJoin | undefined, fallback: StrokeJoin): StrokeJoin {
     if (join == null) return fallback;
     switch (join) {
@@ -87,63 +68,35 @@ export function resolveStrokeJoin(join: StrokeJoin | undefined, fallback: Stroke
     return fallback;
 }
 
-// ── Prop (loose) ─────────────────────────────────────────────────────────────
-
 export interface StrokeProp {
-    /** Stroke width in pixels. Defaults to 1. */
     weight?: number;
     /** Any loose fill: a CSS color string, fill prop object, resolved fill, or {@link FillChain}/array of layers. */
     fill?: Fill;
     /** Dash pattern. A single number `n` becomes `[n, n]`. */
     dash?: number | number[];
     dashOffset?: number;
-    /**
-     * Where the stroke sits relative to the edge: a number in [-1, 1] or one of
-     * `'inside'` (-1), `'center'` (0), `'outside'` (1). Defaults to `'inside'`,
-     * so the stroke stays within the shape's measured bounds (like a CSS border)
-     * rather than leaking half its width outside.
-     */
+    /** `'inside'` (-1), `'center'` (0), `'outside'` (1) or a number in [-1, 1]. Defaults to `'inside'`, so the stroke stays within the shape's measured bounds (like a CSS border). */
     align?: StrokeAlign;
-    /**
-     * How the ends of each dash, and of an open stroke, are shaped: `'butt'`
-     * (flush, the default), `'round'`, or `'square'`. `startCap`/`endCap`
-     * override it at the path's own two ends.
-     */
+    /** How the ends of each dash and of an open stroke are shaped (default `'butt'`); `startCap`/`endCap` override it at the path's two ends. */
     cap?: StrokeCap;
     /** The cap or marker at the start of each open contour, in place of `cap`. */
     startCap?: StrokeEnd;
     /** The cap or marker at the end of each open contour, in place of `cap`. */
     endCap?: StrokeEnd;
-    /**
-     * A marker's length as a multiple of `weight` (default `4`), so a head keeps
-     * its proportion as the stroke thickens. A marker never outgrows its
-     * contour: on a short one it shrinks to fit.
-     */
+    /** A marker's length as a multiple of `weight` (default `4`) so a head keeps its proportion as the stroke thickens; on a short contour it shrinks to fit. */
     capScale?: number;
-    /**
-     * How two segments meet at a corner: `'miter'` (sharp, the default),
-     * `'round'`, or `'bevel'` (flattened).
-     */
+    /** How two segments meet at a corner (default `'miter'`). */
     join?: StrokeJoin;
-    /**
-     * Maximum ratio of miter length to stroke width before a `'miter'` join is
-     * truncated to a bevel. Only affects `join: 'miter'`. Defaults to 4.
-     */
+    /** Maximum miter length to stroke width ratio before a `'miter'` join truncates to a bevel (default 4). */
     miterLimit?: number;
 }
 
-/**
- * Fully resolved stroke — all fields normalised with defaults applied.
- * Compatible with the lerp registry (IFill is used for fill to avoid
- * breaking the existing lerp/registry pipeline).
- */
+/** Fully resolved stroke: all fields normalised, defaults applied. */
 export interface StrokeResolved {
     weight: number;
-    /** Resolved fill layers, painted bottom-to-top like a node's `fill`. */
     fill: FillResolved[];
     dash?: number[];
     dashOffset: number;
-    /** Stroke placement in [-1, 1]: -1 inside, 0 center, +1 outside. */
     align: number;
     /** End-cap shape for dash ends, and for open strokes' ends unless overridden. */
     cap: StrokeCap;
@@ -151,24 +104,15 @@ export interface StrokeResolved {
     startCap?: StrokeEnd;
     endCap?: StrokeEnd;
     capScale: number;
-    /** Corner join shape. */
     join: StrokeJoin;
-    /** Miter limit (only used when `join` is `'miter'`). */
     miterLimit: number;
 }
 
-/**
- * Accepted shapes for a node's `stroke` prop: a single loose {@link StrokeProp},
- * an array of them (stacked bottom-to-top), or an already-resolved
- * {@link StrokeResolved}/array — resolved values pass through `resolveStroke`
- * idempotently, so a node's read-back `stroke` can be assigned straight back.
- */
+/** Accepted shapes for a node's `stroke`: a loose {@link StrokeProp}, an array of them (stacked bottom-to-top), or already-resolved values, which pass through `resolveStroke` idempotently so a read-back `stroke` can be assigned straight back. */
 export type Stroke =
     | StrokeProp
     | StrokeResolved
     | (StrokeProp | StrokeResolved)[];
-
-// ── Resolve ──────────────────────────────────────────────────────────────────
 
 export function resolveStroke(prop: StrokeProp, previous?: StrokeResolved): StrokeResolved {
     let dash: number[] | undefined;
@@ -193,8 +137,6 @@ export function resolveStroke(prop: StrokeProp, previous?: StrokeResolved): Stro
         miterLimit: prop.miterLimit ?? previous?.miterLimit ?? 4,
     };
 }
-
-// ── Lerp ─────────────────────────────────────────────────────────────────────
 
 function lerpDashArray(from: number[] | undefined, to: number[] | undefined, t: number): number[] | undefined {
     const fArray = from || [];
@@ -229,7 +171,6 @@ function lerpStroke(from: StrokeResolved, to: StrokeResolved, t: number): Stroke
     };
 }
 
-/** The stroke-layer attribute's op set — the `stroke` prop's resolve/lerp pair. */
 export const strokeOps: AttributeOps<Stroke, StrokeResolved[]> = {
     resolve: (prop, previous) => {
         if (prop == null) return [];

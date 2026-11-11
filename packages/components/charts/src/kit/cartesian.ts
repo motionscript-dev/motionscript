@@ -3,21 +3,15 @@ import { Rect, type ChildView, type Node2D, type Size2D } from "@motionscript/sd
 import { VerticalAxis } from "./vertical-axis"
 
 /**
- * Headroom above the plot, in px.
- *
- * Two jobs, and the second is why it is real padding on the composition rather
- * than a number the point-mapping math imagines: a series peaking at the top of
- * the scale isn't flush to the top edge, **and** the top marker, which is
- * centred on that top grid line, has somewhere to be. Without it the marker's
- * upper half is drawn above the chart's own box.
+ * Headroom above the plot, in px. Real padding on the composition, so the top
+ * marker, centred on the top grid line, does not draw its upper half above the
+ * chart's own box.
  */
-export const TOP_HEADROOM = 24
+const TOP_HEADROOM = 24
 
-/** The parts of a cartesian chart's frame, as {@link cartesianFrame} arranges them. */
-export interface CartesianParts {
-  /** The value axis, left of the plot. */
+interface CartesianParts {
   readonly axis: Node2D
-  /** The plot panel: the box the grid and the marks share. */
+  /** The box the grid and the marks share. */
   readonly plot: Node2D
   /** An invisible twin of the value axis, reserving its gutter under the plot. */
   readonly gutter: Node2D
@@ -25,11 +19,7 @@ export interface CartesianParts {
   readonly below: readonly Node2D[]
 }
 
-/**
- * The frame the line and bar charts share: the value axis beside the plot, and
- * under them the gutter beside the rows below the plot, so those rows start at
- * the plot's left edge rather than the chart's.
- */
+/** The frame the line and bar charts share: the value axis beside the plot, and under them the gutter, so the rows below start at the plot's left edge. */
 export function cartesianFrame(parts: CartesianParts): Node2D {
   return new Rect({
     flow: "vertical",
@@ -47,19 +37,14 @@ export function cartesianFrame(parts: CartesianParts): Node2D {
   }) as unknown as Node2D
 }
 
-/** A cartesian frame's parts, as a command reaches them through its chart's children. */
-export interface CartesianViews {
+interface CartesianViews {
   readonly axis: ChildView
-  /** The plot panel's own children: the grid, the marks, the border. */
+  /** The plot panel's own children: grid, marks, border. */
   readonly plot: readonly ChildView[]
   readonly below: readonly ChildView[]
 }
 
-/**
- * The frame among a chart's children: the last child shaped as
- * {@link cartesianFrame} builds it. The chart builds it after the children it
- * was given, and a document adds its own later still, so it is found by shape.
- */
+/** The last child shaped as {@link cartesianFrame} builds it: the chart builds it after the children it was given and a document adds its own later, so it is found by shape. */
 export function cartesianViews(children: readonly ChildView[]): CartesianViews | null {
   for (let i = children.length - 1; i >= 0; i--) {
     const frame = children[i]
@@ -74,7 +59,7 @@ export function cartesianViews(children: readonly ChildView[]): CartesianViews |
   return null
 }
 
-/** A part's laid-out size, or nothing before it is built or laid out. */
+/** A part's laid-out size; zero before it is built or laid out. */
 export function laidOutSize(node: Node2D | undefined): Size2D {
   const bounds = node?.layoutBounds
   return { width: bounds?.width ?? 0, height: bounds?.height ?? 0 }

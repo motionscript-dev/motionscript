@@ -2,7 +2,6 @@ import {
     component2d,
     type NodeOf,
     type NodeView,
-    type PaintProps,
     type Vector2,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Node2D as _Node2D,
@@ -20,11 +19,6 @@ import { curveFor, PLANE_ENTRY, PLOT_REF } from "../kit/graph";
 import { drawMark, inkSize, reading, traced, type MarkReading } from "../kit/mark";
 
 export type DropAxis = "x" | "y" | "both";
-
-export interface DropLinesProps extends PaintProps {
-    on?: string;
-    axis?: DropAxis;
-}
 
 const state = {
     ...omit(PAINT, "fill"),

@@ -13,11 +13,11 @@ export default scene((stage) => {
                 width: 320,
                 height: 320,
                 cornerRadius: 24,
-                fill: Fills.video('video.mp4', { fit: 'fill', filters: VideoAdjustments.posterizeTime(30) }),
+                fill: Fills.video('video.mp4', { fit: 'fill', preset: { adjustments: VideoAdjustments.posterizeTime(30) } }),
             }),
         ] }),
     );
 }, [
-    () => rect().to({ data: { fill: Fills.video('video.mp4', { fit: 'fill', filters: VideoAdjustments.posterizeTime(4) }) }, duration: 1.2, easing: easeInOut('quad') }),
+    () => rect().to({ data: { fill: Fills.video('video.mp4', { fit: 'fill', preset: { adjustments: VideoAdjustments.posterizeTime(4) } }) }, duration: 1.2, easing: easeInOut('quad') }),
     holdTail(1.2),
 ]);

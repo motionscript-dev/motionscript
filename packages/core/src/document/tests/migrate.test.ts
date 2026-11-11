@@ -190,6 +190,87 @@ describe("the steps", () => {
             expect(props.effects[0]).toMatchObject({ type: "shader", language: "sksl" });
         });
     });
+
+    describe("2 → 3", () => {
+        const step = DOCUMENT_MIGRATIONS[2];
+        const run = (clip: object) => {
+            const notes: string[] = [];
+            return { out: step.clip!(frozen(clip) as Record<string, unknown>, (path, message) => notes.push(`${path}: ${message}`)), notes };
+        };
+        const rect = (props: Record<string, unknown>) => ({ id: "a", type: "rect", parentId: null, layerOrder: 0, props });
+        const GRAY = [{ type: "grayscale", amount: 1 }];
+        const BLUR = [{ type: "blur", radius: 3 }];
+
+        it("leaves a document whose fills already carry a preset alone, by identity", () => {
+            const doc = still({ nodes: [rect({ fill: { type: "image", src: "a.jpg", preset: { adjustments: GRAY, intensity: 0.5 } } })] });
+            const { out, notes } = run(doc as never);
+            expect(out).toBe(doc);
+            expect(notes).toEqual([]);
+        });
+
+        it("moves an image or video fill's filters into preset.adjustments, wherever the fill sits", () => {
+            const { out, notes } = run(still({
+                nodes: [rect({
+                    fill: [{ type: "image", src: "a.jpg", fit: "fill", filters: GRAY }, { type: "video", src: "a.mp4", filters: BLUR }],
+                })],
+                commands: [{ id: "c", type: "to", targetId: "a", at: 0, duration: 1, args: { fill: { type: "image", src: "a.jpg", filters: BLUR } } }],
+            }));
+            expect(out).toEqual(still({
+                nodes: [rect({
+                    fill: [
+                        { type: "image", src: "a.jpg", fit: "fill", preset: { adjustments: GRAY } },
+                        { type: "video", src: "a.mp4", preset: { adjustments: BLUR } },
+                    ],
+                })],
+                commands: [{ id: "c", type: "to", targetId: "a", at: 0, duration: 1, args: { fill: { type: "image", src: "a.jpg", preset: { adjustments: BLUR } } } }],
+            }));
+            expect(notes).toEqual([
+                "nodes[0].props.fill[0]: `filters` moved to `preset.adjustments`.",
+                "nodes[0].props.fill[1]: `filters` moved to `preset.adjustments`.",
+                "commands[0].args.fill: `filters` moved to `preset.adjustments`.",
+            ]);
+        });
+
+        it("keeps the rest of a preset, and its adjustments over filters when the fill carried both", () => {
+            const { out } = run(still({
+                nodes: [rect({
+                    fill: [
+                        { type: "image", src: "a.jpg", filters: GRAY, preset: { intensity: 0.5 } },
+                        { type: "image", src: "b.jpg", filters: GRAY, preset: { adjustments: BLUR } },
+                    ],
+                })],
+            }));
+            expect((out.nodes as { props: { fill: unknown } }[])[0].props.fill).toEqual([
+                { type: "image", src: "a.jpg", preset: { intensity: 0.5, adjustments: GRAY } },
+                { type: "image", src: "b.jpg", preset: { adjustments: BLUR } },
+            ]);
+        });
+
+        it("does not mistake a Video node's own filters, or an object that is not a media fill, for one", () => {
+            const doc = still({
+                nodes: [
+                    { id: "v", type: "video", parentId: null, layerOrder: 0, props: { src: "a.mp4", filters: BLUR } },
+                    rect({ fill: { type: "solid", filters: GRAY }, effects: [{ type: "blur", filters: GRAY }] }),
+                ],
+            });
+            expect(run(doc as never).out).toBe(doc);
+        });
+
+        it("gives a document that validates and builds, its image grade carried in the preset", () => {
+            const legacy = project({
+                kind: "still",
+                formatVersion: 2,
+                nodes: [rect({ width: 100, height: 100, fill: { type: "image", src: "a.jpg", filters: GRAY } })],
+            }, { ...OUTPUT, formatVersion: 2 });
+            const { document, changes } = migrateDocument(legacy);
+            expect(changes.map((c) => c.path)).toEqual(["tracks[0].clip.nodes[0].props.fill"]);
+            const registry = new Registry({ strict: true });
+            expect(validateProjectDocument(document, { registry }).issues).toEqual([]);
+            const scope = { registry, assets: new ManifestAssetCatalog({ image: { "a.jpg": { src: "a.jpg", width: 4, height: 4, sizeBytes: 1 } }, video: {}, audio: {}, font: {} }), ...OUTPUT };
+            const result = precompFor(document, scope).run();
+            expect(result.buildErrors).toEqual([]);
+        });
+    });
 });
 
 describe("migrateDocument", () => {

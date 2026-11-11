@@ -1,4 +1,4 @@
-import { pathOps, type PathData, type PathSampler } from "@motionscript/sdk"
+import { clamp, pathOps, type PathData, type PathSampler } from "@motionscript/sdk"
 
 import { slot, type Slot, type SlotInput } from "./slot"
 
@@ -68,8 +68,8 @@ export function pathSlots(arrangement: PathArrangement, input: SlotInput): Slot[
   if (count === 0) return []
   const { sampler, closed } = measured(arrangement.path)
   const length = sampler.length
-  const a = clamp01(Math.min(arrangement.trimStart, arrangement.trimEnd))
-  const b = clamp01(Math.max(arrangement.trimStart, arrangement.trimEnd))
+  const a = clamp(Math.min(arrangement.trimStart, arrangement.trimEnd), 0, 1)
+  const b = clamp(Math.max(arrangement.trimStart, arrangement.trimEnd), 0, 1)
   const start = a * length
   const span = (b - a) * length
   const loops = closed && a === 0 && b === 1
@@ -92,9 +92,9 @@ export function pathSlots(arrangement: PathArrangement, input: SlotInput): Slot[
     let visible = true
     if (loops) u = u - Math.floor(u)
     else if (u < -1e-9 || u > 1 + 1e-9) visible = false
-    const at = sampler.frameAt(start + clamp01(u) * span)
+    const at = sampler.frameAt(start + clamp(u, 0, 1) * span)
     if (!at) {
-      const s = slot(0, 0, { kind: "path", t: clamp01(u) })
+      const s = slot(0, 0, { kind: "path", t: clamp(u, 0, 1) })
       s.opacity = 0
       slots.push(s)
       continue
@@ -106,15 +106,11 @@ export function pathSlots(arrangement: PathArrangement, input: SlotInput): Slot[
     const s = slot(
       place.x + px * cos + py * sin,
       place.y - px * sin + py * cos,
-      { kind: "path", t: clamp01(u) },
+      { kind: "path", t: clamp(u, 0, 1) },
     )
     if (arrangement.alignToPath) s.rotation = (-Math.atan2(at.ty * flip, at.tx) * 180) / Math.PI + place.rotation
     if (!visible) s.opacity = 0
     slots.push(s)
   }
   return slots
-}
-
-function clamp01(v: number): number {
-  return v < 0 ? 0 : v > 1 ? 1 : v
 }

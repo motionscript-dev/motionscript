@@ -3,29 +3,17 @@ import { applyMatrix4, type Matrix4 } from "./matrix4";
 import { resolveVector3, type Vector3 } from "./vector3";
 
 /**
- * Axis-aligned bounds for the 3D descriptors — the "how big is it, and where" an
- * editor needs in order to put a box round a mesh it did not build.
+ * Axis-aligned bounds for the 3D descriptors, for an editor to box a mesh it did not build.
  *
- * **Analytic, not sampled.** Every primitive's extent falls straight out of its
- * parameters, so this is a table of formulas rather than a walk over vertices,
- * and it costs nothing to ask per pointer move. The defaults each one falls back
- * to are *three's* defaults, not invented here, because a descriptor that omits
- * `radius` renders at three's 1 and a box drawn round a different number would
- * be a box in the wrong place — see the note on each.
+ * **Analytic, not sampled**: each primitive's extent falls out of its parameters, so it is a table of formulas that
+ * costs nothing per pointer move. Defaults are *three's*, since a descriptor omitting `radius` renders at three's 1
+ * and a box round a different number would sit in the wrong place.
  *
- * **Conservative where it is not exact.** A partial sweep (`thetaLength` on a
- * sphere, `arc` on a torus) is bounded by the full figure rather than by the
- * wedge actually drawn: the exact answer is an arc-endpoint problem per shape
- * per axis, and the cost of getting it wrong is a selection box that *cuts
- * through* the mesh, where the cost of over-reporting is one that sits a little
- * loose. Over-reporting is the safe direction, and it is the direction taken
- * everywhere here.
+ * **Conservative where not exact**: a partial sweep is bounded by the full figure, since the exact answer is an
+ * arc-endpoint problem per shape per axis and a box that cuts through the mesh is worse than one a little loose.
  *
- * **`null` means "no answer", not "empty".** Three descriptors genuinely cannot
- * be measured without something this package does not have: a loaded model file,
- * a rasterized path, or a user callback that may read the frame clock. A caller
- * that gets `null` draws no box, which is the honest outcome — a wrong box is
- * worse than none.
+ * **`null` means "no answer", not "empty"**: a loaded model file, a rasterized path, or a user callback that may read
+ * the frame clock can't be measured here. The caller draws no box; a wrong box is worse than none.
  */
 
 /** An axis-aligned box. `min` is corner-wise minimum, not a point on the mesh. */
@@ -64,13 +52,7 @@ export function corners3(box: Box3): Vector3[] {
     ];
 }
 
-/**
- * `box` mapped through `m` and re-bounded — the AABB of the transformed AABB.
- *
- * Not the AABB of the transformed *mesh*: a rotated box's corner-bounds are
- * larger than the shape inside them. That slack is the price of not carrying
- * vertex data around, and it errs in the safe direction (see the module note).
- */
+/** `box` mapped through `m` and re-bounded: the AABB of the transformed AABB, not of the mesh (a rotated box's corner-bounds are larger than the shape), erring in the safe direction (see the module note). */
 /** @internal */
 export function transformBox3(box: Box3, m: Matrix4): Box3 {
     let minX = Infinity, minY = Infinity, minZ = Infinity;
@@ -87,11 +69,7 @@ export function transformBox3(box: Box3, m: Matrix4): Box3 {
     return { min: { x: minX, y: minY, z: minZ }, max: { x: maxX, y: maxY, z: maxZ } };
 }
 
-/**
- * The local-space bounds of a geometry descriptor, or `null` when it cannot be
- * measured from the descriptor alone. See the module note for both halves of
- * that sentence.
- */
+/** The local-space bounds of a geometry descriptor, or `null` when it can't be measured from the descriptor alone (see the module note). */
 export function geometryBounds3D(geometry: Geometry3D | undefined): Box3 | null {
     if (!geometry) return null;
 

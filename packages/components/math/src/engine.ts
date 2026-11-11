@@ -20,7 +20,6 @@ export {
 export type { FormulaFrame, Morphing, TypesetValues } from './tex/typeset';
 export { lerpPartFills, partPaint, readPartFills, withPartFill } from './kit/part-fills';
 export type { PartFill, PartFillResolved } from './kit/part-fills';
-export { FILL_PAINT, OUTLINE_TRIM, STROKE_PAINT } from './kit/withdrawn';
 export { createBoundedCache } from './kit/cache';
 export { listed, omit, PAINT, PAINT_COMMANDS, painted } from './kit/component';
 export type { BoundedCache } from './kit/cache';
@@ -50,10 +49,10 @@ export { sampleCurve } from './kit/sampler';
 export type { CurveProjection, SampleOptions } from './kit/sampler';
 export { formatTick, ticksFor } from './kit/ticks';
 export type { Ticks } from './kit/ticks';
-export { boundsOfRuns, clamp, inflate, runsToPath, stated } from './kit/geometry';
+export { boundsOfRuns, clamp, inflate, radians, runsToPath, stated } from './kit/geometry';
 export { CURVE_KEYS, curveValue, isCurve } from './kit/curve';
 export type { CurveValues } from './kit/curve';
-export { along, AXIS_COLOR, declareFormulas, drawLabels, drawn, lerpInterval, loadFormulas, PLOT_COLOR, readInterval, withoutTips } from './kit/furniture';
+export { along, AXIS_COLOR, declareFormulas, drawLabels, drawn, intervalEntry, lerpInterval, loadFormulas, PLOT_COLOR, readInterval, withoutTips } from './kit/furniture';
 export type { Label, LabelStyle } from './kit/furniture';
 export {
     add, between, container, FOLLOW_COMMANDS, FOLLOW_STATE, followedQuad, grown, heading, outlineBounds, OWN_FRAME, resting,
@@ -63,7 +62,7 @@ export {
     parseSpaceCurve, parseSurface, spaceCurveError, spaceCurveParams, surfaceError, surfaceParams, EQUATION_KINDS, EQUATION_VARIABLES_3D,
 } from './kit/equation3d';
 export type { EquationLanguage, SpaceCurveEquation, SurfaceEquation } from './kit/equation3d';
-export { aim, graphEntry, graphOf, graphSpace, spaceOf, GRAPH_3D } from './three/space';
+export { aim, graphEntry, graphOf, graphSpace, GRAPH_3D } from './three/space';
 export type { Graph3D, GraphSpace } from './three/space';
 export { domainEntry, meshEntries } from './three/entries';
 export { drawLabel3D } from './three/label3d';

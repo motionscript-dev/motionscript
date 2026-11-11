@@ -5,38 +5,19 @@ import { multiply, translation } from "@/attributes/layout/matrix2d";
 import { worldAnchors } from "@/components/trees/2d/node-transform";
 
 /**
- * The ink extent of a node whose drawing is made **out of its children** rather
- * than out of a box of its own — a {@link BooleanGroup}, a {@link MaskGroup}.
+ * The ink extent of a node whose drawing is made **out of its children** (a {@link BooleanGroup}, a
+ * {@link MaskGroup}), whose layout cell is otherwise a fiction: nothing is drawn or grabbable at its edges and it
+ * doesn't move with the parts. This is what {@link Node2D._localBounds} exists to fix, a separate seam from
+ * `measure()` (the box moves, the layout does not).
  *
- * Both of those classes report their layout cell as their bounds by default,
- * and for both that cell is a fiction: nothing is drawn at its edges, nothing
- * is grabbable there, and it does not move when the parts inside it do. An
- * editor drawing a selection box around one is drawing a rectangle that has no
- * relationship to the pixels — which is exactly what {@link Node2D._localBounds}
- * exists to fix, and the reason it is a separate seam from `measure()`: the box
- * moves, the layout does not.
+ * A bounding box is what you *can* work out without running the boolean. A union is exact
+ * (`bounds(A ∪ B) = bounds(A) ∪ bounds(B)`) and also the honest answer for `exclude` (a subset, parts still visible).
+ * `subtract` can only cut into the first child and `intersect` lives inside every child. Each mode states which it
+ * is; the result is a *superset* of the true silhouette for `subtract`/`intersect` and exact for the others, never a
+ * box the drawing spills out of.
  *
- * ## Why an op decides the answer
- *
- * A bounding box is the one thing about a boolean result you *can* work out
- * without running the boolean. For a union it is even exact —
- * `bounds(A ∪ B) = bounds(A) ∪ bounds(B)` — and the same union is the honest
- * answer for `exclude`, whose result is a subset of it and whose parts are all
- * still there to be seen. The other two shrink instead: subtracting can only
- * ever cut into the first child, and an intersection lives inside every child
- * at once. So each mode below states which of those it is, and the result is a
- * *superset* of the true silhouette for `subtract`/`intersect` and exact for
- * the other two — never a box the drawing spills out of, which is the failure
- * that would matter.
- *
- * ## Why this composes with a resize that scales the children
- *
- * An editor can resize one of these nodes by scaling every child about the
- * corner the drag holds still, and that gesture is only
- * coherent if the box it is dragging follows the parts by the same factor. It
- * does, for all three modes: an axis-aligned scale about a point commutes with
- * union and intersection alike, so scaling every child by `k` scales the answer
- * here by exactly `k`. Neither half has to know about the other.
+ * This composes with a resize that scales the children about the corner the drag holds still: an axis-aligned scale
+ * about a point commutes with union and intersection, so scaling every child by `k` scales the answer by exactly `k`.
  */
 export type ChildBoundsMode =
     /** Every child's ink, together — `union` and `exclude`. */
@@ -54,15 +35,7 @@ interface Span {
     maxY: number;
 }
 
-/**
- * The four corners of `child`'s ink, in its **parent's** local space (y-up,
- * relative to the parent's centre).
- *
- * The same two-step `nodeBox` makes: shift the child's matrix onto the ink's own
- * centre (the matrix is canvas y-down and the bounds are y-up, hence the sign),
- * then read the corners off it. That is what makes this correct for a child that
- * is rotated, scaled, or whose ink is off-centre.
- */
+/** The four corners of `child`'s ink in its **parent's** local space (y-up from the parent's centre): shift the child's matrix onto the ink's own centre (canvas y-down vs y-up bounds, hence the sign), then read the corners, as `nodeBox` does. Correct for rotated, scaled or off-centre ink. */
 function inkCorners(child: Node2D): Vector2[] {
     const b = child._localBounds();
     const local = child._localMatrix();
@@ -94,17 +67,7 @@ function toBounds(span: Span): BoxBounds {
     };
 }
 
-/**
- * The extent of `node`'s children's ink in `node`'s own local space, or `null`
- * when there is nothing to measure — no children, or an `intersect` whose parts
- * don't overlap at all.
- *
- * `null` is the caller's cue to keep the layout cell: a node with no children
- * has nothing else to offer, and an empty intersection draws nothing anywhere,
- * so a box round the parts would be a box round a shape that isn't there. The
- * cell at least stays in one place and stays grabbable, which is what a node you
- * need to put another child into has to be.
- */
+/** The extent of `node`'s children's ink in its own local space, or `null` with nothing to measure (no children, or an `intersect` whose parts don't overlap). `null` is the caller's cue to keep the layout cell: it stays put and grabbable, which a node you need to drop another child into must be. */
 export function childInkBounds(
     node: Node2D,
     mode: ChildBoundsMode
@@ -134,8 +97,7 @@ export function childInkBounds(
                   maxY: Math.min(span.maxY, next.maxY),
               }
             : next;
-        // The parts have stopped overlapping — nothing is drawn, so there is no
-        // box to draw. See the header.
+        // The parts have stopped overlapping: nothing is drawn, so there is no box.
         if (span.minX > span.maxX || span.minY > span.maxY) return null;
     }
     return span ? toBounds(span) : null;

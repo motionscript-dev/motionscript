@@ -3,19 +3,9 @@ import { PathCommand } from "@/render/descriptors/path";
 import type { ArcParams, Cubic } from "./types";
 
 /**
- * Shared Bézier, arc and path-geometry primitives.
- *
- * Everything under `shape/path/` that evaluates, splits, measures or bounds a
- * curve reaches for these rather than carrying its own copy. That used to be an
- * aspiration this file's header stated and only three of seven callers honoured:
- * De Casteljau existed three times, quad→cubic and cubic evaluation twice each,
- * and the arc's endpoint→center conversion twice — once returning a sampler and
- * once returning cubics, differing in nothing else.
- *
- * Two evaluation styles are provided:
- *  - Scalar (`cubicAxis` / `quadAxis`) — evaluate a single axis. Cheaper when you
- *    already have loose x/y numbers and want to avoid allocating a {@link Vector2}.
- *  - Vector (`cubicPoint` / `quadPoint`) — evaluate both axes into a {@link Vector2}.
+ * Shared Bézier, arc and path-geometry primitives: everything under `shape/path/` that evaluates, splits, measures or
+ * bounds a curve uses these rather than its own copy. Scalar evaluators (`cubicAxis` / `quadAxis`) avoid allocating a
+ * {@link Vector2}; vector ones (`cubicPoint` / `quadPoint`) evaluate both axes.
  */
 
 /** SVG curve commands whose tangent feeds the reflected control point of a following S/s/T/t. */
@@ -25,11 +15,7 @@ const SMOOTH_CURVE_TYPES: ReadonlySet<PathCommand["type"]> = new Set([
 
 
 
-/**
- * True when a command's trailing control point should be remembered so the next
- * smooth command (S/s/T/t) can reflect it. Per the SVG spec, if the previous
- * command was not one of these, the implied control point is the current point.
- */
+/** Whether a command's trailing control point is remembered for the next S/s/T/t to reflect; per SVG, after any other command the implied control point is the current point. */
 export function isSmoothCurveType(type: PathCommand["type"]): boolean {
     return SMOOTH_CURVE_TYPES.has(type);
 }
@@ -39,26 +25,22 @@ export function reflectControlPoint(current: number, control: number): number {
     return 2 * current - control;
 }
 
-/** Euclidean distance between two points. */
 export function distance(a: Vector2, b: Vector2): number {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-/** Evaluate one axis of a cubic Bézier at parameter `t` (0..1). */
 export function cubicAxis(t: number, p0: number, p1: number, p2: number, p3: number): number {
     const u = 1 - t;
     return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
 }
 
-/** Evaluate one axis of a quadratic Bézier at parameter `t` (0..1). */
 export function quadAxis(t: number, p0: number, p1: number, p2: number): number {
     const u = 1 - t;
     return u * u * p0 + 2 * u * t * p1 + t * t * p2;
 }
 
-/** Evaluate a cubic Bézier at parameter `t` (0..1) into a {@link Vector2}. */
 export function cubicPoint(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, t: number): Vector2 {
     return {
         x: cubicAxis(t, p0.x, p1.x, p2.x, p3.x),
@@ -66,7 +48,6 @@ export function cubicPoint(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, t
     };
 }
 
-/** Evaluate a quadratic Bézier at parameter `t` (0..1) into a {@link Vector2}. */
 export function quadPoint(p0: Vector2, p1: Vector2, p2: Vector2, t: number): Vector2 {
     return {
         x: quadAxis(t, p0.x, p1.x, p2.x),
@@ -74,10 +55,7 @@ export function quadPoint(p0: Vector2, p1: Vector2, p2: Vector2, t: number): Vec
     };
 }
 
-/**
- * Approximate the arc length of a parametric curve by sampling it into a polyline
- * and summing the segment distances. More `steps` trade speed for accuracy.
- */
+/** Approximates a parametric curve's arc length by summing a polyline's segments; more `steps` trade speed for accuracy. */
 export function sampleCurveLength(pointAt: (t: number) => Vector2, steps = 32): number {
     let length = 0;
     let prev = pointAt(0);
@@ -88,39 +66,6 @@ export function sampleCurveLength(pointAt: (t: number) => Vector2, steps = 32): 
     }
     return length;
 }
-
-/**
- * Binary-search the curve parameter `t` whose arc length from the start equals
- * `targetDist`. Used to find exactly where a curve should be cut. The curve is
- * re-sampled on each probe, so this is intentionally simple rather than fast;
- * 20 iterations give sub-pixel precision for typical path lengths.
- */
-export function paramAtDistance(
-    pointAt: (t: number) => Vector2,
-    targetDist: number,
-    totalLen: number,
-): number {
-    if (totalLen === 0 || targetDist <= 0) return 0;
-    if (targetDist >= totalLen) return 1;
-
-    let lo = 0, hi = 1;
-    for (let i = 0; i < 20; i++) {
-        const mid = (lo + hi) / 2;
-        let len = 0;
-        let prev = pointAt(0);
-        const steps = 16;
-        for (let j = 1; j <= steps; j++) {
-            const p = pointAt(mid * j / steps);
-            len += distance(prev, p);
-            prev = p;
-        }
-        if (len < targetDist) lo = mid;
-        else hi = mid;
-    }
-    return (lo + hi) / 2;
-}
-
-// --- Degree conversion -----------------------------------------------------
 
 /** A straight line as a cubic: controls sit on the line at 1/3 and 2/3. */
 export function lineToCubic(from: Vector2, to: Vector2): Cubic {
@@ -142,9 +87,7 @@ export function quadToCubic(from: Vector2, cp: Vector2, to: Vector2): Cubic {
     };
 }
 
-// --- De Casteljau splitting ---
-// Splitting a Bézier at parameter `t` yields two sub-curves that together trace
-// the exact same shape, so trimming preserves curvature instead of polylining it.
+// De Casteljau split at `t`: the two sub-curves trace the exact same shape, so trimming preserves curvature.
 
 export function splitCubicAt(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, t: number) {
     const a = lerpVector2(p0, p1, t);
@@ -185,8 +128,6 @@ export function extractQuadRange(p0: Vector2, p1: Vector2, p2: Vector2, t0: numb
     return splitQuadAt(right.from, right.cp, right.to, adj).left;
 }
 
-// --- Extrema ---------------------------------------------------------------
-
 /** The `t` values in (0, 1) where a cubic's one-dimensional derivative is zero. */
 export function cubicExtrema(p0: number, p1: number, p2: number, p3: number): number[] {
     // B'(t) = 3[(p1−p0)(1−t)² + 2(p2−p1)t(1−t) + (p3−p2)t²], written as at² + bt + c.
@@ -218,8 +159,6 @@ export function quadExtrema(p0: number, p1: number, p2: number): number[] {
     return t > 0 && t < 1 ? [t] : [];
 }
 
-// --- Arc endpoint-to-center conversion -------------------------------------
-
 function angleBetween(ux: number, uy: number, vx: number, vy: number): number {
     const dot = ux * vx + uy * vy;
     const len = Math.sqrt(ux * ux + uy * uy) * Math.sqrt(vx * vx + vy * vy);
@@ -229,14 +168,7 @@ function angleBetween(ux: number, uy: number, vx: number, vy: number): number {
 }
 
 
-/**
- * The endpoint→center conversion of an SVG `A` command.
- *
- * Returned as the ellipse's own parameters rather than as a sampler, because the
- * two things that need an arc want different halves of it: flattening wants
- * points, and bounding wants the angles where each axis turns around. A sampler
- * alone forces the second to guess.
- */
+/** The endpoint→center conversion of an SVG `A` command, returned as the ellipse's own parameters (not a sampler): flattening wants points, bounding wants the angles where each axis turns around. */
 export function arcParams(
     from: Vector2, to: Vector2,
     rxRaw: number, ryRaw: number, rotation: number, largeArc: 0 | 1, sweep: 0 | 1,
@@ -275,7 +207,6 @@ export function arcParams(
     return { cx, cy, rx, ry, phi, theta1, dtheta };
 }
 
-/** The point on an arc at ellipse angle `theta`. */
 export function arcPointAtAngle(arc: ArcParams, theta: number): Vector2 {
     const cosPhi = Math.cos(arc.phi), sinPhi = Math.sin(arc.phi);
     const cosT = Math.cos(theta), sinT = Math.sin(theta);
@@ -285,12 +216,6 @@ export function arcPointAtAngle(arc: ArcParams, theta: number): Vector2 {
     };
 }
 
-/** A parametric function tracing the arc from its start (`t=0`) to its end (`t=1`). */
-export function arcPointFunction(arc: ArcParams): (t: number) => Vector2 {
-    return (t: number) => arcPointAtAngle(arc, arc.theta1 + t * arc.dtheta);
-}
-
-/** The derivative of {@link arcPointAtAngle} with respect to `theta`. */
 function arcDerivativeAtAngle(arc: ArcParams, theta: number): Vector2 {
     const cosPhi = Math.cos(arc.phi), sinPhi = Math.sin(arc.phi);
     const cosT = Math.cos(theta), sinT = Math.sin(theta);
@@ -300,17 +225,7 @@ function arcDerivativeAtAngle(arc: ArcParams, theta: number): Vector2 {
     };
 }
 
-/**
- * The arc's `theta0..theta1` span as cubics — the one place an arc is
- * approximated.
- *
- * Split so no piece spans more than 90°, which is the standard bound: the
- * `(4/3)·tan(Δ/4)` construction is exact at both endpoints and at the midpoint,
- * and its worst-case radial error over a quarter turn is about 2.7e-4 of the
- * radius. There were two implementations of this before — one splitting by
- * angle, one fitting sampled points with a "catmull-rom-like" guess — and only
- * the first was worth keeping.
- */
+/** The arc's `theta0..theta1` span as cubics, the one place an arc is approximated. Split so no piece spans more than 90° (the `(4/3)·tan(Δ/4)` construction is exact at both endpoints and the midpoint, worst-case radial error ~2.7e-4 of the radius over a quarter turn). */
 export function arcSweepToCubics(arc: ArcParams, theta0: number, theta1: number): Cubic[] {
     const sweep = theta1 - theta0;
     if (Math.abs(sweep) < 1e-12) return [];
@@ -336,10 +251,7 @@ export function arcSweepToCubics(arc: ArcParams, theta0: number, theta1: number)
     return cubics;
 }
 
-/**
- * The ellipse angles at which each axis turns around — the candidates an exact
- * bounding box tests against the swept range.
- */
+/** The ellipse angles at which each axis turns around: the candidates an exact bounding box tests against the swept range. */
 export function arcAxisAngles(arc: ArcParams): { x: number[]; y: number[] } {
     const cosPhi = Math.cos(arc.phi), sinPhi = Math.sin(arc.phi);
     // dx/dθ = 0 and dy/dθ = 0, each giving one angle and its antipode.
@@ -351,13 +263,7 @@ export function arcAxisAngles(arc: ArcParams): { x: number[]; y: number[] } {
     };
 }
 
-/**
- * Whether ellipse angle `theta` lies within the arc's swept range.
- *
- * Compared as a distance travelled in the sweep's own direction rather than as
- * an interval, because `theta1 + dtheta` routinely leaves `[-π, π]` and an
- * interval test would then reject the very angles that are inside it.
- */
+/** Whether ellipse angle `theta` lies within the arc's sweep, compared as distance travelled in the sweep's direction: `theta1 + dtheta` routinely leaves `[-π, π]` and an interval test would reject angles inside it. */
 export function arcContainsAngle(arc: ArcParams, theta: number): boolean {
     const TAU = Math.PI * 2;
     const forward = arc.dtheta >= 0;

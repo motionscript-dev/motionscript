@@ -5,12 +5,9 @@ import type { CommandSpec, NodeSpec } from "./types";
 import { ROOT_NODE_ID } from "./types";
 
 /**
- * What a command can do to the tree around it, read off the document and the
- * registry without building anything.
- *
- * Only the library's own implementations are described: a command resolving to a
- * component's method could do anything, so it is `known: false` and assumed to
- * read and write layout.
+ * Read off the document and the registry without building anything. Only the library's own implementations are
+ * described: a command resolving to a component's method could do anything, so it is `known: false` and
+ * assumed to read and write layout.
  */
 export interface CommandTraits {
     scope: "node" | "variable";
@@ -19,11 +16,9 @@ export interface CommandTraits {
     lifecycle: boolean;
     /** Building it can read a laid-out box, so it must be built against a settled tree. */
     readsLayout: boolean;
-    /** Running it can change what layout computes. */
     writesLayout: boolean;
 }
 
-/** The nine named alignment props, which position a node against its own laid-out box. */
 export const ALIGNMENT_KEYS: readonly string[] = [
     "center", "topLeft", "topRight", "bottomLeft", "bottomRight",
     "topCenter", "bottomCenter", "centerLeft", "centerRight",
@@ -32,12 +27,9 @@ export const ALIGNMENT_KEYS: readonly string[] = [
 const SKIPPED: CommandTraits = { scope: "node", known: true, lifecycle: false, readsLayout: false, writesLayout: false };
 
 /**
- * How a document command resolves, as `ClipTimeline._buildPlaced` resolves it,
- * and what it does — or `null` when it resolves to nothing (compiling it throws).
- * One the build skips — aimed at a placeholder, or unpublished by its target's
- * type — writes nothing, which is known.
- * `target` is the command's target row; for `targetId: null` a document with no
- * explicit root row may pass `undefined`.
+ * `null` when it resolves to nothing (compiling it throws). One the build skips (aimed at a placeholder, or
+ * unpublished by its target's type) writes nothing, which is known. For `targetId: null` a document with no
+ * explicit root row may pass `undefined` as `target`. Resolves as `ClipTimeline._buildPlaced` does.
  */
 export function commandTraits(registry: Registry, spec: CommandSpec, target: NodeSpec | undefined): CommandTraits | null {
     const lifecycle = LIFECYCLE.has(spec.type);
@@ -79,21 +71,16 @@ export function commandTraits(registry: Registry, spec: CommandSpec, target: Nod
 }
 
 /**
- * Whether a command with these traits, built, may be held at its end values once
- * finished instead of run (`settled-index.ts`): the library's own implementation
- * of a command whose `at` reads only what it captured when built. Expression args
- * bind live values, so they keep it running. A component's own commands are
- * marked by the factory instead, from their pieces.
+ * Whether it may be held at its end values once finished instead of run (`settled-index.ts`): the library's
+ * own implementation of a command whose `at` reads only what it captured when built. Expression args bind live
+ * values, so they keep it running. A component's own commands are marked by the factory.
  */
 export function holdsWhenFinished(traits: CommandTraits | null, spec: CommandSpec): boolean {
     return traits !== null && traits.known && !traits.lifecycle && HELD.has(spec.type)
         && expressionOps.collect(spec.args ?? {}, "").length === 0;
 }
 
-/**
- * The node ids a command's args name through a `nodeRef` argument — the nodes
- * whose boxes it may read when it is built, beside its own target.
- */
+/** The nodes whose boxes it may read when built, beside its own target. */
 export function commandNodeRefs(registry: Registry, spec: CommandSpec, target: NodeSpec | undefined): string[] {
     const global = registry.command(spec.type);
     const row = target ?? (spec.targetId === null ? DEFAULT_ROOT : undefined);
@@ -108,16 +95,12 @@ export function commandNodeRefs(registry: Registry, spec: CommandSpec, target: N
     return refs;
 }
 
-/** Whether `type` hands its descendants a context of its own. */
 export function isContextProvider(registry: Registry, type: string): boolean {
     const ctor = registry.node(type)?.ctor;
     return ctor !== undefined && methodOf(ctor, "provideContext") !== methodOf(Node, "provideContext");
 }
 
-/**
- * Whether an authored value holds an expression reading another node's prop
- * (`[card.x]`), at any depth. An unparsable one counts: it fails the build anyway.
- */
+/** An unparsable expression counts: it fails the build anyway. */
 export function hasNodeRef(value: unknown): boolean {
     for (const site of expressionOps.collect(value, "")) {
         const parsed = expressionOps.tryParse(site.source);
@@ -127,10 +110,8 @@ export function hasNodeRef(value: unknown): boolean {
 }
 
 /**
- * Whether writing `key` on a node of `type` leaves every laid-out box unchanged.
- *
- * Every node's placement is applied after layout; past that, answered only for
- * the library's own classes, since a custom node may lay itself out from anything.
+ * Every node's placement is applied after layout; past that, answered only for the library's own classes,
+ * since a custom node may lay itself out from anything.
  */
 export function isLayoutNeutralProp(registry: Registry, type: string, key: string): boolean {
     const record = registry.node(type);
@@ -147,11 +128,7 @@ export function isPlacementProp(registry: Registry, type: string, key: string): 
     return dimension === "3d" ? PLACEMENT_3D.has(key) : dimension === "2d" && PLACEMENT_2D.has(key);
 }
 
-/**
- * Whether a new `key` on `row` can be written onto its live node as a fresh
- * build would set it: placement, on a row with no prop its node turns into
- * placement when built (`topLeft` binds `x` and `y`).
- */
+/** Placement, on a row with no prop its node turns into placement when built (`topLeft` binds `x` and `y`). */
 export function writesPlacementInPlace(registry: Registry, row: NodeSpec, key: string): boolean {
     const dimension = registry.node(row.type)?.descriptor.dimension;
     const sugar = dimension === "3d" ? PLACEMENT_SUGAR_3D : PLACEMENT_SUGAR_2D;
@@ -162,7 +139,9 @@ const LIFECYCLE = new Set(["removeChildAt", "addChildAt", "reparent"]);
 
 const VARIABLE_COMMANDS = new Set(["variableTo", "variableSet"]);
 
-// Known commands that are pure functions of `t`. A new one joins once `held-class-commands.test.ts` covers it.
+/**
+ * Known commands that are pure functions of `t`. A new one joins once `held-class-commands.test.ts` covers it.
+ */
 const HELD = new Set([
     "to", "set", "moveTo", "fadeTo", "rotateTo", "scaleTo", "layoutTo", "effectTo", "pulse", "wiggle",
     "fillTo", "strokeTo", "shadowTo", "overlayTo", "progressTo", "zoomTo", "panTo", "headingTo",
@@ -186,8 +165,10 @@ const PLACEMENT_SUGAR_3D = new Set(["position", "rotation", "scale"]);
 
 const DEFAULT_ROOT: NodeSpec = { id: ROOT_NODE_ID, type: "canvas2d", parentId: null, layerOrder: 0, props: {} };
 
-// Each command's behaviour, as the methods on its target it runs through. A class
-// overriding any of them is running something else under the command's name.
+/**
+ * Each command's behaviour as the methods on its target it runs through; a class overriding any of them is
+ * running something else under the command's name.
+ */
 const TO = ["to", "_prepareStep", "_writeProp"];
 const PAINT = ["command", "set", "_writeProp"];
 
@@ -246,7 +227,6 @@ const WRITES: Readonly<Record<string, readonly string[]>> = {
     play: [],
 };
 
-/** What a known command reads `from` — every command but the stamps. */
 const READS_FROM = new Set(Object.keys(NODE_COMMANDS).filter((type) => type !== "set" && type !== "save"));
 
 function readsLayout(
@@ -259,9 +239,10 @@ function readsLayout(
     if (hasAlignmentKey(args)) return true;
     // Aimed at another node's box.
     if (type === "moveTo" && typeof args.target === "string" && args.target !== "") return true;
-    // An alignment-authored node's x/y are bindings over its box, and a node-ref
-    // expression may read another node's (`[card.x]` on an aligned card); taking a
-    // `from`, or a snapshot, evaluates them.
+    /**
+     * An alignment-authored node's x/y are bindings over its box, and a node-ref expression may read another
+     * node's (`[card.x]` on an aligned card): taking a `from`, or a snapshot, evaluates them.
+     */
     const aligned = hasAlignmentKey(props);
     const refBound = nodeRefKeys(props);
     if (type === "save" || type === "restore") return aligned || refBound.size > 0;
@@ -290,7 +271,6 @@ function hasAlignmentKey(values: Record<string, unknown>): boolean {
 
 const REF_KEYS = new WeakMap<object, ReadonlySet<string>>();
 
-/** The top-level props of a row whose authored value reads another node. */
 function nodeRefKeys(props: Record<string, unknown>): ReadonlySet<string> {
     let keys = REF_KEYS.get(props);
     if (!keys) {
@@ -340,7 +320,6 @@ function coreLibrary(): CoreLibrary {
     return core;
 }
 
-/** Every body the library's classes give `name`, base classes included. */
 function coreImplementations(name: string): ReadonlySet<unknown> {
     const library = coreLibrary();
     let impls = library.methods.get(name);

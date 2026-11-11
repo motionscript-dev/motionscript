@@ -36,18 +36,7 @@ export type ScreenshotResult = {
     bytes: Uint8Array;
 };
 
-/**
- * Renders a single frame of a document to an image.
- *
- * A one-shot wrapper over {@link StillRenderer}: create, render, encode, dispose.
- * It therefore takes the same path as a live preview, and as the video export at
- * that frame — there is one renderer, not three.
- *
- * For anything that captures **repeatedly** — a thumbnail builder, a preview that
- * repaints as the user edits — hold a {@link StillRenderer} instead. This function
- * builds and tears down a WebGPU surface per call, which is the right trade for one
- * capture and the wrong one for a hundred.
- */
+/** Renders a single frame of a document to an image: a one-shot wrapper over {@link StillRenderer} (create, render, encode, dispose), so it takes the same path as a live preview and the video export at that frame. For repeated capture hold a {@link StillRenderer}: this builds and tears down a WebGPU surface per call. */
 export async function exportScreenshot(params: ScreenshotParams): Promise<ScreenshotResult> {
     const {
         registry, scale, manifest, theme, rendererWasmUrl,

@@ -1,26 +1,16 @@
 /**
- * The document's back end: an {@link ExpressionNode} tree into the binding a
- * `PropSlot` takes.
- *
- * The tree is compiled into closures once rather than walked per read — the
- * difference matters on a scene where a hundred props read the same variable
- * every frame. A dialect with a different target compiles the same AST its own
- * way; `@motionscript/math` emits `(x, y) => number` from this one, and shares
- * the front end rather than this file.
+ * The tree is compiled into closures once rather than walked per read, which matters when a hundred props read
+ * the same variable every frame. `@motionscript/math` compiles the same AST its own way and shares the front
+ * end, not this file.
  */
 import { DOCUMENT_FUNCTIONS } from "./parse";
 import { ExpressionError } from "./types";
 import type { ExpressionNode, ParsedExpression, VariableResolver } from "./types";
 
 /**
- * Coerce a variable's value into the number arithmetic needs.
- *
- * A number is itself, a boolean is `1` or `0`, and a string is what `Number`
- * reads from it (`"5"` is 5, `"0x10"` is 16) unless it is empty after trimming,
- * which is `NaN`. Anything else — `null`, `undefined`, an object — is `NaN`
- * too. That is the intent: a `width` of `NaN` is visible in the first frame,
- * where a silent `0` looks like a deliberate collapse and gets debugged as a
- * layout problem, and `Number("")` is exactly that silent zero.
+ * A number is itself, a boolean `1` or `0`, a string what `Number` reads (`"5"` is 5, `"0x10"` is 16) unless
+ * empty after trimming; anything else is `NaN`. Deliberate: a `width` of `NaN` is visible in the first frame,
+ * where a silent `0` (what `Number("")` gives) looks like a deliberate collapse and gets debugged as layout.
  */
 function toNumber(value: unknown): number {
     if (typeof value === "number") return value;
@@ -30,8 +20,8 @@ function toNumber(value: unknown): number {
 }
 
 /**
- * `path` is where in the props bag the formula was written, so a reference to
- * something undeclared names the prop and not just the formula.
+ * `path` is where in the props bag the formula was written, so a reference to something undeclared names the
+ * prop, not just the formula.
  */
 export function compile(parsed: ParsedExpression, resolve: VariableResolver, path?: string): () => unknown {
     const readOf = (name: string): (() => unknown) => {

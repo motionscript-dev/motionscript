@@ -20,7 +20,7 @@ import { lines } from '../code-range';
 const STAGE = { width: 800, height: 600 };
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 const band = (id: string, type: string, at: number, args: Record<string, unknown>): CommandSpec =>

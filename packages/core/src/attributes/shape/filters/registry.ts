@@ -18,23 +18,11 @@ export type AnyFilter = MediaAdjustment | VideoOnlyAdjustment;
 
 /** Interpolation and equality contract every filter implementation must implement. */
 export interface FilterData<T extends AnyFilter> {
-    /** Return a new filter linearly interpolated between `from` and `to` at progress `t` (0–1). */
     lerp(from: T, to: T, t: number): T;
-    /** Return true when both filters are visually identical (used to skip redundant redraws). */
     equals(a: T, b: T): boolean;
 }
 
-/**
- * Maps each filter `type` to its `FilterData` handler. Statically imported
- * constants (no runtime registration step), mirroring the `FILLS` map in the
- * fill registry — so the table is always populated and there is no side-effect
- * import to forget.
- *
- * It holds only the filters that exist *solely* as filters. Most of the roster
- * is {@link EffectAdjustment} — a node effect applied to a fill's own pixels — and
- * those are looked up in the effects registry rather than duplicated here, so
- * `dither` interpolates the same way whether it is on a node or on an image.
- */
+/** Maps each filter `type` to its `FilterData` handler, as constants (no runtime registration step to forget). Holds only filters that exist *solely* as filters; most of the roster is {@link EffectAdjustment}, looked up in the effects registry so `dither` interpolates the same on a node or an image. */
 const FILTERS = new Map<string, FilterData<AnyFilter>>([
     ["exposure", exposureFilter as FilterData<AnyFilter>],
     ["blur", blurFilter as FilterData<AnyFilter>],
@@ -47,32 +35,18 @@ const FILTERS = new Map<string, FilterData<AnyFilter>>([
     ["echo", echoFilter as FilterData<AnyFilter>],
 ]);
 
-/**
- * Video-only filter types. These are consumed by the video fill's per-frame
- * `update()` (`posterizeTime`) or a dedicated multi-pass renderer (`echo`),
- * not the pixel filter chain. `isPixelFilter` lets a renderer skip them when
- * composing that chain.
- */
+/** Video-only filter types, consumed by the video fill's per-frame `update()` (`posterizeTime`) or a dedicated multi-pass renderer (`echo`); `isPixelFilter` lets a renderer skip them when composing the pixel chain. */
 const VIDEO_ONLY = new Set<string>(["posterizeTime", "echo"]);
 
-/** True when `type` is a pixel filter that composes into a media fill's filter chain. */
 export function isPixelFilter(type: string): boolean {
     return !VIDEO_ONLY.has(type);
 }
 
-/** True when `type` has a registered `FilterData` handler, here or in the effects registry. */
 export function hasFilter(type: string): boolean {
     return FILTERS.has(type) || hasEffect(type);
 }
 
-/**
- * Interpolate between two individual filters at progress `t`.
- * Falls back to a hard cut at t = 0.5 when the types differ or are unregistered.
- *
- * A type with no dedicated `FilterData` is an {@link EffectAdjustment}, so it is
- * handed to `lerpEffect` — one interpolation per effect, whether it is animated
- * on a node or inside a fill.
- */
+/** Interpolates two filters, hard-cutting at t = 0.5 when types differ or are unregistered. A type with no dedicated `FilterData` is an {@link EffectAdjustment}, handed to `lerpEffect` so one interpolation serves a node or a fill. */
 export function lerpFilter(from: AnyFilter, to: AnyFilter, t: number): AnyFilter {
     if (from.type !== to.type) return t < 0.5 ? from : to;
     const data = FILTERS.get(from.type);
@@ -80,22 +54,13 @@ export function lerpFilter(from: AnyFilter, to: AnyFilter, t: number): AnyFilter
     return lerpEffect(from as NodeEffect, to as NodeEffect, t) as AnyFilter;
 }
 
-/**
- * The filters defined here reference nothing, but an {@link EffectAdjustment} can —
- * `lut` samples an image — and an undeclared one is a lookup the effect can only
- * read as "no lookup table".
- */
+/** An {@link EffectAdjustment} can reference assets (`lut` samples an image), and an undeclared one reads as "no lookup table". */
 export function declareFilter(filter: AnyFilter, assets: AssetScope): void {
     if (FILTERS.has(filter.type)) return;
     declareEffect(filter as NodeEffect, assets);
 }
 
-/**
- * How a backend must realise `filter` — `"shader"` when it resamples pixel
- * positions and therefore has to wrap the fill's shader rather than compose
- * into its `ImageFilter` chain. The filters defined here are all `"filter"`;
- * an {@link EffectAdjustment} answers with its effect's own declaration.
- */
+/** How a backend must realise `filter`: `"shader"` when it resamples pixel positions, so it wraps the fill's shader rather than composing into its `ImageFilter` chain. The filters defined here are all `"filter"`; an {@link EffectAdjustment} answers with its effect's declaration. */
 export function filterSurface(filter: AnyFilter): "filter" | "shader" {
     if (FILTERS.has(filter.type)) return "filter";
     // A filter is applied to the fill's own pixels, so it is never a backdrop
@@ -103,14 +68,7 @@ export function filterSurface(filter: AnyFilter): "filter" | "shader" {
     return effectSurface({ ...filter, mode: "foreground" } as NodeEffect);
 }
 
-/**
- * {@link lerpFilterArray} over two *optional* arrays, answering `undefined`
- * when neither side has a filter.
- *
- * A media fill's `lerp` is spread over the whole fill (`{...a, ...lerp(a,b,t)}`),
- * so returning `[]` for the overwhelmingly common no-filter case would allocate
- * a fresh array per fill per frame and turn an absent field into a present one.
- */
+/** {@link lerpFilterArray} over two *optional* arrays, answering `undefined` when neither has a filter: a media fill's `lerp` is spread over the whole fill, so returning `[]` would allocate per fill per frame and turn an absent field into a present one. */
 export function lerpOptionalFilters<T extends AnyFilter>(
     from: T[] | undefined,
     to: T[] | undefined,
@@ -120,10 +78,7 @@ export function lerpOptionalFilters<T extends AnyFilter>(
     return lerpFilterArray(from ?? [], to ?? [], t) as T[];
 }
 
-/**
- * Interpolate between two filter arrays of potentially different lengths.
- * Indices present in only one array are kept as-is; matched indices are lerped pairwise.
- */
+/** Interpolates two filter arrays of possibly different lengths: indices in only one array are kept, matched ones lerped pairwise. */
 export function lerpFilterArray(from: AnyFilter[], to: AnyFilter[], t: number): AnyFilter[] {
     const maxLen = Math.max(from.length, to.length);
     const result: AnyFilter[] = [];

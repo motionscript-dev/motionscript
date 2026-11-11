@@ -1,19 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Darkened corners — the lens falloff every photo grade reaches for.
- *
- * The node box is normalised to a unit ellipse, so the falloff follows the
- * node's aspect ratio rather than an off-centre circle. Everything inside
- * `radius` is untouched; from there to `radius + softness` the tint ramps in
- * with a smoothstep, reaching `amount` at the corners.
- */
+/** Darkened corners (lens falloff). The node box is normalised to a unit ellipse, so the falloff follows its aspect ratio. Untouched inside `radius`; from there to `radius + softness` the tint ramps in with a smoothstep, reaching `amount` at the corners. */
 export interface VignetteEffect extends ModedEffect, EffectFields<typeof vignetteSpec.params> {
     type: "vignette";
 }
 
-/** The {@link VignetteEffect} spec: its parameters, defaults and ranges. */
 export const vignetteSpec = defineEffect({
     type: "vignette",
     group: "light",

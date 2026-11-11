@@ -27,14 +27,7 @@ interface KeyEntry {
 
 const NO_OWNERS: ReadonlySet<string> = new Set();
 
-/**
- * One clip's asset windows, per owner, in clip-local frames.
- *
- * Owners replace their segments wholesale, and a key's record — the union window
- * over every owner that needs it — is recomputed only for the keys an update
- * touched. The records keep today's {@link AssetRecord} shape so the manager,
- * exporter and mixer read them unchanged.
- */
+/** One clip's asset windows, per owner, in clip-local frames. Owners replace their segments wholesale, and a key's record (the union window over every owner that needs it) is recomputed only for keys an update touched. Records keep the {@link AssetRecord} shape so the manager, exporter and mixer read them unchanged. */
 export class AssetIndex {
     constructor(frameCount: number) {
         this._frameCount = Math.max(0, frameCount);

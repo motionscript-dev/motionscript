@@ -9,10 +9,7 @@ import { measureItem } from "./item";
 
 type RunMeasure = Pick<FlowMeasure, "sizes" | "lines" | "gapScales" | "hug">;
 
-/**
- * Measures an unwrapped run, as one line: fixed items first, then `fill` items
- * share what is left of the main axis by `flex`.
- */
+/** Measures an unwrapped run as one line: fixed items first, then `fill` items share the rest of the main axis by `flex`. */
 export function measureRun(
     items: readonly LayoutItem[],
     horizontal: boolean,
@@ -89,14 +86,7 @@ export function measureRun(
     };
 }
 
-/**
- * A `fill`-main item on a main axis the container hugs. There is nothing to
- * share on such an axis — Figma disallows `fill` there — so the item measures
- * unconstrained along it, like a hug item. A bare `fill` leaf echoes that back as
- * Infinity, which would take the container's hug size with it; it collapses to 0
- * instead. Shared by {@link measureRun} and {@link measureWrap}, so a run hugs to
- * the same size whether or not it wraps.
- */
+/** A `fill`-main item on a main axis the container hugs has nothing to share (Figma disallows it), so it measures unconstrained like a hug item; a bare `fill` leaf would echo Infinity and take the container's hug size with it, so it collapses to 0. Shared by {@link measureRun} and {@link measureWrap} so a run hugs to the same size wrapped or not. */
 function measureFillOnHugAxis(
     item: LayoutItem,
     horizontal: boolean,
@@ -111,17 +101,10 @@ function measureFillOnHugAxis(
 }
 
 /**
- * Measures a wrapped run: every item at its natural size, broken greedily into
- * lines that fit the main axis. Two rules differ from {@link measureRun}, both
- * Figma's:
- *
- * - **A hugging main axis does not wrap** — there is nothing to break against.
- * - **`fill` on the main axis is not divided.** Which line an item lands on is
- *   what this pass decides, so it measures to the whole main axis and takes a
- *   line to itself. (On a hugging main axis there is no line to break and no
- *   extent to fill, so it measures as {@link measureRun} measures it.)
- *   Cross-axis `fill` stretches to its own line rather than the whole stack, the
- *   only reading that survives a reflow.
+ * Measures a wrapped run: every item at natural size, broken greedily into lines that fit the main axis. Two rules
+ * differ from {@link measureRun}, both Figma's: **a hugging main axis does not wrap**, and **`fill` on the main axis is
+ * not divided** (which line an item lands on is what this pass decides, so it measures to the whole main axis and takes
+ * a line to itself). Cross-axis `fill` stretches to its own line, the only reading that survives a reflow.
  */
 export function measureWrap(
     items: readonly LayoutItem[],
@@ -183,11 +166,7 @@ export function measureWrap(
     };
 }
 
-/**
- * Places a run's lines in the content box, centre-relative and y-up. Positions
- * are worked out in reading order — from the main axis's start edge (left, or
- * top) and the cross axis's (top, or left) — and converted once, at the end.
- */
+/** Places a run's lines in the content box, centre-relative and y-up. Positions are worked out in reading order (from the start edges) and converted once at the end. */
 export function placeRun(
     sizes: readonly Size2D[],
     lines: readonly FlowLine[],

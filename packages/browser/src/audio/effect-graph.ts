@@ -14,13 +14,7 @@ import {
     type Ramp,
 } from "@motionscript/core";
 
-/**
- * The Web Audio graph for one source's effect chain.
- *
- * `output` is the last node, to connect downstream; `nodes` are every node to
- * `disconnect()` on teardown; `oscillators` are tremolo LFOs the caller starts
- * and stops alongside the source.
- */
+/** The Web Audio graph for one source's effect chain: `output` is the last node to connect downstream, `nodes` every node to `disconnect()` on teardown, `oscillators` tremolo LFOs the caller starts and stops with the source. */
 export interface AudioEffectGraph {
     output: AudioNode;
     nodes: AudioNode[];
@@ -30,15 +24,7 @@ export interface AudioEffectGraph {
 /** Sample points per second an eased segment or a transition is baked into: about every 5 ms. */
 const CURVE_SAMPLES_PER_SECOND = 200;
 
-/**
- * Apply a {@link Param} to a Web Audio {@link AudioParam}: a number once, a
- * ramp as a schedule — linear segments as `linearRampToValueAtTime`, eased
- * ones baked into `setValueCurveAtTime`.
- *
- * `elapsed` is the clip seconds already played when a mid-clip seek starts the
- * source, so "now" reads the ramp at the clip's current position. `clamp` keeps
- * every scheduled value in a param's valid range.
- */
+/** Applies a {@link Param} to a Web Audio {@link AudioParam}: a number once, a ramp as a schedule (linear segments via `linearRampToValueAtTime`, eased ones baked into `setValueCurveAtTime`). `elapsed` is the clip seconds already played at a mid-clip seek; `clamp` keeps scheduled values in the param's valid range. */
 function applyParam(
     audioParam: AudioParam,
     param: Param,
@@ -100,16 +86,7 @@ function applyParam(
     }
 }
 
-/**
- * Builds the Web Audio graph for a clip's effect chain, after an
- * already-created `source`. Shared by live playback ({@link WebAudioSink}) and
- * offline export (`mixAudio`) so both sound identical.
- *
- * `startTime` is the context time the source starts; `clipDuration` the clip
- * seconds ramps run over (a clip's, or a bus's span); `elapsed` the clip seconds
- * already played at a mid-clip seek (0 for a clean start, negative before the
- * span begins).
- */
+/** Builds the Web Audio graph for a clip's effect chain after an already-created `source`, shared by live playback ({@link WebAudioSink}) and offline export (`mixAudio`) so both sound identical. `startTime` is the context time the source starts; `clipDuration` the clip seconds ramps run over (a clip's, or a bus's span); `elapsed` the clip seconds already played at a mid-clip seek (0 for a clean start, negative before the span begins). */
 export function buildAudioEffectGraph(
     ctx: BaseAudioContext,
     source: AudioNode,
@@ -208,10 +185,7 @@ function maxOf(p: Param): number {
     return isRamp(p) ? Math.max(0, ...p.keys.map((k) => k.value)) : p;
 }
 
-/**
- * Schedule `transitionIn`/`transitionOut` onto a gain over a span `length`
- * seconds long, baked like an eased ramp. Between the two it holds at 1.
- */
+/** Schedules `transitionIn`/`transitionOut` onto a gain over a span `length` seconds long, baked like an eased ramp; holds at 1 between them. */
 export function applyTransitions(
     gain: AudioParam,
     length: number,
@@ -294,14 +268,7 @@ export function buildLevel(
     return { output: transition, nodes: [level, transition] };
 }
 
-/**
- * Schedule a speed ramp onto an `AudioBufferSourceNode.playbackRate`.
- *
- * The ramp runs over **source** seconds and Web Audio schedules in context
- * seconds, so this walks clip time in small steps, converts each to a source
- * offset through the integral inverse, and lays down the rate there. `elapsed`
- * is clip seconds already played at a mid-clip seek.
- */
+/** Schedules a speed ramp onto `playbackRate`. The ramp runs over **source** seconds and Web Audio schedules in context seconds, so this walks clip time in small steps and converts each through the integral inverse. `elapsed` is clip seconds already played at a mid-clip seek. */
 export function applySpeedToPlaybackRate(
     rate: AudioParam,
     speed: Ramp | undefined,

@@ -1,14 +1,7 @@
 import type { LerpFunction } from "@/tween/lerp";
 import type { RectCornerRadius, CornerRadiusResolved } from "@/attributes/shape/corners/corner-radius";
 
-/**
- * The mapper + lerp pair behind every tweenable attribute: `resolve` turns loose
- * author input (a CSS string, a shorthand object, a previously-resolved value)
- * into the strict `TResolved` a renderer reads, and `lerp` interpolates between
- * two resolved values. This is the same pair `property`'s `mapper`/`tween`
- * options take — see `attributes/properties/typed.ts`, which builds each
- * `xProperty()` directly from one of these.
- */
+/** The mapper + lerp pair behind every tweenable attribute: `resolve` turns loose author input (a CSS string, a shorthand object, a resolved value) into the strict `TResolved` a renderer reads, and `lerp` interpolates two resolved values. It is the pair `property`'s `mapper`/`tween` options take (see `attributes/properties/typed.ts`). */
 export interface AttributeOps<TInput, TResolved> {
     resolve(value: TInput, previous?: TResolved): TResolved;
     lerp: LerpFunction<TResolved>;

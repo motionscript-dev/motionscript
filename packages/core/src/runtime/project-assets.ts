@@ -1,19 +1,15 @@
 import type { AssetCatalog } from "@/assets/catalog";
 import type { AssetRecord, ImageRecord, VideoRecord } from "@/assets/record";
 
-/**
- * A single asset's position on the project timeline together with the
- * load/evict windows the asset manager uses to keep memory bounded.
- */
+/** With the load/evict windows the asset manager uses to keep memory bounded. */
 export interface AssetTrack {
     record: AssetRecord;
-    /** Frame at which loading should begin; larger decodes get more lead time. Always <= startFrame. */
+    /** Larger decodes get more lead time. Always <= startFrame. */
     cacheAt: number;
-    /** Frame after which it may be evicted, or null to keep it (fonts). Always >= endFrame when set. */
+    /** `null` keeps it (fonts). Always >= endFrame when set. */
     discardAt: number | null;
 }
 
-/** What one track contributes: its clip-local records, and where the track starts. */
 export interface TrackRecords {
     id: string;
     startFrame: number;
@@ -21,17 +17,13 @@ export interface TrackRecords {
 }
 
 /**
- * Every track's asset records merged onto the project timeline, kept up to date
- * key by key.
- *
- * An edit to one track touches the keys that track's records changed, so the
- * cost of republishing follows the edit rather than the project. The map handed
- * out is replaced, never mutated, so a result already published stays as it was.
+ * Kept up to date key by key: an edit to one track touches only the keys its records changed, so the cost of
+ * republishing follows the edit. The map handed out is replaced, never mutated, so a result already published
+ * stays as it was.
  */
 export class ProjectAssets {
     constructor(private readonly _fps: number, private readonly _catalog: AssetCatalog) { }
 
-    /** The merged map for `tracks` — the same object as last time when nothing in it changed. */
     update(tracks: readonly TrackRecords[]): ReadonlyMap<string, AssetTrack> {
         const touched = new Set<string>();
         const live = new Set<string>();
@@ -110,13 +102,12 @@ export class ProjectAssets {
     }
 }
 
-/** Shift an asset record's frame range onto the project timeline by `offset`. */
 function shiftRecord(record: AssetRecord, offset: number): AssetRecord {
     if (offset === 0) return record;
     return { ...record, startFrame: record.startFrame + offset, endFrame: record.endFrame + offset };
 }
 
-/** Union two records of one key, so an asset several tracks use resolves to one window over all of it. */
+/** An asset several tracks use resolves to one window over all of it. */
 function mergeRecord(existing: AssetRecord | undefined, record: AssetRecord): AssetRecord {
     if (!existing) return record;
     return {
@@ -126,10 +117,7 @@ function mergeRecord(existing: AssetRecord | undefined, record: AssetRecord): As
     } as AssetRecord;
 }
 
-/**
- * The source's intrinsic decode, off the catalog: what a full decode costs, which
- * is what lead time scales with. Nothing for a source the catalog cannot size.
- */
+/** What a full decode costs, which lead time scales with. Nothing for a source the catalog cannot size. */
 function intrinsicMB(record: ImageRecord | VideoRecord, catalog: AssetCatalog): number {
     let size: { width: number; height: number };
     try {
@@ -141,11 +129,10 @@ function intrinsicMB(record: ImageRecord | VideoRecord, catalog: AssetCatalog): 
     return decodedMB(size.width, size.height);
 }
 
-/** Frames of lead time per decoded megabyte, clamped — a 4K image gets ~64, a thumbnail the minimum. */
+/** Clamped: a 4K image gets about 64, a thumbnail the minimum. */
 const LEADS_PER_MB = 2;
 const MIN_LEAD = 2;
 const MAX_LEAD = 120;
-/** Frames an asset outlives its last use, for backward-scrub headroom. */
 const TAIL_FRAMES = 30;
 
 function decodedMB(width: number, height: number): number {
@@ -156,7 +143,7 @@ function leadFrames(mb: number): number {
     return Math.min(MAX_LEAD, Math.max(MIN_LEAD, Math.round(mb * LEADS_PER_MB)));
 }
 
-/** Size-proportional lead time for images and video; fonts pinned from frame 0 and never evicted. */
+/** Fonts are pinned from frame 0 and never evicted. */
 function assetTrackOf(entry: AssetRecord, fps: number, catalog: AssetCatalog): AssetTrack | undefined {
     switch (entry.type) {
         case "image": {

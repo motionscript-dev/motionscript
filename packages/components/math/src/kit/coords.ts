@@ -1,4 +1,4 @@
-import type { Extents, Vector2 } from "@motionscript/sdk";
+import { lerpNumber, type Extents, type Vector2 } from "@motionscript/sdk";
 
 /** A closed span of graph values, low to high. */
 export type Interval = readonly [number, number];
@@ -119,7 +119,7 @@ export function readMatrix(value: unknown, previous: Matrix2 = IDENTITY_MATRIX):
 }
 
 export function lerpMatrix(from: Matrix2, to: Matrix2, t: number): Matrix2 {
-    return [0, 1, 2, 3].map((i) => from[i] + (to[i] - from[i]) * t) as unknown as Matrix2;
+    return [0, 1, 2, 3].map((i) => lerpNumber(from[i], to[i], t)) as unknown as Matrix2;
 }
 
 export function isIdentityMatrix([a, b, c, d]: Matrix2): boolean {

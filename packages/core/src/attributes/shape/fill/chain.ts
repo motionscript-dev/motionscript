@@ -1,7 +1,6 @@
 import type { Color } from "./color/parser";
 import type { BlendMode } from "./blend";
 import type { Vector2 } from "@/attributes/layout/vector2";
-import type { ImageAdjustment, VideoAdjustment } from "../filters/chain";
 import type { MediaPresetProp, VideoPresetProp } from "./media-preset";
 import type { FillProp, FillResolved, FillSpace } from "./union";
 import { normalizeUniforms } from "../shaders/uniforms";
@@ -33,13 +32,7 @@ export interface MediaPlacementOptions {
 export interface VideoFillOptions extends FillOptions, MediaPlacementOptions {
     /** The grade laid over the footage — an adjustment chain plus a 0–1 mix. */
     preset?: VideoPresetProp;
-    /** @deprecated Moved to `preset.adjustments`. Removed in the next major. */
-    filters?: VideoAdjustment;
-    /**
-     * Explicit source time to paint, in seconds. Omit it and the clip plays by
-     * itself, timed from the moment the node painting it appeared — set it only
-     * to drive the playhead yourself (`null` hands the playhead back).
-     */
+    /** Explicit source time in seconds. Omit and the clip plays by itself from when the node appeared; set only to drive the playhead yourself (`null` hands it back). */
     timestamp?: number | null;
     /** Whether playback advances with the node's clock. Defaults to `true`. */
     playing?: boolean;
@@ -52,11 +45,7 @@ export interface VideoFillOptions extends FillOptions, MediaPlacementOptions {
     duration?: number;
 }
 
-/**
- * Cross-cutting options shared by every fill layer. These map onto the
- * `opacity` / `blend` fields each fill prop already accepts, plus the
- * `space` directive carried generically by the registry.
- */
+/** Cross-cutting options for every fill layer: the `opacity` / `blend` fields each fill prop accepts, plus the registry's generic `space` directive. */
 export interface FillOptions {
     opacity?: number;
     blend?: BlendMode;
@@ -72,66 +61,40 @@ function withOptions<T extends object>(base: T, options: FillOptions = {}): T & 
     return out;
 }
 
-/**
- * Immutable, chainable list of fill layers.
- *
- * Each builder method returns a new `FillChain` with the layer appended, so
- * chains are safe to share and branch — mirroring {@link EffectChain}.
- *
- * @example
- * const bg = Fills.image('./background.jpg', { blend: 'overlay', opacity: 0.2 })
- *                 .color('red', { opacity: 0.3 });
- * node.fill = bg;                 // assign directly
- * node.fill = [...bg, 'white'];   // spread into an array
- */
+/** Immutable, chainable list of fill layers; each builder returns a new chain, so chains can be shared and branched. */
 export class FillChain {
     constructor(public list: FillProp[] = []) { }
 
-    /** Append a solid color fill. A CSS string or normalized `[r,g,b,a]`. */
     color(color: Color, options?: FillOptions) {
         return new FillChain([...this.list, withOptions({ type: 'solid' as const, color }, options)]);
     }
 
-    /**
-     * Append an image fill from `src`.
-     *
-     * @example
-     * Fills.image('./city.jpg', { zoom: 1.4, anchor: 'topCenter', crop: { bottom: 0.2 } })
-     */
     image(
         src: string,
         options?: FillOptions & MediaPlacementOptions & {
             /** The grade laid over the picture — an adjustment chain plus a 0–1 mix. */
             preset?: MediaPresetProp;
-            /** @deprecated Moved to `preset.adjustments`. Removed in the next major. */
-            filters?: ImageAdjustment;
         },
     ) {
-        const { fit, crop, zoom, anchor, matrix, preset, filters, ...common } = options ?? {};
-        // Both are forwarded unresolved: `imageFill.resolve` is the one place
-        // that flattens a chain and folds the deprecated prop into the preset,
-        // so a fill built here and a fill written as a literal cannot disagree
-        // about what a grade means.
+        const { fit, crop, zoom, anchor, matrix, preset, ...common } = options ?? {};
+        // Forwarded unresolved: `imageFill.resolve` is the one place that
+        // flattens a chain, so a fill built here and a fill written as a
+        // literal cannot disagree about what a grade means.
         return new FillChain([...this.list, withOptions({
             type: 'image' as const,
             src,
             fit, crop, zoom, anchor, matrix,
-            preset, filters,
+            preset,
         }, common)]);
     }
 
-    /**
-     * Append a video fill from `src`. Plays by default: its source timestamp is
-     * derived as it paints, from how long the node carrying the fill has
-     * existed — so the clip runs wherever the fill is used (fill, overlay,
-     * stroke, shadow, a custom node's `Graphics2D`) with nothing to advance.
-     */
+    /** Plays by default: the source timestamp is derived as it paints, from how long the carrying node has existed, so the clip runs wherever the fill is used with nothing to advance. */
     video(src: string, options?: VideoFillOptions) {
-        const { fit, crop, zoom, anchor, matrix, preset, filters, timestamp, playing, trimStart, trimEnd, playStart, speed, loop, duration, ...common } = options ?? {};
+        const { fit, crop, zoom, anchor, matrix, preset, timestamp, playing, trimStart, trimEnd, playStart, speed, loop, duration, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({
             type: 'video' as const,
             src,
-            fit, crop, zoom, anchor, matrix, preset, filters,
+            fit, crop, zoom, anchor, matrix, preset,
             timestamp,
             playing: playing ?? true,
             trimStart, trimEnd, playStart, speed, loop, duration,
@@ -139,19 +102,16 @@ export class FillChain {
     }
 
 
-    /** Append a linear gradient between `colors`. */
     linearGradient(colors: Color[], options?: FillOptions & { stops?: number[]; start?: Vector2; end?: Vector2 }) {
         const { stops, start, end, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({ type: 'linear-gradient' as const, colors, stops, start, end }, common)]);
     }
 
-    /** Append a radial gradient between `colors`. */
     radialGradient(colors: Color[], options?: FillOptions & { stops?: number[]; center?: Vector2; radius?: number }) {
         const { stops, center, radius, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({ type: 'radial-gradient' as const, colors, stops, center, radius }, common)]);
     }
 
-    /** Append a conic gradient between `colors`. */
     conicGradient(colors: Color[], options?: FillOptions & { stops?: number[]; center?: Vector2; startAngle?: number }) {
         const { stops, center, startAngle, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({ type: 'conic-gradient' as const, colors, stops, center, startAngle }, common)]);
@@ -163,13 +123,7 @@ export class FillChain {
         return new FillChain([...this.list, withOptions({ type: 'noise' as const, size, density, color, seed }, common)]);
     }
 
-    /**
-     * Append a fractal (fBm) noise fill — a continuous field rather than the
-     * speckle {@link noise} paints. Cloud, marble, smoke, terrain, plasma.
-     *
-     * Tween `offset` to travel through the field (it flows); tween `seed` to
-     * shift to a different field entirely (it churns).
-     */
+    /** A continuous field (cloud, marble, smoke), unlike the speckle of {@link noise}. Tween `offset` to flow through it, `seed` to churn to a different field. */
     fractalNoise(options?: FillOptions & Omit<FractalNoiseFillProp, 'type' | 'opacity' | 'blend'>) {
         const {
             basis, octaves, frequency, lacunarity, gain, seed, offset, angle,
@@ -186,18 +140,10 @@ export class FillChain {
     }
 
     /**
-     * Append a custom shader fill — the escape hatch past {@link noise} and
-     * {@link fractalNoise}, where the author writes the fragment function.
-     *
-     * The WGSL `source` defines `fn fill(in: FillIn) -> vec4f` and declares its
-     * uniforms as `struct Params`, read as `u.<name>`. It returns
-     * **premultiplied** rgba, without folding `opacity` in (the layer's opacity is
-     * already applied, so applying it twice squares it). Uniforms are keyed by
-     * their declared name, so order is irrelevant.
-     *
-     * Keep `source` constant — it is the compile-cache key, so it snaps at a
-     * tween's midpoint and rebuilding it per frame compiles a program per frame.
-     * Everything that changes belongs in a uniform, which is an in-place write.
+     * Custom shader fill. The WGSL `source` defines `fn fill(in: FillIn) -> vec4f` and declares uniforms as
+     * `struct Params`, read as `u.<name>`. It returns **premultiplied** rgba without folding `opacity` in (already
+     * applied; doing it twice squares it). Keep `source` constant: it is the compile-cache key, so it snaps at a
+     * tween's midpoint and rebuilding it per frame compiles a program per frame. Changing values belong in uniforms.
      *
      * @example
      * Fills.shader(GLOW, { uniforms: { amount: 0.6 } })
@@ -235,21 +181,12 @@ export class FillChain {
         )]);
     }
 
-    /** Append a stripe (hatch) fill. */
     stripe(options?: FillOptions & { gap?: number; strokeWidth?: number; angle?: number; color?: Color }) {
         const { gap, strokeWidth, angle, color, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({ type: 'stripe' as const, gap, strokeWidth, angle, color }, common)]);
     }
 
-    /**
-     * Append a dot-grid fill — a lattice of dots at a pixel pitch.
-     *
-     * Tween `offset` to drift the field under a shape that isn't moving; tween
-     * `spacing` or `radius` to breathe it.
-     *
-     * @example
-     * Fills.dotGrid({ radius: 1.5, spacing: 24, color: 'muted' })
-     */
+    /** Lattice of dots at a pixel pitch. Tween `offset` to drift the field under a still shape. */
     dotGrid(options?: FillOptions & Omit<DotGridFillProp, 'type' | 'opacity' | 'blend'>) {
         const { radius, spacing, offset, color, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions(
@@ -258,16 +195,7 @@ export class FillChain {
         )]);
     }
 
-    /**
-     * Append a grid fill — ruled lines dividing the shape into cells, with an
-     * optional finer ruling nested inside each one.
-     *
-     * Sized in divisions of the shape rather than in px (unlike {@link dotGrid}),
-     * so it holds its structure as the shape resizes.
-     *
-     * @example
-     * Fills.grid({ divisions: 8, subdivisions: 4, color: 'border' })
-     */
+    /** Ruled lines dividing the shape into cells, optionally with a finer ruling inside. Sized in divisions rather than px (unlike {@link dotGrid}), so it holds its structure as the shape resizes. */
     grid(options?: FillOptions & Omit<GridFillProp, 'type' | 'opacity' | 'blend'>) {
         const {
             divisions, subdivisions, offset, strokeWidth, subdivisionWidth, color, ...common
@@ -282,80 +210,40 @@ export class FillChain {
     }
 
     /**
-     * Append a 3D scene, painted through the shape's own path.
-     *
-     * Takes a **built** {@link Scene3D}, never a builder — per-frame freshness
-     * comes from where the value is produced (a `renderSelf`, or a `() => …`
-     * reactive binding), like every other fill.
-     *
-     * Note two same-type 3D layers hard-cut rather than cross-fading, because a
-     * command list has no meaningful in-between. To dissolve between two scenes,
-     * stack them and tween their opacities in opposite directions.
+     * A 3D scene painted through the shape's own path. Takes a **built** {@link Scene3D}, never a builder; freshness
+     * comes from where the value is produced (a `renderSelf`, or a `() => …` binding). Two same-type 3D layers
+     * hard-cut rather than cross-fading (a command list has no in-between): stack them and tween opacities instead.
      */
     canvas3D(scene: Scene3D, options?: FillOptions & { maxPixelRatio?: number; antialias?: boolean }) {
         const { maxPixelRatio, antialias, ...common } = options ?? {};
         return new FillChain([...this.list, withOptions({ type: 'canvas3D' as const, scene, maxPixelRatio, antialias }, common)]);
     }
 
-    /** Allows spreading the chain into an array: `[...Fills.color('red')]`. */
     *[Symbol.iterator]() {
         yield* this.list;
     }
 
-    /** Serializes to the raw fill array so frameworks that call `toJSON` get a plain value. */
     toJSON() {
         return this.list;
     }
 }
 
-/**
- * Accepted shapes for a node's `fill` prop.
- *
- * Can be a single fill, a `FillChain` builder result, an already-resolved
- * {@link FillResolved}, or an array mixing any of these (each chain contributes
- * all its layers in place):
- *
- *   'red'                                  // plain CSS color
- *   Fills.image('bg.jpg')                  // chain
- *   ['#e8c584', Fills.image('bg.jpg')]
- *   ['#e8c584', ...Fills.image('bg.jpg')]
- *   resolvedFills                          // FillResolved[] passes through
- */
+/** Accepted shapes for a node's `fill`: a single fill, a `FillChain`, an already-resolved {@link FillResolved}, or an array mixing these (chains contribute their layers in place). */
 export type Fill =
     | FillProp
     | FillResolved
     | FillChain
     | (FillProp | FillResolved | FillChain)[];
 
-/**
- * Entry point for building fill chains fluently.
- *
- * An empty {@link FillChain}, so `Fills.image(src)` *is* `new FillChain().image(src)`
- * — every builder's signature and documentation has one definition, on the
- * class, which is what an editor shows when you hover `Fills.image`. The chain
- * is immutable (each builder returns a new one), so sharing one empty instance
- * as the entry point is safe.
- *
- * @example
- * node.fill = Fills.image('./bg.jpg', { opacity: 0.2 }).color('red', { opacity: 0.3 });
- */
+/** An empty {@link FillChain}: `Fills.image(src)` *is* `new FillChain().image(src)`, so builders are documented once, on the class. Chains are immutable, so sharing one instance is safe. */
 export const Fills = new FillChain();
 
-/**
- * Normalises any {@link Fill} value to a plain `FillProp[]`.
- * Used by `resolveFillArray` before resolving to the renderer shape.
- *
- * Already-resolved fills (`FillResolved`) structurally satisfy `FillProp`, so
- * they pass straight through and `resolveFill` re-normalises them idempotently.
- */
+/** Normalises any {@link Fill} to `FillProp[]`. Already-resolved fills structurally satisfy `FillProp` and pass through (`resolveFill` re-normalises idempotently). */
 export function resolveChainFill(fill: Fill | undefined): FillProp[] {
     if (fill == null) return [];
     if (fill instanceof FillChain) return fill.list;
     if (Array.isArray(fill)) {
-        // Flatten any chains used as array elements so each contributes its
-        // layers in place: `['#e8c584', Fills.image('bg.jpg')]` — and the plain
-        // array a chain serializes to, which is how that value reads back out of
-        // a stored document.
+        // Flatten chains used as array elements, and the plain array a chain serializes to (how it reads back from a stored document).
         const out: FillProp[] = [];
         for (const item of fill) {
             if (item instanceof FillChain) out.push(...item.list);

@@ -5,7 +5,6 @@ export interface GrayscaleEffect extends ModedEffect, EffectFields<typeof graysc
     type: "grayscale";
 }
 
-/** The {@link GrayscaleEffect} spec: its parameters, defaults and ranges. */
 export const grayscaleSpec = defineEffect({
     type: "grayscale",
     group: "color",

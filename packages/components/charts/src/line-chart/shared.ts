@@ -1,20 +1,3 @@
-/**
- * Types and pure helpers specific to the {@link LineChart} family: the traced
- * polylines, the spotlit region they dim outside of, and the theme those two
- * add to the shared chart vocabulary.
- *
- * Everything a bar or a pie chart would want too — what a series is, how an axis
- * is scaled and formatted, the theme leaf resolvers, the legend and plot-panel
- * branches — lives in `../kit/shared.ts` and is imported here. What's
- * left below is what only a line chart has: points sorted along an x column,
- * a region clipped out of a polyline, and the `region` branch of the theme.
- *
- * Kept renderer-agnostic (no `Node` imports) so every part shares one
- * scale/format/palette/theme vocabulary, and so a host's own inspector
- * mapping can build a partial {@link ChartTheme} without
- * pulling the components in.
- */
-
 import {
   Fills,
   fillOps,
@@ -25,7 +8,9 @@ import {
   type FillResolved,
   type Stroke,
   type StrokeResolved,
+  type Vector2,
 } from "@motionscript/sdk"
+import { niceStep } from "@motionscript/sdk/component"
 
 import {
   CHART_PALETTE,
@@ -39,7 +24,6 @@ import {
   lerpLegendConfig,
   lerpPlotArea,
   lerpSeriesStrokes,
-  niceStep,
   num,
   resolveAxisConfig,
   resolveLegendConfig,
@@ -54,56 +38,36 @@ import {
 } from "../kit/shared"
 import type { XScale } from "./x-scale"
 
-/**
- * One series in a {@link LineChart}: a polyline traced through the values in one
- * column of the chart's `data`, drawn in `fill` (or the theme's `seriesStyles`
- * palette when omitted) and captioned by `label` in the legend.
- *
- * The family-wide {@link ChartSeries} under a name that says what it draws here;
- * the chart's own `xField` prop names the column carrying the shared x values,
- * so every series is read off the same rows — one row per sample, one column per
- * series.
- */
+/** One polyline of a {@link LineChart}: {@link ChartSeries} under the name for what it draws here. */
 export type LineSeries = ChartSeries
 
-// ---- Plot regions -------------------------------------------------------
-
 /**
- * A rectangular slice of the plot, in **data units** — the author-facing input
- * to {@link LineChart.spotlightRegion} / {@link LineChart.zoomTo}.
- *
- * Either axis may be omitted, and that's the point: `{ x: [60, 100] }` is a
- * vertical band spanning the full height, `{ y: [8, 10] }` a horizontal band
- * spanning the full width, and both together a box. A reversed range is read
- * the same as the forward one — a region is a span, not a direction.
+ * A rectangular slice of the plot in data units, the input to `spotlightRegion`
+ * and `zoomTo`. Either axis may be omitted: `{ x: [60, 100] }` is a full-height
+ * band. A reversed range reads the same as a forward one.
  */
 export interface PlotRegion {
-  /** Horizontal span in x-axis data units. Omit to span the full plot width. */
+  /** Omit to span the full plot width. */
   x?: Range
-  /** Vertical span in y-axis data units. Omit to span the full plot height. */
+  /** Omit to span the full plot height. */
   y?: Range
 }
 
 /**
- * A {@link PlotRegion} resolved into the plot's **centred pixel space** (origin
- * at the plot centre, y-up) — the same local frame the series points live in,
- * so a line can be clipped against it directly.
- *
- * `xBounded`/`yBounded` carry which axes the author actually constrained: an
- * unbounded axis has its edges pinned to the plot's own and draws no rule.
+ * A {@link PlotRegion} in the plot's centred pixel space (origin at the centre,
+ * y-up), the frame the series points live in. An axis the author left unbounded
+ * has its edges pinned to the plot's own and draws no rule.
  */
 export interface RegionBox {
   left: number
   right: number
   bottom: number
   top: number
-  /** The author gave an x range — the left/right edges are real data bounds. */
   xBounded: boolean
-  /** The author gave a y range — the bottom/top edges are real data bounds. */
   yBounded: boolean
 }
 
-/** The empty box, used as the "no region" resting value. */
+/** The "no region" resting value. */
 export const EMPTY_REGION_BOX: RegionBox = {
   left: 0,
   right: 0,
@@ -113,19 +77,15 @@ export const EMPTY_REGION_BOX: RegionBox = {
   yBounded: false,
 }
 
-/** Is `box` a real, non-degenerate region — i.e. is there anything to spotlight? */
+/** Whether `box` is non-degenerate, so there is something to spotlight. */
 export function hasRegion(box: RegionBox): boolean {
   return box.right > box.left && box.top > box.bottom
 }
 
 /**
- * Resolve a {@link PlotRegion} against the plot's pixel box and the chart's
- * scales. `plot` is the plot rectangle in centred pixel space, and
- * `xScale`/`yScale` the data ranges those edges span.
- *
- * An omitted axis takes the plot's own edges, so the region spans it. A given
- * axis is clamped to the plot, so a range running off the scale still produces
- * a box inside the panel.
+ * Resolve a {@link PlotRegion} against the plot rectangle (centred pixel space)
+ * and the data ranges its edges span. An omitted axis takes the plot's own
+ * edges; a given one is clamped to the plot.
  */
 export function resolveRegionBox(
   region: PlotRegion | null | undefined,
@@ -159,40 +119,31 @@ export function resolveRegionBox(
   return { left, right, bottom, top, xBounded, yBounded }
 }
 
-/** A bare `{x, y}` — declared locally so this module stays free of node imports. */
-interface Vector2Like {
-  x: number
-  y: number
-}
-
 /**
- * The parts of `points` that fall **inside** `box`, as a list of contiguous
- * sub-polylines — the geometry behind the region spotlight: a series is drawn
- * dimmed in full, then these runs are re-drawn over it at full strength.
- *
- * Segments are clipped against the box rather than filtered by endpoint, so a
- * line entering the region mid-segment is cut exactly on the boundary.
+ * The parts of `points` inside `box`, as contiguous sub-polylines: a series is
+ * drawn dimmed in full, then these runs are re-drawn at full strength. Segments
+ * are clipped, not filtered by endpoint, so a line entering mid-segment is cut
+ * exactly on the boundary.
  */
 export function clipPolylineToBox(
-  points: Vector2Like[],
+  points: Vector2[],
   box: RegionBox
-): Vector2Like[][] {
+): Vector2[][] {
   if (points.length < 2 || !hasRegion(box)) return []
 
-  const runs: Vector2Like[][] = []
-  let run: Vector2Like[] = []
+  const runs: Vector2[][] = []
+  let run: Vector2[] = []
 
   for (let i = 1; i < points.length; i++) {
     const seg = clipSegment(points[i - 1], points[i], box)
     if (!seg) {
-      // Segment misses the box entirely — close whatever run was open.
+      // Misses the box: close the open run.
       if (run.length >= 2) runs.push(run)
       run = []
       continue
     }
     const [a, b] = seg
-    // Continue the open run when this clipped segment starts where the last one
-    // ended; otherwise the line left the box and came back, which is a new run.
+    // Continues the open run if it starts where the last ended; otherwise the line left and came back.
     if (run.length > 0 && samePoint(run[run.length - 1], a)) run.push(b)
     else {
       if (run.length >= 2) runs.push(run)
@@ -204,25 +155,22 @@ export function clipPolylineToBox(
 }
 
 /** Points within half a pixel are the same point, for run-joining purposes. */
-function samePoint(a: Vector2Like, b: Vector2Like): boolean {
+function samePoint(a: Vector2, b: Vector2): boolean {
   return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5
 }
 
-/**
- * Liang–Barsky clip of one segment against the axis-aligned `box`. Returns the
- * surviving `[start, end]`, or `null` when the segment lies wholly outside.
- */
+/** Liang-Barsky clip of one segment against `box`: the surviving `[start, end]`, or `null` when wholly outside. */
 function clipSegment(
-  a: Vector2Like,
-  b: Vector2Like,
+  a: Vector2,
+  b: Vector2,
   box: RegionBox
-): [Vector2Like, Vector2Like] | null {
+): [Vector2, Vector2] | null {
   const dx = b.x - a.x
   const dy = b.y - a.y
   let t0 = 0
   let t1 = 1
 
-  // Each edge as (p, q): the segment survives where p·t <= q.
+  // Each edge as (p, q): the segment survives where p*t <= q.
   const edges: [number, number][] = [
     [-dx, a.x - box.left],
     [dx, box.right - a.x],
@@ -231,7 +179,7 @@ function clipSegment(
   ]
   for (const [p, q] of edges) {
     if (p === 0) {
-      // Parallel to this edge: outside it means the whole segment is out.
+      // Parallel to this edge: outside it, the whole segment is out.
       if (q < 0) return null
       continue
     }
@@ -250,41 +198,28 @@ function clipSegment(
   ]
 }
 
-// ---- Theme ---------------------------------------------------------------
-
-/**
- * How a spotlit {@link PlotRegion} is drawn — the dashed rules on its bounded
- * edges, the wash filling it, and how far the series fade outside it.
- */
+/** How a spotlit {@link PlotRegion} is drawn: rules on its bounded edges, a wash, and how far series fade outside it. */
 export interface RegionConfig {
-  /** The dashed rule marking each bounded edge. */
+  /** Marks each bounded edge. */
   stroke: Stroke
-  /** Wash filling the region, drawn under the series lines. */
+  /** Drawn under the series lines. */
   fill: Fill
-  /** Opacity the stretch of every series *outside* the region fades to. */
+  /** Opacity the stretch of every series outside the region fades to. */
   dimOpacity: number
 }
 
 /** A {@link LineChart}'s full, resolved visual theme. */
 export interface ChartConfig {
-  /**
-   * Default per-series line stroke, cycled by series index (`i % length`). A
-   * series' own `fill`, when set, overrides just the colour.
-   */
+  /** Cycled by series index; a series' own `fill` overrides just the colour. */
   seriesStyles: Stroke[]
   xAxis: AxisConfig
   yAxis: AxisConfig
-  /** The plot panel: border, fill, and drop shadow. */
   plotArea: PlotAreaConfig
   legend: LegendConfig
-  /** The spotlit-region annotation — see {@link RegionConfig}. */
   region: RegionConfig
 }
 
-/**
- * Author-facing partial theme, passed as {@link LineChart}'s `theme` prop —
- * every branch optional and deep-merged onto {@link DEFAULT_CHART_THEME}.
- */
+/** The author's partial theme, deep-merged onto {@link DEFAULT_CHART_THEME}. */
 export type ChartTheme = {
   seriesStyles?: Stroke[]
   xAxis?: Partial<AxisConfig>
@@ -294,12 +229,7 @@ export type ChartTheme = {
   region?: Partial<RegionConfig>
 }
 
-/**
- * The legend of a line chart: the shared one, with a small rounded-square
- * swatch in place of the wide chip. A bar's or a wedge's swatch stands in for
- * an area of paint and is drawn like one; a line's stands in for a colour, and
- * a square reads as the sample it is.
- */
+/** The shared legend with a small square swatch: a line's swatch stands for a colour, where a bar's or wedge's stands for an area of paint. */
 const LINE_CHART_LEGEND: LegendConfig = {
   ...DEFAULT_LEGEND,
   markerStyle: {
@@ -310,7 +240,6 @@ const LINE_CHART_LEGEND: LegendConfig = {
   },
 }
 
-/** The chart's out-of-the-box look. */
 export const DEFAULT_CHART_THEME: ChartConfig = {
   seriesStyles: DEFAULT_SERIES_STROKES,
   xAxis: DEFAULT_X_AXIS,
@@ -318,16 +247,13 @@ export const DEFAULT_CHART_THEME: ChartConfig = {
   plotArea: DEFAULT_PLOT_AREA,
   legend: LINE_CHART_LEGEND,
   region: {
-    // Brighter than the grid and dashed, so the boundary reads as a call-out
-    // rather than another axis line; `butt` caps keep the dash lengths exact.
+    // Brighter and dashed so it reads as a call-out, not an axis line; `butt` caps keep dash lengths exact.
     stroke: {
       weight: 3,
       fill: CHART_PALETTE.regionColor,
       dash: [14, 12],
       cap: "butt",
     },
-    // A wash barely above the panel — enough to tint the band, not enough to
-    // mute the series drawn over it.
     fill: Fills.color(CHART_PALETTE.regionColor, { opacity: 0.08 }),
     dimOpacity: SPOTLIGHT_DIM,
   },
@@ -364,11 +290,7 @@ function lerpRegionConfig(
   }
 }
 
-/**
- * {@link LineChart}'s `theme` entry's resolve: merges the author's partial
- * {@link ChartTheme} onto `previous` (falling back to
- * {@link DEFAULT_CHART_THEME} on first resolution), fully resolving every leaf.
- */
+/** The `theme` entry's resolve: merges a partial {@link ChartTheme} onto `previous` (first resolution: the default). */
 export function resolveChartTheme(
   theme: ChartTheme | undefined,
   previous?: ChartConfig
@@ -384,7 +306,6 @@ export function resolveChartTheme(
   }
 }
 
-/** {@link LineChart}'s `theme` entry's lerp — leaf by leaf. */
 export function lerpChartTheme(
   from: ChartConfig,
   to: ChartConfig,
@@ -400,20 +321,10 @@ export function lerpChartTheme(
   }
 }
 
-// ---- Scales --------------------------------------------------------------
-
 /**
- * Resolve one series' `[x, y]` points out of the chart's rows: each row's
- * position on the {@link XScale} paired with its own `field` column, sorted
- * along x so the polyline traces left-to-right whatever order the rows arrived
- * in.
- *
- * A row missing its y column contributes a 0 rather than a gap — these charts
- * draw continuous lines, so dropping the point would silently bridge the hole.
- *
- * Takes the resolved scale rather than the column *name*, because what a row's x
- * is depends on what kind of column it came out of: a number, an instant, or a
- * place in the file. See `x-scale.ts`.
+ * One series' `[x, y]` points, sorted along x so the polyline traces left to
+ * right. A row missing its y contributes 0 rather than a gap, since dropping it
+ * would silently bridge the hole.
  */
 export function seriesPoints(
   data: DataRecord[],
@@ -425,7 +336,6 @@ export function seriesPoints(
     .sort((a, b) => a[0] - b[0])
 }
 
-/** Min/max across every series' column, the fallback when unset. */
 export function yExtent(data: DataRecord[], series: LineSeries[]): Range {
   let lo = Infinity
   let hi = -Infinity
@@ -439,11 +349,9 @@ export function yExtent(data: DataRecord[], series: LineSeries[]): Range {
 }
 
 /**
- * Effective vertical scale: the explicit `range`, else the data's y extent
- * nudged out to tidy step bounds so markers read as round numbers.
- *
- * `divisions` is how many segments the auto-range is stepped into (one fewer
- * than a marker count) — it only shapes the tidy step when `range` is omitted.
+ * The explicit `range`, else the data's y extent nudged out to tidy step bounds.
+ * `divisions` (one fewer than the marker count) only shapes the step when
+ * `range` is omitted.
  */
 export function resolveYScale(
   data: DataRecord[],
@@ -460,11 +368,9 @@ export function resolveYScale(
 }
 
 /**
- * The scale for data that never moves. A zero-width scale puts every tick on the
- * same value and the line on the plot's floor, so it is widened to a few steps
- * either side of the value (the step sized to its magnitude, so `5` gets
- * `[3, 7]` and `5000` gets `[3000, 7000]`), or to `[0, 1]` for all zeros, as for
- * no data at all.
+ * The scale for constant data. A zero-width scale would put every tick on one
+ * value and the line on the floor, so it widens by a step sized to the
+ * magnitude (`5` gets `[3, 7]`), or `[0, 1]` for zero.
  */
 function constantScale(value: number, segments: number): Range {
   if (value === 0) return [0, 1]

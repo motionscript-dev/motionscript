@@ -1,25 +1,10 @@
-/**
- * Union types that represent every supported fill variant.
- *
- * Two flavors exist for each fill:
- *  - **Prop** — the loose author-facing shape accepted by node props (e.g. CSS
- *    color strings, optional fields with sensible defaults).
- *  - **Resolved** — the strict internal shape used by the renderer after
- *    {@link FillRegistry.resolve} has normalised every field.
- */
+/** Union types for every fill variant. A fill's **Prop** is the loose author-facing shape (CSS strings, optional fields); **Resolved** is the strict shape the renderer uses after {@link FillRegistry.resolve}. */
 
 /**
- * Reference frame a fill (and the stroke/shadow that wrap one) resolves
- * against. The drawn shapes are always treated as one unit (their union); the
- * space only changes which rect the gradient/image is mapped onto:
- *
- *  - `local`  — the shape's own (union) bounds. The fill is pinned to the
- *               figure, so moving the node around does not change its
- *               appearance. This is the default.
- *  - `parent` — the parent node's layout rect; moving the node *within* its
- *               parent slides it across the fill, so the appearance changes.
- *  - `global` — the render viewport; the fill is anchored to the frame, so
- *               moving the node anywhere on screen changes which slice it shows.
+ * Reference frame a fill (and the stroke/shadow wrapping one) resolves against; drawn shapes are treated as one unit
+ * (their union) and the space only changes which rect the gradient/image maps onto: `local` (default; the shape's own
+ * bounds, pinned to the figure), `parent` (the parent's layout rect; moving the node within it slides it across the
+ * fill), `global` (the render viewport; anchored to the frame).
  */
 export type FillSpace = "local" | "parent" | "global";
 
@@ -38,18 +23,9 @@ import { VideoFillProp, VideoFillResolved } from "./implementations/video";
 import { Canvas3DFillProp, Canvas3DFillResolved } from "./implementations/canvas3d";
 import type { Scene3D } from "@/render3d/scene3d";
 
-/**
- * Loose fill value accepted by node `fill` props.
- *
- * A plain CSS color string (e.g. `"red"`, `"#ff0"`) is shorthand for a
- * {@link SolidFillProp} and is resolved automatically by the registry.
- */
 /** Fields shared by every fill variant, regardless of type. */
 export interface FillCommon {
-    /**
-     * Reference frame this fill resolves against. Defaults to `local`.
-     * See {@link FillSpace}.
-     */
+    /** Reference frame this fill resolves against. Defaults to `local`. */
     space?: FillSpace;
 }
 
@@ -57,9 +33,7 @@ type WithCommon<T> = T & FillCommon;
 
 export type FillProp =
     | string
-    // A bare built scene is shorthand for a {@link Canvas3DFillProp}, the same way a
-    // bare CSS string is shorthand for a solid fill. Both are coerced by the
-    // registry: `fill={["#0b0d12", g3]}`.
+    // A bare built scene is shorthand for a {@link Canvas3DFillProp}, as a bare CSS string is for a solid fill (both coerced by the registry).
     | Scene3D
     | WithCommon<SolidFillProp>
     | WithCommon<NoiseFillProp>

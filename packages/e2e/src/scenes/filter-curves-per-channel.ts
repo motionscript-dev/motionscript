@@ -15,9 +15,9 @@ export default scene((stage) => {
                 cornerRadius: 24,
                 fill: Fills.image('kingfisher.jpg', {
                     fit: 'fill',
-                    filters: Adjustments.curves({ points: [[0, 0], [1, 1]], channel: 'r' })
+                    preset: { adjustments: Adjustments.curves({ points: [[0, 0], [1, 1]], channel: 'r' })
                         .curves({ points: [[0, 0], [1, 1]], channel: 'g' })
-                        .curves({ points: [[0, 0], [1, 1]], channel: 'b' }) }),
+                        .curves({ points: [[0, 0], [1, 1]], channel: 'b' }) } }),
             }),
         ] }),
     );
@@ -25,8 +25,8 @@ export default scene((stage) => {
     () => rect().to({ data: {
             fill: Fills.image('kingfisher.jpg', {
                 fit: 'fill',
-                filters: Adjustments.curves({ points: [[0, 0.15], [1, 1]], channel: 'r' })
+                preset: { adjustments: Adjustments.curves({ points: [[0, 0.15], [1, 1]], channel: 'r' })
                     .curves({ points: [[0, 0], [1, 1]], channel: 'g' })
-                    .curves({ points: [[0, 0], [1, 0.7]], channel: 'b' }) }) }, duration: 1.4, easing: easeInOut('quad') }),
+                    .curves({ points: [[0, 0], [1, 0.7]], channel: 'b' }) } }) }, duration: 1.4, easing: easeInOut('quad') }),
     holdTail(1.4),
 ]);

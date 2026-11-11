@@ -18,6 +18,7 @@ import { omit, PAINT, PAINT_COMMANDS } from "./component";
 import { LatexMatrix } from "../tex/matrix";
 import { Latex } from "../tex/node";
 import { isFormula, latexPartBounds } from "../tex/typeset";
+import { radians } from "./geometry";
 import { refId } from "./graph";
 
 /** A node with parts that can be pointed at by name: a formula's terms. */
@@ -70,10 +71,8 @@ const REF = Types.custom<string, NodeView | null>("", { kind: "nodeRef", animata
 const HELD_REF = Types.custom<string, NodeView | null, { readonly private: true }>("", { kind: "nodeRef", private: true });
 
 /**
- * A mark drawn on another node, or on one part of a formula: a brace, a box,
- * an underline. It has no size of its own and takes no place in a layout; it
- * is drawn where its target is, wherever the two are in the tree, and its
- * selection box is its ink. Its entries, and what it draws on.
+ * A mark drawn on another node or one part of a formula (a brace, a box, an
+ * underline). It has no size and takes no place in a layout; its selection box is its ink.
  */
 export const FOLLOW_STATE = {
     // It is only an outline.
@@ -121,7 +120,6 @@ export const FOLLOW_COMMANDS = {
     }),
 };
 
-/** What a follow mark reads of its state. */
 export interface FollowValues {
     readonly on: NodeView | null;
     readonly part: string;
@@ -137,11 +135,7 @@ function restingOf(s: FollowValues): Target {
 
 const containers = new WeakMap<object, NodeView | null>();
 
-/**
- * The formula a follow mark sits in, as its render last found it: what a mark
- * naming no node is drawn on. Its bounds and handles read it from there, where
- * there is no context to ask.
- */
+/** The formula a follow mark sits in, as its render last found it: its bounds and handles read it where there is no context to ask. */
 export function container(ctx: RenderContext | null, s: object): NodeView | null {
     if (!ctx) return containers.get(s) ?? null;
     const found = ctx.ancestor(Latex) ?? ctx.ancestor(LatexMatrix);
@@ -175,7 +169,7 @@ function quadOf(node: NodeView | null, target: Omit<Target, "on">): Quad | null 
             : { x: 0, y: 0, width: node.size.width, height: node.size.height };
     if (!box) return null;
     const frame = node.frame;
-    const turn = (frame.rotation * Math.PI) / 180;
+    const turn = radians(frame.rotation);
     const cos = Math.cos(turn);
     const sin = Math.sin(turn);
     // The engine's turn is clockwise, in a y-up frame.
@@ -201,8 +195,6 @@ export function outlineBounds(outline: readonly PathCommand[]): BoxBounds {
 
 /** Every drawn point's centre frame: the mark's own centre, so its outline is where it says. */
 export const OWN_FRAME: [number, number, number, number] = [-1, -1, 1, 1];
-
-// --- Geometry the marks share ---
 
 export const add = (a: Vector2, b: Vector2, k = 1): Vector2 => ({ x: a.x + b.x * k, y: a.y + b.y * k });
 export const between = (a: Vector2, b: Vector2, t = 0.5): Vector2 => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });

@@ -1,16 +1,4 @@
-/**
- * Structural walks over a built {@link Graphics3D} or {@link Scene3D}.
- *
- * A `Graphics3D` is a flat op list with a handful of scene-level descriptors
- * hanging off it, and more than one consumer needs to sweep the same surface for
- * the same thing. {@link forEachTexture3D} is that sweep for textures: asset
- * discovery uses it during precomp to decide what to load, and the renderer uses
- * it at paint time to find the surface textures it has to rasterize first.
- *
- * Keeping it here rather than in either caller is what stops the two from
- * drifting — a texture slot added to a material must be seen by *both*, or a map
- * loads and never draws (or draws and never loads).
- */
+/** Structural walks over a built {@link Graphics3D} or {@link Scene3D}. {@link forEachTexture3D} sweeps for textures: asset discovery uses it during precomp to decide what to load and the renderer at paint time to find surface textures to rasterize first. One shared sweep stops the two drifting: a texture slot added to a material must be seen by both, or a map loads and never draws (or draws and never loads). */
 
 import type { Graphics3D } from "./graphics3d";
 import { Scene3D } from "./scene3d";
@@ -25,32 +13,19 @@ export const TEXTURE_KEYS: readonly string[] = [
     "clearcoatRoughnessMap", "transmissionMap", "thicknessMap",
 ];
 
-/**
- * True for a texture descriptor object (vs. a plain uniform value).
- *
- * Structural, because {@link Texture3D} has no `type` discriminant — each member
- * is branded by the presence of its own payload key.
- */
+/** True for a texture descriptor object (vs. a plain uniform value). Structural, as {@link Texture3D} has no `type` discriminant: each member is branded by its own payload key. */
 export function isTextureLike(value: unknown): boolean {
     if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
     return "src" in value || "data" in value || "source" in value;
 }
 
-/**
- * Visit every {@link Texture3D} a scene references — material map slots, and
- * shader and post-effect uniforms.
- *
- * Visits duplicates; callers dedupe on whatever key they care about. Does **not**
- * cover model/environment resources, which are not textures and go through the
- * backend's own loader — see `declare3DResources`.
- */
+/** Visits every {@link Texture3D} a scene references (material map slots, shader and post-effect uniforms), duplicates included. Does **not** cover model/environment resources, which go through the backend's loader (see `declare3DResources`). */
 export function forEachTexture3D(g3: Graphics3D | Scene3D, visit: (texture: Texture3D) => void): void {
     const uniforms = (bag: Record<string, unknown> | undefined): void => {
         if (!bag) return;
         for (const key in bag) {
             const value = bag[key];
-            // A bare string is a texture path only when it looks like one; any
-            // other string is a colour uniform and names no asset.
+            // A bare string is a texture path only when it looks like one; any other string is a colour uniform.
             if ((typeof value === "string" && looksLikeAssetPath(value)) || isTextureLike(value)) {
                 visit(value as Texture3D);
             }
@@ -90,10 +65,7 @@ export function forEachTexture3D(g3: Graphics3D | Scene3D, visit: (texture: Text
         }
     }
 
-    // Only a whole scene has a post chain; what a single node draws has none.
-    // The environment's own panorama is not visited here: it is loaded through
-    // the backend's HDR/EXR loader rather than the image pipeline, and
-    // `trackEnvironment` is what declares it.
+    // Only a whole scene has a post chain. The environment's panorama isn't visited: the backend's HDR/EXR loader handles it, declared by `trackEnvironment`.
     if (!(g3 instanceof Scene3D)) return;
 
     for (const effect of g3.postEffects()) {

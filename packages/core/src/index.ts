@@ -20,5 +20,3 @@ export * from './util'
 export * from './tween';
 export * from './props';
 export * from './layout';
-
-export * from './renamed-scene-names';

@@ -1,20 +1,19 @@
 import {
   Rect,
   Types,
+  clamp,
   component2d,
   easeOut,
   type ChildView,
   type DataRecord,
   type NodeOf,
-  // Named so this component's emitted type reaches `Node2D` through the sdk, not core.
+  // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
-  type Node2DProps,
-  type Timeline,
+  type Node2DProps as _Node2DProps,
 } from "@motionscript/sdk"
 
 import { asParts, fresh } from "../kit/entries"
-import { beats, type Beat } from "../kit/motion"
-import { clampUnit } from "../kit/shared"
+import { beats, type AnyTimeline, type Beat } from "../kit/motion"
 import { PieLegend } from "./pie-legend"
 import { PieRing } from "./pie-ring"
 import {
@@ -22,6 +21,7 @@ import {
   lerpPieChartTheme,
   resolvePieChartTheme,
   resolvePieSlices,
+  selectionFade,
   type PieChartConfig,
   type PieChartTheme,
   type PieLabelMode,
@@ -29,40 +29,6 @@ import {
   type PieSlice,
 } from "./shared"
 
-export interface PieChartProps extends Node2DProps {
-  /** One row per slice — a plain record of field name to value. */
-  data: DataRecord[]
-  /** Key into each row for its slice caption, used on the labels and the legend. */
-  categoryField: string
-  /** Key into each row for its slice magnitude — the wedge's share of the ring. */
-  valueField: string
-  /**
-   * The chart's visual theme — slice palette, ring geometry, label and centre
-   * type, legend. Every branch is optional and deep-merged onto
-   * {@link DEFAULT_PIE_CHART_THEME}.
-   */
-  theme?: PieChartTheme
-  /** What the ring's labels say. */
-  labelMode?: PieLabelMode
-  /** Where they sit: inside their wedge, outside on a leader, or nowhere. */
-  labelPlacement?: PieLabelPlacement
-  /** Whether the legend column beside the ring is drawn at all. */
-  showLegend?: boolean
-  /** Gap between the ring and the legend, in px. */
-  gap?: number
-  /** Text set in the ring's hole — see `revealCenter`. */
-  centerLabel?: string
-  /** Smaller second line under {@link centerLabel}. */
-  centerCaption?: string
-  /**
-   * Whether the hole's summary is drawn at rest. `true` (the default) is the
-   * plain answer; a scene that wants the conclusion to land on a later beat sets
-   * this `false` and runs `revealCenter` when it gets there.
-   */
-  showCenter?: boolean
-}
-
-/** What the selection reads: the rows, how they are cut, and the pops the commands move. */
 export interface PieChartValues {
   readonly data: DataRecord[]
   readonly categoryField: string
@@ -71,57 +37,42 @@ export interface PieChartValues {
   readonly pops: number[]
 }
 
-/**
- * How `enter` divides its duration: the wedges sweeping in, then the labels and
- * the legend arriving together. Shares of the whole, so they sum to 1.
- */
+/** How `enter` divides its duration: wedges sweeping in, then labels and legend together. Sums to 1. */
 const SWEEP_SHARE = 0.65
 const LABEL_SHARE = 0.35
 
 const SLICE_ARG = Types.number(0, { min: 0, step: 1 })
 
-/** The slices the ring and the legend draw, resolved from the rows and the palette. */
 function slicesOf(s: PieChartValues): PieSlice[] {
   return resolvePieSlices(s.data, s.categoryField, s.valueField, s.theme.sliceFills)
 }
 
-/** How far slice `index` is pushed out, in `[0, 1]`. */
 function popAt(s: PieChartValues, index: number): number {
-  return clampUnit(s.pops[index] ?? 0)
+  return clamp(s.pops[index] ?? 0, 0, 1)
 }
 
-/** Whether slice `index` is grown out past the ring's rim: past half way, so a slice mid-swell is not yet counted. */
+/** Whether slice `index` is past half way out, so a slice mid-swell is not yet counted. */
 export function isSliceSelected(s: PieChartValues, index: number): boolean {
   return popAt(s, index) > 0.5
 }
 
-/**
- * How far each slice is dimmed by the selection, one entry per slice: 1 while
- * nothing is out, and for the selected slice itself; falling toward the theme's
- * `dimOpacity` for the rest in proportion to how far the selection has grown.
- */
+/** Per-slice opacity: 1 while nothing is out and for the selected slice, falling toward `dimOpacity` for the rest as the selection grows. */
 function sliceDims(s: PieChartValues): number[] {
   let focus = 0
   for (let i = 0; i < s.data.length; i++) focus = Math.max(focus, popAt(s, i))
   const dim = s.theme.spotlight.dimOpacity
-  if (focus <= 0) return s.data.map(() => 1)
-  return s.data.map((_, i) => 1 - (1 - clampUnit(dim)) * focus * (1 - popAt(s, i)))
+  return s.data.map((_, i) => selectionFade(focus, dim, popAt(s, i)))
 }
 
-type AnyTimeline = Timeline<any, any>
-
-/**
- * Every slice's pop eased from where it is to what `pop` asks for. A move that
- * changes nothing still takes its slot, writing nothing.
- */
+/** Every slice's pop eased to what `pop` asks for. A move that changes nothing still takes its slot. */
 function popping(timeline: AnyTimeline, s: PieChartValues, pop: (index: number) => number) {
   const from = s.data.map((_, i) => popAt(s, i))
-  const targets = s.data.map((_, i) => clampUnit(pop(i)))
+  const targets = s.data.map((_, i) => clamp(pop(i), 0, 1))
   if (from.every((value, i) => value === targets[i])) return timeline.wait(timeline.duration)
   return timeline.animate((t) => ({ pops: from.map((value, i) => value + (targets[i] - value) * t) }))
 }
 
-/** The ring and the legend, found through the chart's children: the last row of them is the one it built. */
+/** The ring and legend among the children; the last row is the one the chart built. */
 function partsOf(children: readonly ChildView[]) {
   for (let i = children.length - 1; i >= 0; i--) {
     const row = children[i]
@@ -132,57 +83,48 @@ function partsOf(children: readonly ChildView[]) {
 }
 
 /**
- * A pie or donut chart, composed from two parts laid out by a horizontal-flow
- * {@link Rect} — the ring filling whatever the hugging legend leaves, both
- * centred:
+ * A pie or donut chart: a {@link PieRing} filling what the hugging {@link PieLegend}
+ * leaves. One mark per row, not per column, and nothing to hide, since dropping
+ * a slice would re-cut every other wedge; `selectSlice` and its siblings swell
+ * a slice and dim the rest instead.
  *
- * - {@link PieRing} — the wedges, each sized by its share of the total, with its
- *   label inside its own band or pinned outside on a leader line, and the
- *   summary in the hole.
- * - {@link PieLegend} — a column of swatch-and-caption rows naming each slice.
- *
- * **One mark per row, not per column**: a pie's palette is indexed by row and
- * there is nothing to hide, since dropping a slice would re-cut every other
- * wedge. `selectSlice` and its siblings are what a pie has instead — a slice
- * swells out of the ring and everything else dims behind it.
- *
- * **Resting state is the finished chart**; `enter` arms every part on its first
- * frame. The one exception is the hole's summary, which a scene can hold back
- * with `showCenter: false`, because it is usually the chart's *conclusion*.
+ * Resting state is the finished chart, except the hole's summary, which
+ * `showCenter: false` holds back for `revealCenter`.
  */
 export const PieChart = component2d({
   key: "pieChart",
   state: {
     data: fresh<DataRecord[]>(() => []),
+    /** Slice caption, used on the labels and the legend. */
     categoryField: "",
+    /** Slice magnitude: the wedge's share of the ring. */
     valueField: "",
     theme: Types.custom<PieChartTheme, PieChartConfig>(DEFAULT_PIE_CHART_THEME, { resolve: resolvePieChartTheme, lerp: lerpPieChartTheme }),
+    /** What the ring's labels say. */
     labelMode: Types.custom<PieLabelMode>("percent"),
+    /** Where they sit: inside their wedge, outside on a leader, or nowhere. */
     labelPlacement: Types.custom<PieLabelPlacement>("leader"),
+    /** Gap between the ring and the legend, in px. */
     gap: 40,
+    /** Text set in the ring's hole. */
     centerLabel: "",
+    /** Smaller second line under `centerLabel`. */
     centerCaption: "",
-    /**
-     * How far each slice is pushed out of the ring, `0`–`1` per index. Held here
-     * rather than on the ring because two parts read it: the wedges grow out by
-     * it, and the legend entries dim by it. Seeded flush, one to a row.
-     */
+    /** How far each slice is pushed out, `0`-`1` per index. Here, not on the ring, because the wedges and the legend both read it. */
     pops: fresh<number[]>(() => []),
     /** Read as the chart is built: the legend is a part the chart builds or doesn't. */
     showLegend: Types.boolean(true, { animatable: false }),
-    /** Read as the chart is built: whether the hole's summary is drawn at rest. */
+    /** Read as the chart is built: whether the hole's summary is drawn at rest. A scene that wants it to land later sets `false` and runs `revealCenter`. */
     showCenter: Types.boolean(true, { animatable: false }),
   },
   defaults: {
-    // Its parts fill it; a node made of them would hug them.
+    // A node made of parts that fill would otherwise hug them.
     width: "fill",
     height: "fill",
     pops: (state) => slicesOf(state).map(() => 0),
   },
   allowedChildren: [],
-  // The slice *structure* (one label and one legend row per row) is read once;
-  // the slices themselves, their paint and the selection are bound, so a theme
-  // tween re-paints and a `set` of `data` re-cuts the wedges.
+  // The structure (a label and legend row per row) is read once; slices, paint and selection are bound, so a theme tween re-paints and a `set` of `data` re-cuts.
   children: (state) => {
     const theme = () => state.theme
     const slices = () => slicesOf(state)
@@ -209,8 +151,7 @@ export const PieChart = component2d({
           slices,
           legend: () => theme().legend,
           dims: () => sliceDims(state),
-          // The column's spacing is the theme's as the chart was built, like the
-          // entries' type and chips.
+          // Spacing is fixed as built.
           gap: state.theme.legend.itemGap / 3,
           padding: state.theme.legend.padding,
         }) as unknown as Node2D
@@ -220,15 +161,10 @@ export const PieChart = component2d({
     return asParts([row as unknown as Node2D])
   },
   commands: {
-    /**
-     * Animate the whole chart in: the wedges sweep in clockwise from the theme's
-     * `startAngle`, then the labels fade up and the legend staggers in together.
-     * Its first frame arms the wedges, the labels and the legend; the hole's
-     * summary keeps its own signal. `duration` is the **whole** entrance.
-     */
+    /** Wedges sweep in clockwise from `startAngle`, then labels fade up and the legend staggers in. `duration` is the whole entrance; the hole's summary keeps its own signal. */
     enter: {
       args: {},
-      // Held from the chart's arrival, so it never shows finished ahead of its draw.
+      // Held from arrival, so it never shows finished ahead of its draw.
       entrance: true,
       easing: easeOut(),
       run: (timeline, _state, children) => {
@@ -247,11 +183,7 @@ export const PieChart = component2d({
         ])
       },
     },
-    /**
-     * Fade the hole's summary up. Held out of `enter` on purpose: what sits in a
-     * donut's hole is usually the chart's conclusion, so the scene lands it on
-     * its own beat. Pair it with `showCenter: false`.
-     */
+    /** Fade the hole's summary up. Not part of `enter`: it is usually the conclusion, which a scene lands on its own beat. */
     revealCenter: {
       args: {},
       easing: easeOut(),

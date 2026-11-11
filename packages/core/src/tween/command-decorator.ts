@@ -1,8 +1,9 @@
 import { mostDerived, type PropertyEditor } from "@/attributes/properties/decorator";
 
 /**
- * Marks a method as a command: a named, parameterised animation a host can
- * offer, place on a timeline and store by name. Metadata only.
+ * Marks a method as a command: a named, parameterised animation a host can offer, place on a timeline and store by
+ * name. Metadata only. `args` maps a stored command's `params` onto `data`'s keys (see {@link CommandMeta.args}); every
+ * command takes one {@link CommandArgs} argument so a manifest can read its shape off `T`.
  *
  * ```ts
  * class Chart extends Node2D<ChartProps> {
@@ -10,16 +11,10 @@ import { mostDerived, type PropertyEditor } from "@/attributes/properties/decora
  * }
  * declareMembers(Chart, { showSeries: command({ args: ["index"] }) });
  * ```
- *
- * `args` maps a stored command's `params` object onto `data`'s keys — see
- * {@link CommandMeta.args}. Every command takes one {@link CommandArgs}
- * argument rather than positional params, so a manifest can read its shape
- * off `T` directly.
  */
 
 /** One argument a command takes, in the same vocabulary a property uses ({@link PropertyEditor}) — a range, an enum, a unit. A bare string is a name with nothing else to say. */
 export interface CommandArgDescriptor extends PropertyEditor {
-    /** The key under a `CommandSpec`'s `params` this is read from. */
     key: string;
     default?: unknown;
 }
@@ -32,22 +27,12 @@ export const COMMAND_META = Symbol("commandMeta");
 export interface CommandMeta {
     /** The key a host stores and dispatches on: the method name unless `command({ key })` renamed it. */
     key: string;
-    /** The method, which dispatching {@link key} calls. */
     method: string;
     /** Display name; built-ins leave this unset and localize by {@link key} instead. */
     name?: string;
-    /**
-     * Keys of `params` that become `data`'s fields, in a document. Written here
-     * rather than derived from the method's own parameter names, which a
-     * minifier mangles and which don't match the document vocabulary anyway
-     * (`data`/`duration`/`easing`, not `index` or `wobble`).
-     */
+    /** Keys of `params` that become `data`'s fields, written here rather than derived from the method's parameter names (a minifier mangles them, and the document vocabulary is `data`/`duration`/`easing`). */
     args?: readonly CommandArg[];
-    /**
-     * Brings its target in: a timeline holds its first frame from the moment
-     * the target could first show it, so the resting node never flashes up
-     * ahead of it. The hold window is in `docs/timeline.md`.
-     */
+    /** Brings its target in: a timeline holds its first frame from when the target could first show it, so the resting node never flashes up ahead of it (window in `docs/timeline.md`). */
     entrance?: boolean;
 }
 
@@ -59,16 +44,11 @@ export interface CommandOptions {
     entrance?: boolean;
 }
 
-/**
- * Every `command` on an instance's class, inherited included, base → subclass.
- * A subclass that redeclares a key replaces the inherited declaration — method,
- * name and args — at the position the base gave it.
- */
+/** Every `command` on an instance's class, inherited included, base → subclass; a redeclared key replaces the inherited declaration at the position the base gave it. */
 export function getCommandMeta(instance: object): CommandMeta[] {
     return mostDerived<CommandMeta>(instance, COMMAND_META);
 }
 
-/** See the module docblock. */
 export function command(options?: CommandOptions) {
     return function (target: object, propertyKey: string | symbol): void {
         const method = propertyKey as string;

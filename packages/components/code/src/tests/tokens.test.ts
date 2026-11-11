@@ -1,7 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { ensureHighlighter, highlightToTokens } from '../highlight';
 import { DefaultHighlightStyle, GithubDarkStyle } from '../style';
-import { makeIdLine, makeIdToken, splitTokensAt, tokenizeCodeToIdLines, type IdLine } from '../tokens';
+import { makeIdLine, makeIdToken, tokenizeCodeToIdLines, type IdLine } from '../tokens';
 
 /**
  * Tokenizing against a loaded grammar: what a listing is split into, and the
@@ -9,7 +9,7 @@ import { makeIdLine, makeIdToken, splitTokensAt, tokenizeCodeToIdLines, type IdL
  */
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript', 'json', 'python']);
+    await ensureHighlighter(['typescript', 'json', 'python']);
 });
 
 let warn: MockInstance<typeof console.warn>;
@@ -159,40 +159,5 @@ describe('a grammar that has not loaded', () => {
     it('hands the highlighter\'s own fallback the theme\'s default colour instead', () => {
         const lines = highlightToTokens('ab\ncd', 'klingon', GithubDarkStyle);
         expect(lines).toEqual([[{ content: 'ab', color: '#c9d1d9' }], [{ content: 'cd', color: '#c9d1d9' }]]);
-    });
-});
-
-describe('splitTokensAt', () => {
-    const tokens = () => [makeIdToken('const', '#1'), makeIdToken(' ', '#2'), makeIdToken('name', '#3')];
-
-    it('splits a token the column falls inside, into two with fresh ids and the same colour', () => {
-        const original = tokens();
-        const { before, after } = splitTokensAt(original, 8);
-        expect(before.map((token) => token.content)).toEqual(['const', ' ', 'na']);
-        expect(after.map((token) => token.content)).toEqual(['me']);
-        const cut = original[2];
-        expect(before[2].id).not.toBe(cut.id);
-        expect(after[0].id).not.toBe(cut.id);
-        expect(before[2].id).not.toBe(after[0].id);
-        expect(before[2].color).toBe('#3');
-        expect(after[0].color).toBe('#3');
-    });
-
-    it('keeps the tokens on either side of a column that falls between two, ids and all', () => {
-        const original = tokens();
-        const { before, after } = splitTokensAt(original, 5);
-        expect(before).toEqual([original[0]]);
-        expect(after).toEqual([original[1], original[2]]);
-        expect(before[0]).toBe(original[0]);
-    });
-
-    it('puts everything before a column at the end, and everything after one at the start', () => {
-        const original = tokens();
-        expect(splitTokensAt(original, 99)).toEqual({ before: original, after: [] });
-        expect(splitTokensAt(original, 0)).toEqual({ before: [], after: original });
-    });
-
-    it('splits nothing for no tokens', () => {
-        expect(splitTokensAt([], 3)).toEqual({ before: [], after: [] });
     });
 });

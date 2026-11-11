@@ -5,7 +5,7 @@ export interface ExportChunk {
     end: number;
 }
 
-export interface ChunkPlanOptions {
+interface ChunkPlanOptions {
     fps: number;
     /** Seconds between key frames; every chunk but the last is a whole number of them. */
     keyFrameInterval: number;
@@ -20,12 +20,7 @@ const MAX_CHUNK_SECONDS = 6;
 /** Chunks per lane: enough that lanes finish close together, few enough that a chunk's setup stays small. */
 const CHUNKS_PER_LANE = 4;
 
-/**
- * Cut the timeline into chunks in timeline order.
- *
- * A chunk starts on a key-frame boundary of the whole timeline, so the joined
- * file keeps the key-frame rhythm a single export would have.
- */
+/** Cuts the timeline into chunks in order, each starting on a key-frame boundary of the whole timeline so the joined file keeps the key-frame rhythm of a single export. */
 export function planChunks(totalFrames: number, options: ChunkPlanOptions): ExportChunk[] {
     if (!Number.isInteger(totalFrames) || totalFrames <= 0) return [];
     const unit = Math.max(1, Math.round(options.fps * (options.keyFrameInterval > 0 ? options.keyFrameInterval : 1)));

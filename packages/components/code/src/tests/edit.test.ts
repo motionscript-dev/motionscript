@@ -361,3 +361,19 @@ describe('replace takes no line break with it', () => {
         expect(source(node)).toBe('a\nd');
     });
 });
+
+describe('inserting a row in the middle of a line', () => {
+    const INSERT_SOURCE = 'function add(a: number, b: number) {\n  return a + b;\n}';
+
+    it('inserts at line 2 col 3, splitting the row where the new text ends in a break', () => {
+        const node = make(INSERT_SOURCE);
+        drive(node.insert({ data: { position: [2, 3], code: 'if (a < 0) return b;\n  ' }, duration: 1 }), 200, 0.01);
+        expect(source(node)).toBe('function add(a: number, b: number) {\n  if (a < 0) return b;\n  return a + b;\n}');
+    });
+
+    it('does nothing for a listing that is not in a tree: an edit is animated, and nothing animates unmounted', () => {
+        const node = new Code({ code: INSERT_SOURCE, language: 'typescript' });
+        drive(node.insert({ data: { position: [2, 3], code: 'x' }, duration: 1 }), 200, 0.01);
+        expect(source(node)).toBe(INSERT_SOURCE);
+    });
+});

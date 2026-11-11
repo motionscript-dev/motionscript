@@ -24,25 +24,8 @@ import '@mathjax/mathjax-newcm-font/js/svg/dynamic/monospace.js';
 import '@mathjax/mathjax-newcm-font/js/svg/dynamic/sans-serif.js';
 import '@mathjax/mathjax-newcm-font/js/svg/dynamic/script.js';
 
-/**
- * MathJax, set up: the one module that imports it, loaded on demand by
- * `loadMathJax` so a scene with no formula in it never downloads or parses it.
- */
-
-
-/**
- * MathJax needs a DOM to build its output in, and there isn't always one.
- *
- * `browserAdaptor()` reads `window` **as it is constructed**, at module scope —
- * so importing this file at all threw in Node, and a project with one LaTeX
- * scene could not be rendered headlessly no matter which scene was asked for.
- * `liteAdaptor` is MathJax's own DOM-free implementation and produces the same
- * SVG; we only ever read paths back out of it, never attach it to a page.
- */
-// The two adaptors are structurally different (a `LiteElement` tree vs. a real
-// one) and MathJax's generics track that, but nothing here touches an element
-// except through the adaptor's own accessors — so the element type is genuinely
-// opaque to us, and pinning it to either concrete one would be a lie.
+// `browserAdaptor()` reads `window` at construction, so it cannot run in Node; `liteAdaptor` is DOM-free.
+// Elements are only touched through the adaptor's accessors, so their type is opaque.
 export const adaptor: any = typeof window === 'undefined' && typeof document === 'undefined'
     ? liteAdaptor()
     : browserAdaptor();
@@ -56,13 +39,8 @@ const texJax = new TeX({
     ],
 });
 
-/**
- * The font files behind `\mathcal`, `\mathbb`, `\mathfrak`, `\mathsf`, `\mathtt`
- * and `\mathscr`, imported above. MathJax fetches these asynchronously the first
- * time a formula needs one, which a synchronous typesetter cannot wait for, so
- * they are bundled and set up on the font before anything is typeset. The font
- * class is passed explicitly so the one they register on is the one in use.
- */
+// The font files behind the `mathcal`/`mathbb`/... alphabets. MathJax would fetch them asynchronously,
+// which a synchronous typesetter cannot wait for, so they are bundled and set up before anything is typeset.
 const BUNDLED_FONT_FILES = ['calligraphic', 'double-struck', 'fraktur', 'monospace', 'sans-serif', 'script'];
 
 const svgJax = new SVG({ fontCache: 'local', fontData: MathJaxNewcmFont });

@@ -6,15 +6,11 @@ import type { Node, NodeDimension } from "@/components/trees/node/node";
 import type { NodeSpec } from "./types";
 
 /**
- * What a build puts where a row names a type its registry lacks: a node of the
- * row's tree that keeps the row's id, its placement and its children, and
- * draws nothing itself. One unknown type then costs one node rather than the
- * whole clip, and an editor still shows the row where it was.
- *
- * None of these is registered, so no document can name one.
+ * What a build puts where a row names a type its registry lacks: a node that keeps the row's id, placement and
+ * children and draws nothing itself, so one unknown type costs one node, not the clip, and an editor still
+ * shows the row where it was. None of these is registered, so no document can name one.
  */
 
-/** The type a placeholder stands in for, and the props its row authored. */
 export interface MissingNodeInfo {
     type: string;
     props: Readonly<Record<string, unknown>>;
@@ -32,7 +28,7 @@ const PLACEHOLDERS: Record<NodeDimension, PlaceholderCtor> = {
     audio: MissingNodeAudio.node as unknown as PlaceholderCtor,
 };
 
-/** Placement it keeps; nothing that would draw or composite, so it shows nothing of its own. */
+/** Placement it keeps; nothing that would draw or composite. */
 const DRAWS = new Set(["effects", "blend", "clip", "shadow"]);
 
 const KEPT = Object.fromEntries(Object.entries(PLACEHOLDERS).map(([dimension, ctor]) => [
@@ -64,10 +60,7 @@ export function placeholderProps(dimension: NodeDimension, props: Record<string,
     return out;
 }
 
-/**
- * The unknown type a live node stands in for, or `undefined` for a real node —
- * so a host can mark the row and keep its props for when the type is back.
- */
+/** So a host can mark the row and keep its props for when the type is back. */
 export function missingNodeOf(node: Node): MissingNodeInfo | undefined {
     return MISSING.get(node);
 }

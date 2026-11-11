@@ -20,11 +20,7 @@ function sampleRamp(ramp: ColorRamp, position: number): NormalizedColor {
     return lerpColor(colors[lo], colors[hi], span > 0 ? (position - stops[lo]) / span : 0);
 }
 
-/**
- * The colour of `ramp` for the `k`-th of several stops that share `position`: the
- * ramp's own stop there when it has one (a hard edge keeps both sides), else
- * the interpolated value.
- */
+/** The colour of `ramp` for the `k`-th of several stops sharing `position`: the ramp's own stop there when it has one (a hard edge keeps both sides), else the interpolated value. */
 function colorAt(ramp: ColorRamp, position: number, k: number): NormalizedColor {
     const first = ramp.stops.indexOf(position);
     if (first === -1) return sampleRamp(ramp, position);
@@ -35,14 +31,7 @@ function colorAt(ramp: ColorRamp, position: number, k: number): NormalizedColor 
 
 const sameStops = (a: number[], b: number[]) => a.length === b.length && a.every((s, i) => s === b[i]);
 
-/**
- * Interpolates two colour ramps. Two ramps with the same stop positions are
- * blended stop by stop. Otherwise both are resampled onto the union of their
- * positions first (a position either ramp doubles, as for a hard edge, is kept
- * doubled), so a tween between a 2-stop and a 3-stop gradient is the destination
- * ramp at `t = 1` rather than the source's stop count with the destination's
- * colours merged in.
- */
+/** Interpolates two colour ramps: same stop positions blend stop by stop; otherwise both are resampled onto the union of positions (a position either ramp doubles, as for a hard edge, stays doubled), so a 2-stop to 3-stop tween is the destination ramp at `t = 1`, not the source's stop count with the destination's colours merged in. */
 export function lerpColorRamp(a: ColorRamp, b: ColorRamp, t: number): ColorRamp {
     if (sameStops(a.stops, b.stops)) {
         return {

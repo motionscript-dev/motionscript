@@ -2,9 +2,9 @@ import {
     component2d,
     Graphics2D,
     Types,
-    type Color,
     type NodeOf,
     type NodeView,
+    type Color as _Color,
     type NormalizedColor,
     type PathCommand,
     type Vector2,
@@ -20,24 +20,12 @@ import { braceOutline } from "../kit/brace";
 import { listed, painted } from "../kit/component";
 import {
     add, between, container, FOLLOW_COMMANDS, FOLLOW_STATE, followedQuad, heading, outlineBounds, OWN_FRAME, resting,
-    type FollowProps, type FollowValues, type Quad,
+    type FollowValues, type Quad,
 } from "../kit/follow";
 import { drawLabels, loadFormulas } from "../kit/furniture";
 import { strokeShape } from "../kit/mark";
 
 export type BraceSide = "below" | "above" | "left" | "right";
-
-export interface CurlyBraceProps extends FollowProps {
-    side?: BraceSide;
-    tail?: Vector2;
-    head?: Vector2;
-    clearance?: number;
-    reach?: number;
-    label?: string;
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-}
 
 /** The edge of a target a brace runs along, as two corner indexes of its quad, read with the brace's bulge to the left. */
 const EDGE: Record<BraceSide, [number, number]> = {

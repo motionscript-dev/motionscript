@@ -6,10 +6,7 @@ import type { AssetScope } from "@/assets/scope";
 import type { EffectAxis, EffectData, EffectMode, EffectOptions, EffectSurface, ModedEffect } from "./effect-data";
 import { resolveEffectColor, sameEffectAxis, sameEffectColor, scalarOptions, withEffectOptions } from "./effect-data";
 
-/**
- * How a parameter's value is shaped, which decides its default interpolation,
- * equality and how a renderer encodes it into a uniform.
- */
+/** How a parameter's value is shaped: its default interpolation, equality and uniform encoding. */
 export type EffectParamKind =
     | "number"
     | "color"
@@ -55,13 +52,7 @@ export interface EffectParamHints {
 /** Interpolates one parameter. `from`/`to` are the whole effects, for parameters that depend on a sibling. */
 export type EffectParamLerp<T> = (a: T, b: T, t: number, from: Record<string, unknown>, to: Record<string, unknown>) => T;
 
-/**
- * One parameter of a built-in effect: a stored field of the effect object.
- *
- * `T` is the stored type, `In` what a builder accepts for it (`normalize` maps
- * one to the other: a bare number for a per-axis count, say). Only the
- * serialisable fields reach {@link EffectDescriptor}.
- */
+/** One parameter of a built-in effect: a stored field. `T` is the stored type, `In` what a builder accepts (`normalize` maps one to the other); only the serialisable fields reach {@link EffectDescriptor}. */
 export interface EffectParamDef<T = unknown, In = T> extends EffectParamHints {
     readonly kind: EffectParamKind;
     /** What the builder writes when the option is omitted (an input, before `normalize`). */
@@ -87,13 +78,7 @@ export interface EffectParamDef<T = unknown, In = T> extends EffectParamHints {
 /** An effect's parameters, by stored field name, in builder (and stored-key) order. */
 export type EffectParamTable = Readonly<Record<string, EffectParamDef<any, any>>>;
 
-/**
- * The declarative definition of a built-in effect: its parameters (types,
- * defaults, ranges, inspector hints) plus the behaviour that has to stay code.
- * Core's types, builder defaults, `lerp`/`equals` and the host-facing
- * {@link EffectDescriptor} are derived from it, and the renderers bind their
- * shader uniforms to its parameter names.
- */
+/** The declarative definition of a built-in effect: its parameters plus the behaviour that has to stay code. Core's types, builder defaults, `lerp`/`equals` and the host-facing {@link EffectDescriptor} derive from it, and renderers bind shader uniforms to its parameter names. */
 export interface EffectSpec<T extends string = string, P extends EffectParamTable = EffectParamTable> {
     readonly type: T;
     readonly params: P;
@@ -136,14 +121,13 @@ export type EffectOptionsOf<P extends EffectParamTable> = {
 /** The effect object a spec describes. */
 export type EffectOf<S extends EffectSpec> = { type: S["type"] } & ModedEffect & EffectFields<S["params"]>;
 
-/** Declares a built-in effect; see {@link EffectSpec}. */
 export function defineEffect<const T extends string, const P extends EffectParamTable>(
     spec: EffectSpec<T, P>,
 ): EffectSpec<T, P> {
     return spec;
 }
 
-/** The middle of the layer, every centre option's default. Shared, as it always was. */
+/** The middle of the layer, every centre option's default. */
 export const CENTER: Vector2 = { x: 0.5, y: 0.5 };
 
 type Options<T, In = T> = Omit<EffectParamDef<T, In>, "kind" | "__type" | "options" | "normalize" | "lerp" | "equals">;
@@ -184,11 +168,7 @@ export const param = {
     text<V extends string = string, const O extends Options<V> = Options<V>>(o: O & Behaviour<V>): EffectParamDef<V> & NoInfer<O> & { kind: "text" } {
         return { kind: "text", lerp: "step", ...o };
     },
-    /**
-     * A parameter of stored type `T` that no generic kind covers, curried so
-     * `T` is given and the options inferred: `param.of<Color[]>()({ kind: "colors", … })`.
-     * It steps and compares by `===` unless given `lerp`/`equals`.
-     */
+    /** A parameter of stored type `T` no generic kind covers, curried so `T` is given and options inferred: `param.of<Color[]>()({ kind: "colors", … })`. Steps and compares by `===` unless given `lerp`/`equals`. */
     of<T>() {
         return <const O extends Options<T> & { kind: EffectParamKind }>(o: O & Behaviour<T>): EffectParamDef<T> & NoInfer<O> =>
             ({ lerp: "step", ...o }) as never;
@@ -250,8 +230,7 @@ export function effectDataOf<S extends EffectSpec>(spec: S): EffectData<EffectOf
     return data;
 }
 
-// Arrays are copied so editing one effect's list never reaches another's;
-// objects (a centre point) are shared, as they always were.
+// Arrays are copied so editing one effect's list never reaches another's; objects (a centre point) are shared.
 const copyDefault = (value: unknown) => (Array.isArray(value) ? [...value] : value);
 
 /**
@@ -308,11 +287,7 @@ export interface EffectParamDescriptor {
     initial?: EffectJson;
 }
 
-/**
- * A built-in effect, described for a host: what its fields are, their kinds,
- * defaults and ranges, and how an inspector should lay them out. Plain JSON, so
- * it can be shipped to a UI as is.
- */
+/** A built-in effect described for a host (fields, kinds, defaults, ranges, inspector layout) as plain JSON, shippable to a UI as is. */
 export interface EffectDescriptor {
     type: string;
     group: EffectGroup;

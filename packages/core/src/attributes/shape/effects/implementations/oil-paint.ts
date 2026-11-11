@@ -1,22 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Kuwahara filter — the painterly one.
- *
- * Each pixel looks at four overlapping quadrant windows and takes the mean of
- * whichever is *flattest*. Averaging within a region but never across a boundary
- * is what makes it read as brushwork: flat areas smooth into strokes while edges
- * stay crisp, where a plain blur would soften both.
- *
- * Cost grows with the square of `radius` — four windows of `(radius+1)²` samples
- * each — so this is the most expensive effect in the set by a wide margin.
- */
+/** Kuwahara filter, the painterly one: each pixel takes the mean of whichever of four overlapping quadrant windows is *flattest*, so flat areas smooth into strokes while edges stay crisp (a blur softens both). Cost grows with `radius²` (four windows of `(radius+1)²` samples): by far the most expensive effect. */
 export interface OilPaintEffect extends ModedEffect, EffectFields<typeof oilPaintSpec.params> {
     type: "oilPaint";
 }
 
-/** The {@link OilPaintEffect} spec: its parameters, defaults and ranges. */
 export const oilPaintSpec = defineEffect({
     type: "oilPaint",
     group: "blur",

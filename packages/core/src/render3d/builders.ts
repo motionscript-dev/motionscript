@@ -17,11 +17,8 @@ import type { DataTexture3D, ImageTexture3D, SurfaceSource3D, SurfaceTexture3D, 
 type ParamsOf<T> = Omit<T, "type">;
 
 /**
- * Geometry descriptors.
- *
- * These are plain values, so hoist one out of the builder and share it across
- * meshes — the renderer dedupes by identity, so a shared geometry is uploaded to
- * the GPU once no matter how many meshes reference it.
+ * Geometry descriptors: plain values, so hoist one and share it across meshes; the renderer dedupes by identity,
+ * uploading a shared geometry to the GPU once.
  *
  *   const brick = Geo.box({ width: 1, height: 0.5, depth: 0.5 });
  *   g.mesh(brick, red, { position: [0, 0, 0] })
@@ -67,16 +64,7 @@ export const Geo = {
         ({ type: "modelGeometry", src, ...o }),
 } as const;
 
-/**
- * Material descriptors.
- *
- * Like geometries these are shareable values — one hoisted material across many
- * meshes compiles one shader program instead of N.
- *
- * Reach for {@link Mat.standard} by default; {@link Mat.physical} only when a
- * surface actually needs clearcoat, transmission, sheen or iridescence, since
- * those cost more per pixel. {@link Mat.shader} is the full-control escape hatch.
- */
+/** Material descriptors, shareable values: one hoisted material across many meshes compiles one shader program instead of N. Prefer {@link Mat.standard}; {@link Mat.physical} only for clearcoat, transmission, sheen or iridescence (costlier per pixel); {@link Mat.shader} is the escape hatch. */
 export const Mat = {
     basic: (o?: ParamsOf<BasicMaterial3D>): BasicMaterial3D => ({ type: "basic", ...o }),
     standard: (o?: ParamsOf<StandardMaterial3D>): StandardMaterial3D => ({ type: "standard", ...o }),
@@ -96,14 +84,7 @@ export const Mat = {
     shader: (o: ParamsOf<ShaderMaterial3D>): ShaderMaterial3D => ({ type: "shader", ...o }),
 } as const;
 
-/**
- * Texture descriptors.
- *
- * {@link Tex.image} takes a manifest path and is loaded through core's ordinary
- * image pipeline, so the pixels are resident before the frame that needs them
- * draws. A bare string works anywhere a texture is expected, so `Tex.image` is
- * only needed when passing sampler options.
- */
+/** Texture descriptors. {@link Tex.image} takes a manifest path loaded through the ordinary image pipeline (pixels resident before the frame draws); a bare string works anywhere a texture is expected, so it is only needed for sampler options. */
 export const Tex = {
     image: (src: string, o?: TextureOptions3D): ImageTexture3D => ({ src, ...o }),
     /** A texture from raw RGBA8888 bytes — gradient ramps, noise, LUTs. */
@@ -114,13 +95,8 @@ export const Tex = {
         o?: TextureOptions3D & { revision?: number },
     ): DataTexture3D => ({ data, width, height, ...o }),
     /**
-     * A texture painted from Motion Script's own 2D output — the bridge from 2D
-     * onto 3D geometry.
-     *
-     * `source` is a **value**: a built `Graphics2D` command list, or a `Node2D`
-     * subtree for anything needing real layout, shaped `Text` or a loaded
-     * `Image`. Both are passed directly; there is no name to match and nothing
-     * has to be mounted anywhere in particular.
+     * A texture painted from Motion Script's own 2D output, the bridge onto 3D geometry. `source` is a **value**: a
+     * built `Graphics2D`, or a `Node2D` subtree for real layout, shaped `Text` or a loaded `Image`.
      *
      *   const scope = new Graphics2D().line({ points: trace(phase()) }).stroke(…);
      *   g3.plane({ fill: scope });                        // sized for you
@@ -128,11 +104,8 @@ export const Tex = {
      *   const stats = new Rect({ flow: "vertical", padding: 48, children: [Text({ text: "CPU" })] });
      *   g3.plane({ fill: Tex.surface(stats, { width: 1024, height: 640 }) });
      *
-     * `width`/`height` are the buffer's resolution and default to 512. A source
-     * handed straight to `fill` gets exactly this treatment with those defaults,
-     * so the builder is only needed to pin a resolution or a sampler option.
-     * **Hoist the source** rather than rebuilding it each frame — see
-     * {@link SurfaceTexture3D}.
+     * `width`/`height` are the buffer's resolution, default 512 (a source handed straight to `fill` gets the same
+     * defaults, so the builder is only for pinning a resolution or sampler option). **Hoist the source**: see {@link SurfaceTexture3D}.
      */
     surface: (
         source: SurfaceSource3D,

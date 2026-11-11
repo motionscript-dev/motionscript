@@ -5,7 +5,6 @@ export interface BloomEffect extends ModedEffect, EffectFields<typeof bloomSpec.
     type: "bloom";
 }
 
-/** The {@link BloomEffect} spec: its parameters, defaults and ranges. */
 export const bloomSpec = defineEffect({
     type: "bloom",
     group: "light",

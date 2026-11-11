@@ -13,11 +13,11 @@ export default scene((stage) => {
                 width: 320,
                 height: 320,
                 cornerRadius: 24,
-                fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: Adjustments.grayscale(0) }),
+                fill: Fills.image('kingfisher.jpg', { fit: 'fill', preset: { adjustments: Adjustments.grayscale(0) } }),
             }),
         ] }),
     );
 }, [
-    () => rect().to({ data: { fill: Fills.image('kingfisher.jpg', { fit: 'fill', filters: Adjustments.grayscale(1) }) }, duration: 1.2, easing: easeInOut('quad') }),
+    () => rect().to({ data: { fill: Fills.image('kingfisher.jpg', { fit: 'fill', preset: { adjustments: Adjustments.grayscale(1) } }) }, duration: 1.2, easing: easeInOut('quad') }),
     holdTail(1.2),
 ]);

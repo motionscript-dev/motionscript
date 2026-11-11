@@ -1,53 +1,23 @@
 import { type AudioMeta, type FontMeta, type ImageMeta, AssetManifest, type VideoMeta } from "./manifest";
 
 /**
- * What a scene can ask about the assets available to it.
+ * What a scene can ask about available assets: strictly read-only *metadata* (dimensions, durations, font faces).
+ * Loading is the {@link AssetManager}'s job. Reachable as `node.assets` and `stage.assets`.
  *
- * Strictly read-only, and strictly about *metadata*: dimensions, durations, and
- * the font faces a family resolves to. Nothing here loads anything — that is
- * the {@link AssetManager}'s job, driven by what nodes declare into an
- * {@link AssetScope}. Reachable from any node as `node.assets` and from a
- * scene generator as `stage.assets`.
- *
- * **Every lookup throws on a miss rather than returning `undefined`.** A missing
- * asset is a typo or a deleted file, and it is worth finding out during the
- * precomp pass (where it surfaces as a `BuildError` in the errors panel) rather
- * than at playback as a shape that silently fails to paint.
- *
- * An interface so a host can supply its own — a test double, or a catalog
- * backed by something other than a static manifest. {@link ManifestAssetCatalog}
- * is the implementation the runtime builds from the project's asset manifest.
+ * **Every lookup throws on a miss rather than returning `undefined`**: a missing asset is a typo or deleted file, best
+ * surfaced during the precomp pass (a `BuildError`) rather than as a shape that silently fails to paint at playback.
+ * An interface so a host can supply its own; {@link ManifestAssetCatalog} is built from the project's manifest.
  */
 export interface AssetCatalog {
-    /**
-     * Metadata for an image.
-     * @throws If the image is not in the manifest.
-     */
     getImageMeta(src: string): ImageMeta;
 
-    /**
-     * Metadata for a video.
-     * @throws If the video is not in the manifest.
-     */
     getVideoMeta(src: string): VideoMeta;
 
-    /**
-     * Metadata for an audio track.
-     * @throws If the audio file is not in the manifest.
-     */
     getAudioMeta(src: string): AudioMeta;
 
-    /**
-     * Metadata for a single font face, by its `family@weight` lookup key.
-     * @throws If the key is not in the manifest.
-     */
     getFontMeta(key: string): FontMeta;
 
-    /**
-     * Every face registered for a family, across all weights and slants — what
-     * the renderer registers so its font matcher can resolve any requested
-     * weight to the nearest available file. Empty if the family is unknown.
-     */
+    /** Every face registered for a family across weights and slants, so the font matcher can resolve any weight to the nearest file. Empty if unknown. */
     getFontFamilyMetas(fontFamily: string): FontMeta[];
 
     /** Playback duration of a video, in seconds. */
@@ -56,55 +26,23 @@ export interface AssetCatalog {
     /** Playback duration of an audio file, in seconds. */
     getAudioDuration(src: string): number;
 
-    /**
-     * Duration of any *playable* source — an audio file, or a video whose audio
-     * track is being played. Resolves against audio first and falls back to
-     * video, so a video `src` can drive a `Sound` without a duplicate audio-only
-     * manifest entry.
-     * @throws If `src` is in neither manifest.
-     */
+    /** Duration of any *playable* source: audio first, falling back to video, so a video `src` can drive a `Sound` without a duplicate audio-only entry. @throws If `src` is in neither manifest. */
     getMediaDuration(src: string): number;
 
     /** An image's intrinsic pixel dimensions. */
     getImageSize(src: string): { width: number; height: number };
 }
 
-/**
- * The {@link AssetCatalog} the runtime builds: a query engine over a static
- * {@link AssetManifest}.
- *
- * @example
- * ```ts
- * const catalog = new ManifestAssetCatalog(manifest);
- * catalog.getImageSize("hero-banner.png");   // { width: 1920, height: 1080 }
- * ```
- */
+/** The {@link AssetCatalog} the runtime builds: a query engine over a static {@link AssetManifest}. */
 export class ManifestAssetCatalog implements AssetCatalog {
     constructor(private manifest: AssetManifest) { }
 
-    /**
-     * Point this catalog at `manifest`, in place.
-     *
-     * A session hands one catalog to the controller, the clip store and every
-     * node's `assets`, so replacing the catalog object would leave all of them on
-     * the old one. Reconciling the manifest it reads keeps a manifest change
-     * visible to everything already built.
-     */
+    /** Points this catalog at `manifest` in place: a session hands one catalog to the controller, clip store and every node's `assets`, so replacing the object would leave them on the old one. */
     reconcile(manifest: AssetManifest): void {
         this.manifest = manifest;
     }
 
-    /**
-     * Normalize a caller-supplied asset `src` into the manifest's lookup key.
-     * The manifest stores image/video/audio keys as the file's path relative
-     * to the scanned public folder, using forward slashes with no leading
-     * `./` or `/`.
-     * Scene authors write `src` in whichever equivalent form is natural — a
-     * bare filename, `"./sub/file.png"`, `"/sub/file.png"`, or a
-     * Windows-authored backslash path — so normalize all of them to the same
-     * key. Font lookups are keyed by `family@weight`, not a path, so they
-     * don't go through this.
-     */
+    /** Normalizes a caller's asset `src` to the manifest key: the path relative to the public folder, forward slashes, no leading `./` or `/`. Authors write bare filenames, `./sub/file.png`, `/sub/file.png` or backslash paths. Fonts are keyed `family@weight` and skip this. */
     private normalizeKey(src: string): string {
         return src.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
     }

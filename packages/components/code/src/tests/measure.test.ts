@@ -12,7 +12,7 @@ import { Frame, advanceOf, at, attach, make, measured } from './harness.fixtures
  */
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 /** A face whose advance is 0.6 em, as the spec's probes measure with. */

@@ -2,21 +2,15 @@ import type { ProjectDocument } from "./project";
 import type { ClipDocument } from "./types";
 
 /**
- * Saved documents outlive the engine that wrote them, so each carries the
- * format it was written in and this module carries every step from one format
- * to the next.
- *
- * A step is a pure function over JSON: it never mutates what it is handed and
- * never needs a registry, so a host can run it over a row it has not opened
- * and a test can pin it with two literals. Steps only ever go up; a document
- * newer than the engine is refused with {@link DocumentTooNewError} rather than
- * read as whatever it happens to resemble.
+ * Saved documents outlive the engine that wrote them, so each carries its format and this module carries every
+ * step from one format to the next. A step is a pure function over JSON: it never mutates its input and never
+ * needs a registry, so a host can run it over a row it has not opened. Steps only go up; a document newer than
+ * the engine is refused with {@link DocumentTooNewError} rather than read as whatever it resembles.
  */
 
 /** The format this engine reads natively and writes. A document without `formatVersion` is format 0. */
-export const DOCUMENT_FORMAT_VERSION = 2;
+export const DOCUMENT_FORMAT_VERSION = 3;
 
-/** A document written by a newer engine than this one. Thrown before anything reads it. */
 export class DocumentTooNewError extends Error {
     readonly version: number;
     readonly supported: number;
@@ -32,33 +26,26 @@ export class DocumentTooNewError extends Error {
     }
 }
 
-/** A document as JSON, before anything has checked its shape. */
 export type JsonDocument = Record<string, unknown>;
 
-/** One thing a migration changed. `path` locates it as a `ValidationIssue`'s does. */
 export interface DocumentChange {
-    /** The format the step that made it read. */
     from: number;
     path: string;
     message: string;
 }
 
-/** Records a change at `path`, relative to the document the step was handed. */
 export type NoteChange = (path: string, message: string) => void;
 
 /** The step from format {@link from} to `from + 1`. */
 export interface DocumentMigration {
     readonly from: number;
-    /** What the format change was, for a changelog or a host's log. */
     readonly description: string;
     /** Run on every clip document, standalone or inside a project's track. */
     readonly clip?: (clip: JsonDocument, note: NoteChange) => JsonDocument;
-    /** Run on a project's own fields, before its clips. */
     readonly project?: (project: JsonDocument, note: NoteChange) => JsonDocument;
 }
 
 export interface DocumentMigrationResult<T> {
-    /** The input itself when it was already current; otherwise a new document stamped with {@link to}. */
     document: T;
     from: number;
     to: number;
@@ -66,9 +53,8 @@ export interface DocumentMigrationResult<T> {
 }
 
 /**
- * Every step, oldest first. A release that changes what a stored document
- * means adds the next one here, bumps {@link DOCUMENT_FORMAT_VERSION}, and
- * gives the step a test (`tests/migrate.test.ts`).
+ * A release that changes what a stored document means adds the next step here, bumps {@link
+ * DOCUMENT_FORMAT_VERSION}, and gives the step a test (`tests/migrate.test.ts`).
  */
 export const DOCUMENT_MIGRATIONS: readonly DocumentMigration[] = [
     {
@@ -96,6 +82,11 @@ export const DOCUMENT_MIGRATIONS: readonly DocumentMigration[] = [
             "SkSL is retired: every shader fill, shader effect and shader pack written in it says `language: \"sksl\"`, " +
             "the `sksl` effect key becomes `shader`, and `coords` is dropped.",
         clip: (clip, note) => retireSkSL(clip, "", note) as JsonDocument,
+    },
+    {
+        from: 2,
+        description: "An image or video fill's retired `filters` prop moves into `preset.adjustments`.",
+        clip: (clip, note) => retireFillFilters(clip, "", note) as JsonDocument,
     },
 ];
 
@@ -156,7 +147,35 @@ function retireShader(shader: JsonObject, path: string, note: NoteChange): JsonO
     return legacyKey || moved || stamped || hadCoords ? out : shader;
 }
 
-/** The format a document says it is in: its `formatVersion`, or 0 when it has none. */
+// Image and video fills sit in node props, named fills, command values and tween
+// keyframes alike, so the whole clip is walked. A `Video` node's own `filters` prop
+// lives in its `props`, which has no `type`, so it is never mistaken for a fill's.
+function retireFillFilters(value: unknown, path: string, note: NoteChange): unknown {
+    if (Array.isArray(value)) {
+        let out: unknown[] | undefined;
+        value.forEach((item, i) => {
+            const next = retireFillFilters(item, `${path}[${i}]`, note);
+            if (next !== item) (out ??= [...value])[i] = next;
+        });
+        return out ?? value;
+    }
+    if (!isObject(value)) return value;
+    let out: JsonObject | undefined;
+    for (const [key, item] of Object.entries(value)) {
+        const next = retireFillFilters(item, path ? `${path}.${key}` : key, note);
+        if (next !== item) (out ??= { ...value })[key] = next;
+    }
+    const fill = out ?? value;
+    if (!("filters" in fill) || !(fill.type === "image" || fill.type === "video") || typeof fill.src !== "string") return fill;
+
+    const { filters, preset, ...rest } = fill;
+    // A fill that somehow carried both keeps its preset's chain, as `resolveMediaPreset` always read it.
+    const keeps = isObject(preset) && preset.adjustments !== undefined;
+    note(path, keeps ? "`filters` dropped; the fill's `preset.adjustments` already says the grade." : "`filters` moved to `preset.adjustments`.");
+    if (keeps || (preset !== undefined && !isObject(preset))) return { ...rest, preset };
+    return { ...rest, preset: { ...(isObject(preset) ? preset : {}), adjustments: filters } };
+}
+
 export function documentFormatVersion(doc: unknown): number {
     if (typeof doc !== "object" || doc === null) return 0;
     const version = (doc as { formatVersion?: unknown }).formatVersion;

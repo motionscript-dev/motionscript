@@ -22,6 +22,5 @@ export { NODE_META, getNodeDescriptor } from "./node-decorator";
 export * from "./placement";
 export * from "./timeline";
 export * from "./audio";
-// `installBuiltins` is deliberately NOT exported: a `Registry` seeds itself from
-// its own constructor, so a host has no module-scope call for a bundler to
-// tree-shake away.
+// `installBuiltins` is deliberately not exported: a `Registry` seeds itself from its own constructor, so a
+// host has no module-scope call for a bundler to tree-shake away.

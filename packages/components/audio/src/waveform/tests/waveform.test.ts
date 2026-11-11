@@ -313,7 +313,6 @@ describe("the ./kit surface", () => {
       "VOICE_PALETTE",
       "WAVEFORM_ALIGNMENTS",
       "WAVEFORM_STYLES",
-      "clamp01",
       "forSpeaker",
       "groupByPaint",
       "layOutBars",
@@ -333,12 +332,6 @@ describe("the ./kit surface", () => {
     expect(kit.sampleEnvelope).toBe(sampleEnvelope)
     expect(kit.forSpeaker).toBe(forSpeaker)
     expect(kit.EMPTY_ENVELOPE).toBe(EMPTY_ENVELOPE)
-  })
-
-  it("clamps into 0..1", () => {
-    expect(kit.clamp01(-0.5)).toBe(0)
-    expect(kit.clamp01(0.25)).toBe(0.25)
-    expect(kit.clamp01(3)).toBe(1)
   })
 
   it("lists the two alignments and the three styles the nodes accept", () => {

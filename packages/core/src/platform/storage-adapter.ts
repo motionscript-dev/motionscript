@@ -3,18 +3,7 @@ import { AssetNotLoadedError } from "@/assets/errors";
 import { AssetRecord } from "@/assets/record";
 import { Size2D } from "@/attributes/layout/size";
 
-/**
- * How an adapter picks the resolution to decode media at, and how strict it is
- * about what it cannot load.
- *
- * `"exact"` — export, stills, screenshots: the level follows the current draw
- * alone, so a frame is the same pixels whatever was drawn before it on a reused
- * adapter, and a font family the manifest cannot describe is refused rather
- * than shaped against the fallback face. `"interactive"` — preview: reuse
- * whatever resident level is already good enough, and upgrade in the
- * background; an undescribed family draws in the fallback face until a manifest
- * describes it.
- */
+/** How an adapter picks the decode resolution and how strict it is about what it cannot load. `"exact"` (export, stills): the level follows the current draw alone, so a frame is the same whatever was drawn before on a reused adapter, and an undescribed font family is refused. `"interactive"` (preview): reuse any resident level that is good enough, upgrade in the background, and draw an undescribed family in the fallback face. */
 export type DecodePolicy = "exact" | "interactive";
 
 export abstract class StorageAdapter {
@@ -25,32 +14,14 @@ export abstract class StorageAdapter {
         this.viewport = viewport;
     }
 
-    /**
-     * Point the adapter at a different asset catalog, keeping every decode it has
-     * already cached.
-     *
-     * Safe because the catalog supplies *metadata* (durations, intrinsic sizes)
-     * while the caches are keyed by source URL: a src the new catalog drops leaves
-     * an orphaned decode, and a src it adds simply isn't cached yet. Neither is a
-     * correctness problem, which is what lets a long-lived renderer take an
-     * updated manifest without paying to re-decode everything still in use.
-     *
-     * The viewport has no such setter; a host that changes output size rebuilds
-     * the adapter.
-     */
+    /** Points the adapter at a different catalog, keeping its caches. Safe because the catalog supplies only *metadata* and caches are keyed by source URL: a dropped src leaves an orphaned decode, an added one isn't cached yet. The viewport has no such setter; changing output size rebuilds the adapter. */
     setCatalog(catalog: AssetCatalog): void {
         this.catalog = catalog;
     }
-    /**
-     * Every asset src whose loadXxx is currently in flight, mapped to its
-     * pending promise. The render path awaits these to guarantee no draw
-     * happens while a load is still resolving. Cleared on completion.
-     */
+    /** Every asset src whose load is in flight, with its promise; the render path awaits these so no draw happens mid-load. */
     protected inFlightLoads = new Map<string, Promise<void>>();
     /** Keys of assets that have been fully loaded and are ready to use. */
     protected cachedAssets = new Set<string>();
-
-    // ─── Asset loading dispatch ───────────────────────────────────────────────
 
     /** Whether `key` has finished loading and is usable now. */
     isLoaded(key: string): boolean {
@@ -93,7 +64,7 @@ export abstract class StorageAdapter {
                 break;
             }
             case 'audio':
-                // Audio files are loaded on-demand via fetchAudioData / syncAudio, not through loadAsset.
+                // Audio files load on demand via fetchAudioData / syncAudio, not loadAsset.
                 break;
             case 'loader':
                 // Loaders are opaque callbacks run directly by the AssetManager and
@@ -105,17 +76,9 @@ export abstract class StorageAdapter {
             }
         }
 
-        // Only a load that actually happened is cached. This matters for exactly
-        // one case: a font family the manifest cannot describe. Caching it anyway
-        // marked the family handled for the life of this adapter, so a manifest
-        // that *later* described it — which is what installing a typeface does,
-        // folded into the live manifest without rebuilding the controller — could
-        // never load it, and the text stayed in the fallback face until something
-        // else tore the adapter down.
+        // Only a load that happened is cached: caching an undescribable font family marked it handled for this adapter's life, so a manifest that later described it (installing a typeface) could never load it.
         if (loaded) this.cachedAssets.add(key);
     }
-
-    // ─── Font key parsing ─────────────────────────────────────────────────────
 
     protected parseFontKey(key: string): { fontFamily: string; fontWeight: number } {
         const [fontFamily, weightStr] = key.split('@');
@@ -125,8 +88,6 @@ export abstract class StorageAdapter {
             fontWeight: isNaN(fontWeight) ? 400 : fontWeight,
         };
     }
-
-    // ─── Abstract load methods ────────────────────────────────────────────────
 
     /** Decode resolution follows the draw, so a load names only the source. */
     abstract loadImage(src: string): Promise<void>;
@@ -145,34 +106,15 @@ export abstract class StorageAdapter {
         trimEnd?: number,
     ): Promise<void>;
     abstract fetchAudioData(src: string): Promise<ArrayBuffer>;
-    /**
-     * Register every face of `fontFamily` the catalog describes.
-     *
-     * Returns whether the family was actually loaded. `false` means the manifest
-     * has no entry for it. Not an error while previewing (an undescribed family
-     * shapes against the platform fallback, which is what a system font name
-     * does), but a blocking caller refuses it — see {@link DecodePolicy} — and
-     * it must not be remembered as handled either way: see the note in
-     * {@link runLoad}.
-     */
+    /** Registers every face of `fontFamily` the catalog describes; `false` means the manifest has no entry. Not an error while previewing (the platform fallback shapes it), but a blocking caller refuses it (see {@link DecodePolicy}), and it must not be remembered as handled either way (see {@link runLoad}). */
     abstract loadFont(src: string, fontFamily: string, fontWeight: number): Promise<boolean>;
 
-    // ─── Frame warming ────────────────────────────────────────────────────────
-
-    /**
-     * Decode any exact media frames the most recent render asked for but couldn't
-     * satisfy synchronously (e.g. a video frame at a freshly-seeked timestamp),
-     * and report whether there were any. A blocking caller (seek / screenshot /
-     * export) renders once, awaits this, and re-renders while it returns true so
-     * the frame is accurate even on a cold jump. Defaults to a no-op for adapters
-     * with no time-varying media.
-     */
+    /** Decodes any exact media frames the last render needed but couldn't satisfy synchronously (a video frame at a freshly-seeked time) and reports whether there were any. A blocking caller renders, awaits this, and re-renders while it returns true. No-op by default. */
     async warmPendingVideo(): Promise<boolean> {
         return false;
     }
 
     setDecodePolicy(policy: DecodePolicy): void {
-        // no-op for adapters that decode at one resolution
     }
 
     /** Read back so a caller that borrows the adapter can restore it. */
@@ -185,43 +127,23 @@ export abstract class StorageAdapter {
         return false;
     }
 
-    /**
-     * Settle what the last render could not draw acceptably under the current
-     * policy — video frames, every exact image level under `"exact"`, a source
-     * drawn with nothing resident under `"interactive"` — and report whether there
-     * was any. See `renderSettled`.
-     *
-     * Defaults to {@link warmPendingVideo} so an adapter written against it keeps
-     * working; that alias goes away after one release.
-     */
+    /** Settles what the last render could not draw acceptably under the current policy (video frames, every exact image level under `"exact"`, a source drawn with nothing resident under `"interactive"`); reports whether there was any. Defaults to {@link warmPendingVideo} so older adapters keep working. See `renderSettled`. */
     async warmPendingDecodes(): Promise<boolean> {
         return this.warmPendingVideo();
     }
 
-    /**
-     * Whether an `"interactive"` decode is on its way that would draw the last
-     * render sharper. Not something a paint waits for: a preview shows what is
-     * resident and repaints when {@link warmPendingUpgrades} reports a landing.
-     */
+    /** Whether an `"interactive"` decode is on its way that would draw the last render sharper. A paint doesn't wait for it; a preview repaints when {@link warmPendingUpgrades} reports a landing. */
     hasPendingUpgrades(): boolean {
         return false;
     }
 
-    /** Await the upgrades {@link hasPendingUpgrades} reports; whether one landed. */
     async warmPendingUpgrades(): Promise<boolean> {
         return false;
     }
 
-    /**
-     * Notify the adapter whether playback is live. Time-varying media (video) uses
-     * this to prefetch ahead only while playing and to quiesce on pause, so a
-     * paused timeline doesn't drain a backlog of stale decodes. No-op by default.
-     */
+    /** Whether playback is live: video prefetches ahead only while playing and quiesces on pause. No-op by default. */
     setPlaying(playing: boolean): void {
-        // no-op for adapters with no time-varying media
     }
-
-    // ─── Lifecycle ────────────────────────────────────────────────────────────
 
     dispose(): void {
         this.inFlightLoads.clear();

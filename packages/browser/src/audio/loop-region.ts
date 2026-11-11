@@ -6,15 +6,7 @@ export interface LoopRegion {
     end: number;
 }
 
-/**
- * The region a looping request repeats: from its in-point to its out-point, or to
- * the end of the buffer when it has none. `null` for a request that does not loop,
- * and for a degenerate region (an out-point at or before the in-point), where the
- * device falls back to wrapping the whole buffer.
- *
- * Shared by the live device and the offline mixer so a preview and an export loop
- * the same samples.
- */
+/** The region a looping request repeats (in-point to out-point, else the end of the buffer); `null` when it does not loop or is degenerate (out-point at or before in-point), where the device wraps the whole buffer. Shared with the offline mixer so preview and export loop the same samples. */
 export function loopRegionOf(request: AudioRequest, bufferDuration: number): LoopRegion | null {
     if (!request.loop) return null;
     const start = Math.min(Math.max(0, request.trimStart), bufferDuration);
@@ -22,11 +14,7 @@ export function loopRegionOf(request: AudioRequest, bufferDuration: number): Loo
     return end > start ? { start, end } : null;
 }
 
-/**
- * Configure `source` to play `request`'s loop: on or off, and over the trimmed
- * region rather than the whole buffer (`loopStart`/`loopEnd` default to the
- * whole buffer, which is how a trim used to be lost).
- */
+/** Configures `source` to loop `request`'s trimmed region rather than the whole buffer (`loopStart`/`loopEnd` default to the whole buffer, which loses a trim). */
 export function applyLoop(source: AudioBufferSourceNode, request: AudioRequest): LoopRegion | null {
     source.loop = request.loop;
     const region = source.buffer ? loopRegionOf(request, source.buffer.duration) : null;
@@ -37,13 +25,7 @@ export function applyLoop(source: AudioBufferSourceNode, request: AudioRequest):
     return region;
 }
 
-/**
- * Fold a source offset into a loop region.
- *
- * A seek into the middle of a looping clip lands at `trimStart + elapsed`, which
- * can be many passes past the region's end; the device would not wrap an offset
- * that starts outside the region, so it is wrapped here.
- */
+/** Folds a source offset into a loop region: a seek into a looping clip lands at `trimStart + elapsed`, possibly many passes past the end, and the device does not wrap an offset that starts outside the region. */
 export function wrapIntoRegion(region: LoopRegion | null, offset: number): number {
     if (!region || offset < region.end) return offset;
     return region.start + ((offset - region.start) % (region.end - region.start));

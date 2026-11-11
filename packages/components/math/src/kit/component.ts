@@ -13,11 +13,6 @@ import {
     type StrokeResolved as _StrokeResolved,
 } from "@motionscript/sdk";
 
-/**
- * What a component in this kit shares beyond the factory: the paints a math
- * node draws with, listed choices, and the order a node paints in.
- */
-
 const { overlay: _overlay, ...paint } = Paint.state;
 const { overlayTo: _overlayTo, ...paintCommands } = Paint.commands;
 
@@ -25,18 +20,12 @@ const { overlayTo: _overlayTo, ...paintCommands } = Paint.commands;
 export const PAINT = paint;
 export const PAINT_COMMANDS = paintCommands;
 
-/**
- * One of `values`, held as text with its choices listed (no `kind: "enum"`).
- */
-export function listed<const V extends readonly string[]>(values: V, initial: V[number], options?: ListedOptions): Type<V[number]>;
+/** One of `values`, held as text with its choices listed (no `kind: "enum"`). */
+export function listed<const V extends readonly string[]>(values: V, initial: V[number], options?: Pick<EntryOptions, "animatable">): Type<V[number]>;
 /** With no default: an arg left out is one the command was not given. */
-export function listed<const V extends readonly string[]>(values: V, initial: undefined, options?: ListedOptions): Type<V[number] | undefined>;
-export function listed(values: readonly string[], initial: string | undefined, options: ListedOptions = {}): Type<string | undefined> {
+export function listed<const V extends readonly string[]>(values: V, initial: undefined, options?: Pick<EntryOptions, "animatable">): Type<V[number] | undefined>;
+export function listed(values: readonly string[], initial: string | undefined, options: Pick<EntryOptions, "animatable"> = {}): Type<string | undefined> {
     return Types.custom<string | undefined, string | undefined, EntryOptions & { readonly options: readonly string[] }>(initial, { ...options, options: values });
-}
-
-interface ListedOptions {
-    readonly animatable?: boolean;
 }
 
 /** `record` without `keys`: the paints a node has no use for. */
@@ -46,10 +35,7 @@ export function omit<T extends object, const K extends keyof T>(record: T, ...ke
     return out;
 }
 
-/**
- * A node's paint order: its own paint under its children, then what it lays
- * over them, each cut at the near plane of a space it crosses.
- */
+/** A node's own paint under its children, then what it lays over them. */
 export function painted(ctx: RenderContext, own: () => void, over: () => void = () => { }): void {
     ctx.inFront(own);
     ctx.children();

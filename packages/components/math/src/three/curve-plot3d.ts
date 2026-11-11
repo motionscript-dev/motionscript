@@ -5,7 +5,6 @@ import {
     Material,
     Types,
     type Geometry3D,
-    type Mesh3DProps,
     type NodeOf,
     type Values,
     type Vector3,
@@ -21,7 +20,6 @@ import {
     type Shading3D as _Shading3D,
     type Texture3D as _Texture3D,
 } from "@motionscript/sdk";
-import type { Interval } from "../kit/coords";
 import { parseSpaceCurve, spaceCurveParams, type SpaceCurveEquation } from "../kit/equation3d";
 import type { ExpressionScope } from "../kit/expression";
 import { PLOT_COLOR } from "../kit/furniture";
@@ -29,16 +27,6 @@ import { clamp } from "../kit/geometry";
 import { lerpParams, lerpSource, readSource, scopeFor, type PlotSource } from "../kit/source";
 import { domainEntry, meshEntries } from "./entries";
 import { graphEntry, graphOf, type GraphSpace } from "./space";
-
-export interface CurvePlot3dProps extends Mesh3DProps {
-    expression?: string | PlotSource;
-    domain?: Interval | null;
-    params?: ExpressionScope;
-    samples?: number;
-    thickness?: number;
-    start?: number;
-    end?: number;
-}
 
 const state = {
     ...meshEntries,

@@ -9,17 +9,7 @@ export type ShaderPropertyValues = Record<string, unknown>;
 const COMPONENTS = ["x", "y", "z", "w"] as const;
 const COLOR_COMPONENTS = ["r", "g", "b", "a"] as const;
 
-/**
- * Turn a pack's properties, plus any overrides, into the uniform record the
- * renderer writes.
- *
- * This is the whole job of a property: it is an *editable* value, and a uniform
- * is where that value has to end up. One property may feed several uniforms —
- * see `ShaderPropertyBase.inputs` — which is why this cannot be a rename.
- *
- * The pack's own `uniforms` are merged in first and the properties win: the
- * more specific statement of the same value takes it.
- */
+/** Turns a pack's properties, plus overrides, into the uniform record the renderer writes. One property may feed several uniforms (see `ShaderPropertyBase.inputs`), so this is not a rename. The pack's own `uniforms` merge in first and properties win: the more specific statement of a value takes it. */
 export function resolveShaderProperties(
     pack: Shader,
     overrides?: ShaderPropertyValues,
@@ -50,14 +40,7 @@ export function resolveShaderProperties(
     return out;
 }
 
-/**
- * Split one property's value across the components its `inputs` name.
- *
- * A property naming only `value` passes its whole value through, which is the
- * common case and the reason a scalar needs no ceremony. One naming `x`/`y` (or
- * `r`/`g`/`b`/`a`) indexes into the value, which is what lets a `point` drive two
- * separate `float` uniforms in a source that never declared a `float2`.
- */
+/** Splits one property's value across the components its `inputs` name. A property naming only `value` passes its whole value through; one naming `x`/`y` (or `r`/`g`/`b`/`a`) indexes into it, so a `point` can drive two separate `float` uniforms. */
 function componentsOf(
     property: ShaderProperty,
     value: unknown,
@@ -81,7 +64,6 @@ function componentsOf(
     return out;
 }
 
-/** One property's value as floats, by its kind. */
 function toUniformValue(
     property: ShaderProperty,
     value: unknown,
@@ -121,14 +103,7 @@ function asFinite(value: unknown, id: string, where: string): number | undefined
     return undefined;
 }
 
-/**
- * A colour as four floats in 0–1.
- *
- * A CSS string is parsed rather than refused, so a theme token, an `oklch()` and
- * the `"white/10"` opacity suffix all reach a shader — `parseColor` is the one
- * place any of those are understood, and a shader pack has no reason to be the
- * exception.
- */
+/** A colour as four floats in 0–1. A CSS string is parsed (via `parseColor`, the one place those are understood), so theme tokens, `oklch()` and `"white/10"` all reach a shader. */
 function asColor(value: unknown, id: string, where: string): number[] | undefined {
     if (typeof value === "string") {
         const [r, g, b, a] = parseColor(value);

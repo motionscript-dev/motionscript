@@ -2,7 +2,6 @@ import type { AudioRequest } from "@/attributes/audio/request";
 
 /** Every owner's declared audio, kept apart so one owner can change without redeclaring the rest. */
 export class AudioIndex {
-    /** Replace `ownerKey`'s requests. Returns whether that changed anything. */
     setOwner(ownerKey: string, requests: AudioRequest[]): boolean {
         if (requests.length === 0) return this.removeOwner(ownerKey);
         const prior = this._owners.get(ownerKey);
@@ -15,7 +14,6 @@ export class AudioIndex {
         return this._owners.delete(ownerKey);
     }
 
-    /** Every request, owner by owner in the order each was first declared. */
     requests(): AudioRequest[] {
         const out: AudioRequest[] = [];
         for (const requests of this._owners.values()) out.push(...requests);

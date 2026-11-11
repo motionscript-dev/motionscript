@@ -1,24 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Figma's Glass: the backdrop seen through a slab of glass whose edge curves
- * down to the node's outline — refracted, split into a spectrum at the curve,
- * optionally frosted, with a rim of light.
- *
- * The fields are Figma's own, in Figma's units, so values copied from a Figma
- * file render the same: `depth` and `frost` are px, `lightAngle` is degrees
- * clockwise from the top, and the rest are 0–100 amounts.
- *
- * Glass only has meaning on the **backdrop** — there is nothing to refract in a
- * node's own paint — so `Effects.glass()` defaults `mode` to `'backdrop'` and the
- * renderer's handler serves that target only.
- */
+/** Figma's Glass: the backdrop seen through a slab whose edge curves down to the node's outline, refracted, split into a spectrum, optionally frosted, with a rim of light. Fields and units are Figma's (`depth`/`frost` px, `lightAngle` degrees clockwise from the top, the rest 0–100), so copied values render the same. Only meaningful on the **backdrop** (nothing to refract in a node's own paint), so `Effects.glass()` defaults `mode` to `'backdrop'`. */
 export interface GlassEffect extends ModedEffect, EffectFields<typeof glassSpec.params> {
     type: "glass";
 }
 
-/** The {@link GlassEffect} spec: its parameters, defaults and ranges. */
 export const glassSpec = defineEffect({
     type: "glass",
     group: "light",

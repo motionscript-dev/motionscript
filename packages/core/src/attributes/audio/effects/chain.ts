@@ -1,11 +1,7 @@
 import { AudioEffect } from "./union";
 import { Param, isRamp } from "../ramp";
 
-/**
- * Every builder takes one options object, and those with one dominant param
- * also take that param directly — a number or a {@link Ramp}, so
- * `AudioEffects.lowpass(ramp(8000, 400, 2))` works.
- */
+/** Every builder takes one options object; those with one dominant param also take it directly (a number or a {@link Ramp}), so `AudioEffects.lowpass(ramp(8000, 400, 2))` works. */
 
 /** Gain. Param shorthand sets `value`. */
 export interface GainEffectOptions {
@@ -52,13 +48,7 @@ function scalarParam<O extends object>(arg: Param | O, key: keyof O): O {
     return typeof arg === "number" || isRamp(arg) ? ({ [key]: arg } as O) : (arg as O);
 }
 
-/**
- * Immutable, chainable list of audio effects, applied in order (index 0
- * closest to the source).
- *
- * @example
- * const chain = AudioEffects.gain(1.5).lowpass(800).echo(0.3);
- */
+/** Immutable, chainable list of audio effects applied in order (index 0 closest to the source): `AudioEffects.gain(1.5).lowpass(800).echo(0.3)`. */
 export class AudioEffectChain {
     constructor(public list: AudioEffect[] = []) { }
 

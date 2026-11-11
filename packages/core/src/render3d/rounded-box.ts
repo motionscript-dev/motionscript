@@ -1,21 +1,13 @@
 import type { BufferGeometry3D } from "./geometry";
 
 /**
- * A box with rounded edges and corners, evaluated into vertex buffers.
+ * A box with rounded edges and corners, evaluated into vertex buffers. three has no rounded box in core (its
+ * `RoundedBoxGeometry` is an addon, and importing addons would defeat the lazy `import("three")` boundary), so it is
+ * built here as plain data, backend-agnostic and GPU-free like `evaluateParametric`.
  *
- * `Rect` has had `cornerRadius` since the beginning and it is most of what makes
- * 2D content read as designed rather than as debug output; the same is true in
- * 3D, and it is the one thing a Spline scene has that a bare three scene does
- * not. three has no rounded box in core — its `RoundedBoxGeometry` is an addon,
- * and importing addons would defeat the lazy `import("three")` boundary — so the
- * surface is built here: in core, as plain data, backend-agnostic and testable
- * without a GPU, exactly like `evaluateParametric`.
- *
- * The surface is the Minkowski sum of an inner box (each half-extent reduced by
- * `radius`) and a sphere of that radius, which decomposes into 26 patches: 6 flat
- * faces, 12 quarter-cylinder edges and 8 spherical-octant corners. Each patch is
- * a grid of `core + radius * direction`, where `direction` is also the vertex
- * normal — so lighting is exact rather than interpolated off a deformed box.
+ * The surface is the Minkowski sum of an inner box (each half-extent reduced by `radius`) and a sphere of that
+ * radius: 26 patches (6 flat faces, 12 quarter-cylinder edges, 8 spherical-octant corners), each a grid of
+ * `core + radius * direction`, where `direction` is also the vertex normal, so lighting is exact.
  */
 export interface RoundedBoxOptions {
     width: number;
@@ -32,42 +24,24 @@ type Vec3 = readonly [number, number, number];
 interface Grid {
     /** Position at grid coordinate `(u, v)`, both in `[0, 1]`. */
     position: (u: number, v: number) => Vec3;
-    /** Unit normal at `(u, v)`. */
     normal: (u: number, v: number) => Vec3;
     uSteps: number;
     vSteps: number;
 }
 
-/**
- * Arc resolution for the rounded regions, derived from how round the box
- * actually is rather than exposed as a knob.
- *
- * `segments` means face subdivision on every other shape and has to keep meaning
- * that here; a second count just for the arcs would be a field whose right value
- * is always "enough that it looks smooth". That is a function of the radius
- * relative to the box, so it is computed — a barely-rounded edge gets the
- * minimum, a nearly-spherical one gets a full sweep.
- */
+/** Arc resolution for the rounded regions, derived from how round the box is rather than exposed: `segments` means face subdivision everywhere else, and a second count would only ever be "enough to look smooth", a function of radius relative to the box. */
 function arcSegmentsFor(radius: number, maxHalf: number): number {
     if (maxHalf <= 0) return 3;
     return Math.max(3, Math.min(16, Math.round((radius / maxHalf) * 40)));
 }
 
-/**
- * Build the rounded box's vertex buffers.
- *
- * Returns a plain {@link BufferGeometry3D}, so the renderer's existing buffer
- * path uploads it with no new code, and `Geo.edges`/`Geo.wireframe` derive from
- * it like any other geometry.
- */
+/** Builds the rounded box's vertex buffers as a plain {@link BufferGeometry3D}, so the renderer's buffer path uploads it and `Geo.edges`/`Geo.wireframe` derive from it. */
 export function evaluateRoundedBox(options: RoundedBoxOptions): BufferGeometry3D {
     const half: Vec3 = [options.width / 2, options.height / 2, options.depth / 2];
     const maxHalf = Math.max(half[0], half[1], half[2]);
     const radius = Math.max(0, Math.min(options.radius, half[0], half[1], half[2]));
 
-    // The inner box the sphere is swept around. Clamped at zero so a radius equal
-    // to a half-extent (a fully rounded axis) degenerates to a line rather than
-    // folding the surface inside out.
+    // The inner box the sphere sweeps around; clamped at zero so a radius equal to a half-extent degenerates to a line rather than folding the surface inside out.
     const box: Vec3 = [
         Math.max(0, half[0] - radius),
         Math.max(0, half[1] - radius),
@@ -106,9 +80,7 @@ function* patches(
     const AXES = [0, 1, 2] as const;
     const SIGNS = [-1, 1] as const;
 
-    // 6 faces: flat, spanning the inner box on the two free axes and pinned at
-    // the full half-extent on its own. Subdivided by `segments`, which is what a
-    // displacement map reads.
+    // 6 faces: flat, spanning the inner box on the two free axes and pinned at the full half-extent on their own; subdivided by `segments` (what a displacement map reads).
     for (const axis of AXES) {
         const u = (axis + 1) % 3;
         const v = (axis + 2) % 3;
@@ -193,17 +165,7 @@ function* patches(
     }
 }
 
-/**
- * Tessellate one patch into the output buffers.
- *
- * Winding is decided per triangle by comparing its own normal against the
- * surface normal at that vertex, rather than by reasoning about the sign
- * combination that produced the patch: 26 patches is 26 chances to get a
- * handedness backwards, and one inverted face on a `faces: "front"` mesh is a
- * hole you can see through. Degenerate triangles — the pole of a corner octant,
- * and every quad of a patch whose extent collapsed to zero — are dropped rather
- * than emitted with an undefined normal.
- */
+/** Tessellates one patch into the output buffers. Winding is decided per triangle by comparing its normal to the surface normal at that vertex, not by reasoning about sign combinations: 26 patches are 26 chances to get a handedness backwards, and one inverted face on a `faces: "front"` mesh is a visible hole. Degenerate triangles (a corner octant's pole, quads of a zero-extent patch) are dropped rather than given an undefined normal. */
 function emit(
     grid: Grid,
     half: Vec3,
@@ -261,8 +223,7 @@ function pushTriangle(
     const ny = uz * vx - ux * vz;
     const nz = ux * vy - uy * vx;
 
-    // A collapsed quad — a pole, or a patch with no extent. No orientation to
-    // decide and no area to shade.
+    // A collapsed quad (a pole, or a patch with no extent): no orientation and no area.
     if (nx * nx + ny * ny + nz * nz < 1e-20) return;
 
     const facing = nx * normal[a * 3] + ny * normal[a * 3 + 1] + nz * normal[a * 3 + 2];
@@ -271,16 +232,7 @@ function pushTriangle(
     else index.push(a, c, b);
 }
 
-/**
- * A planar UV, projected along whichever axis the normal points most strongly
- * down.
- *
- * Deliberately approximate, and documented as such: the faces get an exact
- * box-projected UV, which is what a texture on a rounded box is almost always
- * for, and the arcs get a continuous projection that meets those faces without a
- * seam. An exact arc-length unwrap would need a per-patch atlas, which is a
- * texturing feature rather than a shape one.
- */
+/** A planar UV projected along the axis the normal points most down. Approximate on purpose: faces get an exact box-projected UV (what a texture on a rounded box is almost always for) and arcs a continuous projection that meets them without a seam; an exact arc-length unwrap would need a per-patch atlas, a texturing feature rather than a shape one. */
 function planarUv(point: Vec3, dir: Vec3, half: Vec3): [number, number] {
     const ax = Math.abs(dir[0]);
     const ay = Math.abs(dir[1]);

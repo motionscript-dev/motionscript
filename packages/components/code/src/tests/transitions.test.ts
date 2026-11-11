@@ -3,7 +3,6 @@ import {
     defaultCodePhases,
     makeAnim,
     moveProgress,
-    phasesFor,
     resolveTokenStates,
     sampleCurve,
     smoothstep,
@@ -19,27 +18,27 @@ import { makeIdLine, makeIdToken, type IdLine } from '../tokens';
  * through that part a frame is, and what opacity a token is drawn at.
  */
 
-describe('phasesFor', () => {
+describe('defaultCodePhases', () => {
     it('removes first, reflows, then adds, overlapping a little, for an edit that does both', () => {
-        expect(phasesFor(true, true)).toEqual({ out: [0, 0.38], move: [0.1, 0.68], in: [0.52, 1] });
+        expect(defaultCodePhases(true, true)).toEqual({ out: [0, 0.38], move: [0.1, 0.68], in: [0.52, 1] });
     });
 
     it('spends the whole duration reflowing and adding when nothing is removed', () => {
-        expect(phasesFor(false, true)).toEqual({ out: null, move: [0, 0.55], in: [0.38, 1] });
+        expect(defaultCodePhases(false, true)).toEqual({ out: null, move: [0, 0.55], in: [0.38, 1] });
     });
 
     it('spends the whole duration removing and then closing up when nothing is added', () => {
-        expect(phasesFor(true, false)).toEqual({ out: [0, 0.45], move: [0.22, 1], in: null });
+        expect(defaultCodePhases(true, false)).toEqual({ out: [0, 0.45], move: [0.22, 1], in: null });
     });
 
     it('only reflows an edit that neither adds nor removes', () => {
-        expect(phasesFor(false, false)).toEqual({ out: null, move: [0, 1], in: null });
+        expect(defaultCodePhases(false, false)).toEqual({ out: null, move: [0, 1], in: null });
     });
 
     it('always has a move window that starts before it ends, inside 0..1', () => {
         for (const removed of [true, false]) {
             for (const added of [true, false]) {
-                const { out, move, in: entering } = phasesFor(removed, added);
+                const { out, move, in: entering } = defaultCodePhases(removed, added);
                 for (const window of [out, move, entering]) {
                     if (!window) continue;
                     expect(window[0]).toBeGreaterThanOrEqual(0);
@@ -48,10 +47,6 @@ describe('phasesFor', () => {
                 }
             }
         }
-    });
-
-    it('is what a phase strategy defaults to', () => {
-        expect(defaultCodePhases).toBe(phasesFor);
     });
 });
 
@@ -104,7 +99,7 @@ describe('moveProgress', () => {
     });
 
     it('is the smoothstep of the progress through the move window', () => {
-        const phases = phasesFor(true, true);
+        const phases = defaultCodePhases(true, true);
         // The move window is [0.10, 0.68]: its middle is 0.39.
         expect(moveProgress({ phases, progress: 0 })).toBe(0);
         expect(moveProgress({ phases, progress: 0.1 })).toBe(0);
@@ -114,7 +109,7 @@ describe('moveProgress', () => {
     });
 
     it('eases rather than running straight through the window', () => {
-        const phases = phasesFor(false, false);
+        const phases = defaultCodePhases(false, false);
         expect(moveProgress({ phases, progress: 0.25 })).toBeCloseTo(smoothstep(0.25));
         expect(moveProgress({ phases, progress: 0.25 })).toBeLessThan(0.25);
     });
@@ -222,7 +217,7 @@ describe('resolveTokenStates', () => {
             addedIds: new Set(),
             enteringLineIds: new Set(),
             fromColorById: new Map(),
-            phases: phasesFor(false, false),
+            phases: defaultCodePhases(false, false),
             progress: 0.5,
             layoutKey: null,
             fromLayout: null,

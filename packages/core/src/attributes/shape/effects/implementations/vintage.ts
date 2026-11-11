@@ -5,7 +5,6 @@ export interface VintageEffect extends ModedEffect, EffectFields<typeof vintageS
     type: "vintage";
 }
 
-/** The {@link VintageEffect} spec: its parameters, defaults and ranges. */
 export const vintageSpec = defineEffect({
     type: "vintage",
     group: "color",

@@ -1,34 +1,12 @@
 /**
- * Where a source URL's bytes come from: a host's local store, then the network.
- * The renderer's storage adapter reads every asset through it (`loadBytes`).
+ * Where a source URL's bytes come from: a host's local store, then the network. The renderer's storage adapter reads
+ * every asset through it (`loadBytes`). The adapter otherwise fetches every asset by URL, which is wrong for bytes the
+ * host already holds (a file just chosen, a local model's render, an upload still in flight or offline).
  *
- * ## Why the web adapter needs this at all
- *
- * The storage adapter addresses every asset by URL and fetches it. That is
- * right for an asset that lives somewhere, and wrong for one whose bytes the
- * host already has in hand — a file the user has just chosen, a render a local
- * model has just produced, a picture whose upload has not finished or cannot
- * start because there is no network. In all three the adapter downloads bytes
- * that never needed to travel.
- *
- * `NodeStorageAdapter` has had the answer since it was written: an injected
- * `AssetLoader`, with an `inline` map consulted ahead of the disk. This is the
- * same seam for the browser.
- *
- * ## Why it is module-level
- *
- * The storage adapter is constructed at several sites *inside* this package —
- * sessions, the exporter, the audio mixer and the still renderer — none of
- * which a host can reach. A constructor argument would
- * therefore cover the preview and leave export and stills on the network,
- * which is the worst of both: the picture a user sees would come from local
- * bytes and the one they render would not.
- *
- * So this is an *injection point*, not a cache. The adapter still owns every
- * decode, every cache, every size ceiling and every eviction rule; all this
- * changes is where the compressed bytes came from. A source that answers `null`
- * — which is what an unregistered URL, an evicted entry or a host with no local
- * store does — leaves the adapter exactly as it was.
+ * It is module-level because the adapter is constructed at several sites inside this package (sessions, the exporter,
+ * the audio mixer, the still renderer) a host cannot reach; a constructor argument would cover the preview and leave
+ * export and stills on the network. This is an *injection point*, not a cache: the adapter still owns every decode,
+ * cache and eviction rule, and a source answering `null` leaves it exactly as it was.
  */
 
 /** Local bytes for a source URL, or `null` to go to the network. */
@@ -36,24 +14,12 @@ export type AssetByteSource = (src: string) => Promise<Blob | null>;
 
 let source: AssetByteSource | null = null;
 
-/**
- * Installs the byte source for this browsing context, or clears it with `null`.
- *
- * Called once per window that renders. Later calls replace the previous source
- * rather than stacking, because two sources disagreeing about one URL has no
- * sensible answer.
- */
+/** Installs the byte source for this browsing context, or clears it with `null`. Later calls replace the previous source rather than stacking: two sources disagreeing about one URL has no sensible answer. */
 export function setAssetByteSource(next: AssetByteSource | null): void {
     source = next;
 }
 
-/**
- * The bytes for `src`, or `null`.
- *
- * Swallows a throwing source on purpose. A host's local store failing is a
- * cache miss, not a render failure — the caller falls through to `fetch`, which
- * is what it would have done had the source never been installed.
- */
+/** The bytes for `src`, or `null`. Swallows a throwing source on purpose: a failing local store is a cache miss, not a render failure, and the caller falls through to `fetch`. */
 export async function localAssetBytes(src: string): Promise<Blob | null> {
     if (!source) return null;
     try {
@@ -63,11 +29,7 @@ export async function localAssetBytes(src: string): Promise<Blob | null> {
     }
 }
 
-/**
- * The network's bytes for `url`. A response that is not OK is a failed load,
- * never bytes: a 404 page handed to the font manager marked a family loaded
- * with no face in it.
- */
+/** The network's bytes for `url`. A non-OK response is a failed load, never bytes (a 404 page handed to the font manager marked a family loaded with no face). */
 export async function fetchAssetBytes(url: string): Promise<Blob> {
     const response = await fetch(url);
     if (!response.ok) {

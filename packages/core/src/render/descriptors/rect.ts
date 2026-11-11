@@ -6,9 +6,8 @@ import { ShapeAlignmentInput, ShapeState, resolveShapeAlignment, resolveShapePiv
 export interface RectState extends ShapeState {
     width: number;
     height: number;
-    // Accepts loose input or an already-resolved value (both are part of
-    // RectCornerRadius/RectCornerStyle): the node resolves via its property
-    // mapper, and the renderer re-resolves idempotently.
+    // Loose input or already resolved (both are part of RectCornerRadius/RectCornerStyle): the node resolves via its
+    // property mapper and the renderer re-resolves idempotently.
     cornerRadius: RectCornerRadius;
     cornerStyle: RectCornerStyle;
 }
@@ -19,7 +18,6 @@ export function withRectDescriptor(descriptor: Partial<RectState> & ShapeAlignme
     const { x, y, pivot } = resolveShapeAlignment(descriptor, width, height);
     return {
         ...stripShapeAlignmentKeys(descriptor),
-        opacity: descriptor.opacity ?? 1,
         rotation: descriptor.rotation ?? 0,
         scale: descriptor.scale ?? 1,
         x,

@@ -3,11 +3,7 @@ import { equationParams, parseEquation } from "./equation";
 import type { ExpressionScope } from "./expression";
 import { scopeFor, type PlotSource } from "./source";
 
-/**
- * A curve as a mark reads it: what a plot is drawn from, its own `x`/`y`, and
- * whether a system laid it out, which is when those are a shift in graph units.
- * Data rather than a class, so a copied plot is ridden like the kit's own.
- */
+/** A curve as a mark reads it. Data rather than a class, so a copied plot is ridden like the kit's own. */
 export interface CurveValues {
     readonly expression: PlotSource;
     readonly params: ExpressionScope;

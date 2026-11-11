@@ -2,7 +2,6 @@ import {
     component2d,
     Types,
     type NodeOf,
-    type PaintProps,
     type Vector2,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Fill as _Fill,
@@ -18,12 +17,6 @@ import { PAINT, PAINT_COMMANDS } from "../kit/component";
 import { PLOT_COLOR } from "../kit/furniture";
 import { PLANE_ENTRY } from "../kit/graph";
 import { drawMark, inkSize, reading, traced, type MarkReading } from "../kit/mark";
-
-export interface PointsPlotProps extends PaintProps {
-    points?: Vector2[];
-    closed?: boolean;
-    smooth?: boolean;
-}
 
 // A shorter list is padded with its own last point, so a line grows new points out of its end.
 function lerpPoints(from: Vector2[], to: Vector2[], t: number): Vector2[] {

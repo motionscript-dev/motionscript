@@ -3,8 +3,6 @@ import {
     Geo,
     Material,
     Types,
-    type Color,
-    type Mesh3DProps,
     type NodeOf,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Blend3D as _Blend3D,
@@ -21,14 +19,6 @@ import {
 } from "@motionscript/sdk";
 import { meshEntries } from "./entries";
 import { drawLabel3D } from "./label3d";
-
-export interface PlotPoint3dProps extends Mesh3DProps {
-    radius?: number;
-    label?: string;
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-}
 
 /**
  * A dot at graph coordinates in a 3D graph, with an optional label. Put inside

@@ -1,13 +1,4 @@
-/**
- * Decides how many lanes render at once, from what the run itself measures.
- *
- * Lanes do not add throughput for free. Every lane's encoder, and on a WebGPU
- * canvas its frame capture, run in the browser's one GPU process, so once a lane
- * spends its time waiting on the encoder rather than drawing, a second lane only
- * splits the same encoder between two sessions and the export gets slower. The
- * governor starts with one lane, adds the next only while lanes are mostly
- * drawing, keeps it only if total throughput rose, and then settles.
- */
+/** Decides how many lanes render at once from what the run measures. Lanes do not add throughput for free: every lane's encoder (and, on a WebGPU canvas, frame capture) runs in the browser's one GPU process, so once a lane waits on the encoder rather than drawing, a second only splits the same encoder and the export gets slower. It starts with one lane, adds the next only while lanes are mostly drawing, keeps it only if total throughput rose, then settles. */
 export interface GovernorOptions {
     /** Lanes available, the first being the one every run starts with. */
     lanes: number;
@@ -74,11 +65,7 @@ export class LaneGovernor {
         this._settled = true;
     }
 
-    /**
-     * Record frames a lane drew. Returns the new active count when it changed.
-     * A window opens once the newest lane has drawn for `warmupMs`, so its
-     * start-up is not counted against it.
-     */
+    /** Records frames a lane drew; returns the new active count when it changed. A window opens once the newest lane has drawn for `warmupMs`, so its start-up isn't counted against it. */
     record(sample: FrameSample): number | null {
         if (this._settled || sample.lane >= this._active) return null;
         const w = this._window;

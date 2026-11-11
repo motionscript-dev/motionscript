@@ -1,6 +1,6 @@
-import { createBoundedCache } from "./cache";
+import { memoParse } from "./cache";
 import { equationError, equationNames, equationParams, EQUATION_VARIABLES, splitTopLevel, splitTuple } from "./equation";
-import { compileExpressionCached, type CompiledExpression } from "./expression";
+import { compilerFor, type CompiledExpression } from "./expression";
 import { fieldError, fieldParams, FIELD_VARIABLES } from "./field";
 
 /**
@@ -32,9 +32,6 @@ export const EQUATION_VARIABLES_3D = {
 const SURFACE_NAMES: ReadonlySet<string> = new Set(["x", "y", "z", "u", "v"]);
 const SPACE_CURVE_NAMES: ReadonlySet<string> = new Set(["t"]);
 
-const surfaces = createBoundedCache<SurfaceEquation | Error>(128);
-const curves = createBoundedCache<SpaceCurveEquation | Error>(128);
-
 /** The named values a surface's equation reads: every name that is not one of its variables. */
 export function surfaceParams(source: string): readonly string[] {
     return equationNames(source).filter((name) => !SURFACE_NAMES.has(name));
@@ -45,33 +42,29 @@ export function spaceCurveParams(source: string): readonly string[] {
     return equationNames(source).filter((name) => !SPACE_CURVE_NAMES.has(name));
 }
 
-/** `source` as a surface, or the reason it is not one. Memoised, so an unchanged equation is the identical object. */
-export function parseSurface(source: string, params: readonly string[] = []): SurfaceEquation | Error {
-    return memo(surfaces, source, params, (text) => {
-        const compile = compiler(params);
-        const parts = splitTuple(text);
-        if (parts) {
-            if (parts.length !== 3) throw new Error("A parametric surface has three parts: (x, y, z)");
-            const [x, y, z] = parts.map((part) => compile(part, EQUATION_VARIABLES_3D.surface));
-            return { kind: "parametric", x, y, z };
-        }
-        const sides = splitTopLevel(text, "=");
-        if (sides.length > 2) throw new Error("An equation has one '='");
-        if (sides.length === 2 && sides[0].trim() !== "z") throw new Error("A surface is written z = …, or as three parts (x, y, z)");
-        return { kind: "height", f: compile(sides[sides.length - 1], EQUATION_VARIABLES_3D.height) };
-    });
-}
+/** `source` as a surface, or the reason it is not one. */
+export const parseSurface = memoParse<SurfaceEquation>(128, (text, params) => {
+    const compile = compilerFor(params);
+    const parts = splitTuple(text);
+    if (parts) {
+        if (parts.length !== 3) throw new Error("A parametric surface has three parts: (x, y, z)");
+        const [x, y, z] = parts.map((part) => compile(part, EQUATION_VARIABLES_3D.surface));
+        return { kind: "parametric", x, y, z };
+    }
+    const sides = splitTopLevel(text, "=");
+    if (sides.length > 2) throw new Error("An equation has one '='");
+    if (sides.length === 2 && sides[0].trim() !== "z") throw new Error("A surface is written z = …, or as three parts (x, y, z)");
+    return { kind: "height", f: compile(sides[sides.length - 1], EQUATION_VARIABLES_3D.height) };
+});
 
 /** `source` as a space curve, or the reason it is not one. */
-export function parseSpaceCurve(source: string, params: readonly string[] = []): SpaceCurveEquation | Error {
-    return memo(curves, source, params, (text) => {
-        const compile = compiler(params);
-        const parts = splitTuple(text);
-        if (parts?.length !== 3) throw new Error("A space curve has three parts: (x, y, z)");
-        const [x, y, z] = parts.map((part) => compile(part, EQUATION_VARIABLES_3D.spaceCurve));
-        return { x, y, z };
-    });
-}
+export const parseSpaceCurve = memoParse<SpaceCurveEquation>(128, (text, params) => {
+    const compile = compilerFor(params);
+    const parts = splitTuple(text);
+    if (parts?.length !== 3) throw new Error("A space curve has three parts: (x, y, z)");
+    const [x, y, z] = parts.map((part) => compile(part, EQUATION_VARIABLES_3D.spaceCurve));
+    return { x, y, z };
+});
 
 /** Why `source` will not draw as a surface, or `null`; empty text is not an error. */
 export function surfaceError(source: string): string | null {
@@ -85,35 +78,6 @@ export function spaceCurveError(source: string): string | null {
     if (source.trim() === "") return null;
     const equation = parseSpaceCurve(source, spaceCurveParams(source));
     return equation instanceof Error ? equation.message : null;
-}
-
-function compiler(params: readonly string[]) {
-    return (text: string, variables: readonly string[]): CompiledExpression => {
-        const result = compileExpressionCached(text.trim(), variables, params);
-        if (result instanceof Error) throw result;
-        return result;
-    };
-}
-
-function memo<T extends object>(
-    cache: ReturnType<typeof createBoundedCache<T | Error>>,
-    source: string,
-    params: readonly string[],
-    read: (text: string) => T,
-): T | Error {
-    const key = `${params.join(",")}|${source}`;
-    const hit = cache.get(key);
-    if (hit !== undefined) return hit;
-    let result: T | Error;
-    try {
-        const text = source.trim();
-        if (text === "") throw new Error("Empty equation");
-        result = read(text);
-    } catch (error) {
-        result = error instanceof Error ? error : new Error(String(error));
-    }
-    cache.set(key, result);
-    return result;
 }
 
 /** How a host checks an equation as it is typed, and finds its named values, by the `kind` its property declares. */

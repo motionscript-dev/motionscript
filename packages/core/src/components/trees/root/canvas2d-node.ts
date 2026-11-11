@@ -20,39 +20,17 @@ import { alignmentProperty, fillProperty, flowProperty } from "@/attributes/prop
 
 /** @internal */
 export interface Canvas2DProps extends Node2DProps, FlowProps {
-    /**
-     * Background fill layer(s). Each item can be a CSS color string, a fill
-     * prop object, an already-resolved fill, or a {@link FillChain} from the
-     * `Fills` builder. Painted behind the scene's children.
-     */
+    /** Background fill layer(s): any loose fill value or a {@link FillChain}, painted behind the children. */
     fill: Fill;
-    /**
-     * Overlay layer(s) — same loose values as {@link fill}, but painted *over*
-     * the fill **and** the children (clipped to the viewport). Use for textures
-     * laid across the whole scene, e.g. a VHS-grain image or video.
-     */
+    /** Overlay layer(s), same loose values as {@link fill}, painted over the fill **and** the children (clipped to the viewport): e.g. a VHS-grain image or video across the scene. */
     overlay: Fill;
     /** Camera magnification factor. Values > 1 zoom in; < 1 zoom out. */
     zoom: number;
-    /**
-     * World-space point that maps to the centre of the viewport. In a
-     * {@link space3D} it is also what the camera orbits, and `z` puts it in
-     * depth — the same sense as a node's `depth`, so a negative `z` flies in.
-     */
+    /** World-space point mapped to the viewport centre. In a {@link space3D} it is also what the camera orbits, and `z` puts it in depth (as a node's `depth`: negative `z` flies in). */
     lookAt: LookAt;
     /** Rotation of the camera view in degrees (clockwise). */
     heading: number;
-    /**
-     * Place the children in one 3D space seen through this camera, rather than
-     * each projecting through a perspective of its own. Their `depth` and tilt
-     * are then positions and turns in that space, and siblings paint far to
-     * near. A switch rather than something read off the camera's numbers, so
-     * turning it on can never jump a tween.
-     *
-     * While it is on, `perspective` is the camera's distance from {@link lookAt}
-     * at `dolly: 0` — CSS's convention, so that plane draws 1:1 and `0` is a
-     * parallel projection — and the stage's own tilt and depth are unused.
-     */
+    /** Places the children in one 3D space seen through this camera, rather than each projecting through its own perspective: their `depth` and tilt become positions and turns in that space and siblings paint far to near. A switch, not read off the camera's numbers, so turning it on can't jump a tween. While on, `perspective` is the camera's distance from {@link lookAt} at `dolly: 0` (CSS's convention: that plane draws 1:1, `0` is parallel) and the stage's own tilt and depth are unused. */
     space3D: boolean;
     /** Degrees about the vertical axis through {@link lookAt}. 0 is head-on; positive moves the camera to the right. Same as `Camera3D`. */
     orbit: number;
@@ -62,45 +40,23 @@ export interface Canvas2DProps extends Node2DProps, FlowProps {
     dolly: number;
 }
 
-/**
- * The single root container every clip document builds into.
- *
- * A `Canvas2D` is a plain {@link Node2D} that doubles as the clip's layout frame
- * and camera. It lays its children out (flex `horizontal`/`vertical` or
- * `freeform`, with `gap`, `align`, `padding`) and paints a scene-wide background
- * (`fill`) and `overlay` — *and* views those laid-out children through a viewport
- * transform (`zoom`, `lookAt`, `heading`).
- *
- * Unlike a {@link Rect} it is **not a shape**: it has no stroke, shadow, corner,
- * or `start`/`end` props. It carries only the scene-wide concerns — background
- * paint, child layout, and camera — so `stage.fill`, `stage.flow`, etc. read
- * the root directly without exposing per-shape geometry the scene root never has.
- *
- * Its layout props are the arrangement {@link Node2D} lays its children out by,
- * the same as a {@link Rect}'s — see {@link flowArrangement}.
- */
+/** The single root container every clip document builds into: a {@link Node2D} that is the clip's layout frame and camera. It lays children out, paints a scene-wide `fill` and `overlay`, and views them through a viewport transform (`zoom`, `lookAt`, `heading`). Not a shape: no stroke, shadow, corner or `start`/`end`. Its layout props are the arrangement {@link Node2D} lays children out by ({@link flowArrangement}). */
 /** @internal */
 export class Canvas2D extends Node2D<Canvas2DProps> {
 
-    // ---- Background paint -------------------------------------------------
-    // Author-facing paint props. Like Rect, the declared type is the loose
-    // `Fill` so assignment (`this.fill = 'red'`) and reads share one type; the
-    // property accessor stores the *resolved* value via the mapper.
+    // Declared loose (`Fill`) so assignment and reads share one type; the accessor stores the resolved value via the mapper.
     declare fill: Fill;
     declare overlay: Fill;
 
-    // ---- Layout container -------------------------------------------------
     declare flow: FlowMode;
     declare readonly gap: GapSize;
     declare readonly wrap: boolean;
     // `undefined` means "follow `gap`", not "missing" — see FlowProps.crossGap.
     declare readonly crossGap: number | undefined;
     declare readonly columns: number;
-    // Declared loose as `Alignment` (covers `this.align = 'center'`); the
-    // accessor stores the resolved per-axis `Vector2` pivot. See Rect.
+    // Declared loose as `Alignment`; the accessor stores the resolved per-axis `Vector2` pivot. See Rect.
     declare align: Alignment;
 
-    // ---- Camera -----------------------------------------------------------
     /** Camera magnification factor (default: 1). */
     declare zoom: number;
     /** World-space focus point (default: {x:0, y:0}). */
@@ -116,8 +72,7 @@ export class Canvas2D extends Node2D<Canvas2DProps> {
         super(props);
     }
 
-    // ---- Camera motion commands -------------------------------------------
-    // Mirror the Camera node's viewport commands.
+    // Camera motion commands mirroring the Camera node's viewport commands.
 
     /** Animate `zoom`. Values > 1 zoom in; < 1 zoom out. */
     zoomTo(args: CommandArgs<{ zoom: number }> & { duration: number }): Command<Canvas2DProps> {
@@ -129,11 +84,7 @@ export class Canvas2D extends Node2D<Canvas2DProps> {
         return this.to({ data: args.data as Partial<Canvas2DProps>, duration: args.duration, easing: args.easing });
     }
 
-    /**
-     * Swing the camera round {@link lookAt}. The argument names are the ones the
-     * 3D components' `orbitTo` takes, less `zoom`: here that is the lens, not a
-     * distance, and it has a command of its own.
-     */
+    /** Swings the camera round {@link lookAt}. Argument names are the 3D components' `orbitTo` less `zoom` (here the lens, with its own command). */
     orbitTo(args: CommandArgs<{ orbit?: number; elevation?: number }> & { duration: number }): Command<Canvas2DProps> {
         return this.to({ data: args.data as Partial<Canvas2DProps>, duration: args.duration, easing: args.easing });
     }
@@ -162,13 +113,9 @@ export class Canvas2D extends Node2D<Canvas2DProps> {
         return this.command<Canvas2DProps>(t => ({ overlay: lerp(from, target, t) }) as Partial<Canvas2DProps>, args.duration, args.easing);
     }
 
-    // ---- Layout -----------------------------------------------------------
-
     protected override flowArrangement(): FlowSettings {
         return this;
     }
-
-    // ---- Drawing ----------------------------------------------------------
 
     // The viewport-sized background box behind the children.
     private shapeGraphics(): Graphics2D {
@@ -191,18 +138,7 @@ export class Canvas2D extends Node2D<Canvas2DProps> {
         ctx.draw(this.shapeGraphics().fill(overlay));
     }
 
-    /**
-     * Accept audio children as well as 2D ones.
-     *
-     * The scene root is where the two trees meet, mirroring `Canvas3D` — and for
-     * the same reason it is *this* node: a composition already carries both
-     * halves of a clip, so a voiceover belongs in the document that shows the
-     * picture it is narrating rather than in a second document beside it.
-     *
-     * Nothing partitions them by hand. `Node2D.children` already filters to its
-     * own kind, so layout and render skip the audio subtree for free, and the
-     * audio declaration walk reads the unfiltered list.
-     */
+    /** Accepts audio children as well as 2D ones: the scene root is where the two trees meet (as `Canvas3D`), so a voiceover lives in the document showing the picture it narrates. Nothing partitions them: `Node2D.children` already filters to its own kind and the audio declaration walk reads the unfiltered list. */
     protected override acceptsChild(child: Node): boolean {
         return child.dimension === "2d" || child.dimension === "audio";
     }
@@ -232,16 +168,9 @@ export class Canvas2D extends Node2D<Canvas2DProps> {
         });
     }
 
-    // ---- Rendering --------------------------------------------------------
-
-    // Children are laid out by the flow engine; here we view that laid-out
-    // world through the camera viewport transform, the same way the Camera node
-    // does. When the camera is at rest (zoom 1, no heading, origin at 0) this is
-    // the identity, so a plain layout root pays nothing extra.
-    // Non-null exactly when renderChildren below opens a camera, so a consumer
-    // reproducing the render transform (node picking) inserts the same scope in
-    // the same place — and skips it on the at-rest fast path, where the renderer
-    // pushes nothing at all.
+    // Views the laid-out world through the camera viewport transform (the identity at rest, so a plain layout root pays
+    // nothing). Non-null exactly when renderChildren opens a camera, so node picking inserts the same scope in the same
+    // place and skips the at-rest fast path, where nothing is pushed.
     override _cameraScope(): CameraScope | null {
         if (this.space3D) return null;
         if (this.zoom === 1 && this.heading === 0 && this.lookAt.x === 0 && this.lookAt.y === 0) return null;

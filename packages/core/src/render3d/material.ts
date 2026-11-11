@@ -8,15 +8,7 @@ import type { Texture3D } from "./texture";
 /** Facet or smooth shading. `"flat"` gives one normal per triangle. */
 export type Shading3D = "smooth" | "flat";
 
-/**
- * State every material shares, regardless of shading model.
- *
- * A note on cost, because it is not obvious: the fields in the first block are
- * plain uniform writes the renderer can mutate in place every frame, so they are
- * free to animate. The fields marked **structural** change the compiled shader
- * program, so changing one mid-timeline forces a recompile — set them once and
- * leave them alone rather than tweening them.
- */
+/** State every material shares. Fields in the first block are uniform writes the renderer mutates in place, so they're free to animate; **structural** fields change the compiled shader, so changing one mid-timeline forces a recompile: set them once. */
 export interface MaterialCommon3D extends Passthrough3D {
     /** 0–1. Free to animate; blending is turned on for you below 1. */
     opacity?: number;
@@ -24,18 +16,9 @@ export interface MaterialCommon3D extends Passthrough3D {
     visible?: boolean;
 
     /**
-     * **Structural, and normally derived rather than written.**
-     *
-     * The renderer turns alpha blending on whenever anything about the material
-     * actually needs it — `opacity` below 1, a colour carrying alpha, an
-     * `alphaMap`, or transmission — so an author never has to pair a fade with a
-     * second flag, and `opacity: 0.5` can no longer silently do nothing (which is
-     * exactly what it did when this defaulted to `false`).
-     *
-     * Set it explicitly only to *force* blending on a fully opaque material, which
-     * is occasionally wanted for draw-order reasons. Setting it `false` does not
-     * turn off blending a lower alpha requires; there is no useful meaning for
-     * that, and it only ever expressed a bug.
+     * **Structural, and normally derived.** The renderer turns blending on whenever the material needs it (`opacity`
+     * below 1, a colour with alpha, an `alphaMap`, transmission), so a fade needs no second flag. Set it only to *force*
+     * blending on an opaque material (draw order); `false` doesn't turn off blending a lower alpha requires.
      */
     transparent?: boolean;
     /** **Structural.** Discard fragments below this alpha. Cheap cutout transparency. */
@@ -51,16 +34,7 @@ export interface MaterialCommon3D extends Passthrough3D {
     /** **Structural.** Apply the scene's tone mapping. Default true. */
     toneMapped?: boolean;
 
-    /**
-     * Write to the depth buffer.
-     *
-     * **Derived unless stated**: a blended surface stops writing depth, and an
-     * opaque one writes it. three defaults this to `true` for everything, so a
-     * translucent mesh occluded whatever was drawn after it — a surface at 5%
-     * opacity rendering as a near-invisible cut-out through the things behind
-     * it. Set it explicitly for a translucent surface that genuinely should
-     * occlude.
-     */
+    /** Write to the depth buffer. **Derived unless stated**: a blended surface doesn't write depth and an opaque one does (three defaults `true`, so a translucent mesh would occlude what's drawn after it). Set it for a translucent surface that should occlude. */
     depthWrite?: boolean;
     /** Test against the depth buffer. Turn off to force draw-on-top. */
     depthTest?: boolean;
@@ -112,11 +86,7 @@ export interface BasicMaterial3D extends MaterialCommon3D, CommonMaps3D {
     color?: Color;
 }
 
-/**
- * Physically based metal/rough shading. The sensible default for most surfaces:
- * `roughness` and `metalness` cover the majority of real materials, and both are
- * free to animate.
- */
+/** Physically based metal/rough shading, the sensible default; `roughness` and `metalness` are free to animate. */
 export interface StandardMaterial3D extends MaterialCommon3D, CommonMaps3D, Emissive3D {
     type: "standard";
     color?: Color;
@@ -130,11 +100,7 @@ export interface StandardMaterial3D extends MaterialCommon3D, CommonMaps3D, Emis
     shading?: Shading3D;
 }
 
-/**
- * Everything {@link StandardMaterial3D} has plus the expensive extras: clearcoat,
- * transmission (real refraction), sheen and iridescence. Costs more per pixel, so
- * reach for `standard` unless a surface needs these.
- */
+/** {@link StandardMaterial3D} plus clearcoat, transmission (real refraction), sheen and iridescence. Costs more per pixel; prefer `standard` unless needed. */
 export interface PhysicalMaterial3D extends Omit<StandardMaterial3D, "type"> {
     type: "physical";
     /** A second specular lobe over the base — car paint, lacquer, varnish. */
@@ -231,12 +197,7 @@ export interface PointsMaterial3D extends MaterialCommon3D {
     alphaMap?: Texture3D;
 }
 
-/**
- * Shading for a `line`. Note `width` is capped at 1px by most WebGL
- * implementations regardless of what you set, and **nothing substitutes a
- * mesh-backed line** for a larger one: it is written to `linewidth` and that is
- * all. For a genuinely thick line draw a `tube`.
- */
+/** Shading for a `line`. `width` is capped at 1px by most WebGL implementations and **nothing substitutes a mesh-backed line**; draw a `tube` for a thick one. */
 export interface LineBasicMaterial3D extends MaterialCommon3D {
     type: "lineBasic";
     color?: Color;
@@ -269,11 +230,7 @@ export interface ShadowMaterial3D extends MaterialCommon3D {
     color?: Color;
 }
 
-/**
- * A shader uniform value. Deliberately narrow: everything here is plain,
- * inspectable data that can be interpolated, which is what keeps a shader-driven
- * scene seekable.
- */
+/** A shader uniform value. Narrow on purpose: plain, inspectable, interpolable data keeps a shader-driven scene seekable. */
 export type Uniform3D =
     | number
     | boolean
@@ -284,18 +241,7 @@ export type Uniform3D =
     | readonly number[]
     | Texture3D;
 
-/**
- * Raw GLSL — total control over both stages.
- *
- * Uniform **values** are cheap: the renderer writes them in place each frame, so
- * driving them from tweened props costs nothing. Uniform *names* and the shader
- * **source** are structural — changing either recompiles the program.
- *
- * {@link extends} is declared to patch three's built-in lit shader instead of
- * replacing it, but **it is not read yet**: a shader always replaces the model, so
- * scene lighting, shadows and fog do not reach it. The first material that sets
- * it warns in development. Write the lighting you need in the shader.
- */
+/** Raw GLSL, both stages. Uniform **values** are cheap in-place writes; uniform *names* and the shader **source** are structural (changing either recompiles). {@link extends} is declared but **not read yet**: a shader always replaces the model, so scene lighting, shadows and fog don't reach it (the first material setting it warns in development). */
 export interface ShaderMaterial3D extends MaterialCommon3D {
     type: "shader";
     /** Vertex stage source. */
@@ -305,13 +251,7 @@ export interface ShaderMaterial3D extends MaterialCommon3D {
     uniforms?: Readonly<Record<string, Uniform3D>>;
     /** `#define`s injected ahead of both stages. **Structural.** */
     defines?: Readonly<Record<string, string | number | boolean>>;
-    /**
-     * Wrap a built-in shading model rather than replacing it, so scene lighting,
-     * shadows and fog still apply. Null (the default) is a raw shader.
-     *
-     * **Not implemented**: no backend reads it, so every shader is a plain
-     * replacement whatever this says.
-     */
+    /** Wraps a built-in shading model so scene lighting, shadows and fog still apply; null (default) is a raw shader. **Not implemented**: no backend reads it. */
     extends?: "standard" | "basic" | "phong" | null;
     /** Skip three's automatic attribute/uniform prelude (a raw shader). */
     raw?: boolean;
@@ -335,12 +275,7 @@ export type Material3D =
     | ShadowMaterial3D
     | ShaderMaterial3D;
 
-/**
- * Material fields whose value the renderer can write in place, without
- * recompiling. Everything *not* listed here is structural: changing it rebuilds
- * the material. Shared by the reconciler and the `MeshShorthand` desugarer so the
- * two can't disagree about what is cheap.
- */
+/** Fields the renderer writes in place without recompiling; everything else is structural and rebuilds the material. Shared by the reconciler and the `MeshShorthand` desugarer so they can't disagree about what is cheap. */
 export const MUTABLE_MATERIAL_KEYS: readonly string[] = [
     "color", "opacity", "visible", "emission", "emissionStrength",
     "roughness", "metalness", "shininess", "specular", "reflectivity",
@@ -354,16 +289,7 @@ export const MUTABLE_MATERIAL_KEYS: readonly string[] = [
     "depthWrite", "depthTest", "polygonOffsetFactor", "polygonOffsetUnits",
 ];
 
-/**
- * Material fields that change the compiled shader program. Changing one forces a
- * rebuild, so they must never be tweened — the renderer warns when it sees one
- * change repeatedly.
- *
- * `transparent` is here and is also *derived*, which is only a contradiction
- * until you look at when it moves: it flips at most once per material, on the
- * first frame a fade leaves full opacity, and the renderer latches it there. See
- * `needsBlending` in the material handler.
- */
+/** Fields that change the compiled shader program: changing one forces a rebuild, so never tween them (the renderer warns when one changes repeatedly). `transparent` is also derived, but flips at most once per material (the first frame a fade leaves full opacity) and the renderer latches it; see `needsBlending`. */
 export const STRUCTURAL_MATERIAL_KEYS: readonly string[] = [
     "transparent", "alphaTest", "faces", "wireframe", "blend",
     "vertexColors", "toneMapped", "shading", "dithering",

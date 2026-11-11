@@ -1,20 +1,7 @@
 import type { Graphics3DOp } from "./graphics3d";
 import type { Material3D } from "./material";
 
-/**
- * Development warnings for 3D inputs that are accepted, typed and recorded, and
- * that no renderer acts on.
- *
- * A few corners of the 3D vocabulary are declared ahead of the backend: the post
- * chain, HDR/EXR/cubemap environments, `params` on a geometry or an environment,
- * `extends` on a shader material and OBJ models. Each is stored faithfully and
- * read by nothing, so a scene that uses one renders exactly like a scene without
- * it — and with no error, which is the part that costs an afternoon. These say so
- * once, in development, naming the input and what to do instead.
- *
- * Each message is printed once per session. Nothing here changes what is
- * recorded, so none of it can move a frame.
- */
+/** Development warnings for 3D inputs that are accepted, typed and recorded but acted on by no renderer: the post chain, HDR/EXR/cubemap environments, `params` on a geometry or environment, `extends` on a shader material, OBJ models. Each renders exactly like a scene without it, silently, which costs an afternoon; these say so once per session, in development, naming the input and what to do instead. Nothing here changes what is recorded. */
 
 const warned = new Set<string>();
 let development: boolean | undefined;

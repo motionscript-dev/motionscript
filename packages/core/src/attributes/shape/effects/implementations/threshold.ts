@@ -1,19 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Two-tone cut: every pixel brighter than `level` becomes white, everything
- * else black — the stencil / high-contrast look.
- *
- * `smoothness` widens the cut into a ramp centred on `level`, which both
- * anti-aliases the boundary and, at higher values, keeps some midtone
- * modelling instead of a pure stencil.
- */
+/** Two-tone cut: pixels brighter than `level` become white, the rest black. `smoothness` widens the cut into a ramp centred on `level`, anti-aliasing the boundary and, higher, keeping some midtone modelling. */
 export interface ThresholdEffect extends ModedEffect, EffectFields<typeof thresholdSpec.params> {
     type: "threshold";
 }
 
-/** The {@link ThresholdEffect} spec: its parameters, defaults and ranges. */
 export const thresholdSpec = defineEffect({
     type: "threshold",
     group: "color",

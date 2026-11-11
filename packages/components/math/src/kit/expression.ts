@@ -1,14 +1,6 @@
 import { expressionOps } from "@motionscript/sdk";
 import type { ExpressionDialect, ExpressionNode } from "@motionscript/sdk";
-import { createBoundedCache } from "./cache";
-
-/**
- * The language a plot's equation is written in: the engine's own expression
- * grammar (`expressionOps.parse`) under a dialect of its own, where trig is in
- * radians, names are bare identifiers, and the logs and hyperbolics a plot
- * wants are present. Never `new Function`: an equation is text stored in a
- * document, and the shared parser can only produce arithmetic.
- */
+import { createBoundedCache, remember } from "./cache";
 
 /** Named values an expression reads at call time, beside its two variables. */
 export type ExpressionScope = Readonly<Record<string, number>>;
@@ -41,6 +33,11 @@ const CONSTANTS: Record<string, number> = {
     pi: Math.PI, PI: Math.PI, e: Math.E, E: Math.E, tau: Math.PI * 2, phi: (1 + Math.sqrt(5)) / 2,
 };
 
+/**
+ * The language a plot's equation is written in: the engine's expression grammar
+ * under a dialect of its own (trig in radians, bare identifiers, logs and
+ * hyperbolics). Never `new Function`: an equation is stored text.
+ */
 export const MATH_DIALECT: ExpressionDialect = {
     functions: {
         ...Object.fromEntries(Object.keys(UNARY).map((name) => [name, { arity: [1, 1] as [number, number] }])),
@@ -62,7 +59,7 @@ export function expressionVocabulary(variables: readonly string[]): ExpressionVo
     return {
         variables,
         functions: [...Object.keys(UNARY), ...Object.keys(NARY)].sort(),
-        constants: ["pi", "e", "tau", "phi"],
+        constants: Object.keys(CONSTANTS).filter((name) => name === name.toLowerCase()),
     };
 }
 
@@ -75,8 +72,7 @@ export function compileExpression(
     variables: readonly string[],
     params: readonly string[] = [],
 ): CompiledExpression {
-    // The parser folds a constant before it yields a reference, so a name that
-    // is both would silently stop being the variable it was passed as.
+    // The parser folds a constant before it yields a reference, so a name that is both stops being the variable.
     for (const name of [...variables, ...params]) {
         if (Object.hasOwn(CONSTANTS, name)) throw new Error(`'${name}' is a constant, so it cannot be a variable`);
     }
@@ -145,15 +141,14 @@ export function compileExpressionCached(
     variables: readonly string[],
     params: readonly string[] = [],
 ): CompiledExpression | Error {
-    const key = `${variables.join(",")}|${params.join(",")}|${source}`;
-    const hit = compiled.get(key);
-    if (hit !== undefined) return hit;
-    let result: CompiledExpression | Error;
-    try {
-        result = compileExpression(source, variables, params);
-    } catch (error) {
-        result = error instanceof Error ? error : new Error(String(error));
-    }
-    compiled.set(key, result);
-    return result;
+    return remember(compiled, `${variables.join(",")}|${params.join(",")}|${source}`, () => compileExpression(source, variables, params));
+}
+
+/** A compiler that throws a failure instead of returning it, for a reader running inside `memoParse`. */
+export function compilerFor(params: readonly string[]) {
+    return (text: string, variables: readonly string[]): CompiledExpression => {
+        const result = compileExpressionCached(text.trim(), variables, params);
+        if (result instanceof Error) throw result;
+        return result;
+    };
 }

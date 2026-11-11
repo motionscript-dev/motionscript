@@ -46,10 +46,7 @@ import { describeSpec, type EffectDescriptor, type EffectSpec } from "./spec";
 import type { AssetScope } from "@/assets/scope";
 
 
-/**
- * Every built-in effect: its spec (the parameters a host and the renderers
- * read) and the `EffectData` derived from it, in registration order.
- */
+/** Every built-in effect: its spec and the `EffectData` derived from it, in registration order. */
 const BUILT_INS: readonly (readonly [EffectSpec, EffectData<any>])[] = [
     [blurSpec, blurEffect],
     [directionalBlurSpec, directionalBlurEffect],
@@ -101,37 +98,22 @@ function dataFor(type: string): EffectData<NodeEffect> | undefined {
     return EFFECTS.get(type);
 }
 
-/**
- * Normalise one authored effect — see {@link EffectData.resolve}.
- *
- * Returns the effect untouched when its type registers no `resolve`, which is
- * every effect but one.
- */
+/** Normalises one authored effect (see {@link EffectData.resolve}); returned untouched when its type registers no `resolve`, which is every effect but one. */
 export function resolveEffect(effect: NodeEffect): NodeEffect {
     const data = dataFor(effect.type);
     return data?.resolve ? data.resolve(effect) : effect;
 }
 
-/**
- * Every registered effect type, in registration order.
- *
- * The roster itself, so a contract test can sweep the whole set rather than a
- * hand-kept list that silently misses whatever was added last.
- */
+/** Every registered effect type, in registration order: the roster itself, so a contract test sweeps the whole set rather than a hand-kept list. */
 export const effectTypes = (): string[] => [...EFFECTS.keys()];
 
-/** The spec of a built-in effect type, or `undefined`. */
 export function effectSpec(type: string): EffectSpec | undefined {
     return SPECS.get(type);
 }
 
 const descriptors = new Map<string, EffectDescriptor>();
 
-/**
- * A built-in effect type described for a host — its fields' kinds, defaults,
- * ranges and inspector hints, as plain JSON (see {@link EffectDescriptor}).
- * `undefined` for a type core does not know.
- */
+/** A built-in effect type described for a host as plain JSON (see {@link EffectDescriptor}); `undefined` for a type core does not know. */
 export function describeEffect(type: string): EffectDescriptor | undefined {
     const spec = effectSpec(type);
     if (!spec) return undefined;
@@ -140,20 +122,15 @@ export function describeEffect(type: string): EffectDescriptor | undefined {
     return structuredClone(out);
 }
 
-/** {@link describeEffect} for every built-in effect, in registration order. */
 export function effectDescriptors(): EffectDescriptor[] {
     return [...SPECS.keys()].map((type) => describeEffect(type)!);
 }
 
-/** True when `type` has a registered `EffectData` handler. */
 export function hasEffect(type: string): boolean {
     return dataFor(type) !== undefined;
 }
 
-/**
- * How a backend must realise `effect` — see {@link EffectSurface}. Unknown types
- * fall back to `"filter"`, the composable default.
- */
+/** How a backend must realise `effect` (see {@link EffectSurface}); unknown types fall back to `"filter"`. */
 export function effectSurface(effect: NodeEffect): EffectSurface {
     const surface = dataFor(effect.type)?.surface;
     if (surface === undefined) return "filter";
@@ -164,16 +141,7 @@ export function declareEffect(effect: NodeEffect, assets: AssetScope): void {
     dataFor(effect.type)?.declare?.(effect, assets);
 }
 
-/**
- * Interpolates two effects of the same type.
- *
- * The cross-cutting {@link EFFECT_OPTION_KEYS} (`mode`, `clip`) are carried here
- * for every kind, switching at the midpoint like any non-interpolable value, so
- * an effect's own `lerp` only has to describe its parameters and a new option
- * cannot be dropped by one of 45 hand-written copies.
- *
- * @internal
- */
+/** Interpolates two effects of the same type. The cross-cutting {@link EFFECT_OPTION_KEYS} (`mode`, `clip`) are carried here for every kind (switching at the midpoint), so an effect's own `lerp` only describes its parameters and a new option cannot be dropped by a hand-written copy. @internal */
 export function lerpEffect(from: NodeEffect, to: NodeEffect, t: number): NodeEffect {
     if (from.type !== to.type) return t < 0.5 ? from : to;
     const data = dataFor(from.type);
@@ -193,13 +161,7 @@ export function lerpEffect(from: NodeEffect, to: NodeEffect, t: number): NodeEff
     return out ?? lerped;
 }
 
-/**
- * Do two effects describe the same look? The effect's own `equals` compares its
- * parameters; the type and the cross-cutting {@link EFFECT_OPTION_KEYS} are
- * compared here for every kind.
- *
- * @internal
- */
+/** Whether two effects describe the same look: the effect's own `equals` compares its parameters; the type and {@link EFFECT_OPTION_KEYS} are compared here for every kind. @internal */
 export function equalsEffect(a: NodeEffect, b: NodeEffect): boolean {
     if (a.type !== b.type) return false;
     if (EFFECT_OPTION_KEYS.some((key) => a[key] !== b[key])) return false;

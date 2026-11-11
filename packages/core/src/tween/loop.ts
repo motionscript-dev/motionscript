@@ -1,46 +1,20 @@
 /**
- * Repetition, as data: how many times a command runs and which way each pass
- * goes.
- *
- * A loop is a **placement** property, the same kind of thing as `at` and
- * `duration` — it says when the command is running, never what it does. That is
- * why it lives out here rather than in any one command's args: the wrapper goes
- * *around* a built `Command`, so `to`, `fillTo`, `countTo` and a custom
- * `command()` nobody has written yet all loop by the same code, with nothing to
- * forward and nothing to forget.
- *
- * And it stays seekable. A looped command is still a pure function of its own
- * normalized time — `at(t)` maps `t` onto a pass and asks the inner command for
- * that pass's frame — so scrubbing into the fourth repetition costs the same as
- * scrubbing into the first, which is the whole reason commands are values here.
+ * Repetition as data: how many times a command runs and which way each pass goes. A loop is a **placement** property
+ * like `at` and `duration` (when it runs, never what it does), so the wrapper goes around a built `Command` and `to`,
+ * `fillTo`, `countTo` and custom commands all loop by the same code. It stays seekable: `at(t)` maps `t` onto a pass
+ * and asks the inner command for that pass's frame, so scrubbing into the fourth repetition costs the same as the first.
  */
 
 import { clamp01 } from "@/util/clamp";
 
-/**
- * Which way a pass runs.
- *
- * `alternate` is the reason this is three values rather than a boolean: a
- * bounce — out and back — is one command with two passes, not two commands whose
- * `at`s have to be kept in step by hand.
- */
+/** Which way a pass runs. `alternate` makes a bounce (out and back) one command with two passes, not two commands kept in step by hand. */
 export type LoopDirection = "normal" | "reverse" | "alternate";
 
-/**
- * How a command repeats. Absent on a command is "runs once".
- */
+/** How a command repeats. Absent on a command is "runs once". */
 export interface LoopSpec {
     /** Absent is `"normal"`. */
     direction?: LoopDirection;
-    /**
-     * How many times to repeat **after** the first pass: `0` is no repeat (the
-     * same as no loop at all), `3` plays four passes, and `null` repeats for as
-     * long as there is clip left to fill.
-     *
-     * Repeats rather than total passes so that the value reads as what the word
-     * says — "repeat twice" is `2` — and so that the no-op is `0` rather than a
-     * `1` that looks like it should do something.
-     */
+    /** Repeats **after** the first pass: `0` is no loop, `3` plays four passes, `null` repeats for as long as there is clip left to fill. (Repeats, not total passes, so "repeat twice" is `2` and the no-op is `0`.) */
     count: number | null;
 }
 
@@ -54,29 +28,14 @@ export function loopRepeats(loop: LoopSpec | undefined): loop is LoopSpec {
     return loop !== undefined && (loop.count === null || loop.count >= 1);
 }
 
-/**
- * Seconds a looped command occupies.
- *
- * `fill` is what an unlimited loop is given to cover — the clip's remaining time,
- * where a timeline places one. An unlimited loop does not *define* a length the
- * way a counted one does: a background that turns forever should fill the scene
- * it is in, not stretch it, so `documentDuration` counts one pass of it and this
- * stretches it to whatever that came to.
- */
+/** Seconds a looped command occupies. `fill` is what an unlimited loop covers (the clip's remaining time): it does not *define* a length, so `documentDuration` counts one pass and this stretches it. */
 export function loopSpan(loop: LoopSpec, duration: number, fill = duration): number {
     if (duration <= 0) return duration;
     if (loop.count === null) return Math.max(duration, fill);
     return duration * loopPasses(loop);
 }
 
-/**
- * Where in one pass `elapsed` lands, as normalized time for the inner command.
- *
- * Past the last pass of a counted loop it holds at that pass's end rather than
- * wrapping to the start — the same rule a finished command follows everywhere
- * else, and what keeps the value a loop leaves behind the value the next command
- * tweens from.
- */
+/** Where in one pass `elapsed` lands, as normalized time for the inner command. Past the last pass of a counted loop it holds at that pass's end, so the value a loop leaves is the value the next command tweens from. */
 export function loopPhase(loop: LoopSpec, elapsed: number, duration: number): number {
     if (duration <= 0) return 1;
     const passes = loopPasses(loop);

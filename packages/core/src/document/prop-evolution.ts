@@ -2,13 +2,10 @@ import { expressionOps } from "./expression/ops";
 import type { Registry } from "./registry";
 
 /**
- * How a node type's props changed since documents first named it — declared by
- * a component spec's `renamed`, `deprecated` and `migrate`, applied to a row's
- * props whenever one is built, and callable by a host rewriting stored rows.
- *
- * Unlike a document migration this has no version to go by: a row stored a year
- * ago and one stored today pass through the same rules, so every rule has to
- * leave a current value alone.
+ * Declared by a component spec's `renamed`, `deprecated` and `migrate`, applied to a row's props whenever one
+ * is built, and callable by a host rewriting stored rows. Unlike a document migration there is no version to
+ * go by: a row stored a year ago and one stored today pass through the same rules, so every rule must leave a
+ * current value alone.
  */
 export interface PropEvolution {
     /** Old key → the entry it became. A row setting both keeps the new one. */
@@ -16,22 +13,19 @@ export interface PropEvolution {
     /** Entry → why it is deprecated and what to use instead. It still works. */
     readonly deprecated: Readonly<Record<string, string>>;
     /**
-     * Key → a value hook. Keyed by an old key from {@link renamed}, it converts
-     * only what was stored under that key (a unit change rides on a rename);
-     * keyed by an entry, it runs on every stored value and must hand a current
-     * one back unchanged. `undefined` drops the prop back to its default.
+     * Keyed by an old key from {@link renamed}, it converts only what was stored under that key (a unit change
+     * rides on a rename); keyed by an entry, it runs on every stored value and must hand a current one back
+     * unchanged. `undefined` drops the prop back to its default.
      */
     readonly migrate: Readonly<Record<string, (value: unknown) => unknown>>;
 }
 
-/** One prop a migration touched, or one a row still sets that is deprecated. */
 export interface PropNote {
     prop: string;
     message: string;
 }
 
 export interface PropMigration {
-    /** The props given, when nothing changed; a new object otherwise. */
     props: Record<string, unknown>;
     changes: PropNote[];
     deprecated: PropNote[];
@@ -52,13 +46,9 @@ export function propEvolutionOf(ctor: abstract new (...args: never[]) => object)
 }
 
 /**
- * Bring a stored row's props up to what `type` declares today: old keys
- * renamed, values migrated, deprecated props reported. A type this registry
- * does not know, or one that never changed, hands `props` back as it is.
- *
- * Applies equally to a `to`/`set` command's args, which are a props diff.
- * An expression is moved by a rename but handed to no value hook: a formula's
- * result cannot be converted by rewriting it, so it is noted and left as written.
+ * A type this registry does not know, or one that never changed, hands `props` back as it is. Applies to a
+ * `to`/`set` command's args too, which are a props diff. An expression is moved by a rename but handed to no
+ * value hook: a formula's result cannot be converted by rewriting it, so it is noted and left as written.
  */
 export function migrateNodeProps(registry: Registry, type: string, props: Record<string, unknown>): PropMigration {
     const ctor = registry.node(type)?.ctor;

@@ -10,7 +10,6 @@ export interface DirectionalBlurEffect extends ModedEffect, EffectFields<typeof 
     type: "directionalBlur";
 }
 
-/** The {@link DirectionalBlurEffect} spec: its parameters, defaults and ranges. */
 export const directionalBlurSpec = defineEffect({
     type: "directionalBlur",
     group: "blur",

@@ -5,17 +5,11 @@ import { AudioBusGraph } from "./bus-graph";
 import { applyLoop } from "./loop-region";
 import { applySpeedToPlaybackRate, buildAudioEffectGraph, buildLevel, playbackOf, sourceOffsetOf } from "./effect-graph";
 
-/** Sample rate used when the caller doesn't pick one. */
 export const DEFAULT_SAMPLE_RATE = 44100;
 
 export interface MixAudioOptions {
-    /** Defaults to {@link DEFAULT_SAMPLE_RATE}. */
     sampleRate?: number;
-    /**
-     * Resolves a request's `src` to the address its bytes live at, as the storage
-     * adapter does for the live paths. Omitted, a `src` is
-     * fetched as written — right only while the host keys its manifest by URL.
-     */
+    /** Resolves a request's `src` to the address its bytes live at, as the storage adapter does for live paths. Omitted, a `src` is fetched as written, right only while the host keys its manifest by URL. */
     catalog?: AssetCatalog;
 }
 
@@ -33,36 +27,19 @@ function audioUrl(src: string, catalog: AssetCatalog | undefined): string {
     }
 }
 
-/**
- * Reads and decodes an audio source against a scratch `OfflineAudioContext`
- * (decoding requires a context but doesn't render through it). The host's byte
- * source is asked first, as for every other asset read: a mix that went to the
- * network would fail where the preview played, offline or for bytes not yet
- * uploaded.
- */
+/** Reads and decodes an audio source against a scratch `OfflineAudioContext`. The host's byte source is asked first, as for every asset read: a mix that went to the network would fail where the preview played (offline, or bytes not yet uploaded). */
 async function fetchAudioBuffer(src: string, ctx: OfflineAudioContext): Promise<AudioBuffer> {
     const blob = (await localAssetBytes(src)) ?? (await fetchAssetBytes(src));
     return ctx.decodeAudioData(await blob.arrayBuffer());
 }
 
 /**
- * Render every scheduled request into one timeline-length buffer.
- *
- * An `OfflineAudioContext` graph — gain per request, looping/trimming, and the
- * same filter chain the live {@link WebAudioSink} builds — rendered in one
- * pass rather than scheduled per frame.
- *
- * Shared by the video exporter and by `mixTimelineAudio`, deliberately: a split
- * export and a whole one have to be the same mix, and two implementations of
- * "stack these clips" would eventually disagree.
- *
- * Curve-valued filter params and `speed` curves schedule here exactly as they do
- * in {@link WebAudioSink.playBuffer}, which is the reference implementation —
- * the two must be read side by side when either changes.
- *
- * One deliberate difference: this schedules at absolute context times, so clip
- * starts are sample-accurate here and quantized to `1/fps` in live playback,
- * which starts sources at `currentTime` on a clock tick.
+ * Renders every scheduled request into one timeline-length buffer through an `OfflineAudioContext` graph (gain per
+ * request, looping/trimming, the same filter chain as the live {@link WebAudioSink}) in one pass. Shared by the video
+ * exporter and `mixTimelineAudio` so a split export and a whole one are the same mix. Curve-valued filter params and
+ * `speed` curves schedule exactly as in {@link WebAudioSink.playBuffer}, the reference: read the two side by side when
+ * either changes. One difference: this schedules at absolute context times, so clip starts are sample-accurate here
+ * and quantized to `1/fps` live.
  */
 export async function mixAudio(
     requests: readonly ScheduledAudioRequest[],
@@ -140,15 +117,7 @@ export async function mixAudio(
     return mixCtx.startRendering();
 }
 
-/**
- * Adapter presenting {@link mixAudio} as the exporter's injected mixer seam.
- *
- * The sample rate is a constructor argument rather than a third `mix` parameter
- * because {@link AudioMixer} — the seam `renderTimeline` calls through — takes
- * exactly two, so anything passed as a third would be silently dropped. Fixing
- * it here rather than widening the interface keeps the rate a property of *this*
- * mixer, which is whose business it is.
- */
+/** Adapter presenting {@link mixAudio} as the exporter's mixer seam. The sample rate is a constructor argument because {@link AudioMixer}, the seam `renderTimeline` calls through, takes exactly two parameters and a third would be silently dropped. */
 export class WebAudioMixer implements AudioMixer<AudioBuffer> {
     constructor(
         private readonly sampleRate: number = DEFAULT_SAMPLE_RATE,
@@ -166,14 +135,7 @@ export class WebAudioMixer implements AudioMixer<AudioBuffer> {
     }
 }
 
-/**
- * Encode an `AudioBuffer` as a 16-bit PCM WAV.
- *
- * The only other encoder in this package is the AAC track inside the mp4 muxer,
- * which is reachable solely by exporting a video — so without this a mixdown has
- * no file representation at all. WAV because it needs no codec support and is
- * lossless; a host wanting mp3/aac can re-encode from here.
- */
+/** Encodes an `AudioBuffer` as a 16-bit PCM WAV: no codec support needed and lossless, and the only other encoder here (AAC in the mp4 muxer) is reachable solely by exporting a video. */
 export function encodeWav(buffer: AudioBuffer): Uint8Array<ArrayBuffer> {
     const channelCount = buffer.numberOfChannels;
     const frameCount = buffer.length;

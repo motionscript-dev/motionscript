@@ -1,26 +1,18 @@
 import { canHighlight, highlightToTokens, normalizeSource, resolveTheme } from "./highlight";
 import { CodeTheme } from "./style";
 
-// IdToken is our internal wrapper around a highlighter token that gives every
-// token a stable identity across line insertions/removals. All animation state
-// is keyed by `id`, so concurrent edits at different positions don't clobber
-// each other while one is mid-animation.
+/** A highlighter token with a stable identity: animation state is keyed by `id`, so concurrent edits at different positions don't clobber each other. */
 export interface IdToken {
     id: number;
     content: string;
     color?: string;
 }
 
-// IdLine wraps a row of tokens with its own stable id, so per-line animations
-// (heightScale during insert/remove) survive line insertions/removals.
 export interface IdLine {
     id: number;
     tokens: IdToken[];
 }
 
-// Module-global, monotonic id counters shared across all Code nodes — ids only
-// need to be unique within a node, but a global counter is the simplest way to
-// guarantee that and never collides.
 let nextTokenId = 1;
 let nextLineId = 1;
 
@@ -33,47 +25,13 @@ export function makeIdLine(tokens: IdToken[]): IdLine {
 }
 
 export function tokenizeCodeToIdLines(code: string, language: string, theme: CodeTheme): IdLine[] {
-    // Until the language parser has loaded (it streams in via the asset loader),
-    // fall back to flat, uncolored lines instead of throwing on an unloaded
-    // grammar. The node re-tokenizes once the load completes.
     code = normalizeSource(code);
-    if (!canHighlight(language, theme)) {
-        // Resolved for its warning: an unknown theme is reported whether or not
-        // the grammar has landed yet.
-        resolveTheme(theme);
+    if (!canHighlight(language)) {
+        // Flat lines until the grammar loads; the node re-tokenizes then.
+        resolveTheme(theme); // so an unknown theme still warns before the grammar lands
         return code.split('\n').map(line => makeIdLine([makeIdToken(line, '#d1d5db')]));
     }
     return highlightToTokens(code, language, theme).map(line =>
         makeIdLine(line.map(tok => makeIdToken(tok.content, tok.color))),
     );
-}
-
-/**
- * Split `tokens` at character offset `col` (relative to the joined content of
- * the tokens). If `col` falls inside a token, that token is split into two new
- * tokens with fresh ids (the original id is discarded — it didn't exist as a
- * single unit on either side of the cut).
- */
-export function splitTokensAt(
-    tokens: IdToken[],
-    col: number,
-): { before: IdToken[]; after: IdToken[] } {
-    const before: IdToken[] = [];
-    const after: IdToken[] = [];
-    let off = 0;
-    for (const tok of tokens) {
-        const tStart = off;
-        const tEnd = off + tok.content.length;
-        if (tEnd <= col) {
-            before.push(tok);
-        } else if (tStart >= col) {
-            after.push(tok);
-        } else {
-            const cut = col - tStart;
-            before.push(makeIdToken(tok.content.slice(0, cut), tok.color));
-            after.push(makeIdToken(tok.content.slice(cut), tok.color));
-        }
-        off = tEnd;
-    }
-    return { before, after };
 }

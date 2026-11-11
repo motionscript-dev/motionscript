@@ -12,23 +12,20 @@ import {
     type VariableSpec,
 } from "./types";
 
-/** Whether a node is in the tree at t=0, and if so whether it is mounted there. */
 export type InitialKey = "mounted" | "unmounted" | "absent";
 
 /**
- * When compile baselines a node that is not present at t=0: at the first command
- * `at` inside its own span, mounted or not at that moment.
+ * When compile baselines a node not present at t=0: at the first command `at` inside its own span, mounted or
+ * not at that moment.
  */
 export type CaptureKey = "none" | "arrival-mounted" | "arrival-unmounted";
 
-/** Structural faults an incremental update cannot reason about; any one means rebuild. */
+/** Any one means rebuild. */
 export interface DocIndexIssues {
-    /** A node, command or variable id claimed twice, or a node id a variable also claims. */
     duplicateIds: boolean;
     duplicateKeys: boolean;
     unresolvedParent: boolean;
     cycle: boolean;
-    /** A row with id `""` that is not an unparented `canvas2d`. */
     invalidRoot: boolean;
     unparsable: boolean;
     /** An expression naming a variable or node key the document does not declare. */
@@ -38,13 +35,11 @@ export interface DocIndexIssues {
 export interface DocIndex {
     /** Audio documents are indexed as the composition they lower to. */
     readonly doc: VisualDocument;
-    /** Every node by id, the root under `""` (synthesized when the document omits it). */
     readonly nodes: ReadonlyMap<string, TimedNodeSpec>;
-    /** Nodes other than the root. */
     readonly nodeCount: number;
     readonly variables: ReadonlyMap<string, VariableSpec>;
     readonly commands: ReadonlyMap<string, CommandSpec>;
-    /** Commands in timeline order: `at`, ties by array index. */
+    /** `at`, ties by array index. */
     readonly ordered: readonly CommandSpec[];
     /** Command ids per target in timeline order; the root's under `""`. */
     readonly byTarget: ReadonlyMap<string, readonly string[]>;
@@ -57,14 +52,11 @@ export interface DocIndex {
     readonly duration: number;
     readonly issues: DocIndexIssues;
 
-    /** Child ids in sibling order: `layerOrder`, ties by array index. */
     children(parentId: string): readonly string[];
-    /** Every document descendant of `id`, not including it. */
     descendants(id: string): string[];
     ownSpan(id: string): NodeSpan | undefined;
-    /** Own span intersected with every ancestor's — when the node is mounted. Half-open. */
+    /** Half-open. */
     effSpan(id: string): NodeSpan | undefined;
-    /** The id a command acts on: its `targetId`, or `""` for the root. */
     targetOf(spec: CommandSpec): string;
     commandsAt(at: number): readonly CommandSpec[];
     /** References per top-level prop, from the row's props and every `set` targeting it. */
@@ -235,7 +227,6 @@ class DocumentIndex implements DocIndex {
     private readonly _children = new Map<string, string[]>();
     private readonly _eff = new Map<string, NodeSpan>();
     private readonly _byAt = new Map<number, CommandSpec[]>();
-    /** Distinct command `at`s, ascending (inherited from {@link ordered}). */
     private _ats: number[] = [];
     private readonly _bindings = new Map<string, Map<string, ExpressionRefs>>();
     private readonly _refs = new Map<string, ExpressionRefs>();
@@ -322,7 +313,6 @@ class DocumentIndex implements DocIndex {
         }
     }
 
-    /** Merge one props bag's references into a node's per-prop table. */
     private _bind(id: string, props: Record<string, unknown> | undefined): void {
         if (!props) return;
         for (const prop of Object.keys(props)) {

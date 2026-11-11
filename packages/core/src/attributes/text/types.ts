@@ -1,10 +1,4 @@
-/**
- * Every type the text attribute names, in one place.
- *
- * A `TextSpan` is what an author writes and a `ResolvedTextSpan` what a renderer
- * reads. A `TextStyle` is the partial style every source of text defaults speaks —
- * `<DefaultTextStyle>`, a `variant` preset, `theme.typography`.
- */
+/** The text attribute's types. A `TextSpan` is what an author writes and a `ResolvedTextSpan` what a renderer reads; a `TextStyle` is the partial style every source of text defaults speaks (`<DefaultTextStyle>`, a `variant` preset, `theme.typography`). */
 import type { Fill } from "@/attributes/shape/fill/chain";
 import type { FillResolved } from "@/attributes/shape/fill/union";
 import type { Stroke, StrokeResolved } from "@/attributes/shape/stroke/stroke";
@@ -22,12 +16,7 @@ export type TextCase = 'none' | 'upper' | 'lower' | 'title';
 
 export type FontStyle = 'normal' | 'italic' | 'oblique';
 
-/**
- * A styled run of text. Spans may nest — children inherit any style fields
- * the parent set and override the ones they redeclare (Flutter-style
- * TextSpan). A span with `children` and no `text` acts as a pure style
- * scope; a span with both contributes its `text` before its children.
- */
+/** A styled run of text. Spans nest: children inherit the parent's style fields and override those they redeclare (Flutter-style). A span with `children` and no `text` is a pure style scope; with both, its `text` comes before its children. */
 export interface TextSpan {
     text?: string;
     fontFamily?: string;
@@ -40,11 +29,7 @@ export interface TextSpan {
     children?: TextSpan[];
 }
 
-/**
- * A span flattened against its parents — every style field is concrete and
- * fills/strokes are resolved. Newlines in `text` are preserved; the renderer
- * splits on `\n` to lay out lines.
- */
+/** A span flattened against its parents: every style field concrete, fills/strokes resolved. Newlines are preserved; the renderer splits on `\n`. */
 export interface ResolvedTextSpan {
     text: string;
     fontFamily: string;
@@ -56,10 +41,7 @@ export interface ResolvedTextSpan {
     stroke: StrokeResolved[];
 }
 
-/**
- * A stretch of a `Text` node's string set apart from the rest. `[start, end)`
- * are offsets into the string; an absent field is the node's own.
- */
+/** A stretch of a `Text` node's string set apart from the rest: `[start, end)` offsets, an absent field being the node's own. */
 export interface TextRun {
     start: number;
     end: number;
@@ -79,12 +61,7 @@ export interface ResolvedTextRun extends Omit<TextRun, "fill" | "stroke"> {
     stroke?: StrokeResolved[];
 }
 
-/**
- * A text node's style vocabulary. Each field is the loose author-facing type of
- * the matching `Text` prop, and optional: only the keys a source sets are
- * present, so a descendant inherits exactly those and keeps its own defaults for
- * the rest.
- */
+/** A text node's style vocabulary: each field is the loose author-facing type of the matching `Text` prop, optional so a descendant inherits exactly the keys a source sets. */
 export interface TextStyle {
     fontFamily?: string;
     fontSize?: number | 'autofit';

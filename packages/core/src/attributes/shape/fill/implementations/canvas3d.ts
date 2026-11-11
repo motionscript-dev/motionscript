@@ -3,33 +3,11 @@ import type { FillData } from '../registry';
 import type { Scene3D } from '@/render3d/scene3d';
 import { declare3DResources } from '@/render3d/tracking';
 
-/**
- * A 3D scene, painted as a fill.
- *
- * 3D is paint, not structure: the renderer draws the scene to a texture and
- * shades the shape's own path with it. So it clips to whatever painted it — an
- * `Ellipse`, a `Path`, a run of `Text` — stacks with the other fills in the
- * array, and inherits the fill layer's `opacity`/`blend`/`space` like any other.
- *
- *   Ellipse({ fill: Fills.canvas3D(scene) })
- *   Rect({ fill: ["#0b0d12", scene, Fills.linearGradient(["transparent", "#000/60"])] })
- *
- * The payload is a **built** {@link Scene3D}, never a builder callback. Per-frame
- * freshness comes from where the value is produced — a `renderSelf` runs every
- * frame, and a `() => …` prop is an ordinary reactive binding — which is exactly
- * how every other fill behaves.
- */
+/** A 3D scene painted as a fill: the renderer draws it to a texture and shades the shape's own path with it, so it clips to whatever painted it, stacks with other fills and inherits the layer's `opacity`/`blend`/`space`. The payload is a **built** {@link Scene3D}, never a builder callback: freshness comes from where the value is produced (a `renderSelf`, or a `() => …` binding), as for every other fill. */
 export interface Canvas3DFillProp {
     type: 'canvas3D';
-    /** The scene to draw. Rebuilt by its producer each frame; never a callback. */
     scene: Scene3D;
-    /**
-     * Ceiling on the 3D buffer's device-pixel ratio. Default 2.
-     *
-     * Exists so a high-scale export doesn't allocate a quadratically larger
-     * render buffer than the scene needs — a 4× export of a 1080p shape would
-     * otherwise ask for a 16× buffer.
-     */
+    /** Ceiling on the 3D buffer's device-pixel ratio (default 2), so a high-scale export doesn't allocate a quadratically larger buffer (a 4× export of a 1080p shape would ask for 16×). */
     maxPixelRatio?: number;
     /** Multisample the 3D pass. Default true. */
     antialias?: boolean;
@@ -51,12 +29,7 @@ export const canvas3DFill: FillData<Canvas3DFillResolved> = {
     // at render time so the resolved shape stays minimal and comparable.
     resolve: (prop: Canvas3DFillProp) => ({ ...prop }),
 
-    // A scene is a command list: there is no meaningful value halfway between two
-    // of them, so it snaps, exactly as an image fill's `src` does. Only `opacity`
-    // interpolates. Deliberately returns neither `type` nor `blend` — `FillResult`
-    // omits both and `lerpFill` reassembles via `{ ...a, ...lerp(...) }`, which is
-    // also what makes the ragged-array self-pair (a fill fading against a copy of
-    // itself, when the two fill arrays differ in length) work.
+    // A scene is a command list with no value halfway between two, so it snaps like an image fill's `src`; only `opacity` interpolates. Returns neither `type` nor `blend`: `FillResult` omits both and `lerpFill` reassembles via `{ ...a, ...lerp(...) }`, which also makes the ragged-array self-pair work.
     lerp: (a, b, t) => ({
         scene: t < 0.5 ? a.scene : b.scene,
         maxPixelRatio: a.maxPixelRatio ?? b.maxPixelRatio,
@@ -64,9 +37,7 @@ export const canvas3DFill: FillData<Canvas3DFillResolved> = {
         opacity: (a.opacity ?? 1) + ((b.opacity ?? 1) - (a.opacity ?? 1)) * t,
     }),
 
-    // Reference identity is the only comparison a Scene3D supports — it has no
-    // structural hash and `ops()` returns its live array. Nothing in the codebase
-    // calls this today; it exists to satisfy the interface.
+    // Reference identity is the only comparison a Scene3D supports (no structural hash; `ops()` returns its live array).
     equals: (a, b) => a.scene === b.scene,
 
     // Runs off the same descriptors the renderer consumes, so what gets loaded

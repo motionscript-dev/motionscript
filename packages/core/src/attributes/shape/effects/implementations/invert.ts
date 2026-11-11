@@ -1,15 +1,7 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Which channel(s) / colour space component the invert is applied to.
- *
- * - `'red' | 'green' | 'blue'`  — invert a single RGB channel.
- * - `'rgba'`                    — invert red, green and blue (alpha untouched).
- * - `'alpha'`                   — invert the alpha channel.
- * - `'hue'`                     — rotate hue by 180°.
- * - `'luminance'`               — invert perceptual luminance (BT.709) while preserving chroma.
- */
+/** Which channel / colour component is inverted: a single `'red' | 'green' | 'blue'`; `'rgba'` (red, green, blue; alpha untouched); `'alpha'`; `'hue'` (rotated 180°); `'luminance'` (perceptual BT.709, preserving chroma). */
 export type InvertChannel =
     | "red"
     | "green"
@@ -23,7 +15,6 @@ export interface InvertEffect extends ModedEffect, EffectFields<typeof invertSpe
     type: "invert";
 }
 
-/** The {@link InvertEffect} spec: its parameters, defaults and ranges. */
 export const invertSpec = defineEffect({
     type: "invert",
     group: "color",

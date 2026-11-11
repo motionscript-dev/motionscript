@@ -1,9 +1,7 @@
 import {
     component2d,
-    Types,
     type NodeOf,
     type NodeView,
-    type PaintProps,
     type Vector2,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Fill as _Fill,
@@ -16,16 +14,10 @@ import {
 import { omit, PAINT, PAINT_COMMANDS } from "../kit/component";
 import type { Interval } from "../kit/coords";
 import { curveValue } from "../kit/curve";
-import { lerpInterval, PLOT_COLOR, readInterval } from "../kit/furniture";
+import { intervalEntry, PLOT_COLOR } from "../kit/furniture";
 import { clamp } from "../kit/geometry";
 import { curveFor, PLANE_ENTRY, PLOT_REF } from "../kit/graph";
 import { drawMark, inkSize, reading, traced, type MarkReading } from "../kit/mark";
-
-export interface CurveAreaProps extends PaintProps {
-    on?: string;
-    under?: string;
-    domain?: Interval;
-}
 
 const state = {
     // An area is only its fill, and has no outline to trim.
@@ -34,7 +26,7 @@ const state = {
     on: PLOT_REF,
     /** A second plot to fill down to, in place of the x axis. */
     under: PLOT_REF,
-    domain: Types.custom<Interval>([0, 1], { resolve: readInterval, lerp: lerpInterval }),
+    domain: intervalEntry([0, 1]),
     graph: PLANE_ENTRY,
 };
 
@@ -44,12 +36,7 @@ interface AreaValues {
     readonly domain: Interval;
 }
 
-/**
- * The region between a plot and the x axis, or between two plots, over a span
- * of x. It sits beside the plots it reads rather than inside one: it may read
- * two, and it has a life of its own on the timeline, swept open or kept while
- * a curve changes.
- */
+/** The region between a plot and the x axis, or between two plots, over a span of x. It sits beside the plots it reads, since it may read two. */
 export const CurveArea = traced(component2d({
     key: "curveArea",
     state,

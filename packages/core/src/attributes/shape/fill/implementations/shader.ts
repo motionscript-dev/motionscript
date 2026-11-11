@@ -9,13 +9,9 @@ import {
 } from '../../shaders/uniforms';
 import { shaderContractOf, type ShaderLanguage } from '../../shaders/language';
 
-/**
- * Ceiling on bound textures: a fill wanting more than a handful is really a 3D
- * scene, and the cap keeps a typo in a generated list from exhausting texture units.
- */
+/** Ceiling on bound textures: more than a handful is really a 3D scene, and the cap stops a typo in a generated list exhausting texture units. */
 const MAX_TEXTURES = 4;
 
-/** An image the shader samples. */
 export interface ShaderTexture {
     /** The name the shader pack gives this texture. */
     name: string;
@@ -24,32 +20,15 @@ export interface ShaderTexture {
 }
 
 /**
- * A custom WGSL shader, painted as a fill.
+ * A custom WGSL shader painted as a fill. The source defines `fn fill(in: FillIn) -> vec4f` returning **premultiplied**
+ * rgba; `in` carries `uv` (0-1 across the box), `local` (px from the top-left), `size`, `time` and `scale` (device px
+ * per px), and uniforms are `u`, a `struct Params` it declares. The first of `textures` is what `sample_texture(uv)`
+ * reads. It must *not* fold `opacity` in: the layer's opacity is already applied, so doing it again squares it.
  *
- * The source defines `fn fill(in: FillIn) -> vec4f`, returning **premultiplied**
- * rgba; `in` carries `uv` (0–1 across the box), `local` (px from the box's
- * top-left), `size`, `time` and `scale` (device px per px), and the uniforms are
- * `u`, a `struct Params` the source declares. The first of `textures` is what
- * `sample_texture(uv)` reads.
- *
- * The escape hatch at the end of the procedural spectrum: where
- * {@link NoiseFillProp} and {@link FractalNoiseFillProp} expose a fixed set of
- * knobs over a fixed field, this hands the whole fragment function to the author.
- * It is still a fill, so it paints inside the shape's own path — an `Ellipse`, a
- * `Path`, a run of `Text` — stacks as one layer in the fill array, and inherits
- * the layer's `opacity`/`blend`/`space` like every other kind.
+ * `source` is the compile-cache key, so it **snaps** at a tween's midpoint (tweening it would compile a program per
+ * frame): hoist it to module scope and put everything that changes in a uniform, an in-place write.
  *
  *   Rect({ fill: Fills.shader(src, { uniforms: { amount: 0.4 } }) })
- *   Text({ text: "DEPTH", fontSize: 320, fill: Fills.shader(src) })
- *
- * It must *not* fold `opacity` in: the fill layer's opacity is already applied
- * to the output, so a shader applying it again renders at the square of what
- * was asked for.
- *
- * `source` is the compile-cache key, so it **snaps** at a tween's midpoint rather
- * than interpolating — tweening it would compile a program per frame. Keep the
- * source constant (hoist it to module scope) and put everything that changes in a
- * uniform, which costs nothing: uniform values are an in-place write.
  */
 export interface ShaderFillProp {
     type: 'shader';
@@ -60,28 +39,14 @@ export interface ShaderFillProp {
     /** WGSL only: the contract version it is written against (`WGSL_CONTRACT` when absent). */
     contract?: number;
     /**
-     * The shader pack this was built from, when it was built from one.
-     *
-     * **Reserved, and carried rather than read.** A pack resolves to a plain
-     * uniform record before it reaches here, so nothing in the render path needs
-     * it — the frame is identical with or without it. What it exists for is the
-     * trip back: a document stores resolved uniforms, and without a reference to
-     * the pack a host reopening a saved scene has a set of numbers and no way to
-     * know which of them were `twist` and `ink`, so the property panel it drew
-     * when the shader was applied cannot be drawn again.
-     *
-     * An id naming a pack that is not registered is **not** an error: the shader
-     * still renders, because the uniforms it needs are already in the document.
-     * The host simply cannot offer the panel.
+     * The shader pack this was built from. **Reserved, carried rather than read**: a pack resolves to plain uniforms
+     * first, so the frame is identical with or without it. It exists for the trip back: a host reopening a saved scene
+     * needs it to redraw the property panel. An id naming an unregistered pack is **not** an error: the shader still
+     * renders, the host just cannot offer the panel.
      */
     shaderId?: string;
-    /**
-     * Uniform values keyed by their declared name. The positional
-     * `[{name, value}]` array is accepted too, so a shader can move between an
-     * effect and a fill unchanged.
-     */
+    /** Uniform values keyed by declared name; the positional `[{name, value}]` array is accepted too so a shader moves between an effect and a fill unchanged. */
     uniforms?: ShaderUniformRecord | readonly ShaderUniform[];
-    /** Images the shader samples. */
     textures?: readonly ShaderTexture[];
     opacity?: number;
     blend?: BlendMode;
@@ -91,9 +56,7 @@ export interface ShaderFillResolved {
     type: 'shader';
     source: string;
     language: ShaderLanguage;
-    /** WGSL only. See {@link ShaderFillProp.contract}. */
     contract?: number;
-    /** See {@link ShaderFillProp.shaderId}. */
     shaderId?: string;
     uniforms: ShaderUniformRecord;
     textures?: ShaderTexture[];
@@ -101,7 +64,6 @@ export interface ShaderFillResolved {
     blend?: BlendMode;
 }
 
-/** Copy the texture list, dropping malformed entries and capping the length. */
 function resolveTextures(textures: readonly ShaderTexture[] | undefined): ShaderTexture[] | undefined {
     if (!textures?.length) return undefined;
     const out: ShaderTexture[] = [];
@@ -137,24 +99,16 @@ export const shaderFill: FillData<ShaderFillResolved> = {
         // Carried, never read: see `ShaderFillProp.shaderId`. Omitted when absent
         // so `equals` compares like with like for a fill that never had one.
         ...(prop.shaderId !== undefined ? { shaderId: prop.shaderId } : {}),
-        // Normalised (and key-sorted) here rather than at paint time so `equals`
-        // and any structural diff see the same canonical record the renderer
-        // binds, whichever authoring shape it came in as.
+        // Normalised and key-sorted here (not at paint time) so `equals` and structural diffs see the canonical record the renderer binds.
         uniforms: normalizeUniforms(prop.uniforms),
         textures: resolveTextures(prop.textures),
         opacity: prop.opacity,
         blend: prop.blend,
     }),
 
-    // `source` and `textures` snap; only the uniform values and `opacity`
-    // interpolate. The source is the compile-cache key, so there is nothing
-    // halfway between two programs to cross to — the same reason an image
-    // fill's `src` and a 3D fill's scene snap.
-    //
-    // Deliberately returns neither `type` nor `blend`: `FillResult` omits both and
-    // `lerpFill` reassembles via `{ ...a, ...lerp(...) }`, which is also what makes
-    // the ragged-array self-pair (a fill fading against a copy of itself, when two
-    // fill arrays differ in length) work.
+    // `source` and `textures` snap; only uniform values and `opacity` interpolate (the source is the compile-cache key, so
+    // there is nothing halfway between programs). Returns neither `type` nor `blend`: `FillResult` omits both and `lerpFill`
+    // reassembles via `{ ...a, ...lerp(...) }`, which also makes the ragged-array self-pair work.
     lerp: (a, b, t) => ({
         source: t < 0.5 ? a.source : b.source,
         language: t < 0.5 ? a.language : b.language,

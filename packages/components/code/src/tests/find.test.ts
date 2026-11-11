@@ -14,7 +14,7 @@ import { SOURCE, at, drive, erase, make, sourceOf } from './harness.fixtures';
  */
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 const range = (startLine: number, startCol: number, endLine: number, endCol: number): CodeRange => ({ startLine, startCol, endLine, endCol });

@@ -11,7 +11,7 @@ import { Frame, at, attach, inFlight, make, render, sourceOf, tokensOf } from '.
  */
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript', 'python']);
+    await ensureHighlighter(['typescript', 'python']);
 });
 
 /** The structure the listing shows: each line's id and its tokens' ids and colours. */

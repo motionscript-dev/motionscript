@@ -46,8 +46,6 @@ export interface ComponentHost extends Node2D {
     _record: Composite | null | undefined;
 }
 
-// ---- the pass in progress -------------------------------------------------
-
 /**
  * Measure and layout run synchronously, one node at a time, so the node being
  * laid out and its measurer are a single slot rather than state on every view.
@@ -95,8 +93,6 @@ function measureChild(node: Node2D, max: Max): Size2D {
     p.sizes.set(node, size);
     return size;
 }
-
-// ---- child views ------------------------------------------------------------
 
 const childViews = new WeakMap<Node2D, ChildViewImpl>();
 
@@ -267,8 +263,6 @@ export function setKeyLookup(lookup: (node: Node2D) => string | undefined): void
     keyOf = lookup;
 }
 
-// ---- state views ------------------------------------------------------------
-
 /**
  * One prototype of getters per component, so a node's `state` is a single
  * object made once: every read goes straight to the node's own slot, and a
@@ -329,8 +323,6 @@ export function snapshot(view: object): Record<string, unknown> {
     for (const key in view) out[key] = (view as Record<string, unknown>)[key];
     return out;
 }
-
-// ---- measurer and render context --------------------------------------------
 
 export class MeasurerImpl implements Measurer {
     max: Max = {};

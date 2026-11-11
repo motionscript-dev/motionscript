@@ -36,39 +36,17 @@ import { hashSeed, shuffled } from "./random"
 import { blendSlot, focalLengthOf, slotsOf, spreadSlot, type Arrangement, type Slot } from "./slots"
 import { STAGGER_ORDERS, staggerProgress, staggerRanks, type StaggerOrder } from "./stagger"
 
-/**
- * What every grid is built from: a container that places each of its children
- * in a slot of an arrangement — a rectangular grid, a ring, a path, a sphere.
- * Spread `state` and `commands` in, take `defaults`, hand `fields` the
- * {@link Arranger} that makes this grid's arrangement from its state, and pass
- * the finished component and its arranger through {@link define}.
- *
- * ## Children only
- *
- * The items are the children, in layer order. A child's slot is a parent
- * transform on it, so its own `x`/`y`/`rotation`/`scale` — and any command on
- * them — still work, relative to the slot. A group is one item; a grid of
- * grids is a grid of items that happen to be grids.
- *
- * ## One pass
- *
- * Every frame: measure the children, ask the arrangement for its slots (a pure
- * function of the state, the sizes and the clock), blend them from where a
- * transition is leaving, and layer on the per-item effects — reveal, wave,
- * focus. What is left is each child's box and slot, which the renderer,
- * picking and `global` all read, so a selection outline lands on the pixels
- * even on a sphere.
- *
- * ## Commands
- *
- * Every command is a pure function of time. The per-item ones stagger *inside*
- * their duration — a one-second reveal takes one second for four children or
- * four hundred — and write their per-item state into entries
- * (`revealState` and its siblings), which is what keeps them seekable. The ones
- * that change the arrangement itself (a reorder, a morph, a column count) keep
- * the arrangement they are leaving as data and blend each item from its old
- * slot to its new one.
- */
+// What every grid is built from: spread `state`, `commands` and `defaults` in, give `fields` the
+// {@link Arranger} that makes the arrangement from the state, and pass the component and its
+// arranger through {@link define}.
+// The items are the children in layer order; a slot is a parent transform on a child, so its own
+// x/y/rotation/scale and their commands still work relative to it.
+// Every frame measures the children, asks the arrangement for slots (pure in state, sizes and
+// clock), blends from the arrangement a transition leaves, and layers the per-item effects; the
+// result is each child's box and slot, which rendering, picking and `global` all read.
+// Every command is a pure function of time. Per-item ones stagger inside their duration and write
+// their state to entries, which keeps them seekable; ones that change the arrangement keep the one
+// they leave as data and blend each item from its old slot to its new.
 
 /** An arrangement a grid is leaving, kept as data so its slots can be worked out afresh every frame. */
 export interface GridSnapshot {
@@ -235,11 +213,7 @@ export function layout<S>(box: LayoutBox, s: GridState & S, children: readonly C
   return slots.map((slot, i) => placement(inner, slot, sizes[i]))
 }
 
-/**
- * A grid whose arrangement has depth is seen through a camera of its own,
- * which paints its items far to near — unless it already sits in a space (an
- * orbit camera, a 3D stage), where its items join that one and its camera.
- */
+/** A grid with depth is seen through a camera of its own, painting far to near, unless it already sits in a space, whose camera its items join. */
 export function render<S>(ctx: RenderContext, s: GridState & S, arranger: Arranger<S>): void {
   // With no items there is nothing to see through a camera.
   const focal = s.children.length === 0 ? 0 : focalOf(s, arrangementOf({ state: s, arranger, children: [], isSelf: () => false }, contentBox(ctx.size, s.padding)))
@@ -247,21 +221,15 @@ export function render<S>(ctx: RenderContext, s: GridState & S, arranger: Arrang
   else ctx.children()
 }
 
-/** A node's content box: its laid-out size inside its padding. */
+/** Its laid-out size inside its padding. */
 export function contentBoxOf(grid: Node2D): Size2D {
   const b = grid.layoutBounds
   return contentBox({ width: b.width, height: b.height }, grid.effectivePadding())
 }
 
-// ---- what commands share --------------------------------------------------
-
 type GridTimeline = Timeline<StaggerArgs, never>
 
-/**
- * Each item's slot in its arrangement as it stands, for a command being built,
- * at the clock commands are built against (the tree stands at time 0 while a
- * timeline compiles): what its stagger is ranked by.
- */
+/** Each item's slot as the arrangement stands while a command is built (the tree stands at time 0 then): what its stagger is ranked by. */
 export function itemSlots(timeline: Timeline<object, never>, s: GridValues, children: readonly ChildView[]): Slot[] {
   const grid = commandGrid(timeline, s, children)
   const sizes = children.map((child) => child.size)
@@ -273,10 +241,7 @@ export function ranks(timeline: Timeline<object, never>, s: GridValues, children
   return staggerRanks(order ?? "index", itemSlots(timeline, s, children), hashSeed(timeline.node.id))
 }
 
-/**
- * Write `changes` to the arrangement and move each item from its slot in the
- * one being left to its slot in the new one, staggered.
- */
+/** Writes `changes` to the arrangement and moves each item, staggered, from its slot in the one being left to its slot in the new one. */
 export function transitionTo(
   timeline: GridTimeline,
   s: GridValues,
@@ -447,8 +412,6 @@ export const commands = commandsFor(GRID_STATE, {
     run: (timeline, s, children) => transitionTo(timeline as never, s, children, { arrangeLike: timeline.args.target ?? "" }),
   },
 })
-
-// ---- the one pass ------------------------------------------------------------
 
 interface Grid {
   readonly state: GridValues

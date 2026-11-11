@@ -26,12 +26,7 @@ import type {
 
 import { createPlayheadStore, type PlayheadStore } from "./playhead";
 
-/**
- * How far background discovery has got. Only the tracks on frame 0 are
- * discovered before the player mounts; the rest stream in behind it (see
- * `AssetTimeline.runAsync`). The timeline's length never waits on it — every track
- * declares its own.
- */
+/** Background asset discovery: only frame-0 tracks are discovered before mount, the rest stream in. The timeline's length never waits on it. */
 export interface PrecompProgress {
     /** Tracks discovered so far. */
     discoveredTracks: number;
@@ -43,13 +38,12 @@ export interface PrecompProgress {
 
 /**
  * Sessions this hook has disposed. React can replay a child's effects with the
- * `session` it last rendered after this hook's cleanup has run — a suspended
- * boundary being revealed, StrictMode's dev replay — so a stage asks here
- * before binding to the one it was handed.
+ * `session` it last rendered after this hook's cleanup ran (a suspended
+ * boundary revealed, StrictMode), so a stage asks here before binding.
  */
 const disposedSessions = new WeakSet<Session>();
 
-/** @internal Whether `session` was disposed by a player. Not exported from the package. */
+/** @internal Not exported from the package. */
 export function isSessionDisposed(session: Session): boolean {
     return disposedSessions.has(session);
 }
@@ -85,36 +79,27 @@ function errorsFrom(reported: readonly BuildError[]): (held: BuildError[]) => Bu
 
 export interface MotionPlayerOptions {
     /**
-     * The engine this player opens its session on.
+     * The engine this player opens its session on. Nullable because building one
+     * is async ({@link useEngine}): the player no-ops until it arrives.
      *
-     * Nullable on purpose: building one is asynchronous
-     * (`await createBrowserEngine(...)`), so a host gets it from {@link useEngine}
-     * and it is `null` for the first render or two. The player no-ops until it
-     * arrives, which is what keeps the hook out of a conditional.
-     *
-     * **Create it once, and share it.** It holds the renderer and the exporter, so
-     * a fresh one per render rebuilds the WebGL surface behind every player on
-     * it. Identity-compared: a different engine is a different renderer, and so
-     * a full rebuild.
+     * Create it once and share it: it holds the renderer and the exporter, so a
+     * fresh one per render rebuilds the renderer behind every player on it.
+     * Compared by identity; a different engine is a full rebuild.
      */
     engine: Engine | null | undefined;
     /**
-     * What to play. Nothing opens until there is one.
+     * What to play; nothing opens until there is one. A project document carries
+     * its own viewport, fps, theme and tracks; a scene document (still or
+     * composition) carries none, so `viewport` and `fps` come from here or the
+     * engine.
      *
-     * A **project** document is the whole answer: it carries its own viewport,
-     * fps, theme and tracks. A **scene** document (still or composition) is one
-     * clip and carries none of that, so `viewport` and `fps` must come from here
-     * or from the engine.
+     * Content-diffed, identity first: a new document is reconciled onto the
+     * running session, each track patched in place and rebuilt only when it
+     * cannot be. Treat documents as immutable: an in-place edit is not seen.
      *
-     * Content-diffed, with identity as the fast path: a new document is reconciled
-     * onto the running session, each track's built tree patched in place and
-     * rebuilt only when its change cannot be patched. Treat documents as
-     * immutable — an edit made in place to one the player already holds is not
-     * seen.
-     *
-     * A new document keeps the player's place: the playhead stays where it was
-     * (clamped when the timeline got shorter), and playback carries on if it was
-     * running. Seek or pause yourself when a swap means "start over".
+     * A new document keeps the player's place (the playhead is clamped to a
+     * shorter timeline, playback carries on). Seek or pause yourself when a swap
+     * means "start over".
      */
     document?: ProjectDocument | VisualDocument;
     /** Overrides the engine's, for a source that carries none. */
@@ -128,28 +113,18 @@ export interface MotionPlayerOptions {
     /** Initial loop state. Change it later with {@link Player.setLoop}. */
     loop?: boolean;
     /**
-     * Called **synchronously**, on the same task as the draw, each time a frame
-     * has been painted — whether by the clock, a seek, or a document swap.
+     * Called synchronously, on the same task as the draw, each time a frame has
+     * been painted (clock, seek or document swap).
      *
-     * Not the playhead, which reports where the *clock* is. A seek is
-     * asynchronous, so between the two there is a window in which the number has
-     * moved and the canvas has not. Reach for this to keep an overlay — a
-     * selection box, a caret, a handle — in step with the pixels, and keep the
-     * listener cheap: it runs on the render loop, before the browser has had a
-     * chance to composite.
-     *
-     * Read through a ref, so changing it costs nothing.
+     * Not the playhead, which reports where the clock is: a seek is async, so the
+     * number can move before the canvas does. Use it to keep an overlay in step
+     * with the pixels, and keep it cheap: it runs on the render loop. Read through
+     * a ref, so changing it costs nothing.
      */
     onFramePainted?: (frame: number) => void;
 }
 
-/**
- * One document, its transport, and the session driving it. No DOM.
- *
- * Hand it to a {@link MotionStage} to put pixels on screen. Two calls to
- * {@link useMotionPlayer} produce two of these with nothing shared but the
- * engine — separate playheads, clocks, audio devices and transports.
- */
+/** A document's transport and its session, with no DOM. Two calls to {@link useMotionPlayer} share only the engine. */
 export interface Player {
     /** The live session, or `null` before the engine and a document arrive. */
     readonly session: Session | null;
@@ -176,7 +151,7 @@ export interface Player {
     play(): void;
     pause(): void;
     toggle(): void;
-    /** Seek while paused. Clamped to the timeline. */
+    /** Pauses, then seeks. Clamped to the timeline. */
     seek(frame: number): void;
     /** Seek relative to where the playhead is now. */
     step(delta: number): void;
@@ -203,8 +178,7 @@ export interface Player {
      */
     whenReplaced(): Promise<void>;
 
-    // ---- Direct manipulation ----------------------------------------------
-    // Points are in viewport space — origin at the viewport centre, y-up, in
+    // Points below are in viewport space: origin at the viewport centre, y-up, in
     // this player's `viewport` pixels.
 
     getNodeBox(path: string): NodeBox | null;
@@ -259,16 +233,14 @@ export interface Player {
 export function useMotionPlayer(options: MotionPlayerOptions): Player {
     const { engine, document, onFramePainted } = options;
 
-    // Read straight off the document where it says so, else the caller's, else
-    // the engine's. All plain JSON, so this resolves during render, before any
-    // session exists — which is what lets a stage size its canvas on the first
-    // pass rather than after a mount.
+    // Document, then options, then engine. Resolved during render, before any
+    // session exists, so a stage can size its canvas on the first pass.
     const projectDoc = document && isProjectDocument(document) ? document : undefined;
     const resolvedViewport = projectDoc?.viewport ?? options.viewport ?? engine?.viewport ?? DEFAULT_VIEWPORT;
     const fps = projectDoc?.fps ?? options.fps ?? engine?.fps ?? DEFAULT_FPS;
 
-    // Held by size: a host that rebuilds its document per edit rebuilds this
-    // object with it, and a new one would hand every consumer a new `Player`.
+    // Held by size: a host that rebuilds its document per edit would otherwise
+    // hand every consumer a new `Player`.
     const [viewport, setViewport] = useState(resolvedViewport);
     if (viewport.width !== resolvedViewport.width || viewport.height !== resolvedViewport.height) {
         setViewport(resolvedViewport);
@@ -276,7 +248,6 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
     const hasDocument = document !== undefined;
 
     const [session, setSession] = useState<Session | null>(null);
-    /** Created once; stable for the hook's life, so `usePlayhead` never resubscribes. */
     const [playhead] = useState(createPlayheadStore);
 
     const [isPlaying, setIsPlaying] = useState(false);
@@ -290,7 +261,6 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
 
     const totalFrames = Math.max(1, Math.round(duration * fps));
 
-    // Stable across renders so the action callbacks below never need rebuilding.
     const controllerRef = useRef<PlaybackController | null>(null);
     const sessionRef = useRef<Session | null>(null);
     const documentRef = useRef(document);
@@ -302,10 +272,9 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
     const fpsRef = useRef(fps);
     const speedRef = useRef(speed);
     /**
-     * What the transport has been told to do, ahead of the next render. State
-     * only shows the last value a batch settled on, and the controller is
-     * driven by the calls that were made, so the two can disagree inside one
-     * batch (`seek` then `play`).
+     * What the transport was told to do, ahead of the next render. State shows
+     * only the last value a batch settled on, so it can disagree with the
+     * controller inside one batch (`seek` then `play`).
      */
     const playingRef = useRef(false);
 
@@ -317,10 +286,9 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
         playingRef.current = isPlaying;
     });
 
-    // An edit keeps the transport and its errors — the reconcile effect below
-    // re-reads both off the session, so an error the edit did not fix never
-    // blinks out for a commit. Only losing the document stops it, during render
-    // so nothing draws against a timeline that is gone.
+    // An edit keeps the transport and errors (the reconcile effect re-reads both,
+    // so an unfixed error never blinks out); only losing the document stops it,
+    // during render so nothing draws against a timeline that is gone.
     const [prevDocument, setPrevDocument] = useState(document);
     if (document !== prevDocument) {
         setPrevDocument(document);
@@ -331,11 +299,7 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
         }
     }
 
-    /**
-     * Pull what the controller now knows: timeline length, errors, progress.
-     * Runs on every swap, so it keeps whatever did not change — a fresh array or
-     * object here is a new `Player` for every consumer on every edit.
-     */
+    /** Pulls duration, errors and progress off the controller, keeping what did not change: a fresh array or object is a new `Player` on every edit. */
     const sync = useCallback((pc: PlaybackController) => {
         setDuration(pc.totalDuration);
         setErrors(errorsFrom(pc.buildErrors));
@@ -343,26 +307,18 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
         setPrecomp(held => (samePrecomp(held, progress) ? held : progress));
     }, []);
 
-    /**
-     * Move the playhead and repaint, with the loading flag the UI paces off.
-     *
-     * Created once so every caller — the transport, the reconcile effect and
-     * the first paint after a session opens — shares one seek discipline.
-     */
+    /** One instance, so the transport, the reconcile effect and a session's first paint share one seek discipline. */
     const [seekTo] = useState(() => (frame: number): Promise<boolean> => {
         const pc = controllerRef.current;
         if (!pc) return Promise.resolve(false);
         const last = Math.max(0, Math.round(pc.totalDuration * fpsRef.current) - 1);
         const clamped = Math.min(Math.max(0, Math.round(frame)), last);
         playhead.set(clamped);
-        // Only the newest seek may report "settled". A superseded seek still
-        // resolves — its generation guard bailed inside the controller — but it
-        // never painted, so clearing the loading flag from it would tell the UI
-        // a frame is ready while the newest is still in flight. Consumers pace
-        // scrubbing off that edge.
+        // A superseded seek still resolves (its generation guard bailed in the
+        // controller) but never painted, so only the newest may clear `loading`:
+        // consumers pace scrubbing off that edge.
         const token = ++seekTokenRef.current;
         setLoading(true);
-        // Resolves `true` when this was still the newest seek as it landed.
         return pc.seek(clamped).then(() => {
             const newest = token === seekTokenRef.current;
             if (newest) setLoading(false);
@@ -373,9 +329,8 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
     useEffect(() => {
         if (!engine || !document) return;
 
-        // `target` is omitted: the session opens unmounted, and a `MotionStage`
-        // binds a canvas to it afterwards. That is what lets this hook own the
-        // session without owning any DOM.
+        // `target` is omitted: the session opens unmounted and a `MotionStage`
+        // binds a canvas afterwards, so this hook owns no DOM.
         const opened = engine.open({
             document,
             viewport,
@@ -392,8 +347,7 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
             const frame = Math.floor(clipTimeToFrame(t, fpsRef.current));
             playhead.set(frame);
 
-            // A document swap can change the timeline's length, so ask the
-            // controller rather than trusting a duration captured when this
+            // Asks the controller: a swap can change the length after this
             // listener was installed.
             const last = Math.round(pc.totalDuration * fpsRef.current) - 1;
             if (frame < last) return;
@@ -415,22 +369,18 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
             controllerRef.current = null;
             sessionRef.current = null;
             setSession(null);
-            // Disposes the controller and the render context together — the
-            // session owns both.
             disposedSessions.add(opened);
             opened.dispose();
         };
-        // `document` is deliberately absent — only whether there is one: a new
-        // document is reconciled onto the live session by the effect below
-        // rather than rebuilt into a new one. What remains genuinely does need a
-        // rebuild — a different engine is a different renderer, and a live
-        // surface cannot change its size or rate (`Session.replace` refuses both).
+        // `document` is deliberately absent (only whether there is one): the effect
+        // below reconciles a new one onto the live session. Everything listed
+        // needs a rebuild: a different engine is a different renderer, and a live
+        // surface cannot change size or rate (`Session.replace` refuses both).
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [engine, hasDocument, viewport.width, viewport.height, fps, sync]);
 
-    // Reconcile a changed document onto the session already running. Skipped on
-    // the pass that opens it, which was opened with this very document —
-    // replacing it there would rediscover a timeline just discovered.
+    // Reconcile a changed document onto the running session. Skipped on the pass
+    // that opened it, which already holds this document.
     useEffect(() => {
         if (documentRef.current === document) return;
         documentRef.current = document;
@@ -439,8 +389,8 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
         const pc = live.controller;
         live.replace(document);
         sync(pc);
-        // No seek: `replace` already paints the current frame once its assets
-        // load, clamped to the new length, and a running clock keeps ticking.
+        // No seek: `replace` paints the current frame once its assets load, and a
+        // running clock keeps ticking.
         const last = Math.max(0, Math.round(pc.totalDuration * fpsRef.current) - 1);
         playhead.set(Math.min(playhead.getSnapshot(), last));
         const token = ++seekTokenRef.current;
@@ -461,13 +411,11 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
         controllerRef.current?.setMuted(muted);
     }, [session, muted]);
 
-    // The one seek that isn't user-driven: park the new session on the frame
-    // the playhead already holds, so a rebuild keeps its place.
-    //
-    // A seek pauses the clock, and the clock effect above has already started
-    // this session, so a player that was playing resumes once the park lands
-    // (with its assets loaded, so the first ticks draw rather than catch up). It
-    // does not if the transport moved meanwhile: a newer seek, or a pause.
+    // Parks a new session on the frame the playhead holds, so a rebuild keeps its
+    // place. The seek pauses the clock the effect above just started, so a player
+    // that was playing resumes once the park lands (assets loaded, so the first
+    // ticks draw rather than catch up), unless a newer seek or a pause moved the
+    // transport meanwhile.
     useEffect(() => {
         const pc = controllerRef.current;
         if (!pc) return;
@@ -480,9 +428,8 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
         });
     }, [session, playhead, seekTo]);
 
-    // Built once and stable for the hook's life: every one reads the controller
-    // through a ref, so a re-render never invalidates a handler a child holds —
-    // which is what lets a transport subscribe its listeners a single time.
+    // Built once: every action reads the controller through a ref, so a re-render
+    // never invalidates a handler a child holds.
     const [actions] = useState<Omit<Player, keyof PlayerState>>(() => {
         // Scrubbing is a pause: a seek that left the clock running would be
         // overwritten by the next tick.
@@ -494,11 +441,9 @@ export function useMotionPlayer(options: MotionPlayerOptions): Player {
 
         return {
             playhead,
-            // Both drive the controller as well as the state. In one batch a
-            // `seek` and a `play` cancel out in state (`true`, `false`, `true`
-            // while playing), so the effect on `isPlaying` never re-runs, yet the
-            // seek has already paused the clock; the state is the settled
-            // answer and the controller is what was actually asked.
+            // Both drive the controller as well as state: in one batch a `seek` and
+            // a `play` cancel out in state, so the `isPlaying` effect never re-runs
+            // though the seek already paused the clock.
             play: () => {
                 playingRef.current = true;
                 setIsPlaying(true);

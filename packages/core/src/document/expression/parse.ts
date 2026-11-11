@@ -1,24 +1,12 @@
 /**
- * The one scanner and the one grammar, plus the document's own dialect.
+ * The one scanner and grammar, parameterized only by {@link ExpressionDialect}: what dialects genuinely
+ * disagree about is a table (which functions exist, whether `sin` takes degrees, how a reference is spelled).
+ * Having one avoids rules that agree where documented and diverge elsewhere (`1.2.3` scanned as a single token
+ * becoming an invisible `NaN`; `\r` rejected; no arity check on variadics).
  *
- * There were two of each — this module's, and the function-plot language in
- * `@motionscript/math` — and they agreed on every rule they documented while
- * disagreeing on the parts nobody wrote down. Plot scanned `1.2.3` as a single
- * token, which `Number` turned into a `NaN` that parsed, compiled and rendered
- * an entirely invisible surface with no diagnostic anywhere. It treated `\r` as
- * an unexpected character, so a pasted CRLF equation failed. It checked no arity
- * on its variadic functions, so `atan2(1)` was a silent `NaN`.
- *
- * What the two genuinely disagree about is a *table*: which functions exist,
- * whether `sin` takes degrees or radians, and how a reference is spelled. That
- * is {@link ExpressionDialect}, and it is the only thing this file is
- * parameterized by.
- *
- * Precedence is the ordinary arithmetic one, with `^` right-associative and
- * **implicit multiplication** between adjacent primaries — which is what makes
- * `4[g]+3` mean what it reads as. Note `unary` sits *above* `power`, so `-2^2`
- * is `-4` as in maths, and the exponent parses as a unary so `2^3^2` is 512 and
- * `2^-3` is legal.
+ * Precedence is ordinary arithmetic with right-associative `^` and implicit multiplication between adjacent
+ * primaries, which makes `4[g]+3` read as written. `unary` sits above `power`, so `-2^2` is `-4`, and the
+ * exponent parses as a unary so `2^3^2` is 512 and `2^-3` is legal.
  */
 import { ExpressionError } from "./types";
 import type { BinaryOp, ExpressionDialect, ExpressionNode, FnArity, ParsedExpression } from "./types";
@@ -30,12 +18,9 @@ interface DocumentFn extends FnArity {
 }
 
 /**
- * The document's function library.
- *
- * Deliberately small and closed: an expression is stored in a document and
- * evaluated by whatever version of the library opens it later, so every name
- * here is as much a public contract as an exported symbol. Trig is in **degrees**
- * because every other angle in the library is.
+ * Deliberately small and closed: an expression is stored in a document and evaluated by whatever version of
+ * the library opens it later, so every name is public contract. Trig is in degrees because every other angle
+ * in the library is.
  */
 export const DOCUMENT_FUNCTIONS: Record<string, DocumentFn> = {
     abs: { arity: [1, 1], apply: (a) => Math.abs(a[0]) },
@@ -56,7 +41,7 @@ export const DOCUMENT_FUNCTIONS: Record<string, DocumentFn> = {
         arity: [3, 3],
         apply: (a) => {
             if (Number.isNaN(a[0]) || Number.isNaN(a[1]) || Number.isNaN(a[2])) return NaN;
-            // Equal edges: a step at the edge, like `step` — no divide by zero.
+            /** Equal edges: a step at the edge, like `step`, with no divide by zero. */
             if (a[0] === a[1]) return a[2] < a[0] ? 0 : 1;
             const t = Math.min(Math.max((a[2] - a[0]) / (a[1] - a[0]), 0), 1);
             return t * t * (3 - 2 * t);
@@ -73,14 +58,12 @@ export const DOCUMENT_FUNCTIONS: Record<string, DocumentFn> = {
     hypot: { arity: [2, Infinity], apply: (a) => Math.hypot(...a) },
 };
 
-/** Bare identifiers that are values rather than calls. */
 const DOCUMENT_CONSTANTS: Record<string, number> = {
     pi: Math.PI,
     tau: Math.PI * 2,
     e: Math.E,
 };
 
-/** The language a `"=…"` prop is written in. */
 export const DOCUMENT_DIALECT: ExpressionDialect = {
     functions: DOCUMENT_FUNCTIONS,
     constants: DOCUMENT_CONSTANTS,
@@ -90,20 +73,15 @@ export const DOCUMENT_DIALECT: ExpressionDialect = {
         `bare names are the constants ${sortedKeys(DOCUMENT_CONSTANTS).join(", ")}`,
 };
 
-/** Sorted, so a message or a completion list is stable. */
 export function sortedKeys(table: Record<string, unknown>): string[] {
     return Object.keys(table).sort();
 }
-
-// ── Scanner ──────────────────────────────────────────────────────────────────
 
 type TokenKind = "number" | "ref" | "ident" | "op" | "(" | ")" | "," | "end";
 
 interface Token {
     kind: TokenKind;
-    /** The identifier, operator or reference name. Empty for numbers. */
     text: string;
-    /** Parsed value, for numbers. */
     value: number;
     pos: number;
 }
@@ -140,24 +118,25 @@ function tokenize(source: string, dialect: ExpressionDialect): Token[] {
                 if (isDigit(source[i])) {
                     while (isDigit(source[i])) i++;
                 } else {
-                    // `2e` followed by something else is `2` times the identifier
-                    // `e`, not a malformed exponent.
+                    /**
+                     * `2e` followed by something else is `2` times the identifier `e`, not a malformed exponent.
+                     */
                     i = mark;
                 }
             }
-            // A second `.` ends a number that has already had one. Both parsers
-            // this replaces got here differently and both got it wrong: one
-            // scanned `1.2.3` as a single token that `Number` turned into a
-            // silent `NaN`, the other split it into `1.2 * 0.3`. Neither is
-            // anything anyone wrote on purpose.
+            /**
+             * A second `.` ends a number that has already had one, so `1.2.3` is neither a single token (a silent `NaN`)
+             * nor `1.2 * 0.3`.
+             */
             if (source[i] === ".") throw new ExpressionError('unexpected character "."', source, i);
             tokens.push({ kind: "number", text: "", value: Number(source.slice(start, i)), pos: start });
             continue;
         }
 
-        // `[` is legal only where a reference is spelled with one, so a plot
-        // equation gets "unexpected character" here rather than failing later
-        // with a message about variable references it has never heard of.
+        /**
+         * `[` is legal only where a reference is spelled with one, so a plot equation gets "unexpected character" here
+         * rather than a message about variable references it has never heard of.
+         */
         if (ch === "[" && dialect.refs === "bracket") {
             const start = i;
             const end = source.indexOf("]", i + 1);
@@ -193,14 +172,7 @@ function tokenize(source: string, dialect: ExpressionDialect): Token[] {
     return tokens;
 }
 
-// ── Grammar ──────────────────────────────────────────────────────────────────
-
-/**
- * Parse a formula against a dialect.
- *
- * `source` is the formula alone — the document's `=` is stripped by the walk
- * that recognised it, because the marker is not part of any grammar.
- */
+/** `source` is the formula alone: the walk that recognised it stripped the `=`, which is no grammar's. */
 export function parse(source: string, dialect: ExpressionDialect = DOCUMENT_DIALECT): ParsedExpression {
     if (source.trim().length === 0) throw new ExpressionError("empty expression", source);
 
@@ -216,7 +188,6 @@ export function parse(source: string, dialect: ExpressionDialect = DOCUMENT_DIAL
         return { kind: "ref", name };
     };
 
-    /** True when the token can begin a primary — the test implicit `*` turns on. */
     const startsPrimary = (t: Token): boolean =>
         t.kind === "number" || t.kind === "ref" || t.kind === "ident" || t.kind === "(";
 
@@ -242,7 +213,7 @@ export function parse(source: string, dialect: ExpressionDialect = DOCUMENT_DIAL
                 left = { kind: "binary", op: t.text as BinaryOp, left, right: parseUnary() };
                 continue;
             }
-            // `4[g]`, `2(x+1)`, `[a][b]`, `2pi` — juxtaposition is multiplication.
+            /** Juxtaposition is multiplication: `4[g]`, `2(x+1)`, `[a][b]`, `2pi`. */
             if (startsPrimary(t)) {
                 left = { kind: "binary", op: "*", left, right: parseUnary() };
                 continue;
@@ -266,16 +237,18 @@ export function parse(source: string, dialect: ExpressionDialect = DOCUMENT_DIAL
         const t = peek();
         if (t.kind === "op" && t.text === "^") {
             next();
-            // Right-associative, and binding tighter than unary minus on its
-            // right: `2^-1` is a half, not an error.
+            /**
+             * Right-associative, and binds tighter than unary minus on its right: `2^-1` is a half, not an error.
+             */
             return { kind: "binary", op: "^", left: base, right: parseUnary() };
         }
         return base;
     }
 
     function parseCall(name: string, pos: number): ExpressionNode {
-        // Own keys only: `toString(1)` must be an unknown function, not a lookup
-        // that finds `Object.prototype`'s.
+        /**
+         * Own keys only: `toString(1)` must be an unknown function, not a lookup that finds `Object.prototype`'s.
+         */
         const def = Object.hasOwn(dialect.functions, name) ? dialect.functions[name] : undefined;
         if (!def) {
             throw new ExpressionError(
@@ -325,9 +298,10 @@ export function parse(source: string, dialect: ExpressionDialect = DOCUMENT_DIAL
                     next();
                     return parseCall(t.text, t.pos);
                 }
-                // A constant is folded here, before a bare identifier can become
-                // a reference — so a dialect's constant name can never also be
-                // one of its free variables.
+                /**
+                 * Folded here, before a bare identifier can become a reference, so a dialect's constant can never also be one
+                 * of its free variables.
+                 */
                 const constant = Object.hasOwn(dialect.constants, t.text) ? dialect.constants[t.text] : undefined;
                 if (constant !== undefined) return { kind: "const", value: constant };
                 if (dialect.refs === "bare") return addRef(t.text);

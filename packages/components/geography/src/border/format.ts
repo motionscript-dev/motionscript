@@ -43,7 +43,7 @@ export interface GeoArc {
     key: number | string
     /** Interleaved lon/lat, in degrees. */
     points: Float64Array
-    /** Per point: 0 always survives, higher buckets are less significant; see `thresholdBucket`. */
+    /** Per point: 0 always survives, higher buckets are less significant. */
     buckets: Uint8Array
 }
 

@@ -7,7 +7,6 @@ import type { AudioBusStop, AudioRequest } from "./request";
 /** One clip a command's sound plays, in its clip's seconds. */
 export interface AudioClip {
     src: string;
-    /** When it starts. */
     at?: number;
     /** When it is cut, however much of it is left. */
     until?: number;
@@ -32,11 +31,7 @@ function scalarSpeed(speed: number): number {
     return Number.isFinite(speed) && speed > 0 ? speed : 1;
 }
 
-/**
- * Clip seconds spent playing the first `sourceElapsed` of `sourceLength` source
- * seconds at `speed`. Must match the device's `playbackRate` schedule, or a
- * request ends before or after its sound does.
- */
+/** Clip seconds spent playing the first `sourceElapsed` of `sourceLength` source seconds at `speed`; must match the device's `playbackRate` schedule or a request ends before or after its sound. */
 export function clipTimeAtSource(speed: Param, sourceLength: number, sourceElapsed: number = sourceLength): number {
     if (isRamp(speed)) return integrateSpeedToClipTime(speed, sourceLength, sourceElapsed);
     return Math.max(0, Math.min(sourceElapsed, sourceLength)) / scalarSpeed(speed);
@@ -54,12 +49,7 @@ export function clipDurationOf(clip: { readonly trimStart?: number; readonly tri
     return clipTimeAtSource(clip.speed ?? 1, length);
 }
 
-/**
- * The request `clip` schedules.
- *
- * Bounded when it has an end — a trim, or an `until` — and **open** otherwise, so
- * a bed nothing cuts continues across later tracks; see `AudioRequest.open`.
- */
+/** The request `clip` schedules: bounded with an end (a trim or `until`), **open** otherwise so a bed nothing cuts continues across later tracks (see `AudioRequest.open`). */
 export function requestOf(clip: AudioClip, catalog: AssetCatalog, ownerKey: string, n: number): AudioRequest {
     const at = clip.at ?? 0;
     const until = clip.until ?? Infinity;

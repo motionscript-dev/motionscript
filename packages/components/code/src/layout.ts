@@ -19,7 +19,7 @@ export interface CodeMetrics {
     lineNumberGap: number;
 }
 
-/** Where one token sits: its LEFT edge, and the vertical CENTRE of its line's slot. */
+/** A token's LEFT edge and the vertical CENTRE of its line's slot. */
 export interface TokenBox {
     x: number;
     y: number;
@@ -37,38 +37,25 @@ export interface TokenBox {
  * the left margin springing apart.
  */
 export interface CodeLayout {
-    /** Token id → placement. */
     tokens: Map<number, TokenBox>;
-    /** Vertical centre of each line's slot, by line index. */
+    /** By line index. */
     lineY: number[];
-    /**
-     * Width of each line's ink, by line index — the sum of its tokens' advances,
-     * so a blank line is `0` and a short line is short.
-     *
-     * Returned rather than kept local because it is the only thing that knows a
-     * listing is **ragged**: `innerW` is the longest line, and everything that
-     * asks where the text actually is (hit testing, for one) would otherwise have
-     * to treat the block as a rectangle the width of its longest row.
-     */
+    /** Ink width per line (blank is 0): the only record that a listing is ragged, which hit testing needs. */
     lineW: number[];
-    /** Line id → its index in this structure (i.e. its line *number* minus one). */
     lineIndex: Map<number, number>;
     gutter: number;
     gutterGap: number;
     /** Content size, no padding. */
     innerW: number;
     innerH: number;
-    /** Content size plus padding — what the block draws and measures as. */
+    /** Content plus padding. */
     blockW: number;
     blockH: number;
-    /** Left edge of the code column (after padding and gutter). */
+    /** Left edge of the code column, after padding and gutter. */
     startX: number;
 }
 
-/**
- * Signature of everything a layout depends on other than the token structure
- * itself. A cached layout survives exactly as long as this is unchanged.
- */
+/** Everything a layout depends on besides the token structure; a cached layout lives while it is unchanged. */
 export function metricsSignature(m: CodeMetrics): string {
     const p = m.padding;
     return [
@@ -78,16 +65,12 @@ export function metricsSignature(m: CodeMetrics): string {
     ].join("|");
 }
 
-/**
- * Horizontal gap between the line-number column and the code text. Sized in
- * space-widths so it scales with the font, and measured with letterSpacing 0 —
- * line numbers and the gap don't carry the code's letter-spacing.
- */
+/** In space-widths, measured with letterSpacing 0: line numbers and the gap don't carry the code's. */
 function gutterGapOf(scope: MeasureContext2D | RenderContext2D, m: CodeMetrics, cache: TokenAdvanceCache): number {
     return cache.advance(scope, " ", m.fontSize, m.fontFamily, 0) * m.lineNumberGap;
 }
 
-/** Width of the line-number column for a structure of `lineCount` lines, gap included. */
+/** Gap included. */
 function gutterOf(
     scope: MeasureContext2D | RenderContext2D,
     m: CodeMetrics,
@@ -100,13 +83,7 @@ function gutterOf(
     return cache.advance(scope, sample, m.fontSize, m.fontFamily, 0) + gap;
 }
 
-/**
- * Place every token of `lines`.
- *
- * Pure in (lines, metrics, font measurements), which is what lets a caller cache
- * one per structure rather than recomputing it per frame — a transition's two
- * endpoints are both fixed for its whole duration.
- */
+/** Pure in (lines, metrics, measurements), so a caller caches one per structure. */
 export function layoutCode(
     lines: IdLine[],
     m: CodeMetrics,
@@ -133,9 +110,7 @@ export function layoutCode(
     const blockW = innerW + m.padding.left + m.padding.right;
     const blockH = innerH + m.padding.top + m.padding.bottom;
     const startX = -blockW / 2 + m.padding.left + gutter;
-    // y-up author space: the first line sits at the TOP of the block, so the
-    // cursor starts at the top edge (+half height, minus top padding) and steps
-    // DOWNWARD by subtracting a line height per row.
+    // y-up: the first line sits at the TOP, and each row steps down by a line height.
     const startY = blockH / 2 - m.padding.top;
 
     const tokens = new Map<number, TokenBox>();

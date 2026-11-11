@@ -1,14 +1,7 @@
 import { easeOfSpec, type EaseSpec } from "@/tween/ease/spec";
 import type { EasingFunction } from "@/tween/ease/type";
 
-/**
- * What happens as a clip enters (`transitionIn`) or leaves (`transitionOut`):
- * today, a fade over its first or last `duration` clip seconds.
- *
- * A cross-fade is two clips that overlap, the first carrying a `transitionOut`
- * and the second a `transitionIn` as long as the overlap; equal-power shapes
- * are complementary, so the pair needs no link between them.
- */
+/** What happens as a clip enters (`transitionIn`) or leaves (`transitionOut`): a fade over its first or last `duration` clip seconds. A cross-fade is two overlapping clips, the first with a `transitionOut` and the second a `transitionIn` as long as the overlap; equal-power shapes are complementary, so the pair needs no link. */
 export interface AudioTransition {
     readonly duration: number;
     /**

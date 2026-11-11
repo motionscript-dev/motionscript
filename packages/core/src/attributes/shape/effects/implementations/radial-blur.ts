@@ -1,28 +1,14 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { CENTER, defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Which way the samples are smeared around {@link RadialBlurEffect.center}.
- *
- * - `"zoom"` — along the radius: a rush toward or away from the centre.
- * - `"spin"` — along the tangent: rotational motion about the centre.
- *
- * (After Effects calls this the effect's "Type"; here that name belongs to the
- * effect discriminator, so the field is `style`.)
- */
+/** Which way samples smear around {@link RadialBlurEffect.center}: `"zoom"` along the radius (a rush toward or away from the centre) or `"spin"` along the tangent. (After Effects' "Type"; that name is the effect discriminator here, so the field is `style`.) */
 export type RadialBlurStyle = "zoom" | "spin";
 
-/**
- * After Effects' Radial Blur — the source is sampled repeatedly along a path
- * that radiates from (`zoom`) or circles (`spin`) a centre point, and the taps
- * are averaged. The centre stays sharp and the smear grows with distance, which
- * is what makes it read as speed rather than as softness.
- */
+/** After Effects' Radial Blur: the source is sampled along a path radiating from (`zoom`) or circling (`spin`) a centre and the taps averaged. The centre stays sharp and the smear grows with distance, which reads as speed rather than softness. */
 export interface RadialBlurEffect extends ModedEffect, EffectFields<typeof radialBlurSpec.params> {
     type: "radialBlur";
 }
 
-/** The {@link RadialBlurEffect} spec: its parameters, defaults and ranges. */
 export const radialBlurSpec = defineEffect({
     type: "radialBlur",
     group: "blur",

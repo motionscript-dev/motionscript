@@ -2,47 +2,24 @@ import type { ShaderUniformRecord } from "./uniforms";
 import type { ShaderLanguage } from "./language";
 
 /**
- * A **shader pack**: a program, plus what a host may edit about it.
- *
- * The interchange format for a shader — authored as JSON, imported as a value,
- * handed to `Fills.shader` or `Effects.shader`. It exists because a bare source
- * string says nothing about which of its uniforms are meant to be touched, what
- * they are called in a panel, or what range they take, so every host that wanted
- * to offer a slider had to keep that table itself, beside a program it did not
- * own.
- *
- * **Two scopes, one shape.** A fill paints inside a shape's path and may sample
- * textures; an effect paints over a layer and may sample what is beneath it.
- * Those are the only two differences, and making them arms of a union rather
- * than optional fields on one type is what makes `Fills.shader(anEffectShader)`
- * a compile error instead of a program that fails at the first frame.
+ * A **shader pack**: a program plus what a host may edit about it, the interchange format for a shader (authored as
+ * JSON, handed to `Fills.shader` or `Effects.shader`). A bare source string says nothing about which uniforms are
+ * editable, their panel names or ranges. **Two scopes, one shape**: a fill paints inside a shape's path and may
+ * sample textures, an effect paints over a layer and may sample what is beneath it; as union arms,
+ * `Fills.shader(anEffectShader)` is a compile error instead of a first-frame failure.
  */
 export type Shader = FillShader | EffectShader;
 
-/** What both scopes carry. */
 export interface ShaderBase {
-    /**
-     * Format tag, so a file that is not one of these can be told apart from one
-     * that is merely from a newer version.
-     */
+    /** Format tag, so a file that is not one of these can be told from one merely from a newer version. */
     $kind?: string;
-    /**
-     * Provenance, when the pack came from a library row. **Not** how it is
-     * registered — `Registry.addShader` takes the key separately, exactly as
-     * `Registry.addNode` does, so the same file can be registered under whatever
-     * name a project wants and the file itself stays portable.
-     */
+    /** Provenance, when the pack came from a library row. **Not** how it is registered: `Registry.addShader` takes the key separately (as `addNode` does), so the file stays portable. */
     id?: string;
     name: string;
     description?: string;
     /** The language `source` is written in; normalising a pack stamps WGSL when absent. */
     language?: ShaderLanguage;
-    /**
-     * The program. In WGSL, a fill defines `fn fill(in: FillIn) -> vec4f` and an
-     * effect `fn effect(in: EffectIn) -> vec4f`, and the uniforms are the
-     * members of `struct Params` (types, layout and all); `properties` name
-     * those members in their `inputs`.
-     */
+    /** The program. WGSL: a fill defines `fn fill(in: FillIn) -> vec4f`, an effect `fn effect(in: EffectIn) -> vec4f`; uniforms are the members of `struct Params`, which `properties` name in their `inputs`. */
     source: string;
     /** Uniform values the properties do not cover, by name. */
     uniforms?: ShaderUniformRecord;
@@ -50,33 +27,18 @@ export interface ShaderBase {
     properties: Record<string, ShaderProperty>;
 }
 
-/** A shader that paints inside a shape's path. */
 export interface FillShader extends ShaderBase {
     scope: "fill";
-    /**
-     * The images the program samples, by name. In WGSL, `sample_texture(uv)`
-     * samples the first; the fill that applies the pack supplies each `src`.
-     */
+    /** The images the program samples, by name; WGSL `sample_texture(uv)` samples the first. The applying fill supplies each `src`. */
     textures?: readonly { name: string; description?: string }[];
 }
 
-/** A shader that paints over a layer. */
 export interface EffectShader extends ShaderBase {
     scope: "effect";
-    /**
-     * Whether the program is meant to run on the backdrop path, where
-     * `sample_src` reads what is beneath the node rather than its own layer.
-     *
-     * A fact about the **program**, which is why it lives here rather than on
-     * the effect instance: the instance keeps `mode`, the cross-cutting field
-     * five generic consumers read without knowing what type they hold. The
-     * builder maps this to `mode: "backdrop"` as the default and a caller may
-     * still override it.
-     */
+    /** Whether the program runs on the backdrop path (`sample_src` reads what is beneath the node). A fact about the **program**, not the instance, which keeps the cross-cutting `mode`; the builder defaults `mode` to `"backdrop"` from this and a caller may override. */
     backdrop?: boolean;
 }
 
-/** One editable value. */
 export type ShaderProperty = KnownShaderProperty | UnknownShaderProperty;
 
 export type KnownShaderProperty =
@@ -90,16 +52,8 @@ export type KnownShaderProperty =
     | PointProperty;
 
 interface ShaderPropertyBase {
-    /** What a panel calls it. Falls back to the property id. */
     name?: string;
-    /**
-     * The uniform each of this property's components writes.
-     *
-     * The composite mechanism, and the reason a property is not just a uniform
-     * under another name: one editable value may span several uniforms. A
-     * scalar names one component, `value`; a point may name `value` for a
-     * `float2`, or `x` and `y` for two separate floats.
-     */
+    /** The uniform each of this property's components writes: one editable value may span several (a scalar names `value`; a point `value` for a `float2`, or `x` and `y` for two floats). */
     inputs: Record<string, string>;
 }
 
@@ -157,17 +111,7 @@ export interface PointProperty extends ShaderPropertyBase {
     default: readonly number[] | { x: number; y: number };
 }
 
-/**
- * A property whose kind this version of the vocabulary does not name.
- *
- * Open at the edges on purpose: a pack written against a newer version should
- * draw the controls a host knows and say so about the rest, instead of
- * failing to load at all.
- *
- * An unknown property is still *resolved* — its `default` is written to its
- * `inputs` unchanged — so a shader whose panel a host cannot fully draw still
- * renders correctly.
- */
+/** A property whose kind this vocabulary version does not name. Open at the edges on purpose: a newer pack draws the controls a host knows and says so about the rest. Its `default` is still written to its `inputs`, so the shader renders correctly. */
 export interface UnknownShaderProperty extends ShaderPropertyBase {
     kind: string;
     default?: unknown;
@@ -189,16 +133,7 @@ export const MAX_SHADER_PROPERTIES = 64;
 /** Ceiling on source length, matching what a compile cache can reasonably hold. */
 export const MAX_SHADER_SOURCE = 64_000;
 
-/**
- * Validate and normalise an authored pack.
- *
- * **Throws** when the pack is structurally not one — no source, no usable
- * scope — because there is nothing to render and a silent empty shader is a
- * blank frame with no explanation. **Warns and drops** an individual malformed
- * property, because the rest of the shader still works and a panel missing one
- * control is a better answer than a scene that will not build. That split is the
- * same one `normalizeUniforms` makes.
- */
+/** Validates and normalises an authored pack. **Throws** when it is structurally not one (no source, no usable scope): a silent empty shader is an unexplained blank frame. **Warns and drops** a malformed property, since the rest still works (the same split as `normalizeUniforms`). */
 export function normalizeShaderPack(input: unknown): Shader {
     if (typeof input !== "object" || input === null) {
         throw new Error("A shader pack must be an object.");

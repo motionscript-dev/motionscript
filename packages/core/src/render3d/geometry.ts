@@ -5,31 +5,18 @@ import type { Vector3, Vector3Input } from "./vector3";
 import type { Segments3D } from "./segments";
 
 /**
- * Anything not modelled by a named field, assigned straight onto the constructed
- * object. The documented last resort — unsafe by construction (it bypasses the
- * type system, and the renderer treats any change to it as a full rebuild since
- * it cannot know what a given key affects), but it means no author is ever
- * blocked waiting for a field to be modelled here.
- *
- * **Where it is applied**: materials, lights (and a light's `shadow`) and
- * cameras. **Where it is not**: geometries, the environment and post effects. A
- * `params` there is recorded and nothing reads it (probe: `box({ params: { name:
- * "x" } })` leaves the built geometry's `name` empty), and in development the
- * first one warns. Set a geometry's own fields instead.
+ * Anything not modelled by a named field, assigned straight onto the constructed object: the last resort, unsafe by
+ * construction (it bypasses the type system, and any change is a full rebuild since the renderer can't know what a
+ * key affects). **Applied** to materials, lights (and a light's `shadow`) and cameras; **not** to geometries, the
+ * environment or post effects, where it is recorded and nothing reads it (in development the first warns). Set a
+ * geometry's own fields instead.
  */
 export interface Passthrough3D {
     params?: Record<string, unknown>;
 }
 
 /**
- * A partial revolution, shared by every shape that has one.
- *
- * `Ellipse` has said `startAngle` / `sweep` in degrees since the beginning, so 3D
- * says it too. It replaces three's five spellings of the same idea —
- * `thetaStart`, `thetaLength`, `phiStart`, `phiLength` and `arc` — which differ
- * per shape for reasons that are about three's own history rather than about
- * anything an author is trying to draw.
- */
+ /** A partial revolution shared by every shape that has one: `startAngle` / `sweep` in degrees as 2D `Ellipse` says them, replacing three's per-shape spellings (`thetaStart`, `thetaLength`, `phiStart`, `phiLength`, `arc`). */
 export interface Sweep3D {
     /** Where the revolution begins, in **degrees**. Default 0. */
     startAngle?: number;
@@ -37,16 +24,7 @@ export interface Sweep3D {
     sweep?: number;
 }
 
-// ─── Primitives ──────────────────────────────────────────────────────────────
-
-/**
- * A box.
- *
- * `cornerRadius` is the same control `Rect` carries in 2D and rounds all twelve
- * edges; it is most of the difference between a scene that reads as designed and
- * one that reads as a renderer test. See `evaluateRoundedBox` for how the
- * surface is built.
- */
+/** A box. `cornerRadius` is the same control `Rect` has in 2D and rounds all twelve edges; see `evaluateRoundedBox` for how the surface is built. */
 export interface BoxGeometry3D extends Passthrough3D {
     type: "box";
     width?: number;
@@ -78,12 +56,7 @@ export interface PlaneGeometry3D extends Passthrough3D {
     segments?: Segments3D;
 }
 
-/**
- * A cylinder, or any tapered tube.
- *
- * `radius` takes `[top, bottom]` for a taper, which is what `radiusTop` and
- * `radiusBottom` were — one field, and the pair reads as the thing it describes.
- */
+/** A cylinder, or any tapered tube: `radius` takes `[top, bottom]` for a taper. */
 export interface CylinderGeometry3D extends Passthrough3D, Sweep3D {
     type: "cylinder";
     /** A scalar, or `[top, bottom]` to taper. Default 1. */
@@ -162,8 +135,6 @@ export interface PolyhedronGeometry3D extends Passthrough3D {
     segments?: Segments3D;
 }
 
-// ─── Path-derived (reuses core's own 2D path vocabulary) ─────────────────────
-
 /** How an extrusion's edge is chamfered. A bare number is the bevel's size. */
 export interface Bevel3D {
     size?: number;
@@ -172,12 +143,7 @@ export interface Bevel3D {
     segments?: number;
 }
 
-/**
- * A 2D outline swept into a solid. `path` accepts the same `PathData` (SVG
- * string or command list) or {@link PathBuilder} the 2D `Path` node takes — same
- * name, same value — so an existing 2D outline becomes an extruded solid with no
- * new vocabulary.
- */
+/** A 2D outline swept into a solid. `path` takes the same `PathData` or {@link PathBuilder} as the 2D `Path` node, so an existing outline extrudes with no new vocabulary. */
 export interface ExtrudeGeometry3D extends Passthrough3D {
     type: "extrude";
     path: PathData | PathBuilder;
@@ -207,16 +173,7 @@ export interface TubeGeometry3D extends Passthrough3D {
     closed?: boolean;
 }
 
-// ─── Arbitrary vertex data ───────────────────────────────────────────────────
-
-/**
- * Raw vertex buffers — the general escape hatch that makes *any* computable mesh
- * expressible without leaving pure data.
- *
- * `position` is required and holds `[x, y, z, x, y, z, …]`. `index` lets vertices
- * be shared between faces. Omit `normal` and set {@link computeNormals} to have
- * them derived.
- */
+/** Raw vertex buffers: the escape hatch that makes any computable mesh expressible as pure data. `position` (`[x, y, z, ...]`) is required; `index` shares vertices between faces; omit `normal` and set {@link computeNormals} to derive them. */
 export interface BufferGeometry3D extends Passthrough3D {
     type: "buffer";
     /** Flat `xyz` triples. */
@@ -231,18 +188,7 @@ export interface BufferGeometry3D extends Passthrough3D {
     index?: ArrayLike<number>;
     /** Derive vertex normals after upload — needed for correct lighting. */
     computeNormals?: boolean;
-    /**
-     * Bump after mutating an array **in place** to force a re-upload.
-     *
-     * Reusing one `Float32Array` across frames and writing into it is the fast
-     * way to animate a mesh, but it defeats identity comparison — the renderer
-     * sees the same array object and cannot tell the contents changed. Bumping
-     * `revision` tells it explicitly.
-     *
-     * With `revision` omitted the renderer re-uploads every frame, which is
-     * correct-by-default for a buffer you built deliberately. Set
-     * {@link staticData} once the data stops changing.
-     */
+    /** Bump after mutating an array **in place** to force a re-upload: reusing one `Float32Array` across frames is the fast way to animate a mesh but defeats identity comparison. Omitted, the renderer re-uploads every frame (correct by default); set {@link staticData} once the data stops changing. */
     revision?: number;
     /**
      * Declare the arrays immutable, so the renderer compares by identity alone
@@ -255,12 +201,9 @@ export interface BufferGeometry3D extends Passthrough3D {
 export type ParametricVertex3D = Vector3 | readonly [number, number, number];
 
 /**
- * A surface sampled over a `[0,1] × [0,1]` grid — the ergonomic form of
- * {@link BufferGeometry3D} for procedural meshes (waves, terrain, ribbons).
- *
- * Core evaluates the callbacks into vertex buffers at record time, so the
- * descriptor handed to the renderer is still plain data. Re-evaluated every
- * frame, so read the node's props and the frame time inside `vertex`.
+ * A surface sampled over a `[0,1] x [0,1]` grid: the ergonomic form of {@link BufferGeometry3D} for procedural
+ * meshes. Core evaluates the callbacks into vertex buffers, so the descriptor stays plain data; it re-evaluates
+ * every frame, so read the node's props and frame time inside `vertex`.
  *
  *   Geo.parametric({
  *       segments: [70, 70],
@@ -278,37 +221,11 @@ export interface ParametricGeometry3D extends Passthrough3D {
     color?: (u: number, v: number, position: Vector3) => Color;
     /** Derive vertex normals. Almost always wanted for a lit surface. */
     computeNormals?: boolean;
-    /**
-     * A value that changes exactly when {@link vertex} would return something
-     * different — supply it and the surface is re-evaluated only when it moves.
-     *
-     * Omitted (the default) the surface is re-evaluated **every frame**, which is
-     * what makes the `read the node's props and the frame time inside vertex` contract
-     * above work without any bookkeeping. It is also expensive: `segments: 80` is
-     * ~6.6k calls to `vertex`, plus normals and a full buffer re-upload, and a
-     * frame draws for any reason at all — an unrelated node being dragged, the
-     * camera orbiting, a tween elsewhere in the scene. A surface whose shape did
-     * not change pays all of that for an identical result.
-     *
-     * `vertex` is a closure, so the renderer cannot inspect what it captured;
-     * only the author knows. Derive this from exactly those captures — the
-     * domain, the amplitude, the identity of the function being plotted — and
-     * leave it out for a surface that genuinely varies with time.
-     *
-     * Same name and same role as {@link BufferGeometry3D.revision}: the explicit
-     * "this is what changed" marker. `segments` needs no help here, being plain
-     * data the renderer already compares.
-     */
+    /** A value that changes exactly when {@link vertex} would return something different; supply it and the surface re-evaluates only when it moves. Omitted, it re-evaluates every frame (`segments: 80` is ~6.6k `vertex` calls plus normals and a buffer re-upload, on any frame at all). The renderer can't inspect what the `vertex` closure captured, so derive this from exactly those captures; omit it for a surface that varies with time. Same role as {@link BufferGeometry3D.revision}. */
     revision?: number;
 }
 
-// ─── Derived ─────────────────────────────────────────────────────────────────
-
-/**
- * The hard edges of another geometry, as line segments — a clean wireframe
- * outline without the diagonals of a triangulated one. Draw it with
- * `Graphics3D.line({ segments: true })`.
- */
+/** The hard edges of another geometry as line segments, for a clean wireframe without triangulation diagonals. Draw with `Graphics3D.line({ segments: true })`. */
 export interface EdgesGeometry3D extends Passthrough3D {
     type: "edges";
     source: Geometry3D;
@@ -354,17 +271,7 @@ export function resolveBevel3D(bevel: number | Bevel3D | undefined): Required<Be
     };
 }
 
-/**
- * Evaluate a {@link ParametricGeometry3D} into concrete vertex buffers.
- *
- * Lives in core rather than the renderer so the grid/winding maths is
- * backend-agnostic and unit-testable without a GPU. Called by the renderer at
- * draw time (not at record time) so the cost is only paid when the frame is
- * actually rasterized, and never during the asset-tracking replay.
- *
- * The grid is `(segments + 1)²` vertices wound counter-clockwise, so front faces
- * point along +Y for a surface authored in the XZ plane.
- */
+/** Evaluates a {@link ParametricGeometry3D} into vertex buffers. In core so the grid/winding maths is backend-agnostic and unit-testable without a GPU; the renderer calls it at draw time (not record time), so the cost is paid only when rasterized, never during the asset-tracking replay. The grid is `(segments + 1)²` vertices wound counter-clockwise, so front faces point along +Y for a surface in the XZ plane. */
 export function evaluateParametric(geometry: ParametricGeometry3D): BufferGeometry3D {
     const resolved = geometry.segments;
     const [uSegments, vSegments] = typeof resolved === "number"
@@ -435,15 +342,7 @@ export function evaluateParametric(geometry: ParametricGeometry3D): BufferGeomet
     };
 }
 
-/**
- * A {@link Color} as **linear-light** RGB, which is what a vertex-colour buffer
- * must hold: a renderer samples that attribute directly into its linear working
- * space, with no decode step of its own.
- *
- * `parseColor` returns gamma-encoded sRGB (hex is `byte / 255`), so the sRGB
- * transfer function has to be inverted here. Skipping this renders vertex-coloured
- * surfaces visibly washed out.
- */
+/** A {@link Color} as **linear-light** RGB, which a vertex-colour buffer must hold (the renderer samples it into linear space with no decode). `parseColor` returns gamma-encoded sRGB, so skipping the inversion renders vertex-coloured surfaces washed out. */
 function resolveLinearRgb(color: Color): readonly [number, number, number] {
     const [r, g, b] = typeof color === "string" ? parseColor(color) : color;
     return [srgbToLinear(r), srgbToLinear(g), srgbToLinear(b)];
@@ -456,10 +355,7 @@ function srgbToLinear(channel: number): number {
         : Math.pow((channel + 0.055) / 1.055, 2.4);
 }
 
-/**
- * Every geometry a mesh can be built from. Discriminated on `type`, so new
- * shapes are additive.
- */
+/** Every geometry a mesh can be built from, discriminated on `type`. */
 export type Geometry3D =
     | BoxGeometry3D
     | SphereGeometry3D

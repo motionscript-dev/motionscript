@@ -1,33 +1,14 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * A fixed hardware palette to snap colours to.
- *
- * - `'none'` — no palette; quantize each channel to `bits` instead.
- * - `'gameboy'` — the DMG's four greens.
- * - `'cga'` — IBM CGA palette 1 high-intensity (black, cyan, magenta, white).
- * - `'nes'` — a representative 16-colour cut of the NES master palette.
- */
+/** A fixed hardware palette to snap colours to: `'none'` (quantize each channel to `bits` instead), `'gameboy'` (the DMG's four greens), `'cga'` (palette 1 high-intensity: black, cyan, magenta, white), `'nes'` (a representative 16-colour cut of the NES master palette). */
 export type BitCrushPalette = "none" | "gameboy" | "cga" | "nes";
 
-/**
- * Colour-depth reduction: either quantize each channel to `bits`, or snap every
- * pixel to its nearest entry in a fixed hardware palette.
- *
- * The distinction from `posterize` and `dither` is *which* colours survive.
- * Posterize keeps an evenly-spaced grid per channel; this can instead force an
- * arbitrary, uneven, historically-specific set — which is what actually makes
- * something look like a Game Boy rather than merely low-colour.
- *
- * Pairs naturally with `dither`: quantize here, and let an ordered dither carry
- * the error so gradients survive the palette cut.
- */
+/** Colour-depth reduction: quantize each channel to `bits`, or snap each pixel to the nearest entry of a fixed hardware palette. Unlike `posterize` (an even grid per channel), it can force an arbitrary, uneven, historically specific set, which is what makes something look like a Game Boy rather than merely low-colour. Pair with `dither` so gradients survive the palette cut. */
 export interface BitCrushEffect extends ModedEffect, EffectFields<typeof bitCrushSpec.params> {
     type: "bitCrush";
 }
 
-/** The {@link BitCrushEffect} spec: its parameters, defaults and ranges. */
 export const bitCrushSpec = defineEffect({
     type: "bitCrush",
     group: "stylize",

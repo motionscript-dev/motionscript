@@ -1,11 +1,10 @@
 import type { Registry } from "./registry";
 
 /**
- * What a stored document can name and rely on, as JSON: every node type, the
- * props it declares with their defaults (a row is sparse, so a changed default
- * changes every document that leaves the prop out), and the commands it
- * publishes. Each release snapshots it beside its fixture documents, so a test
- * can tell what a change takes away from documents already saved.
+ * What a stored document can name and rely on, as JSON: every node type, its props with their defaults (a row
+ * is sparse, so a changed default changes every document that leaves the prop out), and its commands. Each
+ * release snapshots it beside its fixture documents, so a test can tell what a change takes away from
+ * documents already saved.
  */
 export interface RegistryVocabulary {
     nodes: Record<string, { properties: Record<string, { kind: string; default?: unknown }>; commands: string[] }>;
@@ -28,13 +27,11 @@ export function registryVocabulary(registry: Registry): RegistryVocabulary {
     return { nodes, commands: registry.commandKeys() };
 }
 
-/** One way `next` takes something away from what documents saved against `prev` relied on, named `type.prop`, `type.command` or `type`. */
 export interface VocabularyBreak {
     name: string;
     what: "node type removed" | "prop removed" | "default changed" | "command removed";
 }
 
-/** What `next` removed or changed relative to `prev`. Anything it adds breaks nothing saved. */
 export function vocabularyBreaks(prev: RegistryVocabulary, next: RegistryVocabulary): VocabularyBreak[] {
     const out: VocabularyBreak[] = [];
     for (const command of prev.commands) {

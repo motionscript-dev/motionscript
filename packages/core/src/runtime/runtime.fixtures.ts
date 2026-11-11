@@ -1,10 +1,6 @@
 /**
- * Shared fakes for the runtime test suite: the platform adapters (clock, audio,
- * storage, render context, measurer, catalog), each recording the calls it
- * receives, and builders for precomp results. Documents and the runtime objects
- * wired over these fakes live in `document.fixtures.ts`.
- *
- * Excluded from the published build via `src/**\/*.fixtures.ts` in tsconfig.
+ * Shared fakes for the runtime test suite: platform adapters that record the calls they receive, and builders
+ * for precomp results. Excluded from the published build via `src/**\/*.fixtures.ts` in tsconfig.
  */
 import { AudioSink } from "@/platform/audio-sink";
 import { Ticker } from "@/platform/ticker";
@@ -26,10 +22,8 @@ export class FakeMeasureContext implements MeasureContext2D {
 
 export class FakeAssetCatalog {
     /**
-     * @param videoDurations Per-src video durations (defaults to 10s for any src).
-     * @param missing        Srcs that should be treated as absent from the manifest
-     *                       so image/audio/media lookups throw, mirroring the real
-     *                       catalog's missing-asset error (see `requestImage`).
+     * `videoDurations` defaults to 10s for any src; `missing` srcs are absent from the manifest so lookups throw,
+     * as the real catalog's missing-asset error does (see `requestImage`).
      */
     constructor(
         private videoDurations: Record<string, number> = {},
@@ -51,7 +45,6 @@ export function asCatalog(c: FakeAssetCatalog): AssetCatalog {
     return c as unknown as AssetCatalog;
 }
 
-/** A real render pass that paints nothing, so a live tree walks it as it would a backend. */
 export class FakeRenderContext extends NullRenderContext {
     renderCount = 0;
     screenshotValue: string | undefined = "data:image/png;base64,FAKE";
@@ -72,18 +65,16 @@ export function asRenderContext(c: FakeRenderContext): CanvasRenderContext2D {
 export class FakeStorageAdapter {
     loadAssetCalls: { key: string; record: AssetRecord }[] = [];
     fetchAudioCalls: string[] = [];
-    /** When set, loadAsset rejects with this error (to exercise prefetch's catch). */
+    /** Exercises prefetch's catch. */
     loadShouldReject = false;
     /**
-     * When set, `warmPendingVideo()` returns this controllable promise instead of
-     * resolving immediately — lets a test park a seek on the warm re-render loop so
-     * a second, newer seek can be interleaved against it (supersession tests).
+     * A controllable promise `warmPendingVideo()` returns instead of resolving immediately, so a test can park a
+     * seek on the warm re-render loop and interleave a newer one (supersession tests).
      */
     warmGate: Promise<boolean> | null = null;
     warmPendingVideoCalls = 0;
     setPlayingCalls: boolean[] = [];
 
-    /** Keys whose load has been asked for and did not reject — resident, as far as `isLoaded` says. */
     loaded = new Set<string>();
 
     loadAsset(key: string, record: AssetRecord): Promise<void> {
@@ -109,7 +100,7 @@ export class FakeStorageAdapter {
     hasPendingDecodes(): boolean {
         return false;
     }
-    /** What `hasPendingUpgrades()` reports. `warmPendingUpgrades()` awaits {@link upgradeGate}, then lands them. */
+    /** `warmPendingUpgrades()` awaits {@link upgradeGate}, then lands them. */
     pendingUpgrades = false;
     upgradeGate: Promise<void> | null = null;
     warmPendingUpgradesCalls = 0;
@@ -126,7 +117,6 @@ export class FakeStorageAdapter {
     setPlaying(playing: boolean): void {
         this.setPlayingCalls.push(playing);
     }
-    /** Present because the real base class has it and a host calls it. */
     setCatalog(catalog: AssetCatalog): void {
         this.setCatalogCalls.push(catalog);
     }
@@ -145,7 +135,6 @@ export class FakeAudioSink extends AudioSink {
     playCalls: { time: number; speed: number; reverse: boolean }[] = [];
     stopCount = 0;
 
-    /** Seed the cache so `has()` returns true without an append round-trip. */
     seed(src: string): void {
         this.cache.add(src);
     }
@@ -174,10 +163,7 @@ export class FakeAudioSink extends AudioSink {
     }
 }
 
-/**
- * A Ticker whose time is driven manually. `simulateTick` sets the time and
- * runs the registered tick callbacks (awaiting their async work).
- */
+/** `simulateTick` sets the time and runs the tick callbacks, awaiting their async work. */
 export class FakeClock extends Ticker {
     seekCalls: number[] = [];
     disposeCount = 0;
@@ -187,12 +173,10 @@ export class FakeClock extends Ticker {
         this.setCurrentTime(t);
     }
 
-    /** Set the current time without firing tick callbacks. */
     setTime(t: number): void {
         this.setCurrentTime(t);
     }
 
-    /** Set the time then run all onTick callbacks to completion. */
     async simulateTick(t: number): Promise<void> {
         this.setCurrentTime(t);
         await this.tick();
@@ -203,8 +187,6 @@ export class FakeClock extends Ticker {
         super.dispose();
     }
 }
-
-// ─── AssetTimelineResult builders ──────────────────────────────────────────────────
 
 export function makeAudioRequest(over: Partial<AudioRequest> = {}): AudioRequest {
     return {

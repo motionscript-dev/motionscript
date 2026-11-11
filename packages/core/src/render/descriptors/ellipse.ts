@@ -13,7 +13,6 @@ export function withEllipseDescriptor(descriptor: Partial<EllipseState> & ShapeA
     const { x, y, pivot } = resolveShapeAlignment(descriptor, width, height);
     return {
         ...stripShapeAlignmentKeys(descriptor),
-        opacity: descriptor.opacity ?? 1,
         rotation: descriptor.rotation ?? 0,
         scale: descriptor.scale ?? 1,
         x,

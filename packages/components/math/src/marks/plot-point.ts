@@ -2,10 +2,10 @@ import {
     component2d,
     Graphics2D,
     Types,
-    type Color,
     type NodeOf,
+    type Color as _Color,
+
     type NormalizedColor,
-    type PaintProps,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Fill as _Fill,
     type FillResolved as _FillResolved,
@@ -22,16 +22,6 @@ import { drawLabels, loadFormulas, type Label } from "../kit/furniture";
 import { curveFor, PLANE_ENTRY, PLOT_REF, type GraphPlane } from "../kit/graph";
 import { strokeShape } from "../kit/mark";
 import { anchored } from "../kit/place";
-
-export interface PlotPointProps extends PaintProps {
-    on?: string;
-    radius?: number;
-    label?: string;
-    labelSide?: "above" | "below" | "left" | "right";
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-}
 
 const state = {
     // A dot has no outline worth trimming.

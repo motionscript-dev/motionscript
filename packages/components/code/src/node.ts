@@ -52,11 +52,7 @@ import {
 const ROW_BAND_COLOR = "rgba(255, 255, 255, 0.12)";
 const ROW_BAND_RADIUS = 6;
 
-/**
- * Which token became which across an edit, and when each part of it happens.
- * Arguments of {@link defineCode}: a strategy is a function, which a prop would
- * take for a binding, so it is part of the component's definition instead.
- */
+/** Arguments of {@link defineCode}: a strategy is a function, which a prop would take for a binding, so it belongs to the definition. */
 export interface CodeStrategies {
     /** Decides which token became which across an edit. Defaults to `defaultCodeDiff`. */
     diffStrategy?: CodeDiffStrategy;
@@ -123,12 +119,9 @@ const TARGET = Types.custom<CodeTarget | undefined>(undefined, { kind: "selector
 const TEXT = Types.text("", { multiline: true });
 
 /**
- * A `Code` whose edits are paired and timed by `strategies`. {@link Code} is
- * the one with the defaults; a project wanting another hands its own to the
- * engine in its place (the key is the same).
- *
- * A listing and nothing else: no paint slots, and no box behind the tokens. A
- * listing set on a card is a `Code` inside a hugging `Rect`.
+ * A `Code` whose edits are paired and timed by `strategies`; {@link Code} has the
+ * defaults, and a project wanting another hands its own to the engine (same key).
+ * A listing only, with no box behind it: a card is a `Code` inside a hugging `Rect`.
  */
 export function defineCode(strategies: CodeStrategies = {}) {
     const kit: Kit = {
@@ -304,8 +297,6 @@ export function findFirstRange(source: CodeSource, text: string): CodeRange | nu
     return findRangeAt(source, text, 0);
 }
 
-// ── What a listing shows ────────────────────────────────────────────────────
-
 interface Kit {
     readonly diff: CodeDiffStrategy;
     readonly phases: CodePhaseStrategy;
@@ -318,7 +309,7 @@ interface Edited {
     readonly listing: CodeListing;
 }
 
-/** What the structure resolves from. A command's snapshot and a node's own state view both are one. */
+/** What the structure resolves from; a command's snapshot and a node's state view both qualify. */
 interface ListingState {
     readonly code: CodeSource;
     readonly language: string;
@@ -350,10 +341,7 @@ interface Shown {
     readonly progress: number;
 }
 
-/**
- * A `to({ code })` mid-flight comes first: it wrote `code` after any edit
- * command did. Then an edit command in flight, then the settled listing.
- */
+/** A `to({ code })` mid-flight wins, as it wrote `code` after any edit command; then an edit in flight, then the settled listing. */
 function shown(s: ListingState, kit: Kit): Shown {
     const code = s.code;
     if (typeof code !== "string") {
@@ -375,10 +363,9 @@ function current(s: ListingState, kit: Kit): CodeListing {
 }
 
 /**
- * The structure `source` settles on. Until a listing command has acted, the
- * props are all there is; after one, it is the listing that command left,
- * recoloured keeping its ids when only the theme moved, and diffed onward
- * when the source has (a `to({ code })` that landed, a binding).
+ * The structure `source` settles on: from the props until a listing command has
+ * acted, then the listing it left, recoloured (ids kept) when only the theme moved
+ * and diffed onward when the source has.
  */
 function settled(s: ListingState, source: string, kit: Kit): CodeListing {
     const basis = basisOf(s);
@@ -391,7 +378,7 @@ function settled(s: ListingState, source: string, kit: Kit): CodeListing {
 }
 
 function basisOf(s: { readonly language: string; readonly theme: CodeTheme }): CodeTokenBasis {
-    return { language: s.language, theme: s.theme, highlighted: canHighlight(s.language, s.theme) };
+    return { language: s.language, theme: s.theme, highlighted: canHighlight(s.language) };
 }
 
 function sameBasis(a: CodeTokenBasis, b: CodeTokenBasis): boolean {
@@ -403,10 +390,7 @@ function sourceText(code: CodeSource): string {
     return typeof code === "string" ? code : code.to;
 }
 
-/**
- * Mid-tween `code` holds both sources, so the frame can draw the edit between
- * them; at either end it is a source again.
- */
+/** Mid-tween `code` holds both sources so the frame can draw the edit between them; at either end it is a source again. */
 function blendSource(from: CodeSource, to: CodeSource, t: number): CodeSource {
     const leaving = sourceText(from);
     const arriving = sourceText(to);
@@ -468,7 +452,7 @@ function buildEdit(kit: Kit, from: IdLine[], next: string, basis: CodeTokenBasis
 
 function tokenize(source: string, basis: CodeTokenBasis): IdLine[] {
     // Best effort outside the asset pipeline (a test, a headless measure): on the timeline `load` has the grammar in first.
-    if (!basis.highlighted) ensureHighlighter(undefined, [basis.language]).catch(() => { });
+    if (!basis.highlighted) ensureHighlighter([basis.language]).catch(() => { });
     return tokenizeCodeToIdLines(source, basis.language, basis.theme);
 }
 
@@ -517,8 +501,6 @@ function adoptIds(from: IdLine[], to: IdLine[]): void {
     }
 }
 
-// ── Commands ────────────────────────────────────────────────────────────────
-
 /** What a listing command writes at a point of its own eased time. */
 interface ListingWrites {
     readonly code?: string;
@@ -530,11 +512,7 @@ interface ListingWrites {
 
 type Frame = (t: number) => ListingWrites;
 
-/**
- * Each command writes the listing it acted on, at every time it is asked for,
- * so the ids it captured are the ones drawn; before it starts the timeline has
- * put back the props, and the listing is derived from them again.
- */
+/** Each command writes the listing it acted on at every time asked, so the ids it captured are the ones drawn. */
 function editFrame(kit: Kit, seen: CodeListing, source: string, basis: CodeTokenBasis): Frame | null {
     const next = normalizeSource(source);
     if (next === seen.source) return null;
@@ -670,10 +648,7 @@ function rowBandsIn(lines: IdLine[], codeRanges: CodeRange[], color: NormalizedC
     return bands;
 }
 
-/**
- * A single range (a plain object) as a one-element array; a chain or an array
- * of ranges as itself; the `{ list }` a chain serialises as, as that chain.
- */
+/** One range as a one-element array; a chain or array as itself; the `{ list }` a chain serialises as, as that chain. */
 function normalizeCodeRanges(codeRange: CodeTarget | undefined): CodeRange[] {
     const maybeIterable = codeRange as Partial<Iterable<CodeRange>>;
     if (typeof maybeIterable[Symbol.iterator] === "function") {
@@ -686,28 +661,22 @@ function normalizeCodeRanges(codeRange: CodeTarget | undefined): CodeRange[] {
 
 const grammarLoaders = new Map<string, () => Promise<void>>();
 
-// One function per language: blocks sharing a grammar declare one key, and a
-// second load function for a key already declared is ignored with a warning.
+// One function per language: a second load function for an already-declared task key is ignored with a warning.
 function grammarLoader(language: string): () => Promise<void> {
     let load = grammarLoaders.get(language);
     if (load === undefined) {
-        load = () => ensureHighlighter(undefined, [language]);
+        load = () => ensureHighlighter([language]);
         grammarLoaders.set(language, load);
     }
     return load;
 }
-
-// ── Geometry and drawing ────────────────────────────────────────────────────
 
 interface Layouts {
     readonly from: CodeLayout;
     readonly to: CodeLayout;
 }
 
-/**
- * A node's measurements, kept between frames: the advance of each token, and
- * the layouts last built, reused while what they were built from is unchanged.
- */
+/** A node's measurements between frames: token advances, and the layouts last built, reused while their inputs are unchanged. */
 interface Measured {
     readonly advances: TokenAdvanceCache;
     measurer: Measurer | null;
@@ -738,11 +707,7 @@ function metricsOf(s: LayoutState): CodeMetrics {
     };
 }
 
-/**
- * The one or two layouts a frame is drawn from: a settled frame has one, a
- * frame inside an edit two (where every token was, and where it is going).
- * `null` for a node never measured, which has nothing to measure them with.
- */
+/** One layout for a settled frame, two (where every token was, where it goes) inside an edit; `null` for a node never measured. */
 function layoutsOf(measured: Measured, view: Shown, m: CodeMetrics): Layouts | null {
     const signature = measured.advances.signature(m.fontSize, m.fontFamily);
     measured.advances.sync(signature);
@@ -817,10 +782,9 @@ function drawListing(ctx: RenderContext, s: DrawState, kit: Kit): void {
 }
 
 /**
- * A listing is grabbed by its text, line by ragged line: each line a slot as
- * wide as its ink, plus the gutter where numbers show, inside the box. Code is
- * mostly whitespace, and its empty corners would swallow clicks meant for what
- * is behind it. Mid-edit, or before it is laid out, the box.
+ * A listing is picked by its ink, line by ragged line (plus the gutter), inside the
+ * box: code is mostly whitespace and empty corners would swallow clicks meant for
+ * what is behind. Mid-edit, or before layout, the box.
  */
 function outlineOf(view: Shown, layouts: Layouts | null, m: CodeMetrics, size: Size2D): Graphics2D {
     const box = { x: 0, y: 0, width: size.width, height: size.height };

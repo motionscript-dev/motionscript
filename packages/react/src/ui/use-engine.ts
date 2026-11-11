@@ -4,12 +4,10 @@ import type { Engine } from "@motionscript/core";
 
 export interface UseEngineOptions {
     /**
-     * Rebuild the engine when any of these change, compared the way
-     * `useEffect` compares its own. The default, `[]`, builds it once.
-     *
-     * Not for the factory's closure: the latest `create` is always the one
-     * called, so an inline arrow does not rebuild anything. List only what
-     * makes a *different* engine, such as the node types or the wasm URL.
+     * Rebuild the engine when any of these change, compared as `useEffect` does.
+     * The default, `[]`, builds it once. List only what makes a *different*
+     * engine (node types, the wasm URL): the latest `create` is always the one
+     * called, so its closure is not a dependency.
      */
     deps?: DependencyList;
     /** Called when `create` rejects or throws. Defaults to `console.error`. */
@@ -21,26 +19,22 @@ function logError(error: unknown) {
 }
 
 /**
- * Builds an engine once, hands it to you when it is ready, and disposes it
- * when it is no longer wanted.
+ * Builds an engine once, `null` until it arrives, and disposes it when it is no
+ * longer wanted. What to build is the factory's job: nothing here imports a
+ * platform.
  *
  * ```tsx
  * const engine = useEngine(() => createBrowserEngine());
  * const player = useMotionPlayer({ engine, document: doc });
  * ```
  *
- * `null` until it arrives, which {@link useMotionPlayer} accepts. Nothing in
- * this package imports a platform, so what to build is the factory's job: the
- * browser's `createBrowserEngine`, a headless one, or a test double.
+ * An unmount while the factory was still pending (StrictMode does this on every
+ * dev mount) frees the engine the moment it lands; a change in `deps` disposes
+ * the old one and returns `null` until the new one is ready.
  *
- * Disposal covers the cases a hand-written effect gets wrong: an unmount while
- * the wasm was still loading (StrictMode does this on every mount in
- * development) frees the engine the moment it lands, and a change in `deps`
- * disposes the old one and returns `null` until the new one is ready.
- *
- * Call it once and hand the engine down. A second call is a second wasm module
- * and a second GL stack. Anything that must be true before a player sees the
- * engine, such as `setManifest`, belongs in `create`, not in an effect beside it.
+ * Call it once and hand the engine down: a second call is a second wasm module
+ * and renderer. Anything that must hold before a player sees the engine, such as
+ * `setManifest`, belongs in `create`, not in an effect beside it.
  */
 export function useEngine<E extends Engine = Engine>(
     create: () => E | Promise<E>,

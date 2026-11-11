@@ -13,13 +13,7 @@ import {
 import { omit } from "../kit/component";
 import type { Interval } from "../kit/coords";
 import { drawMark, inkSize, reading, traced, type MarkReading } from "../kit/mark";
-import { PLOT_COMMANDS, PLOT_STATE, PLOT_STROKE, tracePlot, type FunctionPlotProps, type PlotValues } from "./function-plot";
-
-export interface TracedPathProps extends FunctionPlotProps {
-    from?: number;
-    value?: number;
-    tail?: number;
-}
+import { PLOT_COMMANDS, PLOT_STATE, PLOT_STROKE, tracePlot, type PlotValues } from "./function-plot";
 
 const state = {
     // It reveals itself by its value, so it trims no outline of its own.
@@ -38,12 +32,7 @@ interface TrailValues extends PlotValues {
     readonly tail: number;
 }
 
-/**
- * The trail a point leaves as a value changes: the curve of its equation from
- * where the value began to where it is now. Bind `value` to a variable
- * (`"=[t]"`) and the trail grows as the variable is driven, or drive it with
- * `traceTo`; a `tail` keeps only its most recent stretch.
- */
+/** The trail a point leaves as a value changes: the curve of its equation from where the value began to where it is. */
 export const TracedPath = traced(component2d({
     key: "tracedPath",
     state,

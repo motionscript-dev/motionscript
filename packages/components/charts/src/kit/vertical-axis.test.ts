@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest"
 
 import type { Node2D, Text } from "@motionscript/sdk"
+import { enterBudget } from "@motionscript/sdk/component"
 
 import { at, layOut, scrub } from "../tests/harness"
-import { DEFAULT_Y_AXIS, enterBudget, resolveAxisConfig } from "./shared"
+import { DEFAULT_Y_AXIS, resolveAxisConfig } from "./shared"
 import { VerticalAxis } from "./vertical-axis"
 
 /**

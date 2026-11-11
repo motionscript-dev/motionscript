@@ -1,16 +1,7 @@
 /**
- * Every path-geometry operation, on one object.
- *
- * `pathOps` was already the path attribute's `resolve`/`lerp` pair; it now
- * carries the rest, which is the repo's existing shape for an attribute whose
- * operations go past interpolation — `insetsOps` is `AttributeOps & InsetsOps`,
- * `alignmentOps` is `AttributeOps & AlignmentOps`, `cornerRadiusOps` the same.
- * Every `Types.path` entry is untouched by the addition.
- *
- * Behind it is **one** pen walk. There were seven — one each in `bounds`,
- * `length`, `dash`, `sampler`, `subpath`, `morph` and the editor's vector model
- * — and they disagreed about where `Z` leaves the cursor, which control point an
- * `S`/`T` reflects, and what an arc is. The pipeline is now:
+ * Every path-geometry operation on one object, the repo's shape for an attribute whose operations go past
+ * interpolation (like `insetsOps`, `alignmentOps`). Each method is the module function of the same name. Behind it is
+ * **one** pen walk:
  *
  *     PathData ── commands ──▶ PathCommand[] ── contours ──▶ PathContour[]
  *                                                               │
@@ -18,12 +9,8 @@
  *                                     cubics ── morph ◀──────────┤
  *                                    anchors ── editing ◀────────┘
  *
- * `cubics` and `anchors` are the only two places geometry is flattened to a
- * single curve type, because a morph needs one segment kind to pair up and
- * nobody can drag an arc's handles. Everything that measures keeps the arc.
- *
- * Each method is the module function of the same name, so a call site and its
- * implementation are one grep apart.
+ * `cubics` and `anchors` are the only places geometry is flattened to one curve type (a morph needs one segment kind
+ * to pair up; nobody can drag an arc's handles). Everything that measures keeps the arc.
  */
 import { PathCommand, PathData } from "@/render/descriptors/path";
 import type { AttributeOps } from "@/attributes/shared/operators";
@@ -40,9 +27,7 @@ import type { Extents } from "@/layout/bounds";
 import { PathContour, CubicSubpath, VectorPath, PathSampler, MorphPlan, PathNormalization, PathAnchor } from "./types";
 
 
-/** The path attribute's operations beyond `resolve`/`lerp`. */
 export interface PathOps {
-    // ── Reading ────────────────────────────────────────────────────────────
     /** Parse. A `PathCommand[]` passes through by reference; nullish gives `[]`. */
     commands(d: PathData | null | undefined): PathCommand[];
     /** The normal form: absolute, shorthands expanded, grouped into contours. */
@@ -52,7 +37,6 @@ export interface PathOps {
     /** The editable anchor model. Lossy for arcs — the other boundary. */
     anchors(d: PathData | null | undefined): VectorPath;
 
-    // ── Measuring ──────────────────────────────────────────────────────────
     /** Tight box: each segment's own extrema, not its control hull. */
     bounds(d: PathData | null | undefined): Extents | null;
     /** {@link bounds} as a size; `0 x 0` for an empty path. */
@@ -62,7 +46,6 @@ export interface PathOps {
     /** Point and unit tangent at a distance along the path. */
     sampler(d: PathData): PathSampler;
 
-    // ── Rewriting ──────────────────────────────────────────────────────────
     /** The portion between two arc-length fractions. Works on strings. */
     trim(d: PathData, start: number, end: number): PathData;
     /** Only the "on" runs of a dash pattern, fit as the renderer fits it, as a `d` string. */
@@ -70,13 +53,11 @@ export interface PathOps {
     /** How far a pattern is stretched to fit one contour of a path — see `dash`. */
     dashScale(pattern: number[], contour: { length: number; closed: boolean }, total: number): number | null;
 
-    // ── Morphing ───────────────────────────────────────────────────────────
     /** A reusable correspondence between two paths. Expensive; `lerp` caches one. */
     plan(from: PathCommand[], to: PathCommand[]): MorphPlan;
     /** Sample a plan at `t`. Cheap. */
     sample(plan: MorphPlan, t: number): PathCommand[];
 
-    // ── The anchor model ───────────────────────────────────────────────────
     /** Anchors back to a `d` string. Emits only `M`/`L`/`C`/`Z`. */
     fromAnchors(path: VectorPath): string;
     /** Anchors to commands, with a transform folded into the same pass. */
@@ -90,7 +71,6 @@ export interface PathOps {
     endFit(start: Vector2, end: Vector2, to: Vector2): (p: Vector2) => Vector2;
     isEmpty(path: VectorPath): boolean;
 
-    // ── The unit box ───────────────────────────────────────────────────────
     /** Re-quote against the geometry's own bounds. */
     normalize(path: VectorPath): PathNormalization;
     /** Re-quote against a stated box — the general form of {@link PathOps.normalize}. */

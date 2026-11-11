@@ -17,36 +17,11 @@ export type InsetsProps = number | Partial<InsetsResolved> & {
     vertical?: number;
 };
 
-/**
- * Accepted shapes for a four-sided inset prop.
- *
- * The type is named for the shape (four edge insets), not for one use of it:
- * `Node2D.padding` insets a layout box in pixels, an image fill's `crop` insets a
- * source in fractions. Same value, same shorthands, same tween — different roles,
- * and each prop names its own.
- *
- * Mirrors {@link Fill}: the loose author-facing {@link InsetsProps} (a number or
- * per-side/symmetric object) plus the strict {@link InsetsResolved} — a read-back
- * resolved value structurally satisfies `InsetsProps`, so it passes through
- * `insetsOps.resolve` idempotently and can be assigned straight back.
- *
- *   node.padding = 3                          // uniform
- *   node.padding = { horizontal: 8, top: 4 }  // mixed
- *   node.padding = otherNode.padding          // resolved passes through
- */
+/** Accepted shapes for a four-sided inset prop, named for the shape, not one use (`Node2D.padding` insets a layout box in px, an image fill's `crop` a source in fractions). The loose {@link InsetsProps} (a number or per-side/symmetric object) plus the strict {@link InsetsResolved}; a read-back resolved value satisfies `InsetsProps`, so it passes through `insetsOps.resolve` idempotently. */
 export type Insets = InsetsProps | InsetsResolved;
 
 
-/**
- * The insets attribute's op set — used by `insetsProperty` and anywhere else a
- * four-sided inset (padding, an image fill's `crop`, …) resolves and tweens.
- *
- * `insetBounds` computes the inner content area produced by subtracting a
- * resolved inset from an outer size — pure, works for any width/height pair,
- * with `x`/`y` carrying the offset of the inner-area center relative to the
- * outer-area center. `outsetSize` is its inverse: adds padding back onto
- * an inner size to get the outer size that contains it.
- */
+/** The insets attribute's op set (padding, an image fill's `crop`, …). `insetBounds` subtracts a resolved inset from an outer size, with `x`/`y` the offset of the inner centre from the outer centre; `outsetSize` is its inverse. */
 
 export interface InsetsOps {
 

@@ -7,11 +7,7 @@ import type { PolygramState } from "./descriptors/polygram";
 import type { ShapeAlignmentInput } from "./descriptors/shape";
 import { PathBuilder } from "./descriptors/path-builder";
 
-/**
- * The shape ops a {@link Clip} can record — the same geometry primitives a
- * {@link Graphics2D} can draw, minus text/image (which have no clippable outline).
- * Each carries the partial descriptor state for that shape.
- */
+/** The shape ops a {@link Clip} can record: the {@link Graphics2D} geometry primitives minus text/image (no clippable outline). */
 export type ClipShapeOp =
     | { kind: "rect"; state: Partial<RectState> & ShapeAlignmentInput }
     | { kind: "ellipse"; state: Partial<EllipseState> & ShapeAlignmentInput }
@@ -20,20 +16,12 @@ export type ClipShapeOp =
     | { kind: "polygon"; state: Partial<PolygonState> & ShapeAlignmentInput }
     | { kind: "polygram"; state: Partial<PolygramState> & ShapeAlignmentInput };
 
-/**
- * A single recorded op in a {@link Clip}. Shape ops add geometry to the clip
- * region; `cut` subtracts the last-declared shape from the ones before it. The
- * renderer replays this list into a single clip path via
- * `RenderContext2D.beginClip()`.
- */
+/** One recorded op in a {@link Clip}: shape ops add geometry to the region; `cut` subtracts the last-declared shape from those before it. Replayed into a single clip path via `RenderContext2D.beginClip()`. */
 export type ClipOp = ClipShapeOp | { kind: "cut" };
 
 /**
- * A renderer-agnostic, chainable clip-region builder — `Graphics2D` for clipping.
- *
- * `Clip` records a sequence of shape declarations (and optional `cut()`s) that
- * the renderer unions into a single clip path. Multiple shapes combine, so a
- * clip can be any compound silhouette, not just a single rect or ellipse:
+ * A renderer-agnostic, chainable clip-region builder: `Graphics2D` for clipping. Shapes combine (a union, with
+ * `cut()`s subtracted), so a clip can be any compound silhouette, not just one rect or ellipse:
  *
  *   const c = new Clip()
  *       .rect({ width: 200, height: 120, cornerRadius: 16 })
@@ -44,15 +32,11 @@ export type ClipOp = ClipShapeOp | { kind: "cut" };
  *   ...draw clipped content...
  *   ctx.endClip();
  *
- * A `Clip` carries no paint — it's purely the outline. It's what a shape
- * returns from `clipSelf()` to describe both its `clip` boundary and the
- * silhouette its backdrop effects (blur, magnify, …) are confined to, so a
- * single definition drives every clip the node needs.
+ * It carries no paint, only the outline: what a shape returns from `clipSelf()` to define both its `clip` boundary and
+ * the silhouette its backdrop effects are confined to, so one definition drives every clip the node needs.
  */
 export class Clip {
     private _ops: ClipOp[] = [];
-
-    // ─── Shapes ──────────────────────────────────────────────────────────────
 
     rect(state: Partial<RectState> & ShapeAlignmentInput): this {
         this._ops.push({ kind: "rect", state });
@@ -86,19 +70,11 @@ export class Clip {
         return this;
     }
 
-    // ─── Compositing ─────────────────────────────────────────────────────────
-
-    /**
-     * Use the last-declared shape as a cutter: union the shapes before it and
-     * subtract that last shape, punching a hole in the clip region. Mirrors
-     * {@link Graphics2D.cut}.
-     */
+    /** Uses the last-declared shape as a cutter: unions the shapes before it and subtracts that one, punching a hole. Mirrors {@link Graphics2D.cut}. */
     cut(): this {
         this._ops.push({ kind: "cut" });
         return this;
     }
-
-    // ─── Consumption ─────────────────────────────────────────────────────────
 
     /** The recorded ops, in order. Consumed by `RenderContext2D.beginClip()`. */
     ops(): readonly ClipOp[] {

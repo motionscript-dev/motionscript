@@ -11,27 +11,9 @@ import type { Size2D } from "@/attributes/layout/size";
 /** Shared, since nothing here measures anything and no caller mutates it. */
 const ZERO_SIZE: Size2D = { width: 0, height: 0 };
 
-/**
- * A `RenderContext2D` that runs a render pass and rasterizes nothing.
- *
- * Every hook is inert, but the *walk* is real: `render()` recurses, `draw()`
- * still applies text defaults, and a subtree handed to
- * {@link rasterize} is still entered. So this exercises the same
- * traversal, ordering and skip rules a backend would see, without needing one.
- *
- * It exists for tests and for a host that wants to drive a scene's structure
- * without pixels. It is deliberately **not** an asset-discovery pass: assets are
- * declared by nodes (see `Node.declareAssets`), not
- * inferred from what a walk happens to paint. A context that quietly collected
- * them on the side is exactly the coupling that made a font impossible to load
- * before the layout that named it.
- */
+/** A `RenderContext2D` that runs a render pass and rasterizes nothing: every hook is inert but the *walk* is real (`render()` recurses, `draw()` applies text defaults, a {@link rasterize} subtree is entered), so it exercises the traversal, ordering and skip rules a backend would see. For tests and hosts driving structure without pixels. Deliberately **not** an asset-discovery pass: nodes declare assets (see `Node.declareAssets`), and collecting them from what a walk paints is the coupling that made a font impossible to load before the layout that named it. */
 export class NullRenderContext extends CanvasRenderContext2D {
-    /**
-     * Parent-space rects cost a resolution pass per node and nothing here reads
-     * them, so skip it — this walk is about which nodes are visited, not where
-     * they land.
-     */
+    /** Parent-space rects cost a resolution pass per node and nothing here reads them; this walk is about which nodes are visited, not where they land. */
     override readonly readsSpaceRects = false;
 
     protected drawGraphics(graphics: Graphics2D): void { }

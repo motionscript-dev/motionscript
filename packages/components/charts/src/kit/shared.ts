@@ -1,31 +1,13 @@
 /**
- * The vocabulary every chart node shares: what a *series* is, how an axis is
- * scaled and formatted, and the theme leaves each chart's own theme is assembled
- * from.
+ * What every chart shares: series, axis scaling and formatting, and the theme
+ * leaves each chart's theme is assembled from. No `Node` imports, so a host's
+ * inspector mappings can build a partial theme without the components.
  *
- * This module exists because the three chart types are three ways of drawing the
- * same table. A line chart, a bar chart and a pie chart disagree about almost
- * everything visible — polylines against columns against wedges — and agree
- * about almost everything underneath: a series is a column with a caption and a
- * paint, a marker is a number formatted one way, a legend is a swatch beside a
- * label, and a theme is a tree of paints with one mapper and one tween. Writing
- * that three times would mean three answers to "how does a chart round its axis"
- * within one app.
- *
- * Kept renderer-agnostic (no `Node` imports) so a host's own inspector
- * mappings can build a partial theme without pulling the components in.
- *
- * **Two conventions run through every resolver and lerp below**, inherited from
- * the shape system's `resolveStroke`/`resolveShadow`:
- *
- * - A **mapper** merges the author's loose, partial input onto a `previous`
- *   resolved value and resolves every leaf, so the tween always has resolved
- *   data to interpolate. It is idempotent.
- * - A **tween** interpolates two resolved values leaf by leaf. Categorical
- *   fields (`fontFamily`, `textAlign`) and fields that are `undefined` on either
- *   side **step at the midpoint**, because there is no meaningful in-between and
- *   defaulting the missing side to 0 would animate a font weight down to nothing
- *   on the way to "unset".
+ * A mapper merges partial input onto a `previous` resolved value (idempotent). A
+ * tween interpolates two resolved values leaf by leaf, but categorical fields
+ * (`fontFamily`, `textAlign`) and any field `undefined` on either side step at
+ * the midpoint: defaulting the missing side to 0 would animate a font weight
+ * down to nothing on the way to "unset".
  */
 
 import {
@@ -47,64 +29,43 @@ import {
   type TextStyle,
 } from "@motionscript/sdk"
 
-/**
- * One series of a chart: a column of the table, captioned and painted.
- *
- * `field` names the column carrying this series' values. What that becomes is
- * the chart's business — a traced polyline, a column of bars, a wedge — but the
- * three questions asked of it are the same everywhere: which column, what to
- * call it, what to paint it, and whether it is currently drawn.
- *
- * `fill` is an **override**: omit it and the series takes the theme palette's
- * entry for its own index, which is what makes a chart nobody has themed come
- * out in five distinct colours rather than five identical ones.
- */
+/** One series of a chart: a column of the table, captioned and painted. */
 export interface ChartSeries {
   /** Key into each data row for this series' value. */
   field: string
-  /** Legend caption for this series. */
   label: string
-  /**
-   * Paint override for this series' mark and its legend swatch. Omit to take
-   * the theme palette's entry for this series' index.
-   */
+  /** Overrides the theme palette's entry for this series' index, for its mark and legend swatch. */
   fill?: Fill
-  /** Whether the series shows by default. Defaults to `true`. */
+  /** Defaults to `true`. */
   enabled?: boolean
 }
 
 /** A `[min, max]` numeric range in data units. */
 export type Range = [min: number, max: number]
 
-/**
- * One axis's *data* domain — what it shows — as opposed to {@link AxisConfig},
- * which is how it's *styled*. Every field is optional: `range`/`ticks` derive
- * from the plotted data when omitted, and `label` defaults to `""`.
- */
+/** One axis's *data* domain, as opposed to {@link AxisConfig}, which is how it is styled. */
 export interface AxisDomainConfig {
-  /** Caption drawn alongside the axis. Pass `""` (the default) to hide it. */
+  /** Caption drawn alongside the axis; `""` hides it. */
   label?: string
-  /** `[min, max]` of the scale. Derived from the data bounds when omitted. */
+  /** Derived from the data bounds when omitted. */
   range?: Range
-  /** Tick values (in data units). Derived (five evenly-spaced) when omitted. */
+  /** Derived (five evenly spaced) when omitted. */
   ticks?: number[]
   /**
-   * How a tick value is written down — a `number-format` pattern such as
-   * `#,##0.00` or `$#,##0`.
-   *
-   * Here rather than in {@link AxisConfig} because it is a statement about the
-   * *numbers*, not about the ink they are set in: `$` on a revenue axis says
-   * what the column holds, and it has to survive a re-theme. It sits beside
-   * `range` and `ticks` for the same reason those do.
+   * A `number-format` pattern such as `#,##0.00` or `$#,##0`. It lives here, not
+   * in {@link AxisConfig}, because it says what the column holds and has to
+   * survive a re-theme.
    */
   format?: string
 }
 
+/** An {@link AxisDomainConfig} with `range` and `ticks` worked out. */
+export type ResolvedAxisDomain = AxisDomainConfig & { readonly range: Range; readonly ticks: number[] }
+
 /**
- * An axis domain entry's resolve: merges the author's partial input onto
- * `previous`, so a later partial `.set({ yAxis: {...} })` patches
- * `label`/`range`/`ticks` independently. `range`/`ticks` staying `undefined`
- * after the merge is the auto-derive signal the scale getters read.
+ * Merges partial input onto `previous`, so a later `.set({ yAxis: {...} })`
+ * patches `label`/`range`/`ticks` independently. An unset `range`/`ticks` is the
+ * auto-derive signal.
  */
 export function resolveAxisDomain(
   domain: AxisDomainConfig | undefined,
@@ -119,10 +80,9 @@ export function resolveAxisDomain(
 }
 
 /**
- * An axis domain entry's lerp: interpolates `range`/`ticks` numerically
- * (pairwise by index for `ticks`), so a `to` command that restates a range
- * rescales the plot smoothly. `label`, and either field when one side is in
- * auto-derive mode, step at the midpoint.
+ * Interpolates `range` and `ticks` numerically (ticks pairwise by index).
+ * `label`, `format`, and either field when one side is auto, step at the
+ * midpoint: there is no halfway between `$#,##0` and `0.0%`.
  */
 export function lerpAxisDomain(
   from: AxisDomainConfig,
@@ -133,8 +93,6 @@ export function lerpAxisDomain(
     label: t < 0.5 ? from.label : to.label,
     range: lerpOptionalRange(from.range, to.range, t),
     ticks: lerpOptionalTicks(from.ticks, to.ticks, t),
-    // Steps at the midpoint with the caption, for the same reason: there is no
-    // halfway between `$#,##0` and `0.0%`.
     format: t < 0.5 ? from.format : to.format,
   }
 }
@@ -163,32 +121,6 @@ function lerpOptionalTicks(
 }
 
 /**
- * Where a generic `to()` of an axis domain should land, given the domain as it
- * is *drawn* (`drawn`, with `range` and `ticks` resolved off the data), or
- * `undefined` when the request states neither a `range` nor `ticks` and the
- * plain property tween will do.
- *
- * The stored domain of an auto axis has no `range` and no `ticks`, and
- * {@link lerpAxisDomain} steps an unset side at the midpoint, so tweening the
- * stored value from an auto axis is a cut. The charts therefore tween between
- * resolved domains, as their zoom does; this builds the destination. A `range`
- * given without `ticks` keeps the tick *count* the axis already draws, so each
- * marker slides from its old value to its new one instead of the row popping.
- */
-export function axisTweenTarget(
-  drawn: AxisDomainConfig,
-  requested: AxisDomainConfig | undefined
-): AxisDomainConfig | undefined {
-  if (requested?.range === undefined && requested?.ticks === undefined) return undefined
-  const target = resolveAxisDomain(requested, drawn)
-  if (requested.ticks === undefined && requested.range !== undefined) {
-    const count = Math.max(2, drawn.ticks?.length ?? 2)
-    target.ticks = markerValues(requested.range, count - 1)
-  }
-  return target
-}
-
-/**
  * An axis domain part-way through a tween that leaves or reaches a `range` or
  * `ticks` left to the data: both ends as stored, and how far along. Only the
  * chart knows what an auto side draws as, so {@link settleAxisDomain} resolves
@@ -204,12 +136,11 @@ function blendOf(domain: AxisDomainConfig): AxisDomainBlend["blend"] | undefined
 }
 
 /**
- * A chart's axis entry tween: what `to({ yAxis: { range } })` moves through.
- * Between two explicit domains it is {@link lerpAxisDomain}, and a restated
- * `range` without `ticks` spreads explicit ticks across it, keeping their count.
- * When either end leaves `range` or `ticks` to the data, the value between is an
- * {@link AxisDomainBlend}, which the chart draws as the blend of what each end
- * draws: a rescale from an auto axis is continuous, not a cut at the midpoint.
+ * The axis entry tween behind `to({ yAxis: { range } })`. Between explicit
+ * domains it is {@link lerpAxisDomain}, and a restated `range` without `ticks`
+ * spreads ticks across it, keeping their count. When either end leaves `range`
+ * or `ticks` to the data, the value between is an {@link AxisDomainBlend}, so a
+ * rescale from an auto axis is continuous rather than a cut at the midpoint.
  */
 export function lerpAxisEntry(from: AxisDomainConfig, to: AxisDomainConfig, t: number): AxisDomainConfig {
   // The mapper merged the request onto `from`, so a field it left unstated is `from`'s own, by identity.
@@ -227,30 +158,21 @@ export function lerpAxisEntry(from: AxisDomainConfig, to: AxisDomainConfig, t: n
   return blend
 }
 
-/**
- * `domain` as the chart draws it: `drawn` resolves a plain domain's auto `range`
- * and `ticks` off the data, and a blend is the lerp of what its two ends draw.
- */
+/** `domain` as drawn: `drawn` resolves a plain domain's auto `range` and `ticks`; a blend is the lerp of what its ends draw. */
 export function settleAxisDomain(domain: AxisDomainConfig, drawn: (domain: AxisDomainConfig) => AxisDomainConfig): AxisDomainConfig {
   const blend = blendOf(domain)
   if (!blend) return drawn(domain)
   return lerpAxisDomain(settleAxisDomain(blend.from, drawn), settleAxisDomain(blend.to, drawn), blend.t)
 }
 
-/**
- * The low-level colour tokens the default themes are built from — a dark plot
- * panel with warm-grey axis furniture.
- */
+/** The colour tokens the default themes are built from: a dark plot panel with warm-grey axis furniture. */
 export const CHART_PALETTE = {
-  /** Fill of the plot panel behind the marks. */
   plotFill: "#15130e",
-  /** Colour of the plot's thick border. */
   borderColor: "#4a4036",
-  /** Colour of the faint grid lines spanning the plot. */
   gridColor: "#2c2820",
-  /** Colour of the numeric axis markers, axis captions, and legend labels. */
+  /** Axis markers, axis captions and legend labels. */
   markerColor: "#8a7f70",
-  /** Colour of a spotlit region's dashed rules and its wash. */
+  /** A spotlit region's dashed rules and wash. */
   regionColor: "#d99a3a",
 } as const
 
@@ -263,26 +185,12 @@ export const DEFAULT_SERIES_COLORS = [
   "#9ec85a",
 ] as const
 
-/**
- * Opacity an *un*-spotlighted series fades to — its mark and its legend entry
- * alike, so the two dim together.
- */
+/** Opacity an un-spotlighted series fades to, mark and legend entry alike. */
 export const SPOTLIGHT_DIM = 0.2
 
-/** Clamp a number into `[0, 1]` — the range every reveal signal here runs in. */
-export function clampUnit(value: number): number {
-  return value < 0 ? 0 : value > 1 ? 1 : value
-}
-
-// ---- Row readers ---------------------------------------------------------
-
 /**
- * Read a numeric field off a row, defaulting missing, non-numeric and non-finite
- * values to 0.
- *
- * A column left as strings silently plots as 0, which is why the CSV parser's
- * numeric auto-coercion matters — a quoted or unit-suffixed column won't plot
- * until it's coerced.
+ * Reads a numeric field off a row. A string column plots as 0, so a quoted or
+ * unit-suffixed column needs the CSV parser's numeric coercion first.
  */
 export function num(row: DataRecord, field: string | undefined): number {
   if (field === undefined) return 0
@@ -292,12 +200,7 @@ export function num(row: DataRecord, field: string | undefined): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0
 }
 
-/**
- * Read a field off a row as its caption — the counterpart to {@link num} for
- * the columns a chart *names* things by rather than measures them by (a bar's
- * category, a wedge's slice). A missing cell reads as empty rather than as the
- * string `"undefined"`.
- */
+/** The counterpart to {@link num} for the columns a chart names things by; a missing cell reads as empty, not `"undefined"`. */
 export function text(row: DataRecord, field: string | undefined): string {
   if (field === undefined || field === "") return ""
   const v = row[field]
@@ -305,13 +208,9 @@ export function text(row: DataRecord, field: string | undefined): string {
 }
 
 /**
- * Every column that holds numbers across `data`, in header order, skipping the
- * names in `exclude` (typically the category column).
- *
- * A column counts as numeric only if every non-empty cell in it is a number, so
- * a stray text cell leaves the column out rather than plotting zeros. This is
- * what lets a chart plot "every other column" without the author naming twenty
- * fields.
+ * Every numeric column of `data` in header order, skipping `exclude`. A column
+ * is numeric only if every non-empty cell is a number, so a stray text cell
+ * drops the column rather than plotting zeros.
  */
 export function numericFields(
   data: DataRecord[],
@@ -340,29 +239,20 @@ export function numericFields(
   })
 }
 
-// ---- Theme branches ------------------------------------------------------
-
 /** One axis's (x or y) style vocabulary. */
 export interface AxisConfig {
   /** Style of each marker along the axis. */
   labelStyle: TextStyle
-  /** Style of the axis caption. */
   titleStyle: TextStyle
-  /**
-   * This axis's direction of the plot's internal grid — weight+fill honoured,
-   * dash/cap/join ignored (grid lines are drawn as filled rects).
-   */
+  /** This axis's grid lines: weight and fill honoured, dash/cap/join ignored (they are filled rects). */
   lineStyle: Stroke
-  /**
-   * Gap between the plot and the marker row. Only the side facing the plot is
-   * read — `.top` for a horizontal axis, `.right` for a vertical one.
-   */
+  /** Gap between the plot and the marker row; only the side facing the plot is read (`.top` horizontal, `.right` vertical). */
   tickPadding: Insets
   /** Gap between the marker row and the caption, read the same side. */
   titlePadding: Insets
 }
 
-/** A legend's per-series colour swatch — a rounded chip, not the caption. */
+/** A legend's per-series colour swatch. */
 export interface LegendMarkerConfig {
   width: number
   height: number
@@ -371,12 +261,10 @@ export interface LegendMarkerConfig {
   shadow: Shadow
 }
 
-/** A legend's visual theme. */
 export interface LegendConfig {
   padding: Insets
-  /** Caption style — only the swatch carries the series colour. */
+  /** Only the swatch carries the series colour. */
   textStyle: TextStyle
-  /** Gap between legend entries. */
   itemGap: number
   markerStyle: LegendMarkerConfig
 }
@@ -402,7 +290,6 @@ const AXIS_TITLE_STYLE: TextStyle = {
 }
 const AXIS_LINE_STYLE: Stroke = { weight: 2, fill: CHART_PALETTE.gridColor }
 
-/** The default styling of a horizontal (marker row beneath the plot) axis. */
 export const DEFAULT_X_AXIS: AxisConfig = {
   labelStyle: AXIS_LABEL_STYLE,
   titleStyle: AXIS_TITLE_STYLE,
@@ -411,7 +298,6 @@ export const DEFAULT_X_AXIS: AxisConfig = {
   titlePadding: 4,
 }
 
-/** The default styling of a vertical (marker column beside the plot) axis. */
 export const DEFAULT_Y_AXIS: AxisConfig = {
   labelStyle: { ...AXIS_LABEL_STYLE, fontWeight: 500, textAlign: "right" },
   titleStyle: AXIS_TITLE_STYLE,
@@ -420,18 +306,13 @@ export const DEFAULT_Y_AXIS: AxisConfig = {
   titlePadding: 24,
 }
 
-/**
- * The default plot panel: **unpainted**, framed. A chart reads against the
- * stage rather than punching a panel into it, which is the look the family was
- * designed at.
- */
+/** Unpainted but framed: a chart reads against the stage rather than punching a panel into it. */
 export const DEFAULT_PLOT_AREA: PlotAreaConfig = {
   fill: [],
   stroke: { weight: 6, fill: CHART_PALETTE.borderColor },
   shadow: [],
 }
 
-/** The default legend styling, shared by every chart that draws one. */
 export const DEFAULT_LEGEND: LegendConfig = {
   padding: 0,
   textStyle: {
@@ -450,20 +331,15 @@ export const DEFAULT_LEGEND: LegendConfig = {
   },
 }
 
-/** The default per-series stroke palette — {@link DEFAULT_SERIES_COLORS}, drawn 4px. */
+/** {@link DEFAULT_SERIES_COLORS} as 4px strokes. */
 export const DEFAULT_SERIES_STROKES: Stroke[] = DEFAULT_SERIES_COLORS.map(
   (fill) => ({ weight: 4, fill })
 )
 
-/** The default per-series fill palette — the same colours, as solid paint. */
+/** {@link DEFAULT_SERIES_COLORS} as solid fills. */
 export const DEFAULT_SERIES_FILLS: Fill[] = DEFAULT_SERIES_COLORS.map(
   (fill) => fill
 )
-
-// ---- Theme branch resolvers ----------------------------------------------
-// Each chart type assembles its own theme out of these, so "the axis furniture"
-// means one thing across the family and each chart still declares only the
-// branches it actually draws.
 
 export function resolveAxisConfig(
   axis: Partial<AxisConfig> | undefined,
@@ -580,7 +456,7 @@ function lerpLegendMarkerConfig(
   }
 }
 
-/** A legend theme as the author may state it — every branch optional. */
+/** A legend theme as the author may state it: every branch optional. */
 export type LegendTheme = Partial<Omit<LegendConfig, "markerStyle">> & {
   markerStyle?: Partial<LegendMarkerConfig>
 }
@@ -620,7 +496,7 @@ export function lerpLegendConfig(
   }
 }
 
-/** A whole-palette override replaces the previous palette outright. */
+/** A palette override replaces the previous palette outright. */
 export function resolveSeriesStrokes(
   styles: Stroke[] | undefined,
   previous: Stroke[]
@@ -664,12 +540,9 @@ export function lerpSeriesFills(from: Fill[], to: Fill[], t: number): Fill[] {
   return out
 }
 
-// ---- Per-series paint ----------------------------------------------------
-
 /**
- * The effective stroke for series `index`: the palette's entry at
- * `index % palette.length`, with the series' own `fill`, if set, overriding just
- * the last (topmost) layer's colour.
+ * The stroke for series `index`: the palette's entry at `index % palette.length`,
+ * with the series' own `fill`, if set, replacing just the topmost layer's colour.
  */
 export function resolveSeriesStroke(
   palette: Stroke[],
@@ -691,11 +564,7 @@ export function resolveSeriesStroke(
   return next
 }
 
-/**
- * The effective *colour* for series `index` — the same colour
- * {@link resolveSeriesStroke} draws its line in — for contexts (a legend
- * swatch) that only need the fill.
- */
+/** The colour {@link resolveSeriesStroke} draws series `index` in, for a legend swatch. */
 export function resolveSeriesFill(
   palette: Stroke[],
   series: ChartSeries,
@@ -706,34 +575,9 @@ export function resolveSeriesFill(
 }
 
 /**
- * The effective paint for mark `index` of a **filled** chart (a bar, a wedge):
- * the series' own `fill` when it carries one, else the palette's entry for its
- * index, cycled.
- *
- * The stroke twin above has to reach inside a stroke to swap one layer's colour;
- * a filled mark has no such geometry wrapped around its paint, so an override is
- * simply the whole answer.
- */
-export function resolvePalettePaint(
-  palette: Fill[],
-  override: Fill | undefined,
-  index: number
-): Fill {
-  if (override != null) return override
-  if (palette.length === 0) return "white"
-  return palette[index % palette.length]
-}
-
-// ---- Scales and formatting -----------------------------------------------
-
-
-/**
- * Format a marker value: integers plain, otherwise trimmed to one decimal, or to
- * as many as the axis's tick `step` needs to tell neighbouring ticks apart.
- *
- * One decimal is the floor, so a step of 0.1 or more reads exactly as it always
- * has; a finer step (a unit axis ticked every 0.05) gets two, instead of five
- * ticks captioned `0.1 0.1 0.2 0.2 0.3`. Trailing zeros are dropped either way.
+ * Format a marker value: integers plain, otherwise one decimal, or as many as
+ * the tick `step` needs to tell neighbours apart (a unit axis ticked every 0.05
+ * gets two, not `0.1 0.1 0.2 0.2 0.3`). Trailing zeros are dropped.
  */
 export function formatMarker(value: number, step?: number): string {
   if (Number.isInteger(value)) return String(value)
@@ -775,8 +619,3 @@ export function markerValues([min, max]: Range, markerCount: number): number[] {
   const n = Math.max(2, Math.round(markerCount))
   return Array.from({ length: n + 1 }, (_, i) => min + ((max - min) / n) * i)
 }
-
-// Lifted into the engine, because a graph and a diagram want them too — see
-// `@motionscript/sdk/component`. Re-exported so a chart, and anything that
-// copied one, still reaches them where it always did.
-export { niceStep, enterBudget } from "@motionscript/sdk/component"

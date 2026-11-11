@@ -1,20 +1,8 @@
 /**
- * The chart **kit**: everything the three charts share, and the one thing a
- * copied chart does not copy.
- *
- * A copy of the line chart takes `line-chart/*` into your project and rewrites its
- * reach for these to `@motionscript/charts`, so the plot panel, the value
- * axis, the legend and the number formatting stay a real dependency. That is
- * not a size decision — it is the only arrangement that works.
- *
- * A chart identifies its own parts by component identity (`VerticalAxis.is`).
- * Copy `VerticalAxis` alongside your fork and there are now two of it — two
- * components answering one name, and whichever one your chart did not get is
- * a part it never finds, with no error. Keeping the kit external makes that
- * impossible rather than unlikely.
- *
- * It also means a fix to the axis reaches a forked chart without a re-add,
- * which is the half of the bargain you get back for it.
+ * The chart kit: what the three charts share, and what a copied chart does not
+ * copy. A chart finds its parts by component identity (`VerticalAxis.is`), so a
+ * second copy of `VerticalAxis` would be a second component that the chart never
+ * finds, with no error. Copies import the kit from `@motionscript/charts`.
  */
 export * from "./kit/shared"
 export * from "./kit/cartesian"

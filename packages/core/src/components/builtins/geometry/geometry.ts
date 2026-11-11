@@ -140,37 +140,18 @@ export type Star = NodeOf<typeof Star>;
 // What code building a shape names its props as. A call's own type is `CallProps<typeof Rect>`.
 
 export interface PaintProps extends Node2DProps {
-    /**
-     * Fill layer(s). Each item can be:
-     * - A plain CSS color string → treated as a solid fill
-     * - A fill prop object (SolidFillProp, LinearGradientFillProp, …)
-     * - An already-resolved fill object
-     * - A {@link FillChain} from the `Fills` builder (e.g. `Fills.color('red')`)
-     */
+    /** Fill layer(s): a CSS color string (solid), a fill prop object, an already-resolved fill, or a {@link FillChain} from `Fills`. */
     fill?: Fill;
-    /**
-     * Stroke layer(s): a single {@link StrokeProp}, an array of them, or an
-     * already-resolved stroke. `fill` inside each stroke accepts the same loose
-     * values as the top-level fill prop.
-     */
+    /** Stroke layer(s): a {@link StrokeProp}, an array, or already resolved; each `fill` takes the same loose values as the top-level fill. */
     stroke?: Stroke;
-    /**
-     * Shadow layer(s): a single {@link ShadowProp}, an array of them, or an
-     * already-resolved shadow. `fill` inside each shadow accepts the same loose
-     * values as the top-level fill prop.
-     */
+    /** Shadow layer(s): a {@link ShadowProp}, an array, or already resolved; each `fill` takes the same loose values as the top-level fill. */
     shadow?: Shadow;
     start?: number;
     end?: number;
 }
 
 export interface ShapeProps extends PaintProps, FlowProps {
-    /**
-     * Overlay layer(s) — the same loose values as {@link PaintProps.fill}, but
-     * painted *over* this node's fill **and** its children (clipped to the node's
-     * silhouette) while still sitting **under** the stroke. Use for textures
-     * laid across the whole subtree, e.g. a VHS-grain image or video.
-     */
+    /** Overlay layer(s), the same loose values as {@link PaintProps.fill}, painted over this node's fill **and** children (clipped to its silhouette) but under the stroke: e.g. a VHS-grain image or video across the subtree. */
     overlay?: Fill;
 }
 
@@ -201,10 +182,7 @@ export interface PolygonProps extends ShapeProps {
 export interface PolygramProps extends ShapeProps {
     /** Number of outer points. Must be ≥ 3. */
     sides: number;
-    /**
-     * Inner-to-outer radius ratio (0–1). Controls how deeply the star points are cut.
-     * At 1 the shape degenerates into a regular polygon; lower values produce sharper points.
-     */
+    /** Inner-to-outer radius ratio (0–1): how deeply the points are cut. At 1 it degenerates into a regular polygon. */
     ratio: number;
     /** Vertex rounding radius in pixels applied to both inner and outer vertices. */
     cornerRadius: number;
@@ -213,10 +191,7 @@ export interface PolygramProps extends ShapeProps {
 }
 
 export interface PathShapeProps extends ShapeProps {
-  /**
-   * The geometry, as an SVG `d` string in the node's **unit box** — see
-   * {@link PathData}.
-   */
+  /** The geometry, as an SVG `d` string in the node's **unit box** (see {@link PathData}). */
   data: PathData
 }
 
@@ -225,44 +200,21 @@ export interface PathProps extends ShapeProps {
 }
 
 /**
- * The named shapes — a triangle, a right triangle, a pentagon, a hexagon, an
- * octagon, a star — as engine nodes.
+ * The named shapes (triangle, right triangle, pentagon, hexagon, octagon, star) as engine nodes. They fill their box
+ * rather than inscribing in it like a `Polygon` (which leaves a gap under a triangle's base; see `./shape-outline`),
+ * and are separate types rather than a switch because "which shape is this" is picked once and must be visible at a
+ * glance in the layers panel.
  *
- * ## Why they aren't just a Polygon with `sides` set
+ * The silhouette goes to the renderer as a `path` op, not a `polygon`, so corner rounding is ours: the engine's
+ * polygon rounds the inscribed figure, and rounding a stretched one is a different arc at every vertex. The shape on
+ * screen and the one after converting to a Path node are also built by the same function.
  *
- * A `Polygon` inscribes its n-gon in the node's box, so a three-sided one leaves
- * a visible gap under its base (see `./shape-outline` for the full reason,
- * which is a good one: it's what makes a `sides` tween smooth). These fill the
- * box instead. The two behaviours can't be one node with a switch, because
- * "which shape is this" is the sort of thing a scene's author picks once and a
- * reader of the layers panel needs to see at a glance — so each is a type of its
- * own, named for what it draws.
- *
- * ## Why they're paths rather than polygons
- *
- * The silhouette is handed to the renderer as a `path` op rather than a
- * `polygon` one, which is what lets corner rounding be *ours*: the engine's
- * polygon geometry rounds the inscribed figure, and rounding a stretched one is
- * a different arc at every vertex. Drawing the outline ourselves also means the
- * shape a user is looking at and the shape they get when they start editing its
- * points are built by the same function, so converting to a Path node changes
- * nothing on screen.
- *
- * The outline is rebuilt per draw rather than cached against the box. It is a
- * handful of trig per vertex on a shape with at most ten of them, and the
- * alternative — a cache keyed on width, height, radius, style and the two
- * parametric fields — costs more to keep honest than it saves.
+ * The outline is rebuilt per draw, not cached: it is a handful of trig per vertex on at most ten vertices, and a cache
+ * keyed on width, height, radius, style and the two parametric fields costs more to keep honest than it saves.
  */
 export interface BoundsShapeProps extends ShapeProps {
   /** Vertex rounding radius in pixels. */
   cornerRadius: number
   /** Vertex shape: `'rounded'` (circular arc) or `'angled'` (chamfer). */
   cornerStyle: CornerStyle
-}
-
-export interface StarProps extends BoundsShapeProps {
-  /** How many points the star has. */
-  points: number
-  /** Inner radius as a fraction of the outer one — how deep the points cut. */
-  ratio: number
 }

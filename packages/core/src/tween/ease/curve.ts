@@ -1,17 +1,7 @@
 import type { EasingFunction } from "./type";
 import { describeEase } from "./describe";
 
-/**
- * A hand-drawn timing function: a chain of cubic Bézier segments from (0, 0)
- * to (1, 1), where x is progress through the duration and y how far along the
- * animation is. This is what an `EaseSpec` of `kind: "custom"` carries inline
- * in its `args`, so a drawn curve travels with the document rather than
- * needing a host to register a function under a key. Two things keep the
- * drawing a function of x, and both are enforced here rather than trusted: a
- * control point is clamped into its own segment's x span, and an absent handle
- * resolves to the Catmull-Rom tangent. y is deliberately not clamped to [0, 1]
- * — overshooting the target and settling back is a real move.
- */
+/** A hand-drawn timing function: cubic Bézier segments from (0, 0) to (1, 1), x being progress and y how far along the animation is. It is what an `EaseSpec` of `kind: "custom"` carries inline, so a drawn curve travels with the document. Two things keep it a function of x, both enforced: a control point is clamped into its own segment's x span, and an absent handle resolves to the Catmull-Rom tangent. y is deliberately unclamped: overshooting and settling back is a real move. */
 
 /** A point in curve space, or a handle offset within it. */
 export interface CurveVector {
@@ -71,12 +61,7 @@ function bezier(a: number, b: number, c: number, d: number, t: number): number {
     return mt * mt * mt * a + 3 * mt * mt * t * b + 3 * mt * t * t * c + t * t * t * d;
 }
 
-/**
- * The curve parameter at which a segment reaches `x`. Bisection rather than
- * Newton: x is monotonic along the segment, so halving converges, where Newton
- * needs a derivative that goes to zero exactly at the flat ends an ease-in-out
- * is made of.
- */
+/** The curve parameter at which a segment reaches `x`: bisection rather than Newton, since x is monotonic along the segment while Newton's derivative goes to zero at the flat ends of an ease-in-out. */
 export function curveSegmentT(segment: EaseCurveSegment, x: number): number {
     let low = 0;
     let high = 1;

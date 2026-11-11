@@ -1,5 +1,5 @@
 /** A seeded generator in `[0, 1)` — mulberry32, so a shuffle is the same on every frame and every machine. */
-export function seededRandom(seed: number): () => number {
+function seededRandom(seed: number): () => number {
   let a = Math.floor(seed) >>> 0
   return () => {
     a = (a + 0x6d2b79f5) >>> 0

@@ -4,30 +4,13 @@ import { loopPasses, loopPhase, loopSpan, type LoopSpec } from "./loop";
 import { LerpFunction } from "./lerp";
 import { Steppable, TweenStepper } from "./stepper";
 
-/**
- * A named animation, as a value: `at(t)` is a pure function of normalized time,
- * so a host can ask what frame N looks like without replaying frames 0..N-1.
- *
- * `at` is only pure once *built* — a factory reads the node's current props to
- * fix its start value, so a host evaluating out of order must build commands in
- * timeline order, leaving each node in the state the previous command left it.
- */
+/** A named animation as a value: `at(t)` is a pure function of normalized time, so a host can ask what frame N looks like without replaying 0..N-1. Pure only once *built* (a factory reads the node's current props to fix its start), so out-of-order evaluation must build commands in timeline order. */
 export interface Command<P = Record<string, unknown>> extends Steppable {
     readonly duration: number;
     at(t: number): Partial<P>;
 }
 
-/**
- * The single argument a `command()` method takes: its own params under `data`,
- * plus shared timing. One object (not positional args) so a manifest can read a
- * command's shape off `T` directly.
- *
- * `duration`/`data` are optional for a command with a synchronous mode
- * (`restore`, `addChildAt`) or nothing to carry (`restore`).
- *
- * `R` differs from `T` when `data` is loose author input (`Fill`) but `lerp`
- * operates on its resolved form (`FillResolved[]`).
- */
+/** The single argument a `command()` method takes: its own params under `data` plus shared timing, one object so a manifest can read a command's shape off `T`. `duration`/`data` are optional for synchronous or data-free commands. `R` differs from `T` when `data` is loose author input (`Fill`) but `lerp` works on its resolved form. */
 export interface CommandArgs<T = Record<string, unknown>, R = T> {
     data?: T;
     duration?: number;
@@ -37,12 +20,7 @@ export interface CommandArgs<T = Record<string, unknown>, R = T> {
 
 const SETTLES = Symbol("settles");
 
-/**
- * Mark a command whose `at` reads nothing but what it captured when it was built
- * and does nothing but write prop slots, its end values all at `at(1)`. A
- * timeline may then hold it finished by writing those end values instead of
- * running it — see `document/settled-index`.
- */
+/** Marks a command whose `at` reads only what it captured when built and only writes prop slots, end values all at `at(1)`, so a timeline may hold it finished by writing those instead of running it (see `document/settled-index`). */
 export function settling<C extends { at(t: number): unknown }>(command: C): C {
     (command as unknown as Record<symbol, boolean>)[SETTLES] = true;
     return command;
@@ -52,7 +30,6 @@ export function settles(command: { at(t: number): unknown }): boolean {
     return (command as unknown as Record<symbol, boolean>)[SETTLES] === true;
 }
 
-/** True when `x` is a {@link Command} rather than a plain object. */
 export function isCommand(x: unknown): x is Command {
     return typeof (x as Command)?.at === "function"
         && typeof (x as Command)?.duration === "number";
@@ -74,14 +51,7 @@ export function makeCommand<P>(
     return fromValue(target, duration, value);
 }
 
-/**
- * A {@link Command} whose product is a side effect rather than props — for state
- * a `set()` can't reach (a private field, an array element).
- *
- * `apply` must be a pure function of `t`: it can run for any `t`, any number of
- * times, in any order. Accumulating (`x += …`) instead of assigning from `t`
- * looks right forwards and drifts the instant anything scrubs.
- */
+/** A {@link Command} whose product is a side effect (state a `set()` can't reach). `apply` must be a pure function of `t`: it runs for any `t`, any number of times, in any order, so accumulating (`x += …`) drifts the instant anything scrubs. */
 export function driveCommand(
     duration: number,
     apply: (t: number) => void,
@@ -94,19 +64,7 @@ export function driveCommand(
     }, duration, easing);
 }
 
-/**
- * Repeat `command`, as one seekable {@link Command} that lasts for every pass.
- *
- * Wrapping rather than a parameter on each command is what makes this work for
- * every command there is: the inner one is asked for the frame at a pass-local
- * `t`, so it never learns it is being repeated, and its easing applies per pass
- * — which is what "three bounces" means, rather than one ease stretched over
- * three of them.
- *
- * `fill` is the seconds an unlimited loop (`count: null`) may cover; it defaults
- * to a single pass, since a command built outside a timeline has no clip to fill.
- * A stamp (`duration === 0`) is returned untouched: there is no pass to repeat.
- */
+/** Repeats `command` as one seekable {@link Command} lasting every pass. Wrapping works for every command: the inner one is asked for a pass-local `t`, and its easing applies per pass (three bounces, not one ease over three). `fill` is the seconds an unlimited loop may cover (default one pass). A stamp (`duration === 0`) is returned untouched. */
 export function loopCommand<P>(command: Command<P>, loop: LoopSpec, fill?: number): Command<P> {
     const one = command.duration;
     if (one <= 0 || loopPasses(loop) <= 1) return command;
@@ -134,12 +92,7 @@ export function loopCommand<P>(command: Command<P>, loop: LoopSpec, fill?: numbe
     };
 }
 
-/**
- * Run `commands` one after another as a single seekable {@link Command}.
- *
- * A finished child holds at `at(1)` rather than being dropped, so a prop
- * written early keeps its value once its step ends.
- */
+/** Runs `commands` one after another as a single seekable {@link Command}; a finished child holds at `at(1)`, so an early-written prop keeps its value. */
 export function commandSequence<P>(
     target: CommandTarget<P>,
     ...commands: Command<P>[]
@@ -178,7 +131,6 @@ export function commandParallel<P>(
     });
 }
 
-/** Wrap a pure `t → props` function into the full {@link Command} surface. */
 function fromValue<P>(
     target: CommandTarget<P>,
     duration: number,
@@ -188,11 +140,7 @@ function fromValue<P>(
 
     return {
         duration,
-        // Writes as well as returns. A host evaluating a timeline calls `at(t)`
-        // and discards what comes back — `ToCommand` has always applied its step
-        // as a side effect, and a `Command` built from a `t → props` function
-        // that only *described* its frame was silently inert everywhere a
-        // document is seeked, while behaving correctly under `_stepper`.
+        // Writes as well as returns: a host evaluating a timeline calls `at(t)` and discards the result, so a command that only *described* its frame was inert wherever a document is seeked.
         at(t: number): Partial<P> {
             const props = value(t);
             target.set(props);

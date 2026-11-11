@@ -1,25 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { CENTER, defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Kaleidoscope — the content is folded into `segments` mirrored wedges around
- * `center`, so one slice of the source is repeated around a circle.
- *
- * Only the wedge starting at `angle` is ever read; every other segment is that
- * same wedge reflected or rotated into place. That is why rotating `angle`
- * animates so well — the pattern stays locked while *different source material*
- * sweeps through the wedge, which is the effect people actually want and is not
- * the same as rotating the node.
- *
- * `segments` counts the mirrored pairs, so 6 gives the familiar snowflake. It is
- * discrete: a tween snaps rather than passing through a fractional fold, which
- * would tear.
- */
+/** Folds the content into `segments` mirrored wedges around `center`. Only the wedge starting at `angle` is read; the rest are it reflected or rotated, so animating `angle` keeps the pattern locked while *different source material* sweeps through (not the same as rotating the node). `segments` counts mirrored pairs (6 is the snowflake) and is discrete: a fractional fold would tear, so a tween snaps. */
 export interface KaleidoscopeEffect extends ModedEffect, EffectFields<typeof kaleidoscopeSpec.params> {
     type: "kaleidoscope";
 }
 
-/** The {@link KaleidoscopeEffect} spec: its parameters, defaults and ranges. */
 export const kaleidoscopeSpec = defineEffect({
     type: "kaleidoscope",
     group: "distort",
@@ -29,10 +15,7 @@ export const kaleidoscopeSpec = defineEffect({
     // `segments` is discrete, so the neutral is the continuous blend.
     neutral: { amount: 0 },
     params: {
-        /**
-         * Number of mirrored wedges; below 2 is a no-op. Discrete: a fractional
-         * wedge cannot tile the circle, so it rounds and a tween snaps.
-         */
+        /** Number of mirrored wedges; below 2 is a no-op. Discrete: a fractional wedge cannot tile the circle, so it rounds and a tween snaps. */
         segments: param.number({ default: 6, normalize: Math.round, min: 2, max: 64, step: 1, lerp: "step", inline: true }),
         /** Rotation of the pattern in degrees — animate to sweep the source. */
         angle: param.number({ default: 0, step: 1, unit: "deg" }),

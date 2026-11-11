@@ -18,11 +18,9 @@ export interface RadialArrangement {
 }
 
 /**
- * The angle of each of `count` slots, clockwise from twelve o'clock. A full
- * circle divides by the count, so the last item does not land on the first; an
- * arc divides by one less, so both ends get an item. In between the divisor
- * slides from one to the other as the arc closes — steeply, so an arc is an arc
- * until it is nearly whole, and a sweep animated to 360 lands without a jump.
+ * Clockwise from twelve o'clock. A full circle divides by the count (the last item
+ * must not land on the first), an arc by one less (both ends get an item); the divisor
+ * slides between them steeply as the arc closes, so a sweep animated to 360 lands without a jump.
  */
 export function radialAngles(arrangement: RadialArrangement, count: number, time: number): number[] {
   const sweep = arrangement.sweep

@@ -141,8 +141,6 @@ describe("LineChart commands", () => {
   })
 })
 
-// ---- Resting state and the entrance's first frame ---------------------------
-
 /** The chart's parts, read off the frame it built: its last child. */
 function partsOf(node: LineChart) {
   const frame = node.children[node.children.length - 1] as Node2D
@@ -241,8 +239,6 @@ describe("LineChart.enter: the finished chart at rest, armed on its first frame"
     expect(node.regionReveal).toBe(1)
   })
 })
-
-// ---- Repeated zoom cycles ----------------------------------------------------
 
 /** A chart with a numeric x field, so both axes zoom as numbers. */
 function numeric(props: Record<string, unknown> = {}): LineChart {
@@ -414,8 +410,6 @@ describe("LineChart.zoomTo and resetZoom", () => {
     close(yRange(node), forward)
   })
 })
-
-// ---- A plain `to` of an axis -------------------------------------------------
 
 describe("LineChart's axes under a plain to", () => {
   /** `to(data)` built and seeked to `t` of a 1 s move. */

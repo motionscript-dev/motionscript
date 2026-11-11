@@ -26,30 +26,15 @@ export interface NodeAudioProps extends NodeProps {
 }
 
 /**
- * The third scene graph: things that make sound.
+ * The third scene graph: things that make sound. Sibling to `Node2D`/`Node3D` and thin because a sounding node has
+ * no box and no place in space; it inherits tree, identity, props, commands, context and clock from {@link Node} and
+ * adds a level, stereo position, mute, effect chain and how it enters and leaves. Two kinds: `SoundNode` (a leaf that
+ * plays a file) and `AudioBus` (a group everything beneath it feeds).
  *
- * Sibling to `Node2D` and `Node3D`, and thin for the same reason they are thick
- * — a node that makes sound has no box and no place in space, so it inherits the
- * tree, identity, props, commands, context and clock from {@link Node} and adds
- * only what every audible thing has: a level, a position in the stereo field, a
- * mute, an effect chain, and how it enters and leaves.
- *
- * Two concrete kinds, and no more: `SoundNode` is a leaf that plays a file, and
- * `AudioBus` is a group that everything beneath it feeds. That is the whole
- * vocabulary of a mixer, and it is deliberately the same shape as the visual
- * trees — a group node and a drawing node — because the thing being described is
- * the same: what exists, and what is under what.
- *
- * ### Levels are ramps, not tweens
- *
- * `volume` and `pan` are {@link Param}, so a fade is a ramp (`ramp(1, 0, 1)`)
- * or a `transitionOut` rather than a `to()`. That is not a
- * limitation being worked around, it is what the two mechanisms mean: a tween
- * writes a prop once per *frame*, while sound is scheduled once, ahead of
- * time, and then runs at 48 kHz. A per-frame write reaches the graph on the one
- * frame that built the request and never again — so a `to({ volume })` would
- * read as animated on the timeline and render flat. `_prepareStep` refuses it
- * instead.
+ * Levels are ramps, not tweens: `volume` and `pan` are {@link Param}, so a fade is a ramp (`ramp(1, 0, 1)`) or a
+ * `transitionOut`. A tween writes a prop once per frame, while sound is scheduled once ahead of time and runs at
+ * 48 kHz, so a per-frame write would reach the graph on one frame only and `to({ volume })` would read as animated on
+ * the timeline yet render flat. `_prepareStep` refuses it.
  */
 export class NodeAudio<P extends NodeAudioProps = NodeAudioProps> extends Node<P> {
     get dimension(): NodeDimension { return "audio"; }
@@ -63,9 +48,7 @@ export class NodeAudio<P extends NodeAudioProps = NodeAudioProps> extends Node<P
 
     constructor(props?: NodeConfig<any, P>) {
         super(props);
-        // Deferred to here rather than run by `super()`: a subclass's field
-        // initializers only run once `super()` has returned, so applying props
-        // any earlier would write into cells that do not exist yet.
+        // Deferred from `super()`: field initializers run after it, so applying props earlier would write into cells that don't exist yet.
         this.initProps(props);
         this.adoptChildrenProp(props);
     }
@@ -76,16 +59,11 @@ export class NodeAudio<P extends NodeAudioProps = NodeAudioProps> extends Node<P
     }
 
     /**
-     * This bus's identity in the platform's graph: one chain, which everything
-     * under it feeds.
-     *
-     * The authored id, and the structural path for a bus built in code rather
-     * than from a document row. Neither answer alone works, and being wrong is
-     * silent either way — the string reaches `AssetManager.stableKey`, so one
-     * that changes re-fetches and re-schedules every clip on the bus. A document
-     * row's id is fixed for the document's life, while its child index moves as
-     * `syncPresence` adds and removes siblings; a code-built bus has no authored
-     * id, but its parent builds it in the same slot every time.
+     * This bus's identity in the platform's graph: one chain everything under it feeds. The authored id, else the
+     * structural path for a code-built bus. Neither alone works, and being wrong is silent (the string reaches
+     * `AssetManager.stableKey`, so a changing one re-fetches and re-schedules every clip on the bus): a document row's id
+     * is fixed while its child index moves as `syncPresence` adds and removes siblings, whereas a code-built bus has no
+     * authored id but its parent builds it in the same slot every time.
      *
      * @internal
      */
@@ -94,14 +72,7 @@ export class NodeAudio<P extends NodeAudioProps = NodeAudioProps> extends Node<P
         return `bus:${typeof authored === "string" ? authored : structuralPathOf(this)}`;
     }
 
-    /**
-     * Refuse a tween on a level, naming the curve that does work.
-     *
-     * Loud rather than silent because the failure is otherwise invisible: the
-     * command runs its full duration, the timeline draws a bar, and the render
-     * is at one flat level. See the class docblock for why the two mechanisms
-     * cannot agree.
-     */
+    /** Refuses a tween on a level, naming the curve that works. Loud because the failure is otherwise invisible: the command runs its duration and the timeline draws a bar, yet the render is flat (see the class docblock). */
     override _prepareStep(to: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper {
         for (const key of TWEEN_REFUSED) {
             if (!(key in to)) continue;
@@ -126,13 +97,7 @@ declareMembers(NodeAudio, {
 
 const TWEEN_REFUSED = ["volume", "pan", "speed"] as const;
 
-/**
- * The buses a node feeds, **source-adjacent first**.
- *
- * Walks up the audio ancestors only: the walk stops at the first non-audio
- * parent, which is the `Canvas2D` scene root, because a scene root is not a bus
- * — it has no level of its own and nothing to mix.
- */
+/** The buses a node feeds, **source-adjacent first**. Walks audio ancestors only, stopping at the first non-audio parent (the `Canvas2D` root), which is not a bus. */
 export function busPathOf(node: NodeAudio, spanOf: SpanOf): AudioBusStop[] | undefined {
     const stops: AudioBusStop[] = [];
     let parent = node.parent;
@@ -151,15 +116,7 @@ export function busPathTo(bus: NodeAudio, spanOf: SpanOf): AudioBusStop[] {
 /** When a node is in the tree, in clip seconds: the span a bus stop carries. */
 export type SpanOf = (node: Node) => Readonly<NodeSpan>;
 
-/**
- * The bus in `from`'s scene with node id `id`, or `null`.
- *
- * What lets something outside the audio tree feed a bus — a `Video`, whose audio
- * is welded to its picture and so cannot be parented under one. It names the bus
- * by the same id a `SoundNode` under that bus writes in its `parentId`, because
- * it is asking the same question: which bus. A `key` would be a second
- * vocabulary for it, and an optional one.
- */
+/** The bus in `from`'s scene with node id `id`, or `null`. Lets something outside the audio tree (a `Video`, whose audio is welded to its picture) feed a bus by the same id a `SoundNode` under it writes in `parentId`, rather than a second vocabulary. */
 export function findBusById(from: Node, id: string): NodeAudio | null {
     let root: Node = from;
     while (root.parent) root = root.parent;
@@ -192,14 +149,7 @@ function stopOf(bus: NodeAudio, spanOf: SpanOf): AudioBusStop {
     };
 }
 
-/**
- * A node's child-index path from the root of its tree, joined with ".".
- *
- * The same identity `nodePath` gives the runtime, computed bottom-up because a
- * node declaring its audio knows its parents and not its index in a
- * walk. Stable across a rebuild for an unchanged tree, which is the property
- * both a bus id and a clip's request id need.
- */
+/** A node's child-index path from its tree root, joined with ".": the identity `nodePath` gives the runtime, computed bottom-up since a node declaring audio knows its parents, not its walk index. Stable across a rebuild of an unchanged tree, which both bus ids and clip request ids need. */
 export function structuralPathOf(node: Node): string {
     const parts: string[] = [];
     let current: Node | null = node;

@@ -1,16 +1,4 @@
-/**
- * The half of the server engine that runs **inside the page**.
- *
- * esbuild bundles this together with the project's own entry into one IIFE, so
- * the browser loads a single file: no module graph over HTTP, no dev server, no
- * dependency-optimizer scan. That scan — not "a browser" — is what made the
- * previous Playwright driver slow enough to delete, and it is the one piece of
- * it deliberately not recovered.
- *
- * Everything below runs with the DOM, WebGPU, WebCodecs and Web Audio available,
- * which is the entire point: it is the *browser* engine, driven remotely, so a
- * server export renders the same 3D and the same audio a preview does.
- */
+/** The half of the server engine that runs **inside the page**. esbuild bundles this with the project's entry into one IIFE (no module graph over HTTP, no dev server, no dependency-optimizer scan, which is what made the previous driver slow). It runs with DOM, WebGPU, WebCodecs and Web Audio, so a server export renders the same 3D and audio as a preview. */
 import {
     ConcatMismatchError,
     concatVideoSegments,
@@ -39,13 +27,7 @@ import type {
 export interface ProjectModule {
     /** What a request that brings no document renders. */
     default?: ProjectDocument;
-    /**
-     * A record naming each node type's key outright, or an array of components
-     * mixed freely with TS source strings (a string default-exports a
-     * component, whose `key` is its key — see `createBrowserEngine`'s `nodes`
-     * option, which this is bundled into the page and handed to unchanged).
-     * Only the array form accepts a string.
-     */
+    /** A record naming each node type's key, or an array of components mixed with TS source strings (a string default-exports a component whose `key` is its key; see `createBrowserEngine`'s `nodes`, to which this is handed unchanged). Only the array form accepts a string. */
     nodes?: Record<string, unknown> | readonly unknown[];
     shaders?: Record<string, unknown>;
 }
@@ -75,19 +57,10 @@ function fromBase64(base64: string): Uint8Array {
     return bytes;
 }
 
-/**
- * Build the engine and publish the bridge.
- *
- * The ready signal is an attribute on `<html>` rather than a resolved promise:
- * the driver has to wait for it from *outside* the page, and an attribute is the
- * one thing it can poll without evaluating anything.
- */
+/** Builds the engine and publishes the bridge. The ready signal is an attribute on `<html>`, not a promise: the driver waits from *outside* the page, and an attribute is what it can poll without evaluating anything. */
 export async function installBridge(project: ProjectModule): Promise<void> {
     const engine: Engine = await createBrowserEngine({
-        // Origin-relative, served by the driver's route handler. Explicit rather
-        // than defaulted because the default resolves against `import.meta.url`,
-        // which an IIFE bundle does not have. Same reasoning for
-        // `compilerWasmUrl` — only ever read if `project.nodes` names a string.
+        // Origin-relative, served by the driver's route handler; explicit because the default resolves against `import.meta.url`, which an IIFE lacks. Same for `compilerWasmUrl`, only read if `project.nodes` names a string.
         rendererWasmUrl: RENDERER_WASM,
         compilerWasmUrl: "/esbuild.wasm",
         nodes: project.nodes as never,
@@ -96,10 +69,7 @@ export async function installBridge(project: ProjectModule): Promise<void> {
         fps: project.default?.fps,
     });
 
-    // Optional. An entry that exports only `nodes` and `shaders` is complete:
-    // those are *code*, which is the one thing that cannot cross a process
-    // boundary and so the only thing the bundle exists to carry. Documents are
-    // data and arrive per request.
+    // Optional: an entry exporting only `nodes` and `shaders` is complete, since those are *code* (the one thing that cannot cross a process boundary); documents arrive per request.
     const fallback = project.default;
 
     window.__motionScript = {
@@ -184,11 +154,7 @@ export async function installBridge(project: ProjectModule): Promise<void> {
         console.warn(`[render issue] ${issue.kind}${issue.feature ? ` ${issue.feature}` : ""}${issue.nodeId ? ` on ${issue.nodeId}` : ""}: ${issue.message}`);
     }
 
-    /**
-     * The document a request brought, else the entry's default. A string is the
-     * document's JSON text, which crosses into the page far faster than the
-     * object Playwright would otherwise walk.
-     */
+    /** The request's document, else the entry's default. A string is the document's JSON text, which crosses into the page far faster than the object Playwright would walk. */
     function sourceOf(request: { document?: unknown }): unknown {
         const source = typeof request.document === "string" ? JSON.parse(request.document) : request.document ?? fallback;
         if (!source) {

@@ -94,14 +94,13 @@ the generator or its tables (`scripts/lib/*.mjs`) and regenerate.
 ```bash
 pnpm --filter @motionscript/geography generate  # network on first run, ~8 GB heap
 pnpm --filter @motionscript/geography verify    # checks data/v1/
-pnpm --filter @motionscript/geography test      # node --test over scripts/tests
-node scripts/fixture.mjs <out-dir>              # cut the geo kit's test fixture from data/
+pnpm --filter @motionscript/geography test      # vitest, then node --test over scripts/tests
+node scripts/fixture.mjs <out-dir>              # cut this package's test fixture from data/
 node --max-old-space-size=8192 scripts/generate.mjs --update-lock   # re-pin sources
 ```
 
 `prepack` (before `npm pack` and `publish`) generates `data/` when it is missing,
-then runs `verify`; the package has no `build`, `lint` or `typecheck`. The geo kit's
-committed fixture is `components/geography/src/border/tests/fixtures/v1/`.
+then runs `verify`. This package's committed fixture is `components/geography/src/border/tests/fixtures/v1/`.
 
 ### Layout and keys
 
@@ -141,7 +140,7 @@ data/v1/states/<prefix>.json        every subdivision whose code starts with <pr
 - **No file is over 1.5 MiB**, so any one can be fetched alone (`verify`).
 - **The format is in the path.** A change in meaning or removal of a field is a new
   `data/v<N>/`, with `FORMAT` in `scripts/generate.mjs` and `scripts/verify.mjs` and
-  `GEO_DATA_FORMAT` in the geo kit's `src/border/format.ts` moving together; adding
+  `GEO_DATA_FORMAT` in this package's `src/border/format.ts` moving together; adding
   a field is compatible with the kit's decoder, which ignores unknown ones.
 - **`verify` checks structure and coverage, not provenance**: arc and index
   integrity, endpoints, size, and minimum counts (249 countries, the 50 US states

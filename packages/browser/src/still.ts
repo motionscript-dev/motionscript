@@ -25,18 +25,11 @@ const EMPTY_MANIFEST: AssetManifest = { image: {}, video: {}, audio: {}, font: {
 /** Anything a still can be rendered from: a project, or a lone still or composition as the one track of one. */
 export type StillSource = ProjectDocument | VisualDocument;
 
-/**
- * Which frame to draw, in whatever form is most convenient — a global frame
- * index, the timeline's first or last frame, or a `FrameSpec`.
- */
+/** Which frame to draw: a global frame index, the timeline's `"first"`/`"last"`, or a `FrameSpec`. */
 export type FrameRef = FrameSpec | number | "first" | "last";
 
 export interface StillRendererOptions extends RendererWasmOption {
-    /**
-     * The canvas to draw into. Omit and the renderer creates its own hidden one
-     * and removes it on {@link StillRenderer.dispose} — which is what a one-shot
-     * capture wants, while a live preview passes the canvas it already shows.
-     */
+    /** Omit and the renderer makes its own hidden canvas and removes it on {@link StillRenderer.dispose}; a live preview passes the one it shows. */
     canvas?: HTMLCanvasElement;
     /** Output resolution in pixels, whatever the document asks for. Defaults to 1920×1080. */
     viewport?: Size2D;
@@ -47,14 +40,7 @@ export interface StillRendererOptions extends RendererWasmOption {
     manifest?: AssetManifest;
     /** Theme for a document that carries none of its own. */
     theme?: Theme;
-    /**
-     * The vocabulary a document is compiled against.
-     *
-     * Defaults to a fresh one carrying only what the library ships — a renderer
-     * owns its registry the way an engine does, so a host with custom node types
-     * passes the same one it gave its engine rather than relying on whatever a
-     * module happened to register.
-     */
+    /** The vocabulary a document compiles against. Defaults to a fresh one with only what the library ships; a host with custom node types passes the same one it gave its engine. */
     registry?: Registry;
 }
 
@@ -63,25 +49,18 @@ export interface RenderStillOptions {
     frame?: FrameRef;
     /** Seconds into the timeline, converted with the document's fps. Wins over `frame`. */
     time?: number;
-    /**
-     * Draw this call at this pixel ratio instead of the renderer's. **Resizes the
-     * canvas and rebuilds the surface**, and the next call without it rebuilds
-     * them back, so keep it off the per-edit path — render the preview at its
-     * normal scale and pass this only when capturing at a higher one.
-     */
+    /** Draw this call at this pixel ratio instead of the renderer's. **Resizes the canvas and rebuilds the surface**, and the next call without it rebuilds back: keep it off the per-edit path. */
     scale?: number;
     /** What the renderer drew but not as the document says; a lost GPU device throws `RenderBackendError` instead. */
     onIssue?: (issue: RenderIssue) => void;
 }
 
 export interface EncodeStillOptions {
-    /** Defaults to `"png"`. */
     format?: ScreenshotFormat;
     /** JPEG quality in [0,1]; ignored for png. Defaults to 0.92. */
     quality?: number;
 }
 
-/** Normalize the many ways a caller can name a frame into the engine's own form. */
 export function stillFrameSpec(options: RenderStillOptions | undefined, fps: number): FrameSpec {
     if (options?.time !== undefined) return frameSpecAtTime(options.time, fps);
     const frame = options?.frame;
@@ -96,39 +75,24 @@ function mimeOf(format: ScreenshotFormat): string {
 }
 
 /**
- * A long-lived single-frame renderer.
- *
- * Where `exportScreenshot` is one frame from a standing start, this keeps the
- * expensive things — the renderer module, its GPU surface, and the
- * storage adapter's decoded-asset cache — alive across calls, so re-rendering
- * after an edit costs discovering one frame and a draw rather than a new GL
- * context. That is
- * the difference between a one-off capture and a builder that repaints while the
- * user types.
- *
- * It is also the *same* draw: {@link render} goes through `drawFrameAt`, which is
- * the pass the video exporter runs per frame. A preview and its exported image
- * cannot drift apart, because there is only one path.
+ * A long-lived single-frame renderer. Where `exportScreenshot` is one frame from a standing start, this keeps the
+ * renderer module, its GPU surface and the storage adapter's decode cache alive, so re-rendering after an edit costs
+ * discovering one frame and a draw. {@link render} goes through `drawFrameAt`, the pass the video exporter runs per
+ * frame, so a preview and its exported image cannot drift apart.
  *
  * ```ts
  * const renderer = await createStillRenderer({ canvas, viewport, manifest, theme });
- * await renderer.render({ kind: "still", nodes: [
- *     { id: "bg", type: "rect", parentId: null, layerOrder: 0, props: { width: 1920, height: 1080, fill: "bg" } },
- * ] });
+ * await renderer.render({ kind: "still", nodes: [...] });
  * const blob = await renderer.toBlob({ format: "png" });
  * renderer.dispose();
  * ```
  *
- * **The theme is process-global in core.** {@link render} re-applies the
- * document's (or this renderer's) before every draw, so two renderers with
- * different themes still each draw correctly; but anything else that calls
- * `setTheme` between a render and a read of the surface will have been
- * overwritten by the next render.
+ * **The theme is process-global in core.** {@link render} re-applies its theme before every draw, so renderers with
+ * different themes each draw correctly, but anything else calling `setTheme` between a render and a read of the
+ * surface is overwritten by the next render.
  *
- * **One surface, one caller at a time.** A render and the encode of its result
- * are two calls, and the next render draws over the surface between them, so
- * callers that share a renderer without knowing of each other must be queued —
- * as `session.image()` queues its calls.
+ * **One surface, one caller at a time.** The next render draws over the surface between a render and the encode of
+ * its result, so callers sharing a renderer must be queued (as `session.image()` does).
  */
 export class StillRenderer {
     readonly canvas: HTMLCanvasElement;
@@ -138,7 +102,6 @@ export class StillRenderer {
     private catalog: AssetCatalog;
 
     private readonly backend: BrowserRenderer;
-    /** True when we made the canvas and must clean it up. */
     private readonly ownsCanvas: boolean;
 
     private viewportValue: Size2D;
@@ -187,10 +150,7 @@ export class StillRenderer {
     get fps(): number { return this.fpsValue; }
     get scale(): number { return this.scaleValue; }
 
-    /**
-     * Draw one frame of `source`, at this renderer's viewport — the surface is
-     * the output, so it wins over any size the document asks for.
-     */
+    /** The surface is the output, so this renderer's viewport wins over any size the document asks for. */
     async render(source: StillSource, options?: RenderStillOptions): Promise<DrawnFrame> {
         this.assertLive();
         const scale = options?.scale ?? this.scaleValue;
@@ -216,10 +176,8 @@ export class StillRenderer {
         return frame;
     }
 
-    /** Theme for a document that carries none of its own. */
     setTheme(theme?: Theme): void { this.theme = theme; }
 
-    /** Swap the asset manifest, keeping every decode already cached. */
     setManifest(manifest: AssetManifest): void {
         this.assertLive();
         this.manifest = manifest;
@@ -227,15 +185,7 @@ export class StillRenderer {
         this.storageAdapter.setCatalog(this.catalog);
     }
 
-    /**
-     * Change the output resolution.
-     *
-     * A full reset, unlike {@link setManifest}: the viewport clamps the resolution
-     * images are decoded *at*, so cached decodes made for the old one would be
-     * soft at the new one, and the render context's handlers captured the adapter
-     * when they were built — so both are rebuilt. Call this when the output format
-     * changes, not per edit.
-     */
+    /** A full reset, unlike {@link setManifest}: cached decodes were made at the old viewport's resolution and the render context's handlers captured the adapter, so both are rebuilt. Call when the output format changes, not per edit. */
     setViewport(viewport: Size2D): void {
         this.assertLive();
         if (viewport.width === this.viewportValue.width && viewport.height === this.viewportValue.height) {
@@ -258,7 +208,6 @@ export class StillRenderer {
         return new Uint8Array(await blob.arrayBuffer());
     }
 
-    /** Encode the frame currently on the surface. */
     toBlob(options?: EncodeStillOptions): Promise<Blob> {
         const canvas = this.snapshotToCanvas();
         const { format = "png", quality = 0.92 } = options ?? {};
@@ -273,7 +222,6 @@ export class StillRenderer {
         });
     }
 
-    /** Encode the frame currently on the surface. */
     toDataURL(options?: EncodeStillOptions): string {
         const { format = "png", quality = 0.92 } = options ?? {};
         return this.snapshotToCanvas().toDataURL(mimeOf(format), quality);
@@ -286,11 +234,7 @@ export class StillRenderer {
         if (this.ownsCanvas) this.canvas.remove();
     }
 
-    /**
-     * Read the surface back into a 2D canvas, which is what actually encodes: the
-     * renderers ship no image encoders, so the browser's own codecs are the only
-     * ones available.
-     */
+    /** Reads the surface back into a 2D canvas, which does the encoding: the renderers ship no image encoders. */
     private snapshotToCanvas(): HTMLCanvasElement {
         this.assertLive();
         if (!this.drawn) throw new Error("Nothing has been rendered yet.");
@@ -304,7 +248,6 @@ export class StillRenderer {
         this.canvas.height = this.viewportValue.height * this.surfaceScale;
     }
 
-    /** Resize the backing store and mount a fresh surface over it. */
     private remount(scale: number): void {
         this.surfaceScale = scale;
         this.drawn = false;

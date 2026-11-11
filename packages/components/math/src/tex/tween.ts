@@ -6,9 +6,7 @@ export interface AnimatedToken {
     path: LatexToken["path"];
     /** The top-level term it belongs to at rest; a morph matches on it. */
     term?: string;
-    /** 0 = invisible, 1 = fully visible */
     opacity: number;
-    /** Interpolated position offset applied during morph (x, y in formula space). */
     x: number;
     y: number;
     /** Mid-morph: the index of the token it was in the formula left, and of the one it becomes. */
@@ -17,20 +15,13 @@ export interface AnimatedToken {
 }
 
 /**
- * How a `Latex` node interpolates between two formulas: given the tokens it
- * currently holds and the tokens the target formula resolves to, return a
- * pure `t → AnimatedToken[]` frame function. `prepareLatexTween` below is the
- * default implementation (exported as `defaultLatexMorph`) — pass a `morph`
- * of this shape to `<Latex>` to replace it with your own.
+ * How a `Latex` node interpolates between two formulas: a pure `t -> tokens`
+ * frame function. {@link defaultLatexMorph} is the default; pass a `morph` to replace it.
  */
 export type LatexMorphStrategy = (from: LatexToken[], to: LatexToken[]) => (t: number) => AnimatedToken[];
 
-/** The coordinate pairs a `PathCommand` can carry, as (x, y) field names. */
 const POINT_FIELDS = [["x", "y"], ["x1", "y1"], ["x2", "y2"]] as const;
 
-/**
- * Compute the centroid of a token's path for position-based interpolation.
- */
 function centroid(path: LatexToken["path"]): { x: number; y: number } {
     let sx = 0, sy = 0, n = 0;
     for (const cmd of path) {
@@ -43,13 +34,7 @@ function centroid(path: LatexToken["path"]): { x: number; y: number } {
     return n > 0 ? { x: sx / n, y: sy / n } : { x: 0, y: 0 };
 }
 
-/**
- * A glyph's on-screen extent, as the diagonal of its control-point bbox.
- *
- * Only ever used as a *ratio* between the two ends of a match, so the fact that
- * control points overshoot the true outline doesn't matter: both ends overshoot
- * by the same proportion, because they are the same outline.
- */
+/** The diagonal of a path's control-point bbox: only ever a ratio between the two ends of a match, so the control-point overshoot cancels. */
 function extent(path: LatexToken["path"]): number {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const cmd of path) {
@@ -68,14 +53,9 @@ function extent(path: LatexToken["path"]): number {
 }
 
 /**
- * Whether two paths can be interpolated point by point: same command count,
- * same command types in the same order.
- *
- * For a matched pair this is the overwhelmingly common case, and not by luck.
- * Tokens are matched on the character their MathJax glyph id decodes to, and
- * that id *is* the key into the `<defs>` dictionary — so the same character in
- * two formulas is the same outline, emitted twice under two different
- * transforms. Same commands, different numbers.
+ * Whether two paths share command count and types. A matched pair almost always
+ * does: a character's glyph id keys one outline in `<defs>`, emitted under two
+ * transforms.
  */
 function isPointwiseCompatible(from: PathCommand[], to: PathCommand[]): boolean {
     if (from.length !== to.length) return false;
@@ -86,13 +66,9 @@ function isPointwiseCompatible(from: PathCommand[], to: PathCommand[]): boolean 
 }
 
 /**
- * Lerp two structurally identical paths point by point.
- *
- * When the two ends are the same outline under two affine transforms — which is
- * what a matched glyph is — this is exact at both ends *and* correct in
- * between: `(1-t)·A·q + t·B·q = ((1-t)A + tB)·q`, and a blend of two
- * uniform-scale-plus-translate transforms is another one. The intermediate is a
- * properly formed glyph at an intermediate size, not a smeared one.
+ * Lerp two structurally identical paths point by point. Matched glyphs are one
+ * outline under two uniform-scale-plus-translate transforms, and a blend of
+ * those is another, so the in-between is a well-formed glyph at an in-between size.
  */
 function lerpPath(from: PathCommand[], to: PathCommand[], t: number): PathCommand[] {
     const out: PathCommand[] = new Array(from.length);
@@ -112,14 +88,9 @@ function lerpPath(from: PathCommand[], to: PathCommand[], t: number): PathComman
 }
 
 /**
- * Scale a path uniformly about (cx, cy), then translate by (dx, dy).
- *
- * The fallback for a matched pair whose paths *aren't* structurally identical —
- * a stretchy delimiter assembled from a different number of pieces at the two
- * sizes, say. Point-by-point lerping is impossible there, so the target outline
- * is shrunk to the source's size instead and grown back over the morph: the
- * size still changes continuously, which is the whole point, at the cost of
- * showing the target's shape from the start.
+ * Scale a path about (cx, cy), then translate by (dx, dy). The fallback for a
+ * matched pair whose paths differ in structure (a stretchy delimiter built from
+ * different pieces): the target outline starts at the source's size and grows back.
  */
 function scaleAbout(
     path: PathCommand[],
@@ -146,7 +117,6 @@ function scaleAbout(
  * write first: the `x^2` of `x^2 + 1` travels to the `x^2` of `y = x^2` as
  * one, instead of lending its `2` to whichever `2` comes first. What is left
  * is matched greedily by character alone.
- * Returns three lists: matched pairs, deleted tokens (only in from), added tokens (only in to).
  */
 function matchTokens(
     from: LatexToken[],
@@ -184,38 +154,21 @@ function matchTokens(
 }
 
 /**
- * Precompute a formula-change morph and return a pure `t → AnimatedToken[]`
- * frame function:
- * - Deleted tokens fade out over the first half of `t`.
- * - Matched tokens are interpolated — place *and* size — across the full range
- *   of `t`.
- * - Added tokens fade in over the second half of `t`.
+ * Precompute a formula-change morph as a pure `t -> tokens` frame function:
+ * deleted tokens fade out over the first half, matched tokens interpolate place
+ * and size across the whole range, added tokens fade in over the second half.
  *
- * A matched glyph is rarely the same size at both ends: the `2` of `b^2` is set
- * at script size and the `2` of `2a` at full size, and a `\frac`'s arguments
- * come back a step smaller than the same symbols on a baseline. So the
- * interpolation has to carry the glyph's *geometry*, not just where it sits.
- * Sliding the target outline from one centroid to the other — which is all this
- * used to do — put the whole size change between the last static frame and the
- * morph's first one: a snap to the new size, then a smooth glide to the new
- * place. Point-by-point lerping (see {@link lerpPath}) is that same
- * interpolation generalised from a glyph's average point to all of them, and it
- * costs nothing extra — the path was already being rebuilt every frame to apply
- * the slide.
- *
- * `t` is normalized `[0, 1]` and already eased — the caller (a `Command`'s
- * `at`) applies easing once, up front, the same eased value driving every
- * concurrent aspect of the morph (props, intrinsic size, tokens) in lockstep.
+ * Size must be interpolated with place: a matched glyph is rarely the same size
+ * at both ends (the `2` of `b^2` against the `2` of `2a`), and sliding only the
+ * centroid would snap to the new size before the glide. `t` is already eased.
  */
-export function prepareLatexTween(
+export function defaultLatexMorph(
     from: LatexToken[],
     to: LatexToken[],
 ): (t: number) => AnimatedToken[] {
     const { matched, deleted, added } = matchTokens(from, to);
 
-    // Per-match interpolation data. Structure compatibility, and the centroids
-    // and extents behind the fallback, are properties of the pair rather than
-    // of `t`, so they are settled once here instead of at every frame.
+    // Properties of the pair rather than of `t`, settled once.
     const fromIndex = new Map(from.map((token, i) => [token, i]));
     const toIndex = new Map(to.map((token, i) => [token, i]));
     const matchedData = matched.map(({ from: f, to: t }) => {
@@ -229,7 +182,6 @@ export function prepareLatexTween(
             token: t.token,
             fromCenter: centroid(f.path),
             toCenter: centroid(t.path),
-            /** Only the fallback needs it, and only as a ratio. */
             fromScale: toExtent > 0 ? extent(f.path) / toExtent : 1,
         };
     });
@@ -237,15 +189,13 @@ export function prepareLatexTween(
     return (t: number): AnimatedToken[] => {
         const tokens: AnimatedToken[] = [];
 
-        // Matched tokens: interpolate place and size across the full duration.
         for (const m of matchedData) {
             if (m.pointwise) {
                 tokens.push({
                     token: m.token,
                     path: lerpPath(m.fromPath, m.toPath, t),
                     opacity: 1,
-                    // Baked into the path above: the lerp carries every point,
-                    // which includes where the glyph sits.
+                    // The lerp already carries where the glyph sits.
                     x: 0,
                     y: 0,
                     from: m.from,
@@ -275,7 +225,6 @@ export function prepareLatexTween(
             });
         }
 
-        // Deleted tokens: fade out over the first half, gone by t=0.5
         for (const d of deleted) {
             const fadeT = Math.min(t * 2, 1);
             tokens.push({
@@ -288,7 +237,6 @@ export function prepareLatexTween(
             });
         }
 
-        // Added tokens: fade in over the second half, starting at t=0.5
         for (const a of added) {
             const fadeT = Math.max(t * 2 - 1, 0);
             tokens.push({
@@ -304,5 +252,3 @@ export function prepareLatexTween(
         return tokens;
     };
 }
-
-export { prepareLatexTween as defaultLatexMorph };

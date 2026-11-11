@@ -1,15 +1,8 @@
 /**
- * How a chart writes a number down.
+ * How a chart writes a number down: one formatter driven by a **pattern**, with the named formats being patterns
+ * too (`currency` is `$#,##0.00`), so a preset and a free-text pattern can't drift apart.
  *
- * One formatter, driven by a **pattern**, and the named formats are patterns
- * too — `currency` is `$#,##0.00` and nothing more. That is the whole design:
- * a dropdown of four presets and a free-text pattern are otherwise two features
- * that drift, one of them gaining a thousands separator or a negative sign the
- * other never hears about. Here the preset *is* the custom case with the
- * pattern filled in, so there is one set of rules to get right.
- *
- * The grammar is the spreadsheet one, because that is where the numbers come
- * from and what an author already knows:
+ * The grammar is the spreadsheet one:
  *
  * | Pattern      | 1234.5    | 0.07   |
  * | ------------ | --------- | ------ |
@@ -19,39 +12,23 @@
  * | `0.#%`       | `123450%` | `7%`   |
  * | `#,##0 kg`   | `1,235 kg` | `0 kg` |
  *
- * - `0` is a digit that is always written, `#` one that is written only when
- *   the number needs it. So `0.00` pads to two decimals and `0.##` trims.
- * - A `,` anywhere in the integer run turns grouping on; where it sits doesn't
- *   matter, since `#,##0` and `#,###,##0` mean the same thing to everyone who
- *   writes them.
- * - `%` scales by 100 as well as printing — that is what makes it a percent
- *   rather than a suffix, and it is why `0.07` under `0.#%` is `7%`. A column
- *   that is *already* in percent points wants `#,##0'%'`: quoted, so the sign
- *   is printed and nothing is scaled.
- * - Anything else is literal, before the digits or after them. Quote it to be
- *   sure — `'#'#,##0` prints a leading hash.
+ * - `0` is a digit always written, `#` one written only when needed (`0.00` pads, `0.##` trims).
+ * - A `,` anywhere in the integer run turns grouping on; where it sits doesn't matter.
+ * - `%` scales by 100 as well as printing (`0.07` under `0.#%` is `7%`). A column already in percent points wants
+ *   `#,##0'%'`: quoted, so the sign prints and nothing scales.
+ * - Anything else is literal, before or after the digits. Quote it to be sure: `'#'#,##0` prints a leading hash.
  *
- * Deliberately **not** `Intl.NumberFormat`. Its output is locale-dependent, and
- * a chart is a picture with a fixed layout: the same project rendering
- * `1,234.50` on the author's machine and `1.234,50` on the export box is a
- * silently different image, and the wider string can reflow an axis. What an
- * author wants here is the format they *typed*.
+ * Deliberately **not** `Intl.NumberFormat`: its output is locale-dependent, and a chart is a picture with a fixed
+ * layout (`1,234.50` on the author's machine and `1.234,50` on the export box is a silently different image that
+ * can reflow an axis).
  */
 
 /** The named formats the inspector offers, plus the escape hatch. */
 export type NumberFormatName = "plain" | "number" | "currency" | "percent" | "custom"
 
-/**
- * The pattern behind each named format.
- *
- * `plain` is the historic behaviour — integers bare, everything else to one
- * decimal — kept as the default so no existing chart re-labels itself. The rest
- * are the three formats a chart of money, counts or shares actually needs.
- */
+/** The pattern behind each named format. `plain` is the historic behaviour (integers bare, else one decimal), the default so no existing chart re-labels itself. */
 export const NUMBER_PATTERNS: Record<Exclude<NumberFormatName, "custom">, string> = {
-  // Ungrouped on purpose: this is what `formatMarker` did before there were
-  // formats at all, and it is the default, so every chart already drawn keeps
-  // the labels it has. Grouping is what the reader picks `number` for.
+  // Ungrouped on purpose: the default, so every chart already drawn keeps its labels; grouping is what `number` is for.
   plain: "#.#",
   number: "#,##0.##",
   currency: "$#,##0.00",
@@ -130,14 +107,7 @@ function literal(text: string): string {
   return out
 }
 
-/**
- * The `[start, end)` of the pattern's digit run — the first stretch of `#0,.`
- * outside quotes.
- *
- * Quote-aware, so `'#'#,##0` reads its leading hash as text and its run as the
- * three characters after it. Without that, a quoted `#` would be taken for the
- * number and the real digits for a suffix.
- */
+/** The `[start, end)` of the pattern's digit run (the first stretch of `#0,.` outside quotes). Quote-aware, so `'#'#,##0` reads its leading hash as text rather than taking it for the number. */
 function digitRun(pattern: string): [number, number] | null {
   let quoted = false
   let start = -1
@@ -155,18 +125,11 @@ function digitRun(pattern: string): [number, number] | null {
   return start < 0 ? null : [start, pattern.length]
 }
 
-/**
- * Split `pattern` into its literal edges and its digit run.
- *
- * Everything before the run is a prefix and everything after it a suffix, which
- * is what lets `$#,##0.00`, `#,##0 kg` and `€ #,##0` all work without the
- * language needing a quoting rule for the parts that are only ever text.
- */
+/** Splits `pattern` into literal edges and a digit run: everything before is prefix, after is suffix, so `$#,##0.00`, `#,##0 kg` and `€ #,##0` work without a quoting rule for text. */
 function parsePattern(pattern: string): ParsedPattern {
   const run = digitRun(pattern)
   if (!run) {
-    // No digits at all is not a number format. Fall back rather than print the
-    // literal for every tick, which would read as an axis of identical labels.
+    // No digits is not a number format; fall back rather than print the same literal for every tick.
     return DEFAULT_PARSED
   }
 
@@ -213,21 +176,14 @@ function group(digits: string): string {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
-/**
- * `value` written the way `pattern` says.
- *
- * A non-finite value prints empty rather than `NaN`: a tick with no number
- * behind it is a tick that shouldn't caption itself, and `NaN` on an axis reads
- * as a broken chart rather than as missing data.
- */
+/** `value` written as `pattern` says. A non-finite value prints empty: `NaN` on an axis reads as a broken chart rather than missing data. */
 export function formatNumber(value: number, pattern: string): string {
   if (!Number.isFinite(value)) return ""
   const p = parsed(pattern)
 
   const scaled = p.percent ? value * 100 : value
   const rounded = scaled.toFixed(p.maxFrac)
-  // Rounding is what decides the sign, not the input: -0.001 at two decimals is
-  // "0.00", and printing it as "-0.00" puts a minus sign on an axis's zero.
+  // Rounding decides the sign, not the input: -0.001 at two decimals is "0.00", not "-0.00".
   const negative = rounded.startsWith("-")
   const [rawInt = "0", rawFrac = ""] = (
     negative ? rounded.slice(1) : rounded
@@ -243,13 +199,7 @@ export function formatNumber(value: number, pattern: string): string {
   return `${sign}${p.prefix}${body}${p.suffix}`
 }
 
-/**
- * The pattern a `(format, custom)` pair names.
- *
- * A blank custom pattern falls back to the plain one rather than to the empty
- * string, so an axis switched to Custom is readable while it is being typed
- * into rather than a column of nothing.
- */
+/** The pattern a `(format, custom)` pair names. A blank custom pattern falls back to the plain one, so an axis switched to Custom is readable while being typed into. */
 export function patternFor(
   format: NumberFormatName | undefined,
   custom: string | undefined

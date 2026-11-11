@@ -1,55 +1,20 @@
-/**
- * Backend seams for 3D runtime and resource loading.
- *
- * Core describes 3D scenes but cannot load a 3D runtime — `three` lives in the
- * rendering backend, and core must not import it. So core declares the capability
- * here and the backend registers an implementation at module load, the same shape
- * as the other platform seams (`StorageAdapter`, `Ticker`) and the same
- * "core owns *whether*, backend owns *how*" split as `EffectSurface`.
- *
- * With no backend registered every function here is an inert no-op, which is what
- * keeps core usable headless and in unit tests.
- */
+/** Backend seams for 3D runtime and resource loading. Core describes 3D scenes but can't import `three`, so it declares the capability here and the backend registers an implementation at module load (like `StorageAdapter`, `Ticker`; "core owns *whether*, backend owns *how*"). With no backend registered every function is an inert no-op, keeping core usable headless and in unit tests. */
 
 import type { Disposer } from "@/assets/record";
 
 /** Loads the backend's 3D runtime. Idempotent and memoised by the backend. */
 export type Canvas3DWarmup = () => Promise<void>;
 
-/**
- * Loads a resource core can't decode itself. `kind` tells the backend which
- * loader to use; the returned {@link Disposer} frees the parsed result when the
- * asset window moves past it.
- */
+/** Loads a resource core can't decode itself; `kind` picks the backend loader and the returned {@link Disposer} frees the parsed result when the asset window moves past it. */
 export type Canvas3DResourceKind = "hdr" | "exr" | "gltf" | "obj" | "cubemap";
 export type Canvas3DResourceLoader = (kind: Canvas3DResourceKind, src: string) => Promise<Disposer>;
 
-/**
- * The cache key a loader-backed resource is tracked and stored under.
- *
- * Stated once here because **two packages have to agree on it and neither owns
- * both ends**: core's `declare3DResources` declares the key into the asset
- * scope, and the backend's loader is what later looks the parsed result up by
- * it. A backend that built the string itself would be one refactor away from
- * caching under a key nothing ever reads — a model that silently never appears,
- * which is precisely the failure this seam exists to make impossible.
- *
- * `src` goes last and unescaped: it is a URL and may hold colons of its own, so
- * a reader has to split on the first two separators and take the remainder
- * whole rather than splitting on every one — see {@link parseCanvas3DResourceKey}.
- */
+/** The cache key a loader-backed resource is tracked and stored under. Stated once because **two packages must agree and neither owns both ends**: core's `declare3DResources` declares the key into the asset scope and the backend's loader later looks the parsed result up by it; a hand-built string could cache under a key nothing reads (a model that silently never appears). `src` goes last and unescaped (a URL may hold colons), so a reader splits on the first two separators and takes the rest whole; see {@link parseCanvas3DResourceKey}. */
 export function canvas3DResourceKey(kind: Canvas3DResourceKind, src: string): string {
     return `three:${kind}:${src}`;
 }
 
-/**
- * The `kind` and `src` a {@link canvas3DResourceKey} was built from, or `null`
- * when the string is not one.
- *
- * The inverse exists because the backend's warm queue holds keys rather than
- * pairs: `warmPendingCanvas3D` has to re-drive whatever is outstanding knowing
- * only what it was handed.
- */
+/** The `kind` and `src` a {@link canvas3DResourceKey} was built from, or `null` when the string isn't one. The backend's warm queue holds keys, not pairs, and `warmPendingCanvas3D` re-drives whatever is outstanding from only that. */
 export function parseCanvas3DResourceKey(
     key: string,
 ): { kind: Canvas3DResourceKind; src: string } | null {
@@ -66,29 +31,20 @@ export function parseCanvas3DResourceKey(
 let warmup: Canvas3DWarmup | null = null;
 let resourceLoader: Canvas3DResourceLoader | null = null;
 
-/**
- * Register the 3D runtime loader. Called by the rendering backend before it draws,
- * never at import — authors never call this.
- */
+/** Registers the 3D runtime loader; called by the backend before it draws, never at import. */
 export function registerCanvas3DWarmup(fn: Canvas3DWarmup): void {
     warmup = fn;
 }
 
-/**
- * Register the loader for resource types core can't decode (HDR/EXR env maps,
- * glTF/OBJ models). Called once by the rendering backend.
- */
+/** Registers the loader for resource types core can't decode (HDR/EXR env maps, glTF/OBJ models); called once by the backend. */
 export function registerCanvas3DResourceLoader(fn: Canvas3DResourceLoader): void {
     resourceLoader = fn;
 }
 
 /**
- * Kick off loading the 3D runtime.
- *
- * `Canvas3D.declareAssets()` loads it through the asset timeline — *before* any
- * frame is drawn — so by the time the first 3D frame paints the runtime is
- * normally already resident and the render pass stays synchronous. The renderer
- * still has a per-frame fallback for the case where it isn't.
+ * Kicks off loading the 3D runtime. `Canvas3D.declareAssets()` loads it through the asset timeline before any frame
+ * draws, so the first 3D frame normally finds it resident and the render pass stays synchronous (the renderer keeps
+ * a per-frame fallback).
  *
  * @internal
  */

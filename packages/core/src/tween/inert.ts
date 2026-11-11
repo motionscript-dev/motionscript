@@ -1,20 +1,7 @@
 import { TweenStepper } from "./stepper";
 import type { Command } from "./command";
 
-/**
- * An animation that occupies its duration and writes nothing.
- *
- * What a command on an **unmounted** node becomes. A node that is not in the
- * tree has no box, no surface and no timeline, so a tween on it has nothing to
- * be a tween *of* — but it still has a duration, and the timeline slot it was
- * placed in is entitled to have that duration pass. Returning a real command of
- * the right length keeps the scene's timing intact where throwing would abort
- * the pass and where returning nothing would silently shorten it.
- *
- * The failure this turns into a no-op is a real one — animating a node the
- * author forgot to `add` — and it reads as "nothing moved", which is what the
- * author sees on screen anyway.
- */
+/** An animation that occupies its duration and writes nothing: what a command on an **unmounted** node becomes. Such a node has no box, surface or timeline, but the timeline slot it was placed in is entitled to its duration; a real command of the right length keeps the scene's timing where throwing would abort the pass and returning nothing would silently shorten it. The failure (animating a node the author forgot to `add`) reads as "nothing moved", which is what shows on screen anyway. */
 export function inertCommand<P>(target: object, duration: number): Command<P> {
     void target;
     return {

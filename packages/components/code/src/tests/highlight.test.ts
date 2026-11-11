@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import {
     DEFAULT_LANGS,
-    DEFAULT_THEMES,
     canHighlight,
     ensureHighlighter,
     highlightToTokens,
@@ -32,7 +31,7 @@ afterEach(() => {
 describe('languages and their names', () => {
     it('loads a grammar by its name, case-insensitively', async () => {
         expect(canHighlight('css')).toBe(false);
-        await ensureHighlighter(undefined, ['CSS']);
+        await ensureHighlighter(['CSS']);
         expect(canHighlight('css')).toBe(true);
         expect(canHighlight('CSS')).toBe(true);
         expect(canHighlight('Css')).toBe(true);
@@ -47,13 +46,13 @@ describe('languages and their names', () => {
         ['yml', 'yaml'],
         ['shell', 'javascript'],
     ])('resolves the alias %s to %s', async (alias, target) => {
-        await ensureHighlighter(undefined, [alias]);
+        await ensureHighlighter([alias]);
         expect(canHighlight(alias)).toBe(true);
         expect(canHighlight(target)).toBe(true);
     });
 
     it('colours an alias exactly as the language it names: shell is JavaScript, there being no shell grammar', async () => {
-        await ensureHighlighter(undefined, ['shell', 'js', 'ts']);
+        await ensureHighlighter(['shell', 'js', 'ts']);
         const source = 'let x = foo("a", 1);';
         expect(highlightToTokens(source, 'shell')).toEqual(highlightToTokens(source, 'javascript'));
         expect(highlightToTokens(source, 'JS')).toEqual(highlightToTokens(source, 'javascript'));
@@ -63,18 +62,18 @@ describe('languages and their names', () => {
 
     it('says an alias is loaded only once the language behind it is', async () => {
         expect(canHighlight('html')).toBe(false);
-        await ensureHighlighter(undefined, ['HTML']);
+        await ensureHighlighter(['HTML']);
         expect(canHighlight('html')).toBe(true);
     });
 
     it.each(['xml', 'java', 'php', 'jsx', 'json'])('has a grammar for %s', async (language) => {
-        await ensureHighlighter(undefined, [language]);
+        await ensureHighlighter([language]);
         expect(canHighlight(language)).toBe(true);
         expect(warn).not.toHaveBeenCalled();
     });
 
     it('colours a language it has loaded, and leaves one it has not as a single colour', async () => {
-        await ensureHighlighter(undefined, ['typescript']);
+        await ensureHighlighter(['typescript']);
         const colours = (language: string) => new Set(highlightToTokens('const a = 1;', language).flat().map((token) => token.color));
         expect(colours('typescript').size).toBeGreaterThan(2);
         expect(colours('perl')).toEqual(new Set([DefaultHighlightStyle.defaultColor]));
@@ -85,7 +84,7 @@ describe('canHighlight', () => {
     it('is false for a language whose grammar has not loaded, and for one that does not exist', async () => {
         expect(canHighlight('rust')).toBe(false);
         expect(canHighlight('klingon')).toBe(false);
-        await ensureHighlighter(undefined, ['klingon']);
+        await ensureHighlighter(['klingon']);
         expect(canHighlight('klingon')).toBe(false);
     });
 
@@ -95,24 +94,16 @@ describe('canHighlight', () => {
         expect(canHighlight('go')).toBe(true);
         expect(canHighlight('gopher')).toBe(false);
     });
-
-    it('ignores the theme it is asked about', async () => {
-        await loadCodeLanguage('markdown');
-        expect(canHighlight('markdown', 'github-dark')).toBe(true);
-        expect(canHighlight('markdown', 'no-such-theme')).toBe(true);
-    });
 });
 
 describe('what it preloads', () => {
-    it('names four languages and one theme by default', () => {
+    it('names four languages by default', () => {
         expect([...DEFAULT_LANGS]).toEqual(['typescript', 'javascript', 'json', 'python']);
-        expect([...DEFAULT_THEMES]).toEqual([DefaultHighlightStyle.name]);
     });
 
-    it('loads the default languages when it is given none, and ignores the themes', async () => {
+    it('loads the default languages when it is given none', async () => {
         await ensureHighlighter();
         for (const language of DEFAULT_LANGS) expect(canHighlight(language), language).toBe(true);
-        await ensureHighlighter(['no-such-theme', 'another'], ['json']);
         expect(warn).not.toHaveBeenCalled();
     });
 
@@ -123,7 +114,7 @@ describe('what it preloads', () => {
 
     it('loads one language at a time with loadCodeLanguage, leaving the others alone', async () => {
         expect(canHighlight('rust')).toBe(false);
-        await loadCodeLanguage('rust', 'github-dark');
+        await loadCodeLanguage('rust');
         expect(canHighlight('rust')).toBe(true);
         // Not yet asked for by anything in this file.
         expect(canHighlight('tsx')).toBe(false);
@@ -142,17 +133,17 @@ describe('concurrent requests for one language', () => {
         try {
             expect(canHighlight('tsx')).toBe(false);
             await Promise.all([
-                ensureHighlighter(undefined, ['tsx']),
-                ensureHighlighter(undefined, ['TSX']),
+                ensureHighlighter(['tsx']),
+                ensureHighlighter(['TSX']),
                 loadCodeLanguage('tsx'),
-                initSyntaxHighlighter(undefined, ['tsx']),
+                initSyntaxHighlighter(['tsx']),
             ]);
             expect(canHighlight('tsx')).toBe(true);
             expect(configure).toHaveBeenCalledTimes(1);
             expect(configure).toHaveBeenCalledWith({ dialect: 'ts jsx' });
 
             // And a request made after it has loaded builds nothing at all.
-            await ensureHighlighter(undefined, ['tsx']);
+            await ensureHighlighter(['tsx']);
             expect(configure).toHaveBeenCalledTimes(1);
         } finally {
             configure.mockRestore();
@@ -160,7 +151,7 @@ describe('concurrent requests for one language', () => {
     });
 
     it('resolve together when they ask for different languages', async () => {
-        await Promise.all([ensureHighlighter(undefined, ['xml', 'css']), ensureHighlighter(undefined, ['css', 'php'])]);
+        await Promise.all([ensureHighlighter(['xml', 'css']), ensureHighlighter(['css', 'php'])]);
         expect(canHighlight('xml') && canHighlight('css') && canHighlight('php')).toBe(true);
     });
 });
@@ -171,7 +162,7 @@ describe('a grammar whose import is rejected', () => {
             throw new Error('cannot resolve @lezer/rust');
         });
         const failing = await import('../highlight');
-        await expect(failing.ensureHighlighter(undefined, ['rust'])).resolves.toBeUndefined();
+        await expect(failing.ensureHighlighter(['rust'])).resolves.toBeUndefined();
         expect(failing.canHighlight('rust')).toBe(false);
         expect(warn.mock.calls.map((call: unknown[]) => String(call[0])).filter((m: string) => m.includes('"rust"'))).toHaveLength(1);
 
@@ -179,7 +170,7 @@ describe('a grammar whose import is rejected', () => {
         vi.doUnmock('@lezer/rust');
         vi.resetModules();
         const working = await import('../highlight');
-        await working.ensureHighlighter(undefined, ['rust']);
+        await working.ensureHighlighter(['rust']);
         expect(working.canHighlight('rust')).toBe(true);
     });
 });
@@ -197,7 +188,7 @@ describe('normalizeSource', () => {
     });
 
     it('keeps a CR line break out of the highlighter as a token', async () => {
-        await ensureHighlighter(undefined, ['typescript']);
+        await ensureHighlighter(['typescript']);
         const lines = highlightToTokens('a = 1;\r\nb = 2;', 'typescript');
         expect(lines).toHaveLength(2);
         expect(lines.flat().some((token) => token.content.includes('\r'))).toBe(false);

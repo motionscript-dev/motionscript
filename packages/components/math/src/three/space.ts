@@ -2,7 +2,6 @@ import {
     createContext,
     Types,
     type ChildSpace3D,
-    type Node3D,
     type Type,
     type Vector3,
     // Named so the emitted declaration reaches these through the sdk, not core.
@@ -21,7 +20,7 @@ export interface GraphSpace extends ChildSpace3D {
     readonly zRange: Interval;
     /** Changes exactly when the mapping does: what a mark's geometry is cached under. */
     readonly revision: string;
-    /** A step from one graph point to another, as the local one: what a mark's own geometry is drawn in. */
+    /** A graph step as a local one: what a mark's own geometry is drawn in. */
     offset(x: number, y: number, z: number): Vector3;
 }
 
@@ -56,10 +55,7 @@ export interface Graph3D {
 /** The graph a mark is inside: `axes3d` provides itself to everything in it. */
 export const GRAPH_3D = createContext<Graph3D | null>(null, "math:graph3d");
 
-/**
- * The entry a mark reads the graph it is drawn in through, set from the nearest
- * `axes3d` above it, through any 3D node between; `null` outside one.
- */
+/** The entry a mark reads its graph through, set from the nearest `axes3d` above it; `null` outside one. */
 export function graphEntry(): Type<Graph3D | null, Graph3D | null, true> {
     return Types.custom<Graph3D | null, Graph3D | null, { readonly private: true }>(null, {
         private: true,
@@ -70,11 +66,6 @@ export function graphEntry(): Type<Graph3D | null, Graph3D | null, true> {
 /** The graph space a mark with a {@link graphEntry} is drawn in, or `null` outside a graph. */
 export function graphOf(mark: { readonly graph: Graph3D | null }): GraphSpace | null {
     return mark.graph?.space() ?? null;
-}
-
-/** The graph a 3D node is drawn in: what the nearest `axes3d` above it provides, once it is in the tree. */
-export function spaceOf(mark: Node3D): GraphSpace | null {
-    return mark.useContext(GRAPH_3D)?.space() ?? null;
 }
 
 /** A unit quaternion turning the scene's +y, the way a cylinder or a cone points, onto `direction`. */

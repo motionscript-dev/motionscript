@@ -18,53 +18,25 @@ import { nodePath } from "@/project/tree";
 import type { NodeBox } from "./node-picking";
 
 /**
- * Where a `Node3D`'s pixels landed — the 3D half of `node-picking.ts`, and the
- * reason an editor can put a selection box round a cube at all.
+ * Where a `Node3D`'s pixels landed: the 3D half of `node-picking.ts`.
  *
- * **The answer is a 2D box, deliberately.** A mesh has no rectangle in it: what
- * it has is an extent in three dimensions, seen through a camera. So this
- * projects the node's world-space AABB into the `Canvas3D`'s own plane and takes
- * the **screen-space AABB of the result** — the box that encloses the shape as
- * drawn, from wherever the camera happens to be. That is the same box every 3D
- * editor draws for the same reason: an oriented box in 3D read as a hexagon on
- * screen, and nothing you could grab on it would mean anything in two
- * dimensions.
+ * The answer is a 2D box: the screen-space AABB of the node's projected world-space AABB, in the `Canvas3D`'s
+ * own plane. It composes with everything the 2D side does (the canvas's rotation, its ancestors', a camera
+ * scope above it) by being mapped through the canvas's `renderMatrix` as {@link nodeBox} maps a corner.
  *
- * Because it is a 2D box in the canvas's plane, it composes with everything the
- * 2D side already does — the canvas's own rotation, its ancestors', a camera
- * scope above it — by being handed the canvas's `renderMatrix` and mapped
- * through it exactly as {@link nodeBox} maps a node's corners. Nothing here has
- * to know what is above the canvas.
+ * Bounds come from the recorded {@link Scene3D} (the seam render and the asset pass both build, which measures
+ * a custom `renderSelf` for free); paths come from the tree, because a path is a child index and ops carry
+ * none. The two meet on `Node3D.id`, which the scene records as the `key` on every `push`.
  *
- * **Two walks, joined on the node id.** Bounds come from the recorded
- * {@link Scene3D} rather than from the node tree, because the scene is the seam
- * everything else goes through (the render and the asset pass both build it) and
- * a node that draws through a custom `renderSelf` is measured correctly for
- * free. Paths come from the tree, because a path is a child *index* and ops
- * don't carry one. The two meet on `Node3D.id`, which the scene records as the
- * `key` on every `push`.
+ * Nothing here imports `node-picking.ts` at runtime: the canvas's box and CTM arrive as a {@link
+ * Canvas3DFrame}, so the dependency runs one way (the `NodeBox` import is type-only).
  *
- * **Nothing here imports `node-picking.ts` at runtime.** The canvas's own box
- * and CTM arrive as a {@link Canvas3DFrame} parameter instead, so the dependency
- * runs one way — the 2D walk reaches into this file and never the reverse. The
- * `NodeBox` import is type-only and erased.
- *
- * Two things a caller should know about what it gets back. A box is **not
- * clipped to the viewport**: a mesh that has drifted off the side of its canvas
- * reports where it went, even though the 3D pass is confined to the rect and no
- * pixels of it are drawn. That is the honest answer for an overlay saying where
- * a node is, and it costs the picker nothing — {@link pickIn} only consults this
- * file for a point already inside the rect.
- *
- * And the cost: every entry point here records the scene afresh, so a pick or a
- * box walk pays one scene build per viewport it touches. That is the same
- * pass the render and the asset declaration each make every frame, and 3D scene
- * trees are small, so it is fine at pointer rate — but a host calling
- * {@link collectBoxes} on every pointer move over a document full of viewports
- * is paying it per viewport per move.
+ * A box is not clipped to the viewport: a mesh drifted off the canvas reports where it went, though no pixels
+ * are drawn. {@link pickIn} only consults this file for a point already inside the rect. Every entry point
+ * records the scene afresh, so a host calling {@link collectBoxes} on every pointer move over many viewports
+ * pays one scene build per viewport per move.
  */
 
-/** What the 2D walk already knows about the canvas, handed down. */
 /** @internal */
 /** A 2D node over a 3D scene (a `Canvas3D`): its 3D children are picked through the scene it builds. */
 export interface Viewport3D extends Node2D {
@@ -78,28 +50,17 @@ export function isViewport3D(node: unknown): node is Viewport3D {
 
 export interface Canvas3DFrame {
     /**
-     * The canvas's own box. Its folded `rotation`/`scale`/`opacity` carry to
-     * every 3D node inside it — a mesh has none of its own, and what an editor
-     * needs those for (cursor angles, pixels-per-unit) is a question about the
-     * plane the box is drawn in.
+     * Its folded `rotation`/`scale`/`opacity` carry to every 3D node inside it: a mesh has none of its own, and
+     * cursor angles and pixels-per-unit are questions about the plane the box is drawn in.
      */
     box: NodeBox;
-    /** `renderMatrix(canvas)` — the canvas's CTM, canvas y-down. */
     matrix: Matrix2D;
 }
 
 /**
- * Every 3D node's box inside `canvas`, **nearest camera first**.
- *
- * Depth order rather than draw order, which is the one place this diverges from
- * {@link collectBoxes}: a 3D scene has no draw order to speak of (the renderer
- * sorts by depth and the depth buffer settles the rest), so "topmost" means
- * "nearest", and a picker walking this list front-to-back gets the node you can
- * actually see.
- *
- * Empty when the scene has no camera that resolves, when the canvas has no size,
- * or when nothing in it can be measured — see {@link geometryBounds3D} for the
- * last of those.
+ * Ordered by depth, not draw order (the one divergence from {@link collectBoxes}): a 3D scene has no draw
+ * order to speak of, so "topmost" means "nearest". Empty when the scene has no camera that resolves, the
+ * canvas has no size, or nothing can be measured (see {@link geometryBounds3D}).
  */
 /** @internal */
 export function collectBoxes3D(canvas: Viewport3D, frame: Canvas3DFrame, path: string): NodeBox[] {
@@ -117,45 +78,33 @@ export function collectBoxes3D(canvas: Viewport3D, frame: Canvas3DFrame, path: s
             depth: projected.depth,
         });
     }
-    // View space looks down −Z, so a nearer node has the larger (less negative)
-    // z — descending puts the front of the scene first.
+    /**
+     * View space looks down -Z, so a nearer node has the larger (less negative) z: descending puts the front
+     * first.
+     */
     out.sort((a, b) => b.depth - a.depth);
     return out.map((entry) => entry.box);
 }
 
 /**
- * Where a handful of arbitrary points around one `Node3D` land on screen — the
- * ingredient a box can't supply for a gizmo.
+ * Where arbitrary points around one `Node3D` land on screen, for a gizmo. All points come back in the same
+ * viewport space as {@link NodeBox}. A `null` entry is behind the camera (the per-point version of {@link
+ * projectBox3}'s eye-plane guard).
  *
- * `origin`, `parentPoints` and `localPoints` all come back in the **same
- * viewport space** {@link NodeBox} does, so a caller drawing both together
- * (a box for the outline, this for the handles) never has two coordinate
- * systems to reconcile. A `null` entry means that point sits behind the
- * camera — mirrors {@link projectBox3}'s own eye-plane guard, just per point
- * instead of per clipped edge, since there's no box to keep in shape here.
- *
- * Not `@internal`, unlike {@link projectNode3D} itself: this is what a host
- * gets back from `projectNode3DAt`/`PlaybackController.projectNode3D`, the
- * same public tier as {@link NodeBox}.
+ * Not `@internal`, unlike {@link projectNode3D}: a host gets this back from
+ * `projectNode3DAt`/`PlaybackController.projectNode3D`.
  */
 export interface Node3DFrame {
-    /** The node's own position, projected — a gizmo's pivot. */
     origin: Vector2 | null;
     /**
-     * `parentPoints` transformed by the node's **parent's** world matrix, then
-     * projected, through the parent's own coordinates where it places its
-     * children by them. The frame `Node3DProps.position` is itself expressed in, so
-     * this is the space a move or scale handle belongs in: a point named
-     * `{ ...position, x: position.x + 1 }` projects to where nudging `x` by
-     * one unit would actually land, with no need to know whether "one unit"
-     * means local or world space at the point of asking.
+     * `parentPoints` transformed by the node's parent's world matrix then projected: the frame
+     * `Node3DProps.position` is expressed in, so a move or scale handle belongs here and `{ ...position, x:
+     * position.x + 1 }` projects to where nudging `x` by one unit lands.
      */
     parentPoints: (Vector2 | null)[];
     /**
-     * `localPoints` transformed by the node's **own** world matrix, then
-     * projected. For geometry that has to track the node's current
-     * orientation — a rotation ring wrapping the mesh as it's actually
-     * turned, not as it started.
+     * `localPoints` transformed by the node's own world matrix then projected, for geometry tracking its current
+     * orientation (a rotation ring).
      */
     localPoints: (Vector2 | null)[];
 }
@@ -163,14 +112,8 @@ export interface Node3DFrame {
 const ORIGIN_3D: Vector3 = { x: 0, y: 0, z: 0 };
 
 /**
- * Project `parentPoints`/`localPoints` for the `Node3D` at `targetPath`
- * inside `canvas`, or `null` when the canvas has no projection (see
- * {@link canvas3DProjection}) or the path doesn't resolve to a node in it.
- *
- * `canvasPath` is the canvas's own structural path — the same root
- * {@link collectBoxes3D} and {@link pickNode3D} are handed — and `targetPath`
- * the node being projected, found the same way {@link nodeBoxAt} finds one
- * (`node-picking.ts`, one level up).
+ * `null` when the canvas has no projection (see {@link canvas3DProjection}) or the path does not resolve.
+ * `canvasPath` is the same root {@link collectBoxes3D} and {@link pickNode3D} are handed.
  */
 /** @internal */
 export function projectNode3D(
@@ -206,11 +149,7 @@ export function projectNode3D(
 }
 
 /**
- * `point` (in whatever space `matrix` maps to world space) projected into
- * `frame`'s viewport space, or `null` when it lands behind the camera.
- *
- * The single-point sibling of {@link projectBox3}: no edges to clip, so a
- * point either has a clip-space `w` in front of the eye or it doesn't.
+ * `null` when it lands behind the camera. The single-point sibling of {@link projectBox3}: no edges to clip.
  */
 function projectPoint3(
     matrix: Matrix4,
@@ -232,13 +171,8 @@ function projectPoint3(
 }
 
 /**
- * The nearest 3D node in `canvas` whose box contains `point` (viewport space,
- * y-up), or `null`.
- *
- * The box, not the mesh — the module note says why there is no mesh-accurate
- * answer to give. `tolerance` is grab-slop in scene units, applied in the
- * canvas's own plane so it stays the constant on-screen distance the caller
- * quoted it as.
+ * The box, not the mesh. `tolerance` is grab-slop in scene units, applied in the canvas's own plane so it
+ * stays a constant on-screen distance.
  */
 /** @internal */
 export function pickNode3D(
@@ -251,8 +185,10 @@ export function pickNode3D(
     const projection = canvas3DProjection(canvas);
     if (!projection) return null;
 
-    // Into the canvas's own plane, undoing everything above it in one step —
-    // the same inverse `containsPoint` takes, with the same y-flips in and out.
+    /**
+     * Into the canvas's own plane, undoing everything above it in one step: the inverse `containsPoint` takes,
+     * with the same y-flips.
+     */
     const inverse = invert(frame.matrix);
     if (!inverse) return null;
     const mapped = applyToPoint(inverse, { x: point.x, y: -point.y });
@@ -273,19 +209,14 @@ export function pickNode3D(
     return best ? toNodeBox(best.node, best.path, best.rect, frame) : null;
 }
 
-// ─── The tree walk: which node is at which path ──────────────────────────────
-
 interface Node3DEntry {
     node: Node3D;
     path: string;
 }
 
 /**
- * Every `Node3D` under `canvas`, with the structural path it sits at.
- *
- * Indexed against {@link Node._allChildren} rather than `children`, so a mesh
- * and a HUD label under the same viewport are numbered the way the author wrote
- * them — see the accessor's own note for what goes wrong otherwise.
+ * Indexed against {@link Node._allChildren} rather than `children`, so a mesh and a HUD label under one
+ * viewport are numbered the way the author wrote them.
  */
 function nodes3DOf(canvas: Viewport3D, path: string): Node3DEntry[] {
     const out: Node3DEntry[] = [];
@@ -303,21 +234,12 @@ function walk3D(children: readonly Node[], parentPath: string, out: Node3DEntry[
     }
 }
 
-// ─── The op walk: how big each node is, and where it is looked at from ───────
-
-/** Everything the projection needs, resolved once per call. */
 interface Canvas3DProjection {
-    /** World-space bounds per `Node3D.id`, each including its subtree. */
     boxes: Map<string, Box3>;
-    /** Each node's own world matrix, per `Node3D.id` — see {@link Node3DFrame}. */
     matrices: Map<string, Matrix4>;
-    /** Each node's *parent's* world matrix, keyed by the node's own id. */
     parentMatrices: Map<string, Matrix4>;
-    /** `projection · view` — world space straight to clip space. */
     clip: Matrix4;
-    /** The view matrix alone, for the depth sort. */
     view: Matrix4;
-    /** The canvas's local rect, which the 3D buffer is stretched onto. */
     width: number;
     height: number;
     centerX: number;
@@ -350,7 +272,6 @@ function canvas3DProjection(canvas: Viewport3D): Canvas3DProjection | null {
     };
 }
 
-/** One open `push` scope: where it is, whether it draws, and what it has drawn. */
 interface Scope3D {
     key: string | undefined;
     matrix: Matrix4;
@@ -360,28 +281,18 @@ interface Scope3D {
 
 interface WalkedScene3D {
     boxes: Map<string, Box3>;
-    /** Each node's own world matrix, per `Node3D.id` — captured at `push`,
-     * unlike `boxes`, which needs children merged in first at `pop`. */
+    /** Captured at `push`, unlike `boxes`, which needs children merged in at `pop`. */
     matrices: Map<string, Matrix4>;
-    /** Each node's *parent's* world matrix, keyed by the node's own id. */
     parentMatrices: Map<string, Matrix4>;
-    /** The camera's world matrix, or the renderer's own framing when none was set. */
     camera: Matrix4;
     descriptor: CameraData3D | null;
 }
 
 /**
- * Replay the recorded scene, accumulating a world-space box per node.
- *
- * A node's box is the union of everything it drew and everything its children
- * drew, which is what makes a `Group3D` — which draws nothing itself — still
- * selectable as the thing it contains.
- *
- * An invisible scope contributes nothing and is recorded for nobody: `visible:
- * false` is a live object the renderer skips, so there are no pixels to put a
- * box round, and letting one inflate its parent's box would put that parent's
- * box round empty space. The 2D walk skips `opacity: 0` nodes on the same
- * grounds.
+ * A node's box is the union of everything it drew and its children drew, so a `Group3D` that draws nothing is
+ * still selectable as what it contains. An invisible scope contributes nothing: `visible: false` is skipped by
+ * the renderer, and letting it inflate its parent's box would put that box round empty space. The 2D walk
+ * skips `opacity: 0` on the same grounds.
  */
 function walkScene3D(scene: Scene3D): WalkedScene3D {
     const boxes = new Map<string, Box3>();
@@ -412,10 +323,10 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
                 break;
             }
             case "pop": {
-                // The root frame is never popped: `Node3D.render` brackets its own
-                // begin/end, and `Scene3D.assertBalanced` catches a hand-built
-                // scene that doesn't. Guarding anyway keeps a malformed op list
-                // from reading past the bottom of the stack.
+                /**
+                 * The root frame is never popped: `Node3D.render` brackets its own begin/end and `Scene3D.assertBalanced`
+                 * catches a hand-built scene that does not. Guarding keeps a malformed op list from reading past the stack.
+                 */
                 if (stack.length === 1) break;
                 const closed = stack.pop() as Scope3D;
                 if (!closed.visible || !closed.box) break;
@@ -430,9 +341,7 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
                 break;
             }
             case "light":
-                // A light has no extent. A node that is only a light therefore
-                // gets no box and cannot be picked on the canvas, which is the
-                // honest answer — there is nothing on screen at its position.
+                /** A light has no extent, so a node that is only a light gets no box and cannot be picked. */
                 break;
             default: {
                 if (!scope.visible) break;
@@ -452,12 +361,10 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
     };
 }
 
-/** A scope's world matrix: the parent's, composed with the node's own placement. */
 function scopeMatrix(parent: Matrix4, transform: Transform3D | undefined): Matrix4 {
     return multiply4(parent, transformMatrix4(transform, parent));
 }
 
-/** The world box a single drawable op contributes, or `null` when it has none. */
 function drawableBox3(op: Scene3DOp, parent: Matrix4): Box3 | null {
     if (op.kind === "model") return null; // its extent arrives with the file
     if (!("transform" in op)) return null;
@@ -465,9 +372,10 @@ function drawableBox3(op: Scene3DOp, parent: Matrix4): Box3 | null {
     const matrix = scopeMatrix(parent, op.transform);
 
     if (op.kind === "sprite") {
-        // A sprite is a camera-facing unit quad scaled by its transform — three's
-        // `Sprite` has no geometry to ask, so this is the one place the extent is
-        // assumed rather than read.
+        /**
+         * Three's `Sprite` has no geometry to ask: the one place the extent is assumed rather than read (a
+         * camera-facing unit quad scaled by its transform).
+         */
         return transformBox3(centeredBox3(0.5, 0.5, 0), matrix);
     }
 
@@ -476,8 +384,10 @@ function drawableBox3(op: Scene3DOp, parent: Matrix4): Box3 | null {
     if (!local) return null;
 
     if (op.kind === "instances") {
-        // Every instance is placed inside the op's own transform, so the union is
-        // taken in that space and mapped out once.
+        /**
+         * Every instance is placed inside the op's own transform, so the union is taken in that space and mapped out
+         * once.
+         */
         let box: Box3 | null = null;
         for (const instance of op.instances) {
             box = unionBox3(box, transformBox3(local, transformMatrix4(instance, null)));
@@ -488,22 +398,14 @@ function drawableBox3(op: Scene3DOp, parent: Matrix4): Box3 | null {
     return transformBox3(local, matrix);
 }
 
-// ─── The camera ──────────────────────────────────────────────────────────────
-
 /**
- * The camera's world matrix.
+ * `lookAt` takes the camera branch of three's `Object3D.lookAt` (-Z at the target, where every other node aims
+ * +Z), resolved against the camera's world position so a camera in an animated rig points where the author
+ * said. See {@link lookAtRotation4}.
  *
- * `lookAt` takes the camera branch of three's `Object3D.lookAt` — **−Z** at the
- * target, where every other node aims its +Z — and is resolved against the
- * camera's *world* position, so a camera riding inside an animated rig points
- * where the author said rather than where its group happens to face. See
- * {@link lookAtRotation4}, which the two branches share.
- *
- * The polar placement (`target`/`orbit`/`elevation`/`distance`) is resolved by
- * core's own {@link resolveCameraPlacement} — the same call the renderer makes.
- * Two places deriving "where is the camera" from one descriptor is two chances to
- * disagree about what the author is looking at, and a gizmo drawn against a
- * camera nobody renders is worse than no gizmo at all.
+ * The polar placement (`target`/`orbit`/`elevation`/`distance`) comes from {@link resolveCameraPlacement}, the
+ * same call the renderer makes: two derivations of "where is the camera" could disagree, and a gizmo drawn
+ * against a camera nobody renders is worse than none.
  */
 function cameraMatrix4(descriptor: CameraData3D, parent: Matrix4): Matrix4 {
     const placement = resolveCameraPlacement(descriptor);
@@ -517,22 +419,18 @@ function cameraMatrix4(descriptor: CameraData3D, parent: Matrix4): Matrix4 {
 }
 
 /**
- * Where the renderer looks from when a scene declares no camera: pulled back
- * along +Z, aimed at the origin. Mirrors `applyCamera`'s own fallback, which is
- * what makes a bare `g.box()` render something rather than a black frame — and
- * therefore what makes it pickable here.
+ * Pulled back along +Z, aimed at the origin. Mirrors `applyCamera`'s fallback, which makes a bare `g.box()`
+ * render, and so pickable.
  */
 const DEFAULT_CAMERA_MATRIX: Matrix4 = multiply4(
     translation4({ x: 0, y: 0, z: 5 }),
     lookAtRotation4({ x: 0, y: 0, z: 5 }, { x: 0, y: 0, z: 0 }),
 );
 
-/** three's default fov when a perspective descriptor omits one. */
 const DEFAULT_FOV = 50;
 const DEFAULT_NEAR = 0.1;
 const DEFAULT_FAR = 1000;
 
-/** The projection a descriptor asks for, framed to the canvas's aspect. */
 function projectionMatrix(descriptor: CameraData3D | null, aspect: number): Matrix4 {
     if (descriptor === null) {
         return perspective4(DEFAULT_FOV, aspect, DEFAULT_NEAR, DEFAULT_FAR, 1);
@@ -540,19 +438,20 @@ function projectionMatrix(descriptor: CameraData3D | null, aspect: number): Matr
     if (descriptor.type === "perspective") {
         return perspective4(
             descriptor.fov ?? DEFAULT_FOV,
-            // Always the node's own aspect. There is no override any more: it was
-            // a field whose documentation said not to set it, and setting it
-            // stretched the render — so a gizmo can only ever have been wrong by
-            // agreeing with one.
+            /**
+             * Always the node's own aspect: overriding it stretched the render, so a gizmo could only be wrong by
+             * agreeing with one.
+             */
             aspect,
             descriptor.near ?? DEFAULT_NEAR,
             descriptor.far ?? DEFAULT_FAR,
             descriptor.zoom ?? 1,
         );
     }
-    // `frustumHeight` sets the visible world height and the width follows the
-    // node's aspect — the same rule `applyCamera` applies, restated rather than
-    // shared because that one lives in the renderer, which core cannot import.
+    /**
+     * `frustumHeight` sets the visible world height and the width follows the node's aspect. The same rule as
+     * `applyCamera`, restated because that one lives in the renderer, which core cannot import.
+     */
     const halfHeight = (descriptor.frustumHeight ?? 10) / 2;
     return orthographic4(
         -halfHeight * aspect,
@@ -565,9 +464,6 @@ function projectionMatrix(descriptor: CameraData3D | null, aspect: number): Matr
     );
 }
 
-// ─── Projection ──────────────────────────────────────────────────────────────
-
-/** An axis-aligned rect in the canvas's own plane, y-up. */
 interface Rect2D {
     minX: number;
     minY: number;
@@ -575,42 +471,28 @@ interface Rect2D {
     maxY: number;
 }
 
-/** The twelve edges of {@link corners3}'s eight corners, as index pairs. */
 const BOX_EDGES: readonly (readonly [number, number])[] = [
     [0, 1], [2, 3], [4, 5], [6, 7],
     [0, 2], [1, 3], [4, 6], [5, 7],
     [0, 4], [1, 5], [2, 6], [3, 7],
 ];
 
-/**
- * Smallest `w` a projected point may have before it counts as behind the camera.
- * A point at `w = 0` is on the plane through the eye and projects to infinity.
- */
+/** A point at `w = 0` is on the plane through the eye and projects to infinity. */
 const MIN_CLIP_W = 1e-4;
 
 /**
- * How far outside the canvas a projected box is allowed to reach, as a multiple
- * of the canvas's own size.
- *
- * A box straddling the eye plane genuinely does extend to the horizon, and the
- * arithmetic says so — a corner a millimetre in front of the camera projects
- * thousands of units out. That is the right answer and a useless one: the host
- * draws this, and an overlay rectangle a million pixels wide is a rendering
- * problem rather than a selection. Clamping keeps the box pointing the right way
- * while it is mostly off-screen, and it is only ever reached in the case where
- * the box is already unusable as a target.
+ * How far outside the canvas a projected box may reach, as a multiple of the canvas's size. A box straddling
+ * the eye plane genuinely extends to the horizon, which is a useless answer for an overlay (a rectangle a
+ * million pixels wide). Clamping keeps it pointing the right way, and is only reached when the box is already
+ * unusable as a target.
  */
 const OFFSCREEN_LIMIT = 8;
 
 /**
- * The world box projected into the canvas's plane, plus its view-space depth.
- *
- * The **edges** are clipped rather than the corners being clamped: a box with
- * one corner behind the eye has that corner's projection reflected through the
- * origin, so bounding the raw eight would produce a box on the wrong side of the
- * screen. Clipping each edge where it crosses the eye plane gives the visible
- * span and nothing else. Entirely-behind boxes drop out with no edges surviving,
- * which is how a node behind the camera stops being selectable.
+ * The world box projected into the canvas's plane, plus its view-space depth. Edges are clipped rather than
+ * corners clamped: a corner behind the eye projects reflected through the origin, so bounding the raw eight
+ * would put the box on the wrong side. Entirely-behind boxes keep no edges, which is how a node behind the
+ * camera stops being selectable.
  */
 function projectBox3(
     world: Box3,
@@ -660,10 +542,10 @@ function projectBox3(
         maxY: clamp(projection.centerY + maxY * halfHeight, projection.centerY - limitY, projection.centerY + limitY),
     };
 
-    // Depth is taken at the box centre in view space, where the camera looks down
-    // −Z: a nearer node has the larger value. One point rather than eight,
-    // because what this orders is "which of two overlapping nodes did you mean",
-    // and their centres answer that as well as their nearest corners would.
+    /**
+     * Depth is taken at the box centre in view space (camera looks down -Z, so nearer is larger). One point rather
+     * than eight: this orders "which of two overlapping nodes did you mean".
+     */
     const centre: Vector3 = {
         x: (world.min.x + world.max.x) / 2,
         y: (world.min.y + world.max.y) / 2,
@@ -678,7 +560,6 @@ function clamp(value: number, low: number, high: number): number {
     return value < low ? low : value > high ? high : value;
 }
 
-/** Whether `point` (canvas-local, y-up) lands in `rect`, widened by `slop`. */
 function rectContains(rect: Rect2D, point: Vector2, slop: number): boolean {
     return point.x >= rect.minX - slop
         && point.x <= rect.maxX + slop
@@ -687,19 +568,12 @@ function rectContains(rect: Rect2D, point: Vector2, slop: number): boolean {
 }
 
 /**
- * The projected rect as a {@link NodeBox}, in viewport space.
+ * The corner mapping is {@link worldAnchors}': y flipped in and back out, since the CTM is canvas y-down and
+ * everything around it y-up. Done here rather than via `worldAnchors` so the rect keeps its own centre: it is
+ * axis-aligned in the canvas's plane but not centred on its origin.
  *
- * The corner mapping is {@link worldAnchors}' — y flipped on the way in and back
- * out, because the CTM is canvas y-down while everything either side of it is
- * y-up. Doing it here rather than reusing `worldAnchors` is what lets the rect
- * keep its own centre: the box is axis-aligned in the canvas's plane but not
- * centred on the canvas's origin, and `worldAnchors` maps offsets from wherever
- * the matrix already is.
- *
- * `rotation`, `scale` and `opacity` are the **canvas's**. A mesh has none of its
- * own that mean anything in two dimensions — its `rotation` is three angles and
- * its opacity is its material's — and what a host reads these for is the plane
- * the box was drawn in, which is exactly what the canvas describes.
+ * `rotation`, `scale` and `opacity` are the canvas's: a mesh's own mean nothing in two dimensions, and a host
+ * reads these for the plane the box was drawn in.
  */
 function toNodeBox(node: Node3D, path: string, rect: Rect2D, frame: Canvas3DFrame): NodeBox {
     const at = (x: number, y: number): Vector2 => {
@@ -720,8 +594,10 @@ function toNodeBox(node: Node3D, path: string, rect: Rect2D, frame: Canvas3DFram
         rotation: frame.box.rotation,
         scale: frame.box.scale,
         opacity: frame.box.opacity,
-        // A mesh locks on its own account, not the viewport's — a locked Canvas3D
-        // is already unpickable above, so reaching here means the viewport is free.
+        /**
+         * A locked Canvas3D is already unpickable above, so reaching here means the viewport is free; a mesh locks on
+         * its own account.
+         */
         locked: node.locked,
     };
 }

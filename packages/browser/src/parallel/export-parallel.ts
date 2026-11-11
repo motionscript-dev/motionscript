@@ -8,11 +8,7 @@ import { planChunks } from "./plan";
 import { runLanes } from "./run-lanes";
 
 export interface ParallelExportParams extends Omit<ExportParams, "frames" | "returnBytes" | "filename"> {
-    /**
-     * Where the frames are drawn, most preferred first. Every run starts on the
-     * first alone and admits the next only while that raises throughput (see
-     * `LaneGovernor`), so the first should be the warmest: usually `localLane()`.
-     */
+    /** Where the frames are drawn, most preferred first. A run starts on the first alone and admits the next only while that raises throughput (see `LaneGovernor`), so the first should be the warmest, usually `localLane()`. */
     lanes: readonly ExportLane[];
     /** Write the file here as it is joined; the call then resolves to an empty array. See `ConcatOptions.stream`. */
     stream?: ConcatOptions["stream"];
@@ -29,17 +25,7 @@ const DEFAULT_SUPERSAMPLE = 2;
 /** The share of progress drawing takes; finishing the file is the rest. */
 const DRAWN = 0.97;
 
-/**
- * {@link exportVideo}, rendered in chunks across `lanes` and joined into one
- * file without re-encoding.
- *
- * Each chunk is a frame range of the **whole** project, so layered and gapped
- * timelines split like any other. Every chunk is encoded with one pinned
- * configuration, the audio is mixed once over the whole timeline while the frames
- * render (joined AAC would click at every seam), and each chunk is muxed the
- * moment it and the ones before it are done. Progress is frames drawn across
- * every lane, so it climbs smoothly and never goes back.
- */
+/** {@link exportVideo} rendered in chunks across `lanes` and joined without re-encoding. Each chunk is a frame range of the **whole** project, so layered and gapped timelines split like any other. All chunks use one pinned encoding, the audio is mixed once over the whole timeline (joined AAC would click at every seam), and each chunk is muxed as soon as it and the ones before it are done. Progress is frames drawn across every lane, so it never goes back. */
 export async function exportVideoParallel(params: ParallelExportParams): Promise<Uint8Array> {
     const {
         registry = new Registry(), scale = 1, format = "mp4", manifest = EMPTY_MANIFEST,

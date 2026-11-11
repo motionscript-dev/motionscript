@@ -5,14 +5,10 @@ import { windowProgress, moveProgress } from "./transitions";
 import type { TokenState, StructuralTransition, RowBand, RowsTransition } from "./transitions";
 import type { TokenAdvanceCache } from "./measure-cache";
 
-/** Colour of a token the grammar had no opinion about. */
 const DEFAULT_TOKEN_COLOR: NormalizedColor = [0.82, 0.84, 0.86, 1];
-/** Gutter line-number colour: a muted version of the standard text colour. */
 const LINE_NUMBER_COLOR: NormalizedColor = [0.45, 0.5, 0.55, 1];
 
-// `parseColor` walks a CSS string; a listing asks for the same handful of theme
-// colours on every token of every frame, so the parse is memoized. Module-level,
-// because the answer depends only on the string.
+// A listing asks for the same few theme colours on every token of every frame.
 const colorCache = new Map<string, NormalizedColor>();
 function tokenColor(css: string | undefined): NormalizedColor {
     if (!css) return DEFAULT_TOKEN_COLOR;
@@ -35,10 +31,7 @@ function lerpColor(from: NormalizedColor, to: NormalizedColor, t: number): Norma
     ];
 }
 
-// Opacity multiplier for a line's number under the active highlight. The
-// number stays bright only when the WHOLE line is highlighted, so we take the
-// min token opacity on the line. Returns 1 (no dimming) when no highlight is
-// active, so an edit's entries don't drag the number down.
+// A number stays bright only when the whole line is highlighted, so it takes the line's minimum token opacity.
 function lineHighlightOpacity(line: IdLine, stateById: Map<number, TokenState>, highlightActive: boolean): number {
     if (!highlightActive) return 1;
     let min = 1;
@@ -50,36 +43,27 @@ function lineHighlightOpacity(line: IdLine, stateById: Map<number, TokenState>, 
     return min;
 }
 
-/** Everything a `Code` node's own instance state supplies to draw one frame. */
+/** What a `Code` node supplies to draw one frame. */
 export interface DrawCodeState {
     tokenLines: IdLine[];
     metrics: CodeMetrics;
     advanceCache: TokenAdvanceCache;
-    /** The one or two layouts this frame draws from — see `frameLayout` in `layout.ts`. */
     from: CodeLayout;
     to: CodeLayout;
     edit: StructuralTransition | null;
-    /** Per-token opacity from `resolveTokenStates` (persistent highlight + any active dim transition). */
     tokenStates: Map<number, TokenState>;
-    /** Whether a highlight (persistent dim, or a highlight()/resetHighlight() cross-fade) is currently engaged. */
+    /** A persistent dim or a highlight cross-fade is engaged. */
     highlightActive: boolean;
-    /** The settled row bands, and the change between two sets of them in flight, if any. */
     rowBands?: RowBand[];
     rowsEdit?: RowsTransition | null;
-    /** The node's laid-out width, which a band spans when it is wider than the block. */
+    /** A band spans this when it is wider than the block. */
     boxW?: number;
 }
 
-/** What a frame is drawn onto: somewhere to draw, and the face's measurements. A render context is one. */
+/** Somewhere to draw and the face's measurements; a render context is one. */
 export type CodeCanvas = Pick<RenderContext2D, "draw" | "measureText">;
 
-/**
- * Draw one frame of a code listing: the settled structure, or — mid
- * structural edit — the two structures it is interpolating between (what
- * stays reflows, what is leaving fades out where it was, what is arriving
- * fades/slides in where it lands). Pure over `state`; touches nothing but
- * `draw`.
- */
+/** Draws the settled structure, or mid-edit the two it interpolates between. Pure over `state`. */
 export function drawCode(draw: CodeCanvas, state: DrawCodeState): void {
     const { tokenLines, metrics, advanceCache, from, to, edit, tokenStates: dim } = state;
 
@@ -91,8 +75,6 @@ export function drawCode(draw: CodeCanvas, state: DrawCodeState): void {
     const blockW = edit ? lerpNumber(from.blockW, to.blockW, pMove) : to.blockW;
     const gutter = edit ? lerpNumber(from.gutter, to.gutter, pMove) : to.gutter;
     const gutterGap = to.gutterGap || from.gutterGap;
-    // Right edge of the line-number column: one gap to the left of where the
-    // code text begins.
     const numberRight = -blockW / 2 + metrics.padding.left + gutter - gutterGap;
 
     drawRowBands(draw, state, Math.max(blockW, state.boxW ?? 0), pMove);
@@ -136,8 +118,7 @@ export function drawCode(draw: CodeCanvas, state: DrawCodeState): void {
             .fill([{ type: "solid", color, opacity }]));
     };
 
-    // What survived the edit, and what it brought with it — drawn from the
-    // structure the edit lands on.
+    // Survivors and arrivals, from the structure the edit lands on.
     for (let i = 0; i < tokenLines.length; i++) {
         const line = tokenLines[i];
         const toIndex = to.lineIndex.get(line.id);
@@ -148,10 +129,7 @@ export function drawCode(draw: CodeCanvas, state: DrawCodeState): void {
         let rowY = toY;
         let rowAlpha = 1;
         if (edit && entering) {
-            // A wholly new row fades as one piece, in the place it lands — the
-            // line arrives, it does not travel to get there, and it is not a
-            // spray of glyphs each finding its own way in. See
-            // `StructuralTransition.enteringLineIds`.
+            // A new row fades as one piece where it lands (see `enteringLineIds`).
             rowAlpha = pIn;
         } else if (edit) {
             const fromIndex = from.lineIndex.get(line.id);
@@ -168,8 +146,7 @@ export function drawCode(draw: CodeCanvas, state: DrawCodeState): void {
 
             if (edit && !entering) {
                 if (edit.addedIds.has(token.id)) {
-                    // Spliced into a row that already existed: the reflow
-                    // already opened the space, so this only has to appear.
+                    // Spliced into an existing row: the reflow opened the space already.
                     alpha = pIn;
                 } else {
                     const was = from.tokens.get(token.id);
@@ -184,17 +161,14 @@ export function drawCode(draw: CodeCanvas, state: DrawCodeState): void {
         }
     }
 
-    // What the edit takes away, drawn from the structure it is leaving — it
-    // has no place in the new one, which is the whole reason it is fading.
+    // What the edit takes away, from the structure it is leaving.
     if (edit && pOut < 1) {
         for (let i = 0; i < edit.from.length; i++) {
             const line = edit.from[i];
             const fromIndex = from.lineIndex.get(line.id);
             if (fromIndex === undefined) continue;
             const toIndex = to.lineIndex.get(line.id);
-            // A row that survived the edit is still moving, so its outgoing
-            // tokens travel with it; a deleted row stays where it was and
-            // dissolves while the rows below close over it.
+            // A surviving row's outgoing tokens travel with it; a deleted row dissolves in place.
             const y = toIndex === undefined
                 ? from.lineY[fromIndex]
                 : lerpNumber(from.lineY[fromIndex], to.lineY[toIndex], pMove);
@@ -228,11 +202,7 @@ function bandEdges(band: RowBand, state: DrawCodeState, pMove: number): { top: n
     return { top: (first ?? last as number) + half, bottom: (last ?? first as number) - half };
 }
 
-/**
- * Draw the row bands, under the text and across the whole block. A band rides
- * its rows through a structural edit; between two sets, bands paired by position
- * slide and recolour while an unpaired one fades.
- */
+/** Bands ride their rows through an edit; between two sets, those paired by position slide and recolour and an unpaired one fades. */
 function drawRowBands(draw: CodeCanvas, state: DrawCodeState, width: number, pMove: number): void {
     const { rowBands = [], rowsEdit = null } = state;
     const paint = (top: number, bottom: number, color: NormalizedColor, radius: number, opacity: number): void => {
@@ -270,22 +240,9 @@ function drawRowBands(draw: CodeCanvas, state: DrawCodeState, width: number, pMo
 }
 
 /**
- * Draw the gutter — one number per *slot*, not one per row.
- *
- * That distinction is the whole of it. A line number is an ordinal of the
- * block: "3" means the third line, and it is there for exactly as long as the
- * listing has a third line. Drawing it alongside the row it labels — the
- * obvious thing, since that is where it appears — tied it to the row's identity
- * instead, so a line rewritten past the point the diff could pair it took its
- * number down with it and brought an identical one back up. The number blinked
- * although it had never gone away, and every substantially rewritten line did
- * it at once.
- *
- * Numbering the slots means only the numbers at the end move at all: those the
- * block grew to reach fade in, those it shrank past fade out, and every number
- * both structures have simply travels to its new row height. Which is also the
- * honest reading of the edit — inserting a line in the middle does not make a
- * new number appear there, it makes the block one line longer.
+ * One number per slot, not per row: "3" lasts as long as the listing has a third
+ * line. Tied to a row's identity, a line rewritten past what the diff could pair
+ * would take its number down and bring an identical one back up (a blink).
  */
 function drawLineNumbers(
     state: DrawCodeState,
@@ -302,8 +259,7 @@ function drawLineNumbers(
     for (let i = 0; i < Math.max(fromCount, toCount); i++) {
         const inFrom = i < fromCount;
         const inTo = i < toCount;
-        // Highlight dimming follows whatever content occupies the slot, which
-        // is the new listing wherever there is one.
+        // Dimming follows the content in the slot: the new listing where there is one.
         const line = inTo ? tokenLines[i] : edit?.from[i];
         const dimming = line ? lineHighlightOpacity(line, dim, highlightActive) : 1;
 

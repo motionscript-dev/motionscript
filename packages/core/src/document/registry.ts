@@ -17,69 +17,20 @@ import type { NodePropertyDescriptor, NodeTypeDescriptor } from "./node-descript
 import type { NodeSpec } from "./types";
 
 /**
- * The specifiers a dynamic node's `require()` resolves to the host's sdk
- * barrel. The published
- * name comes first; the two after it are the package's earlier unscoped names,
- * kept so a script authored under either still compiles.
+ * Resolve to the host's sdk barrel. The published name comes first; the two after it are earlier unscoped
+ * names, kept so older scripts still compile.
  */
 const SDK_SPECIFIERS: readonly string[] = ["@motionscript/sdk", "motionscript", "motion-script"];
 
-/**
- * The **code** half of the document model, as one object an engine owns.
- *
- * A document names a node type, a command, a lerp and a shader with a string.
- * Something has to turn `"rect"` into a class and `"fillTo"` into an animation,
- * and that something is deliberately a registry rather than a table in the
- * database: node types are code — a class with `property` declarations, a
- * `renderSelf`, and `command()` methods — and code is versioned with the
- * library, not with the document.
- *
- * **It is an instance, not a module.** Every table here used to be a
- * module-scope `Map` behind a dozen free functions, which made a registration
- * a fact about the *process*: two engines in one process shared one vocabulary,
- * a declared class was registered by the mere act of being imported, whichever
- * host loaded first won a contested key, and a test had to remember to call a
- * `clearRegistries()` that reached into three modules. A registry is now a value
- * with an owner — an `Engine`'s own, reached through `registerNode`/`registerShader`
- * rather than a public `registry` field — so what a document can name is a
- * property of the engine opening it, and two engines disagree about it freely.
- *
- * ```ts
- * const registry = new Registry({ nodes: [Blob], shaders: { swirl: SWIRL } });
- * registry.commandKeys("blob");   // ["fadeTo", "moveTo", …, "wobbleTo"]
- * ```
- *
- * **Commands are per node type, and that is the point.** They used to share one
- * flat table with the node types, which made a command key a global claim: the
- * first package to register `reveal` owned the word, and a second node type
- * wanting it — with different arguments — could not have it. Nothing about a
- * command is global, though: it is a method on a class, dispatched against an
- * instance the document already names. Only the handful that must resolve
- * *without* a node — the variable-scoped ones and the generic prop writers — sit
- * in a table of their own.
- */
-
-/** Constructs a node from its authored props. Every built-in node class matches this. */
 export type NodeConstructor = new (props?: Record<string, unknown>) => Node;
 
-/** Node types a registry makes available, by the key a document names them with. */
 export type NodeTypeMap = Record<string, NodeConstructor>;
 
-/** Shader packs a registry makes available, by document key. A pack is plain JSON. */
 export type ShaderPackMap = Record<string, unknown>;
 
 /**
- * Builds the {@link Command} a `CommandSpec` stands for.
- *
- * Called **once per compile**, in timeline order, with `target` already in the
- * state the previous command left it — that is what fixes the command's `from`
- * value and makes the returned `Command.at(t)` pure thereafter. See
- * `tween/command.ts` and `document/timeline.ts`.
- *
- * @param target   The node the command acts on (the scene root for `targetId: null`).
- * @param args     The spec's `args`, verbatim.
- * @param duration Seconds, already defaulted by the caller.
- * @param easing   Resolved from the spec's `EaseSpec`, or `undefined`.
+ * Called once per compile, in timeline order, with `target` already in the state the previous command left:
+ * that fixes the command's `from` and makes `Command.at(t)` pure thereafter.
  */
 export type CommandFactory = (
     target: Node,
@@ -89,32 +40,18 @@ export type CommandFactory = (
 ) => Command<Record<string, unknown>>;
 
 /**
- * The variable a variable command writes.
- *
- * A handle rather than the cell itself, so a command cannot subscribe to it,
- * rebind it, or hold it past the build that made it — the three ways a command
- * could stop being a pure function of `t`.
+ * A handle, not the cell, so a command cannot subscribe to it, rebind it or hold it past the build: each would
+ * stop it being a pure function of `t`.
  */
 export interface VariableTarget {
-    /** The id an expression names with `[id]`. */
     readonly id: string;
-    /** What it holds right now. */
     get(): unknown;
     set(value: unknown): void;
-    /**
-     * The lerp its `VariableSpec.lerp` resolved to. A command is free to use a
-     * different one when its args ask for it — `variableTo` does.
-     */
+    /** A command may use a different lerp when its args ask (`variableTo` does). */
     readonly lerp: VariableLerp;
 }
 
-/**
- * Builds the {@link Command} a variable-scoped `CommandSpec` stands for.
- *
- * Same contract as {@link CommandFactory} — called once per compile, in timeline
- * order, against a variable already holding what its predecessors left — with a
- * {@link VariableTarget} in place of a node.
- */
+/** Same contract as {@link CommandFactory}, against a variable instead of a node. */
 export type VariableCommandFactory = (
     target: VariableTarget,
     args: Record<string, unknown>,
@@ -122,21 +59,12 @@ export type VariableCommandFactory = (
     easing?: EasingFunction,
 ) => Command<Record<string, unknown>>;
 
-/**
- * How a variable's value interpolates between two states.
- *
- * The same shape every `property` tween already has, widened to `unknown`
- * because a variable's type is a fact of the document rather than of a class:
- * one holds a number, the next a colour string, the next a whole fill object.
- */
+/** Widened to `unknown`: a variable's type is a fact of the document, not of a class. */
 export type VariableLerp = (from: unknown, to: unknown, t: number) => unknown;
 
 /**
- * One command that resolves without a node.
- *
- * `scope` says which table `CommandSpec.targetId` is looked up in, and is what
- * lets a variable command reuse the same field a node command uses instead of
- * inventing a second one every host's timeline would then have to special-case.
+ * `scope` picks the table `CommandSpec.targetId` is looked up in, so a variable command reuses the field a
+ * node command uses.
  */
 export type CommandTypeEntry =
     | {
@@ -144,27 +72,17 @@ export type CommandTypeEntry =
         scope: "node";
         factory: CommandFactory;
         /**
-         * Its leading parameters, as {@link NodeCommandEntry.args} describes a
-         * node command's — declared by the paint commands, which read one key
-         * each. Absent for `to`/`set`, whose args *are* the props diff.
+         * Declared by the paint commands, one key each. Absent for `to`/`set`, whose args are the props diff.
          */
         args?: readonly CommandArgDescriptor[];
         /**
-         * This command **writes props declaratively**, so an expression in its
-         * args compiles to a binding rather than being passed through as a
-         * string. `set` is the only built-in that does.
-         *
-         * A flag rather than a name check, because the distinction is real: `to`
-         * tweens *towards* a value and a formula is not a value, so binding one
-         * as a tween destination would interpolate towards `NaN` and look like a
-         * renderer bug. A command opting in is saying its args reach `set()`.
+         * Args are a props diff that reaches `set()`, so an expression compiles to a binding. A flag, not a name
+         * check: `to` tweens towards a value, and binding a formula there would interpolate towards `NaN`.
          */
         binds?: boolean;
         /**
-         * The method it runs on its target, where it runs one: the paint
-         * commands call the node's own `fillTo`, `strokeTo`, …. A node type
-         * without it, or one that withdrew it, does not take the command
-         * ({@link Registry.takesCommand}).
+         * The method it runs on its target (the paint commands call the node's own `fillTo`). A type without it, or
+         * one that withdrew it, does not take the command ({@link Registry.takesCommand}).
          */
         method?: string;
     }
@@ -175,118 +93,79 @@ export type CommandTypeEntry =
     };
 
 /**
- * One node type's own command table.
- *
- * Built from the class's `command()` methods — the **whole** prototype chain,
- * not just its own — because the table is per type. A `Card` extending `Rect`
- * answers to `fadeTo` for the same reason it answers to `.fadeTo()`: it has the
- * method. There is nothing here for two node types to collide over, so
- * inherited entries can simply be copied into each.
+ * Built from the whole prototype chain, so a `Card` extending `Rect` answers to `fadeTo` as it does to
+ * `.fadeTo()`. Inherited entries are copied into each type, so nothing collides.
  */
 export interface NodeTypeRecord {
-    /** The document key, matching `NodeSpec.type`. */
     key: string;
-    /** The class to construct. */
     ctor: NodeConstructor;
-    /** Its commands, by the key a document names them with. */
     commands: ReadonlyMap<string, NodeCommandEntry>;
-    /**
-     * What the type declares about itself — see {@link NodeTypeDescriptor}.
-     *
-     * Always present, so a host reads one shape whether the type was registered
-     * with a bare key, a full descriptor, or a component.
-     */
+    /** Always present, however the type was registered. */
     descriptor: NodeTypeDescriptor;
 }
 
-/** One command on one node type. */
 export interface NodeCommandEntry {
-    /** The method to call. */
     method: string;
-    /**
-     * Its leading parameters, from `command({ args })`, always as descriptors.
-     *
-     * A bare name normalises to `{ key, kind: "unknown" }`, so a host reads one
-     * shape whether the method bothered to describe its arguments or not.
-     */
+    /** A bare name normalises to `{ key, kind: "unknown" }`. */
     args: readonly CommandArgDescriptor[];
-    /** Present and true for an entrance (`CommandMeta.entrance`), so a host can offer one when the node is added. */
+    /**
+     * Present and true for an entrance (`CommandMeta.entrance`), so a host can offer one when the node is added.
+     */
     entrance?: true;
 }
 
 /**
- * How a registry compiles and links a node authored as a TS source string
- * that default-exports a component, via {@link Registry.addNodeFromSource}.
- *
- * Entirely host-supplied — `core` has no compiler dependency and cannot
- * import the published `@motionscript/sdk` barrel itself (that package
- * depends on `core`, so the reverse direction would be circular).
+ * Host-supplied: `core` has no compiler dependency and cannot import the `@motionscript/sdk` barrel (that
+ * package depends on `core`).
  */
 export interface DynamicNodeConfig {
     /**
-     * What `require("@motionscript/sdk")` resolves to inside a compiled
-     * script — the host's own already-loaded sdk barrel instance. Must be the
-     * same module instance the rest of the app uses, or `instanceof` silently
-     * fails against it. The earlier unscoped specifiers, `"motionscript"` and
-     * the dashed `"motion-script"`, resolve to the same object, so a node
-     * script authored under either name keeps compiling unmodified.
+     * Must be the host's already-loaded sdk instance, or `instanceof` silently fails against it. The earlier
+     * unscoped specifiers resolve to the same object.
      */
     sdk: Record<string, unknown>;
     /**
-     * Further modules a script may `require`, by exact specifier — what a
-     * forked component imports beyond the sdk barrel:
-     * `@motionscript/sdk/component`, its package's kit. Consulted after the
-     * two above, so neither can be shadowed. Each value has to be the host's
-     * own loaded instance, for the same `instanceof` reason as `sdk`.
+     * Consulted after the sdk specifiers, so they cannot be shadowed. Each must be the host's loaded instance, for
+     * the same `instanceof` reason.
      */
     modules?: Readonly<Record<string, unknown>>;
-    /**
-     * TS source → JS text (CommonJS). Host-injected, never bundled —
-     * `core` has no compiler dependency of its own.
-     */
+    /** Host-injected, never bundled. */
     compile: (source: string) => Promise<string>;
 }
 
-/** What a registry is seeded with, on top of the builtin vocabulary. */
 export interface RegistryOptions {
     /**
-     * Custom node types — components, or explicit keys.
-     *
-     * An array reads each class's `node()` declaration; a record names the key
-     * outright, which is also an assertion that the two agree (a rename on
-     * either side throws here rather than surfacing as an unknown type at
-     * render).
+     * A record names the key outright, which asserts the class agrees: a rename on either side throws here rather
+     * than surfacing as an unknown type at render.
      */
     nodes?: NodeTypeMap | readonly NodeConstructor[];
-    /** Shader packs, by document key. Plain JSON — normalised on the way in. */
     shaders?: ShaderPackMap;
-    /** Extra variable interpolations, on top of `number`/`vector2`/`vector3`/`color`/`step`. */
     lerps?: Record<string, VariableLerp>;
-    /** Custom eases, referenced from a document as `{ kind: "custom", args: key }`. */
     eases?: Record<string, EasingFunction>;
-    /** Enables {@link Registry.addNodeFromSource} — see {@link DynamicNodeConfig}. */
     dynamicNodes?: DynamicNodeConfig;
     /**
-     * Fail a track's build on a node type or command this registry lacks, as
-     * builds did before placeholders. Off, the build stands an inert
-     * placeholder in for the node, skips the command, and records each in
-     * `buildErrors`. For a render whose output nobody inspects.
+     * Fail the build on an unknown node type or command, instead of standing in a placeholder and recording it in
+     * `buildErrors`.
      */
     strict?: boolean;
     /**
-     * Leave out everything the library itself ships. Only useful to a test
-     * asserting on the seeding, or a host building a deliberately tiny
-     * vocabulary — a document naming `"rect"` will not compile without it.
+     * Only for a test asserting on the seeding, or a deliberately tiny vocabulary: a document naming `"rect"` will
+     * not compile without it.
      */
     builtins?: boolean;
 }
 
-/** See the module docblock. */
+/**
+ * An instance, not module-scope tables: what a document can name is a property of the engine opening it, so
+ * two engines in one process disagree freely.
+ *
+ * Commands are per node type (a method on a class); only those that must resolve without a node
+ * (variable-scoped, generic prop writers) sit in a table of their own.
+ */
 export class Registry {
     /** Ceiling, so an import cannot evict a workspace's own shaders by volume. */
     static readonly MAX_SHADERS = 512;
 
-    /** See {@link RegistryOptions.strict}. */
     readonly strict: boolean;
 
     constructor(options: RegistryOptions = {}) {
@@ -303,34 +182,14 @@ export class Registry {
         for (const [key, pack] of Object.entries(options.shaders ?? {})) this.addShader(key, pack);
     }
 
-    // ─── Node types ──────────────────────────────────────────────────────────
-
     /**
-     * Register a node class, with its commands and whatever else it declares.
+     * Register a node class with its commands and descriptor. Commands come off the class's `command()` methods,
+     * read through an object over the prototype so no constructor runs (it may expect props, build children or
+     * touch a clock).
      *
-     * Takes a component (or a class carrying a `node()` declaration) on its own, or a bare key / full
-     * {@link NodeTypeDescriptor} plus the class. The descriptor is the code half
-     * of what a component package used to restate in a `manifest.json` —
-     * carried, never interpreted, so a host has one place to ask and no second
-     * file to disagree with the class.
-     *
-     * The commands come off the class, so `command()` is the only place a
-     * node's animations are written down. Nothing is constructed to read them:
-     * `command` records onto the prototype, so an object *over* the prototype
-     * reaches the whole chain without running a constructor that may expect
-     * props, build children, or touch a clock.
-     *
-     * Re-registering the same class under the same key is a no-op, so a hot
-     * reload or a duplicated dependency is harmless. Re-registering a
-     * *different* class throws: two classes answering to one key means a
-     * document renders differently depending on registration order, which is not
-     * a failure anyone would find by looking at the document.
-     *
-     * Pass `{ replace: true }` to opt out of that throw — the one case it's
-     * wrong for is a node whose source has genuinely been edited and
-     * recompiled (see {@link addNodeFromSource}), where re-registering under
-     * the same key with a new class is the whole point. The default stays a
-     * throw; this is deliberately not the common path.
+     * Re-registering the same class under a key is a no-op (hot reload, a duplicated dependency); a different
+     * class throws, since a document would render differently by registration order. `replace: true` opts out, for
+     * a recompiled node (see {@link addNodeFromSource}).
      */
     addNode(ctor: NodeConstructor, options?: { replace?: boolean }): this;
     addNode(type: string | NodeTypeDescriptor, ctor: NodeConstructor, options?: { replace?: boolean }): this;
@@ -391,17 +250,9 @@ export class Registry {
     }
 
     /**
-     * Compile a TS source string into a live node type and register it.
-     *
-     * The script must `export default` a component (`component2d({ key, … })`),
-     * whose `key` supplies the registry key, exactly as {@link addNode}
-     * already reads it off a statically-imported one. There is no separate
-     * `key` parameter: one way to name a dynamic node's key, not two that
-     * could disagree.
-     *
-     * Requires `dynamicNodes` to have been passed to the constructor — see
-     * {@link DynamicNodeConfig}. `core` never compiles anything itself; this
-     * only calls the host-supplied `compile` and links its result.
+     * The script must `export default` a component whose `key` supplies the registry key, as {@link addNode} reads
+     * it: one way to name a dynamic node's key. Requires `dynamicNodes`; `core` only calls the host-supplied
+     * `compile` and links the result.
      */
     async addNodeFromSource(source: string, options?: { replace?: boolean }): Promise<NodeConstructor> {
         if (!this._dynamicNodes) {
@@ -415,45 +266,29 @@ export class Registry {
         return ctor;
     }
 
-    /** Everything registered under `key`, or `undefined`. */
     node(key: string): NodeTypeRecord | undefined {
         return this._nodes.get(key);
     }
 
-    /** Whether a document naming `key` can be compiled against this registry. */
     hasNode(key: string): boolean {
         return this._nodes.has(key);
     }
 
-    /** Every registered node key, for a host offering a palette. Sorted, so the order is stable. */
     nodeKeys(): string[] {
         return [...this._nodes.keys()].sort();
     }
 
-    /** What `key` declares about itself, or `undefined` if it is not registered. */
     describe(key: string): NodeTypeDescriptor | undefined {
         return this._nodes.get(key)?.descriptor;
     }
 
     /**
-     * Build a node from its spec. Throws on an unknown type.
+     * The props pass through the type's evolution first (`migrateNodeProps`).
      *
-     * The props pass through the type's own evolution first (`migrateNodeProps`),
-     * so a row written before a prop was renamed still sets it.
-     *
-     * `props` overrides the spec's own, which is how the timeline keeps an
-     * expression out of a constructor: an expression-bound prop is left out of
-     * what is passed here and written afterwards with `set()`. Constructors read
-     * their raw props to decide things like a default size, and a `() => number`
-     * is not an answer to that question. The spec's `id` outranks both, so
-     * {@link Node.id} is the document's own identity rather than a per-instance
-     * UUID — without it a host could never resolve a node it addressed by id.
-     *
-     * `key` rides along the same way, and only when the row carries one:
-     * `applyEditorStates` keys the whole editor-state record on {@link Node.key},
-     * so a row whose key never reached the node is a node a host cannot hide or
-     * lock — and overwriting one passed in `props` with an absent row-level key
-     * would take that away from a caller who had it working.
+     * `props` overrides the spec's own so the timeline can leave expression-bound props out of the constructor,
+     * which reads raw props for defaults like size, and `set()` them after. The spec's `id` outranks both, so
+     * {@link Node.id} is the document's identity. `key` rides along only when the row has one: `applyEditorStates`
+     * keys on {@link Node.key}, and an absent row key must not overwrite one passed in `props`.
      */
     instantiate(spec: NodeSpec, props?: Record<string, unknown>): Node {
         const record = this._nodes.get(spec.type);
@@ -472,12 +307,7 @@ export class Registry {
         });
     }
 
-    // ─── Commands ────────────────────────────────────────────────────────────
-
-    /**
-     * Register a command that resolves **without** a node — see
-     * {@link CommandTypeEntry}. Same uniqueness rule as {@link addNode}.
-     */
+    /** Same uniqueness rule as {@link addNode}. */
     addCommand(
         key: string,
         factory: CommandFactory,
@@ -496,12 +326,8 @@ export class Registry {
     }
 
     /**
-     * Register a command that writes a **variable** rather than a node.
-     *
-     * The seam a host reaches for to add its own — a spring, a wiggle, a
-     * sample-and-hold — without touching the timeline. `CommandSpec.targetId`
-     * names the variable, and the {@link Command} that comes back must be a pure
-     * function of `t` like any other.
+     * A host's seam for its own variable commands (a spring, a wiggle); the returned {@link Command} must be a
+     * pure function of `t`.
      */
     addVariableCommand(key: string, factory: VariableCommandFactory): this {
         if (this._claimed(key, factory)) return this;
@@ -509,18 +335,13 @@ export class Registry {
         return this;
     }
 
-    /** The node-less command registered under `key`, or `undefined`. */
     command(key: string): CommandTypeEntry | undefined {
         return this._commands.get(key);
     }
 
     /**
-     * A factory for `commandKey` on `nodeTypeKey`, or `undefined` if that type
-     * does not publish it.
-     *
-     * Dispatches by **calling the named method**, never by testing the target
-     * against a class: a forked component is a different class carrying the same
-     * source, and an `instanceof` against the original is false for it.
+     * Dispatches by calling the named method, never by testing against a class: a forked component is a different
+     * class carrying the same source, so `instanceof` against the original is false.
      */
     nodeCommand(nodeTypeKey: string, commandKey: string): CommandFactory | undefined {
         const record = this._nodes.get(nodeTypeKey);
@@ -542,10 +363,8 @@ export class Registry {
     }
 
     /**
-     * Whether a node of `nodeTypeKey` takes `commandKey`: one its own table
-     * publishes, or a node-less one that acts on a node (`to`, `fillTo`) unless
-     * the method it runs is one the type lacks. What a host offers a
-     * node is its table and the node-less commands it takes.
+     * A node takes what its own table publishes, plus node-less commands that act on a node (`to`, `fillTo`)
+     * unless the method they run is one the type lacks.
      */
     takesCommand(nodeTypeKey: string, commandKey: string): boolean {
         const record = this._nodes.get(nodeTypeKey);
@@ -557,10 +376,6 @@ export class Registry {
         return typeof (record.ctor.prototype as Record<string, unknown>)[global.method] === "function";
     }
 
-    /**
-     * Every command key available. With a node type, that type's own table;
-     * without one, the node-less commands. Sorted, so the order is stable.
-     */
     commandKeys(nodeTypeKey?: string): string[] {
         const keys = nodeTypeKey === undefined
             ? this._commands.keys()
@@ -568,16 +383,7 @@ export class Registry {
         return [...keys].sort();
     }
 
-    // ─── Variable lerps ──────────────────────────────────────────────────────
-
-    /**
-     * Register an interpolation under a document key.
-     *
-     * The **code** half of a variable, exactly as a node class is the code half
-     * of a node: `{"lerp": "color"}` in a document is a string, and something
-     * has to turn it into the function that blends two colours. Same uniqueness
-     * rule as {@link addNode}.
-     */
+    /** Same uniqueness rule as {@link addNode}. */
     addLerp(key: string, lerp: VariableLerp): this {
         const existing = this._lerps.get(key);
         if (existing && existing !== lerp) {
@@ -589,23 +395,17 @@ export class Registry {
         return this;
     }
 
-    /** The lerp registered under `key`, or `undefined`. */
     lerp(key: string): VariableLerp | undefined {
         return this._lerps.get(key);
     }
 
-    /** Every registered lerp key. Sorted, so the order is stable. */
     lerpKeys(): string[] {
         return [...this._lerps.keys()].sort();
     }
 
     /**
-     * The lerp a `VariableSpec` resolves to, defaulting from its value.
-     *
-     * A numeric variable with no declared lerp interpolates; anything else snaps
-     * at the end. That is less a fallback than the only honest default —
-     * guessing a structural lerp off one sample would blend two objects that
-     * merely share an `x` key into something neither of them is.
+     * A numeric variable with no declared lerp interpolates; anything else snaps at the end. Guessing a structural
+     * lerp off one sample would blend objects that merely share an `x` key.
      */
     requireLerp(key: string | undefined, value: unknown, where: string): VariableLerp {
         const resolved = key ?? (typeof value === "number" ? "number" : "step");
@@ -619,12 +419,7 @@ export class Registry {
         return lerp;
     }
 
-    // ─── Custom eases ────────────────────────────────────────────────────────
-
-    /**
-     * Register a custom ease under a document key, referenced as
-     * `{ kind: "custom", args: key }`. Same uniqueness rule as {@link addNode}.
-     */
+    /** Referenced as `{ kind: "custom", args: key }`. Same uniqueness rule as {@link addNode}. */
     addEase(key: string, ease: EasingFunction): this {
         const existing = this._eases.get(key);
         if (existing && existing !== ease) {
@@ -636,36 +431,21 @@ export class Registry {
         return this;
     }
 
-    /** The ease registered under `key`, or `undefined`. */
     ease(key: string): EasingFunction | undefined {
         return this._eases.get(key);
     }
 
-    /** Every registered ease key. Sorted, so the order is stable. */
     easeKeys(): string[] {
         return [...this._eases.keys()].sort();
     }
 
-    // ─── Shaders ─────────────────────────────────────────────────────────────
-
     /**
-     * Register a shader pack under a document key.
+     * The key is an argument, not a pack field (as in {@link addNode}), so a file stays portable between projects;
+     * a pack's own `id` is provenance. The pack is normalised on the way in.
      *
-     * The key is an argument rather than a field of the pack — the same shape
-     * {@link addNode} has — so one file can be registered under whatever name a
-     * project wants and stays portable between them. A pack's own `id`, when it
-     * has one, is provenance.
-     *
-     * The pack is normalised on the way in, so what comes back out of
-     * {@link shader} is always the current shape whatever the file looked like.
-     * Re-registering an equal pack is a no-op — the common case is the *same
-     * file* imported twice, which produces two structurally identical objects,
-     * and throwing on that would make the uniqueness rule fire on the one case
-     * it is meant to tolerate.
-     *
-     * Pass `{ replace: true }` to overwrite a key with a genuinely different
-     * pack — the same opt-in `addNode` takes, for the same reason: a live-edited
-     * shader re-registering under its existing key.
+     * Re-registering an equal pack is a no-op: the same file imported twice yields two equal objects, and throwing
+     * there would defeat the uniqueness rule. `replace: true` overwrites with a different pack, for a live-edited
+     * shader.
      */
     addShader(key: string, pack: unknown, options?: { replace?: boolean }): Shader {
         const normalized = normalizeShaderPack(pack);
@@ -692,35 +472,27 @@ export class Registry {
         return normalized;
     }
 
-    /** The pack registered under `key`, or `undefined`. */
     shader(key: string): Shader | undefined {
         return this._shaders.get(key);
     }
 
     /**
-     * The pack registered under `key`, if it is a **fill** shader.
-     *
-     * The typed accessors are what actually deliver the compile error the union
-     * promises: {@link shader} hands back `Shader`, and a call site that never
-     * narrows could still pass an effect pack to `Fills.shader`.
+     * The typed accessors deliver the compile error the union promises: {@link shader} returns `Shader`, and an
+     * unnarrowed call site could pass an effect pack to `Fills.shader`.
      */
     fillShader(key: string): FillShader | undefined {
         const pack = this._shaders.get(key);
         return pack?.scope === "fill" ? pack : undefined;
     }
 
-    /** The pack registered under `key`, if it is an **effect** shader. */
     effectShader(key: string): EffectShader | undefined {
         const pack = this._shaders.get(key);
         return pack?.scope === "effect" ? pack : undefined;
     }
 
-    /** Every registered shader key, for a host offering a picker. Sorted. */
     shaderKeys(): string[] {
         return [...this._shaders.keys()].sort();
     }
-
-    // ─── Internals ───────────────────────────────────────────────────────────
 
     private readonly _nodes = new Map<string, NodeTypeRecord>();
     private readonly _commands = new Map<string, CommandTypeEntry>();
@@ -730,16 +502,9 @@ export class Registry {
     private readonly _dynamicNodes?: DynamicNodeConfig;
 
     /**
-     * Evaluates one compiled (CommonJS) dynamic-node module in the current
-     * realm and returns its default export.
-     *
-     * `new Function` in-realm, never a blob module or a worker — see
-     * {@link DynamicNodeConfig} and `deny-globals.ts` for why. `require()` is
-     * locked to exactly `"@motionscript/sdk"` (plus the earlier unscoped `"motionscript"` and `"motion-script"`
-     * spellings, so a script written under either name still compiles) and
-     * the host's `modules`, own keys only so `require("constructor")` cannot
-     * reach `Object`. No relative
-     * imports, since a dynamic node is one script, not a package.
+     * `new Function` in-realm, never a blob module or a worker (see {@link DynamicNodeConfig} and
+     * `deny-globals.ts`). `require()` is locked to the sdk specifiers and the host's `modules`, own keys only so
+     * `require("constructor")` cannot reach `Object`. No relative imports: a dynamic node is one script.
      */
     private _evalNodeModule(js: string): NodeConstructor {
         const { sdk, modules } = this._dynamicNodes!;
@@ -770,7 +535,7 @@ export class Registry {
         return ctor;
     }
 
-    /** One key, one factory — see {@link addNode} for why. */
+    /** See {@link addNode} for why. */
     private _claimed(key: string, factory: CommandFactory | VariableCommandFactory): boolean {
         const existing = this._commands.get(key);
         if (!existing) return false;
@@ -780,13 +545,7 @@ export class Registry {
         );
     }
 
-    /**
-     * A class's editable properties, read off its `property` declarations.
-     *
-     * The whole prototype chain, so a component publishes the box its tree's
-     * base declares as well as its own entries — a host editing one edits every
-     * control it actually has.
-     */
+    /** The whole prototype chain, so a component publishes the box its tree's base declares too. */
     private _describeProperties(ctor: NodeConstructor): Record<string, NodePropertyDescriptor> {
         const out: Record<string, NodePropertyDescriptor> = {};
         for (const meta of getPropertyMeta(Object.create(ctor.prototype) as object)) {
@@ -800,7 +559,6 @@ export class Registry {
         return out;
     }
 
-    /** A component's `renamed` and `deprecated`, where a host reading the descriptor sees them. */
     private _describeEvolution(ctor: NodeConstructor, descriptor: NodeTypeDescriptor): NodeTypeDescriptor {
         const evolution = propEvolutionOf(ctor);
         if (!evolution) return descriptor;
@@ -812,30 +570,20 @@ export class Registry {
         return { ...descriptor, ...renamed, properties };
     }
 
-    /**
-     * A type's dimension, read off the prototype without constructing one.
-     *
-     * `Node.dimension` is a getter rather than a field for exactly this reason —
-     * it answers from the prototype, before any field initializer has run.
-     */
+    /** `Node.dimension` is a getter so it answers from the prototype, before any field initializer has run. */
     private _describeDimension(ctor: NodeConstructor): NodeDimension | undefined {
         const dimension = (Object.create(ctor.prototype) as Node).dimension;
         return typeof dimension === "string" ? dimension : undefined;
     }
 
-    /** The trees a type takes children from, off the prototype as its dimension is. */
     private _describeHolds(ctor: NodeConstructor): readonly NodeDimension[] | undefined {
         const trees = (Object.create(ctor.prototype) as Partial<Node>)._childTrees;
         return Array.isArray(trees) ? [...trees] : undefined;
     }
 
     /**
-     * The control a value's own type implies. Only ever a fallback: a typed
-     * property states its kind, and a plain `property` may too.
-     *
-     * A function default is a *reactive binding*, not a value, so it says nothing
-     * about the control; those declare their kind or take "unknown", which a host
-     * draws as read-only rather than guessing.
+     * A function default is a reactive binding, not a value, so it says nothing about the control; those declare a
+     * kind or take "unknown", which a host draws read-only.
      */
     private _inferKind(value: unknown): string {
         switch (typeof value) {
@@ -851,7 +599,6 @@ export class Registry {
         }
     }
 
-    /** A command's arguments as descriptors, whichever shorthand they were written in. */
     private _describeArgs(args: readonly CommandArg[] | undefined): CommandArgDescriptor[] {
         return (args ?? []).map((arg) =>
             typeof arg === "string" ? { key: arg, kind: "unknown" } : { kind: "unknown", ...arg });

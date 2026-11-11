@@ -3,7 +3,6 @@ import {
     Types,
     type NodeOf,
     type NodeView,
-    type PaintProps,
     type Vector2,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Node2D as _Node2D,
@@ -17,13 +16,6 @@ import { omit, PAINT, PAINT_COMMANDS } from "../kit/component";
 import { curveValue, type CurveValues } from "../kit/curve";
 import { curveFor, PLANE_ENTRY, PLOT_REF } from "../kit/graph";
 import { drawMark, inkSize, reading, traced, type MarkReading } from "../kit/mark";
-
-export interface TangentLineProps extends PaintProps {
-    on?: string;
-    length?: number;
-    dx?: number;
-    legs?: boolean;
-}
 
 /** The step a slope is measured over, as a share of the system's width. */
 const SLOPE_STEP = 1e-4;
@@ -48,11 +40,7 @@ interface TangentValues {
     readonly legs: boolean;
 }
 
-/**
- * The tangent to a plot at this node's `x`, a fixed length on screen. With a
- * `dx` it is the secant through `x` and `x + dx` instead, and `legs` draws that
- * secant's run and rise.
- */
+/** The tangent to a plot at this node's `x`, a fixed length on screen; with a `dx`, the secant through `x` and `x + dx`. */
 export const TangentLine = traced(component2d({
     key: "tangentLine",
     state,

@@ -1,12 +1,4 @@
-/**
- * The item grid **kit**: what the four grids share, and what a copied one does
- * not copy.
- *
- * A copy takes a grid's own files into your project and rewrites its reach for
- * these to `@motionscript/grids`, so the shared parts stay a real
- * dependency. That is not a size decision. `ItemGrid` keeps the register of
- * grids a morph looks another grid's arrangement up in, so a second copy of it
- * would be a second register, and a morph from one grid to another would only
- * find the grids its own copy was told of.
- */
+// What the four grids share. A copied grid imports it from `@motionscript/grids` because `ItemGrid`
+// keeps the register a morph looks another grid up in: a second copy would be a second register,
+// and a morph would find only the grids its own copy knew.
 export * from "./kit"

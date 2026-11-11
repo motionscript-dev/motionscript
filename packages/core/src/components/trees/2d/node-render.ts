@@ -10,13 +10,7 @@ import { backdropEffects, foregroundShaderEffects } from "@/attributes/shape/eff
  * orchestration on the class reads without the scope bookkeeping.
  */
 
-/**
- * Reference rect for fills with `space:'parent'`, expressed in this node's local
- * space (origin = this node's positioned centre, y-down). The viewport
- * (`space:'global'`) is resolved by the renderer. Rotation/scale of this node
- * are not folded in — the rect is the axis-aligned parent box, which is what
- * gradients expect. Returns `{}` for a root node (no parent).
- */
+/** Reference rect for fills with `space:'parent'`, in this node's local space (origin at its positioned centre, y-down); the viewport (`space:'global'`) is the renderer's. This node's rotation/scale aren't folded in: the rect is the axis-aligned parent box, as gradients expect. `{}` for a root (no parent). */
 /** @internal */
 export function computeSpaceRects(
     parentRect: BoxBounds | undefined,
@@ -25,7 +19,6 @@ export function computeSpaceRects(
     y: number,
 ): SpaceRects {
     if (!parentRect) return {};
-    // This node's local origin within the parent's space.
     const ox = thisRect.x + x;
     const oy = thisRect.y - y;
     return {
@@ -38,13 +31,7 @@ export function computeSpaceRects(
     };
 }
 
-/**
- * Apply backdrop effects (any `mode:"backdrop"` effect — blur, grayscale, …;
- * plus magnify and backdrop shader) beneath the node, clipped to its silhouette,
- * before the node's own content is drawn — so what's underneath is
- * filtered/warped while the node's own edges stay sharp. A no-op when there are
- * no backdrop effects or no silhouette `clip` to confine them to.
- */
+/** Backdrop effects (blur, grayscale, ..., magnify, backdrop shader) beneath the node, clipped to its silhouette and drawn before its own content, so what's underneath is filtered while its edges stay sharp. No-op without backdrop effects or a silhouette `clip`. */
 /** @internal */
 export function applyBackdropEffects(
     ctx: RenderContext2D,
@@ -57,20 +44,14 @@ export function applyBackdropEffects(
     if (backdrop.length === 0) return;
     if (!clip || clip.isEmpty()) return;
 
-    // Clip to the silhouette first so the backdrop passes are confined to the
-    // node; the renderer opens its backdrop layers within that clip.
+    // Clip to the silhouette first so the backdrop passes are confined to the node.
     ctx.beginClip(clip);
     ctx.beginEffects(backdrop, "backdrop", width, height);
     ctx.endEffects();
     ctx.endClip();
 }
 
-/**
- * Run `body` inside the node's `foreground` effect scope (posterize wrapping
- * bulge), so those shader effects warp/band everything it paints: the inner
- * half of `renderContentWithEffects`, whose backdrop pass runs before this.
- * Skipped when there are none, so the begin/end calls match.
- */
+/** Runs `body` inside the node's `foreground` effect scope (posterize wrapping bulge) so those shader effects warp/band everything it paints: the inner half of `renderContentWithEffects`, whose backdrop pass runs first. Skipped when there are none, keeping begin/end matched. */
 /** @internal */
 export function applyContentEffectScope(
     ctx: RenderContext2D,

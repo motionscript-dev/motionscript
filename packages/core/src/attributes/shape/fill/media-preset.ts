@@ -5,31 +5,11 @@ import { resolveChainAdjustments } from "../filters/chain";
 import type { ImageAdjustment, VideoAdjustment } from "../filters/chain";
 import type { MediaAdjustment, VideoOnlyAdjustment } from "../filters/union";
 
-/**
- * A **preset**: the grade a media fill carries — an ordered chain of
- * adjustments plus one dry/wet mix.
- *
- * This replaces the bare `filters` array a media fill used to take, and the
- * reason it is a wrapper rather than a second sibling prop is `intensity`. A
- * grade is authored as a *look*, and the question asked of a look constantly is
- * "the same, but less" — which is one number about the whole chain, not a number
- * to be smeared back across every adjustment in it. Scaling each adjustment
- * toward its own neutral is the approximation you are forced into when the
- * renderer can't mix; here it can, so it does, and "50% of this LUT" means
- * exactly what it says.
- *
- * The old `filters` prop is still accepted and folded in — see
- * {@link resolveMediaPreset}.
- */
+/** A **preset**: the grade a media fill carries, an ordered chain of adjustments plus one dry/wet mix. Wrapped rather than a sibling prop because a look is constantly asked for as "the same, but less": one number about the whole chain, not smeared across each adjustment (scaling toward neutral is the approximation forced when the renderer can't mix). */
 export interface MediaPresetProp {
     /** The chain: one adjustment, a plain array, or an {@link AdjustmentChain}. */
     adjustments?: ImageAdjustment;
-    /**
-     * How much of the grade to apply, 0–1. Defaults to 1.
-     *
-     * A real mix against the ungraded pixels, not a scaling of the chain's own
-     * values.
-     */
+    /** How much of the grade to apply, 0–1 (default 1): a real mix against the ungraded pixels, not a scaling of the chain's values. */
     intensity?: number;
 }
 
@@ -39,56 +19,30 @@ export interface VideoPresetProp {
     intensity?: number;
 }
 
-/** A preset with its chain flattened and its mix defaulted. */
 export interface MediaPresetResolved<A = MediaAdjustment> {
     adjustments: A[];
     intensity: number;
 }
 
-/** The preset a fill has when it says nothing — no chain, fully wet. */
-const NEUTRAL: MediaPresetResolved<never> = { adjustments: [], intensity: 1 };
-
-/**
- * Normalise a fill's grade, folding in the deprecated `filters` prop.
- *
- * `undefined` — not an empty preset — when there is no grade at all, because a
- * media fill with no adjustments takes a cheaper path through the renderer and
- * an always-present key would take every ungraded image in a project off it.
- * The same rule `crop` follows one level up.
- *
- * `filters` loses to `adjustments` when a fill somehow carries both: the new
- * spelling is the one the author reached for most recently.
- */
+/** Normalises a fill's grade. `undefined` (not an empty preset) when there is none: an ungraded media fill takes a cheaper renderer path that an always-present key would forfeit. */
 export function resolveMediaPreset(
     preset: MediaPresetProp | VideoPresetProp | undefined,
-    legacyFilters?: ImageAdjustment | VideoAdjustment,
 ): MediaPresetResolved<MediaAdjustment | VideoOnlyAdjustment> | undefined {
-    const chain = preset?.adjustments ?? legacyFilters;
-    const adjustments = resolveChainAdjustments(chain);
+    const adjustments = resolveChainAdjustments(preset?.adjustments);
     if (adjustments.length === 0) return undefined;
     return {
         adjustments,
-        // Clamped rather than trusted: an intensity outside 0–1 would make the
-        // renderer's mix extrapolate past the graded image, which is a look
-        // nobody asked for and no control can produce.
+        // Clamped: an intensity outside 0–1 would make the renderer's mix extrapolate past the graded image.
         intensity: Math.min(1, Math.max(0, preset?.intensity ?? 1)),
     };
 }
 
 /**
- * Interpolate two presets.
+ * Interpolates two presets: the chain pairwise (see {@link lerpFilterArray}), the mix as a number.
  *
- * The chain lerps pairwise (see {@link lerpFilterArray}) and the mix lerps as a
- * number, so a grade can be animated either way — by moving the adjustments'
- * own values, or by moving `intensity`.
- *
- * **An absent preset is read as the other side's chain at `intensity: 0`**, not
- * as an empty chain. That is the whole reason the mix is worth having, and it
- * fixes something the bare `filters` array could not express: `lerpFilterArray`
- * keeps an index present on only one side *as-is*, so tweening a fill from
- * grayscaled to ungraded used to hold the grayscale at full strength for the
- * entire tween and then cut. Holding the chain and fading the mix is what
- * "remove this grade over half a second" has always meant.
+ * **An absent preset is read as the other side's chain at `intensity: 0`**, not an empty chain: `lerpFilterArray` keeps
+ * an index present on one side as-is, so tweening grayscaled to ungraded would hold the grayscale at full strength then
+ * cut. Holding the chain and fading the mix is what "remove this grade over half a second" means.
  */
 export function lerpMediaPreset<A extends MediaAdjustment | VideoOnlyAdjustment>(
     a: MediaPresetResolved<A> | undefined,
@@ -109,9 +63,4 @@ export function declareMediaPreset(
     assets: AssetScope,
 ): void {
     for (const adjustment of preset?.adjustments ?? []) declareFilter(adjustment, assets);
-}
-
-/** The neutral preset, for a reader that would rather not branch on `undefined`. */
-export function neutralPreset<A>(): MediaPresetResolved<A> {
-    return NEUTRAL as MediaPresetResolved<A>;
 }

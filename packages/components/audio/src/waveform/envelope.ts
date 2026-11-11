@@ -1,88 +1,32 @@
 /**
- * The shape of a recording, as the waveform nodes draw it.
+ * The host decodes audio into an {@link AudioEnvelope} once per file, before the
+ * build, and hands it to the node; nothing here decodes or listens. It is baked
+ * because an export has no audio device or analyser, and the picture must be a
+ * pure function of time.
  *
- * ## How an envelope reaches a node: the host supplies it
- *
- * Nothing in the engine, and nothing in this kit, decodes audio. A waveform node
- * does not read a `sound` node's `src`, declares no audio asset and is not tied
- * to a clip: it draws the {@link AudioEnvelope} it is handed in its `envelope`
- * prop. Decoding a file into an envelope is the host's job, done once per file
- * before the document is built. Where the recording sits on the audio lane is
- * the author's timing too, which is why `FullWaveform.follow` is opt-in.
- *
- * ### The JSON form
- *
- * A document holds the envelope as plain JSON, because a prop value in a
- * document is JSON. The typed arrays in {@link AudioEnvelope} are one spelling of
- * it; `ArrayLike<number>` also accepts the plain arrays a document stores:
- *
- * ```json
- * {
- *   "magnitude": [0, 0.25, 0.5, 1, 0.5, 0],
- *   "duration": 6,
- *   "speaker": [0, 0, 0, 1, 1, -1],
- *   "speakers": 2
- * }
- * ```
- *
- * `magnitude` is the peak loudness, `0`…`1`, of buckets that divide `duration`
- * seconds evenly. `speaker` is `null` when nobody was identified; otherwise it is parallel to `magnitude`, one voice
- * index per bucket, `-1` for "nobody". `speakers` is the voice count, `0` when
- * `speaker` is `null`. A `Float32Array` or `Int16Array` is not JSON-serialisable
- * (`JSON.stringify` writes an object of indices), so a host that holds the typed
- * form converts with `Array.from` before storing it in a document.
- *
- * ## Why the data is baked rather than listened to
- *
- * A scene has to render identically in the preview and in a headless export,
- * and an export has no audio device, no `AudioContext` and no playback to
- * analyse. So a "live" visualiser cannot read a Web Audio analyser: what it
- * reads is a *pre-computed envelope*, indexed by the scene clock. The picture is
- * then a pure function of time, which is what makes scrubbing backwards, jumping
- * to frame 900, and rendering out of order all produce the same frame.
- *
- * The decode happens in the host, once per file, and arrives here through the
- * build — the same arrangement a chart's rows and a protein's atoms already use,
- * and for the same reason: the build is synchronous and cannot await a fetch.
- *
- * ## Why magnitude rather than min/max
- *
- * An editor's waveform is drawn from per-bucket minima *and* maxima, because an
- * editor is a measuring instrument. These nodes are neither — they are a bar
- * chart of loudness that happens to be shaped like a recording — and audio is
- * near enough symmetric that a mirrored magnitude is indistinguishable at the
- * size a node draws. Half the numbers, and one array to reason about.
+ * In a document an envelope is plain JSON, which `ArrayLike<number>` accepts.
+ * A `Float32Array` is not JSON-serialisable (`JSON.stringify` writes an object
+ * of indices), so convert with `Array.from` before storing it.
  */
 
 /**
- * A decoded recording, reduced to a uniform grid of loudness — plus, when the
- * host knows it, who is talking in each bucket.
- *
- * The speaker track is **not** something a decoder can produce; it comes from a
- * diarized transcript and is folded in by the host before the build. It lives
- * here rather than in a parallel structure because every reader of it is also a
- * reader of the magnitudes at the same index, and two arrays that must stay the
- * same length are better as one object than as two arguments.
+ * A recording reduced to a uniform grid of loudness, plus who is talking in each
+ * bucket when the host knows. The speaker track comes from a diarized transcript,
+ * not the decoder; it lives here because every reader of it also reads the
+ * magnitudes at the same index.
  */
 export interface AudioEnvelope {
-  /**
-   * Peak magnitude per bucket, 0…1. Buckets span {@link duration} evenly. A
-   * `Float32Array`, or the plain `number[]` a document stores.
-   */
+  /** Peak magnitude per bucket, 0 to 1; buckets span {@link duration} evenly. */
   magnitude: ArrayLike<number>
-  /** The decoded length in seconds. */
+  /** Seconds. */
   duration: number
-  /**
-   * Which voice is speaking in each bucket, as an index into the recording's
-   * own numbering, or `-1` for "nobody identified". Parallel to
-   * {@link magnitude}, or `null` when the track was never diarized.
-   */
+  /** Voice index per bucket (`-1` for nobody), parallel to {@link magnitude}, or `null` when never diarized. */
   speaker: ArrayLike<number> | null
-  /** How many distinct voices the diarizer found. Zero when it did not run. */
+  /** Zero when the diarizer did not run. */
   speakers: number
 }
 
-/** The envelope of a track that hasn't loaded — or isn't there. */
+/** The envelope of a track that has not loaded or is not there. */
 export const EMPTY_ENVELOPE: AudioEnvelope = {
   magnitude: new Float32Array(0),
   duration: 0,
@@ -90,28 +34,19 @@ export const EMPTY_ENVELOPE: AudioEnvelope = {
   speakers: 0,
 }
 
-/** One drawn bar: how loud, and whose. */
 export interface EnvelopeBar {
-  /** 0…1. */
+  /** 0 to 1. */
   magnitude: number
-  /** The voice index, or -1. */
+  /** Voice index, or -1. */
   speaker: number
 }
 
 /**
- * Resamples `[from, to)` seconds of an envelope down to `bars` columns.
- *
- * Peak-preserving rather than averaging, which is the whole difference between
- * a waveform and a blur: averaging a hundred buckets into one column flattens
- * every transient, and transients are what makes a drawn recording read as
- * speech rather than as noise. The speaker of a column is the speaker of its
- * *loudest* bucket, on the same reasoning — a column straddling a turn belongs
- * to whoever is actually audible in it.
- *
- * A window past either end of the recording yields silent, unattributed
- * columns rather than clamping onto the nearest real one. That matters for the
- * live visualiser, which is handed a window centred on the playhead and would
- * otherwise smear the first bucket across the whole run-up to a track's start.
+ * Resamples `[from, to)` seconds down to `bars` columns, keeping peaks rather
+ * than averaging: averaging flattens the transients that make a drawing read as
+ * speech. A column's speaker is that of its loudest bucket. A window past either
+ * end yields silent, unattributed columns rather than clamping onto the nearest
+ * real one, which would smear the first bucket across a live window's run-up.
  */
 export function sampleEnvelope(
   envelope: AudioEnvelope,
@@ -133,8 +68,7 @@ export function sampleEnvelope(
     const start = (from + span * i) * perSecond
     const end = (from + span * (i + 1)) * perSecond
 
-    // At least one bucket per column, so a window zoomed in past the grid draws
-    // the sample it is standing on rather than an empty band.
+    // At least one bucket per column, so a zoomed-in window draws the sample it stands on.
     const first = Math.floor(start)
     const last = Math.max(first, Math.ceil(end) - 1)
 
@@ -155,15 +89,9 @@ export function sampleEnvelope(
 }
 
 /**
- * The same window, with everything that isn't `voice` silenced.
- *
- * The point of the speaker filter, and the reason it silences rather than
- * *drops*: a podcast visualiser filtered to one host should go quiet while the
- * other one talks, not compress their turn out of existence. Keeping the bars
- * and zeroing them is what makes the picture read as "this person is not
- * speaking right now" instead of as a jump cut.
- *
- * `voice` of `null` returns the bars untouched, which is the unfiltered node.
+ * The same window with everything but `voice` silenced, not dropped, so a
+ * filtered visualiser goes quiet while the other host talks instead of cutting
+ * their turn out. `null` returns the bars untouched.
  */
 export function forSpeaker(
   bars: EnvelopeBar[],

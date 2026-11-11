@@ -1,11 +1,6 @@
 import type { PathCommand, Size2D } from "@motionscript/sdk"
 
-/**
- * The shapes a path grid can follow without a path of its own, each drawn to
- * fill the grid's box. Centred and y-up, like every path in the library; the
- * closed ones run clockwise, so an item flowing along any of them travels the
- * same way round.
- */
+/** Shapes drawn to fill the grid's box, centred and y-up; the closed ones run clockwise so flow goes the same way round. */
 export const PATH_TEMPLATES = [
   "circle",
   "square",

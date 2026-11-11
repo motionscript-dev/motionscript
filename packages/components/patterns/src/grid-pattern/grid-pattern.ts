@@ -24,14 +24,13 @@ import {
     type Stroke as _Stroke,
 } from "@motionscript/sdk";
 
-import { centered, defaultSubStroke, gridLines, maxWeight, ViewportPattern, type GridAxis } from "../kit";
+import { centered, defaultSubStroke, gridLinePaths, gridLines, maxWeight, ViewportPattern, type GridAxis } from "../kit";
 
 /**
- * An infinite line grid that fills the camera's visible region. Like
- * `LineGridPattern` it draws major and minor strokes over a fill and pans
- * with `offset`, but it tiles a world-anchored grid (spacing `cellSize`) across
- * what the nearest `Camera` above it can see, regenerated each frame. With no
- * camera it fills its own layout rect.
+ * An infinite line grid that fills the camera's visible region: like
+ * `LineGridPattern`, but it tiles a world-anchored grid (spacing `cellSize`)
+ * across what the nearest `Camera` sees, regenerated each frame. With no camera it
+ * fills its own layout rect.
  */
 export const GridPattern = component2d({
     key: "gridPattern",
@@ -54,8 +53,6 @@ export const GridPattern = component2d({
 });
 
 export type GridPattern = NodeOf<typeof GridPattern>;
-/** What a call or a document row may set. */
-export type GridPatternProps = NonNullable<Parameters<typeof GridPattern>[0]>;
 
 interface GridState {
     readonly fill: FillResolved[];
@@ -72,8 +69,7 @@ interface GridState {
 function drawGrid(ctx: RenderContext, s: GridState, bounds: BoxBounds): void {
     const halfW = bounds.width / 2;
     const halfH = bounds.height / 2;
-    // `bounds` is centred on (x, y) in y-up world space: descriptor coordinates are y-up
-    // and the renderer applies the single flip.
+    // `bounds` is centred on (x, y) in y-up world space.
     const left = bounds.x - halfW;
     const right = bounds.x + halfW;
     const top = bounds.y - halfH;
@@ -107,9 +103,8 @@ function drawGrid(ctx: RenderContext, s: GridState, bounds: BoxBounds): void {
     }
 }
 
-// A solid stroke paints the group as one union path. A dashed one draws each line on
-// its own with its dash phase anchored to the line's world coordinate, so dashes never
-// crawl as the camera pans or new lines scroll in.
+// A solid stroke paints the group as one union path. A dashed one draws each line on its
+// own, dash phase anchored to its world coordinate, so dashes never crawl as the camera pans.
 function drawGroup(
     ctx: RenderContext,
     xAxis: GridAxis,
@@ -119,23 +114,21 @@ function drawGroup(
     stroke: StrokeResolved[],
     isMajor: boolean,
 ): void {
-    // Each line spans a whole number of dash cycles, so the renderer's per-path dash-fit
-    // is a no-op and every line dashes identically.
-    const cycle = dashCycle(stroke);
-    const g = gridLines(xAxis, yAxis, subdivisions, overscan, cycle);
-    const verticals = isMajor ? g.verticalMajor : g.verticalMinor;
-    const horizontals = isMajor ? g.horizontalMajor : g.horizontalMinor;
-
     // Symmetric centerBounds give a zero recentre offset, so local coordinates draw verbatim.
     const centerBounds = [-1, -1, 1, 1] as const;
 
+    const cycle = dashCycle(stroke);
     if (cycle <= 0) {
-        const data: PathCommand[] = [];
-        for (const px of verticals) data.push({ type: "M", x: px, y: g.top }, { type: "L", x: px, y: g.bottom });
-        for (const py of horizontals) data.push({ type: "M", x: g.left, y: py }, { type: "L", x: g.right, y: py });
+        const data = gridLinePaths(xAxis, yAxis, subdivisions, overscan)[isMajor ? "major" : "minor"];
         if (data.length > 0) ctx.draw(new Graphics2D().path({ data, centerBounds }).stroke(stroke));
         return;
     }
+
+    // Each line spans a whole number of dash cycles, so the renderer's per-path dash-fit
+    // is a no-op and every line dashes identically.
+    const g = gridLines(xAxis, yAxis, subdivisions, overscan, cycle);
+    const verticals = isMajor ? g.verticalMajor : g.verticalMinor;
+    const horizontals = isMajor ? g.horizontalMajor : g.horizontalMinor;
 
     for (const px of verticals) {
         const data: PathCommand[] = [{ type: "M", x: px, y: g.top }, { type: "L", x: px, y: g.bottom }];
@@ -159,8 +152,7 @@ function dashCycle(strokes: StrokeResolved[]): number {
     return cycle;
 }
 
-// `dashOffset` advances the pattern, so it is negated to put the "on" run at the phase one
-// infinite line would have at this world coordinate.
+// `dashOffset` advances the pattern, so it is negated to give the phase one infinite line would have at this world coordinate.
 function phaseShift(strokes: StrokeResolved[], worldStart: number): StrokeResolved[] {
     return strokes.map(s => (s.dash && s.dash.length > 0)
         ? { ...s, dashOffset: (s.dashOffset ?? 0) - worldStart }

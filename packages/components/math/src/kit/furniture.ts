@@ -1,8 +1,6 @@
-import { Fills, Graphics2D, toPathString, type AssetScope, type Color, type Loader, type StrokeResolved, type Vector2 } from "@motionscript/sdk";
+import { Fills, Graphics2D, lerpNumber, toPathString, Types, type AssetScope, type Color, type Loader, type StrokeResolved, type Vector2 } from "@motionscript/sdk";
 import { buildLatexPath, LatexNotLoaded, loadMathJax, MATHJAX_LOADER } from "../tex/geometry";
 import type { Interval } from "./coords";
-
-/** Shared drawing for the systems' own furniture: axis lines, tick marks and their numbers. */
 
 /** What a system draws its axes and numbers in, and a plot its curve, until told otherwise. */
 export const AXIS_COLOR = "#9ca3af";
@@ -104,7 +102,12 @@ export function along(at: Vector2, from: Vector2, to: Vector2): number {
 }
 
 export function lerpInterval(from: Interval, to: Interval, t: number): Interval {
-    return [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+    return [lerpNumber(from[0], to[0], t), lerpNumber(from[1], to[1], t)];
+}
+
+/** An entry holding a `[min, max]` range, read forgivingly and lerped end by end. */
+export function intervalEntry(initial: Interval) {
+    return Types.custom<Interval>(initial, { resolve: readInterval, lerp: lerpInterval });
 }
 
 export function readInterval(value: Interval | undefined, previous?: Interval): Interval {

@@ -4,20 +4,7 @@ import type { FillData } from '../registry';
 import { lerpNumber } from '@/tween/lerp';
 import { Vector2 } from '@/attributes/layout/vector2';
 
-/**
- * A regular lattice of dots — the ground under a diagram, graph paper, the
- * printed-halftone look, the "canvas" backdrop every design tool draws.
- *
- * Measured in **pixels**, like {@link StripeFillProp} and unlike
- * {@link GridFillProp}: a dot field is a texture, so its pitch should not change
- * when the shape carrying it is resized. That is also what makes `offset` worth
- * having — sliding the lattice is how the field parallaxes, and it is the one
- * piece of geometry a px-space pattern cannot fake by moving the node.
- *
- * Rendered from a shader rather than a baked tile, so `radius` and `spacing`
- * stay exact at fractional values and animating any of them costs a uniform
- * write rather than a texture rebuild.
- */
+/** A regular lattice of dots (graph paper, halftone look, a design tool's canvas backdrop). Measured in **pixels**, like {@link StripeFillProp} and unlike {@link GridFillProp}: a dot field is a texture, so its pitch shouldn't change when the shape is resized, and `offset` (sliding the lattice to parallax) is geometry that moving the node can't fake. Drawn from a shader, not a baked tile, so fractional values stay exact and animating costs a uniform write. */
 export interface DotGridFillProp {
     type: 'dotGrid';
     /** Dot radius in px. Larger than half of {@link spacing} makes the dots merge. */

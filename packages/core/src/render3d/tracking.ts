@@ -1,15 +1,4 @@
-/**
- * Asset discovery for 3D scenes.
- *
- * Walks a {@link Graphics3D}'s or {@link Scene3D}'s descriptors for the resources it references and
- * declares them into an {@link AssetScope}, so the ordinary asset timeline →
- * `AssetManager.loadAt` chain has them decoded and resident *before* the frame
- * that needs them renders. That is what lets the 3D draw stay synchronous.
- *
- * This runs off the very same descriptors the real render consumes — the node
- * builds its `Graphics3D` through one method that both paths call — so what gets
- * loaded cannot drift from what gets drawn.
- */
+/** Asset discovery for 3D scenes: walks a {@link Graphics3D}'s or {@link Scene3D}'s descriptors for referenced resources and declares them into an {@link AssetScope}, so the asset timeline to `AssetManager.loadAt` chain has them resident before the frame renders, which keeps the 3D draw synchronous. It runs off the same descriptors the render consumes (the node builds its `Graphics3D` through one method both paths call), so what loads can't drift from what draws. */
 
 import type { AssetScope } from "@/assets/scope";
 import type { LoaderFn } from "@/assets/record";
@@ -24,13 +13,7 @@ import {
 } from "./resources";
 import { forEachTexture3D } from "./walk";
 
-/**
- * Declare every asset a 3D scene or drawable list needs: textures as images, models
- * and environment panoramas through the backend's loader, and each `Tex.surface`
- * node source as a subtree of the declaring node.
- *
- * A `Graphics2D` surface source declares nothing.
- */
+/** Declares every asset a 3D scene or drawable list needs: textures as images, models and environment panoramas through the backend's loader, each `Tex.surface` node source as a subtree of the declaring node. A `Graphics2D` surface source declares nothing. */
 export function declare3DResources(g3: Graphics3D | Scene3D, assets: AssetScope): void {
     forEachTexture3D(g3, (value) => {
         if (isSurfaceTexture3D(value)) {

@@ -1,7 +1,6 @@
 /**
- * The reference the asset index is held to: a walk that declares every frame.
- *
- * Excluded from the published build via `src/**\/*.fixtures.ts` in tsconfig.
+ * The reference the asset index is held to: a walk that declares every frame. Excluded from the published
+ * build via `src/**\/*.fixtures.ts` in tsconfig.
  */
 import { AssetIndex, type AssetSegment } from "@/assets/asset-index";
 import type { AssetRecord } from "@/assets/record";
@@ -11,10 +10,7 @@ import { bindDetached, declareNode } from "@/components/trees/node/node-walk";
 import { ClipInstance, type RuntimeScope } from "./clip-instance";
 import { frameTime, trackFrameCount } from "./placement";
 
-/**
- * Every frame put into its state, laid out, and asked for its assets — the exact
- * answer refinement must reproduce. Throws what the clip throws.
- */
+/** The exact answer refinement must reproduce. Throws what the clip throws. */
 export function walkedAssetRecords(
     clip: ClipDocument,
     duration: number,

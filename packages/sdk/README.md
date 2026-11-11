@@ -80,8 +80,6 @@ all supported. See the
   `easeOut`, `easeInOut`), and interpolation (`lerpNumber`).
 - **Styling & effects**: `Fills`, `Effects`, `Adjustments`, `VideoAdjustments`,
   `AudioEffects`, plus the `Stroke`/`Shadow`/`Corners` attribute types.
-  `ImageFilters` and `VideoFilters` remain as `@deprecated` aliases until the
-  next major.
 - **Audio**: the `SoundNode` and `AudioBus` nodes, and `ramp`/`hold` for
   JSON automation of their levels, speed and effects.
 - **Utilities**: `createRef`, `clamp`, `generateList`, `createContext`,

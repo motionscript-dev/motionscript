@@ -16,16 +16,11 @@ import {
 } from "@motionscript/sdk";
 import { listed, painted } from "../kit/component";
 import {
-    add, between, container, FOLLOW_COMMANDS, FOLLOW_STATE, followedQuad, grown, heading, outlineBounds, OWN_FRAME, type FollowProps, type FollowValues, type Quad,
+    add, between, container, FOLLOW_COMMANDS, FOLLOW_STATE, followedQuad, grown, heading, outlineBounds, OWN_FRAME, type FollowValues, type Quad,
 } from "../kit/follow";
 import { strokeShape } from "../kit/mark";
 
 export type EmphasisShape = "box" | "circle" | "underline" | "cross";
-
-export interface EmphasisMarkProps extends FollowProps {
-    shape?: EmphasisShape;
-    clearance?: number;
-}
 
 /** How far a cubic's handle reaches to draw a quarter of an ellipse. */
 const QUARTER = 0.5523;

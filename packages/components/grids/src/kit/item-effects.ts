@@ -1,4 +1,4 @@
-import type { Size2D } from "@motionscript/sdk"
+import { clamp, type Size2D } from "@motionscript/sdk"
 
 import type { Slot } from "./slots"
 
@@ -13,10 +13,7 @@ export type RevealStyle = (typeof REVEAL_STYLES)[number]
 export const WAVE_STYLES = ["scale", "lift", "fade", "spin"] as const
 export type WaveStyle = (typeof WAVE_STYLES)[number]
 
-/**
- * How far into view each item is, `1` shown and `0` gone — past `1` on the
- * way to it under an overshooting ease. Absent means every item is shown.
- */
+/** `1` shown and `0` gone, past `1` under an overshooting ease; absent means every item is shown. */
 export interface RevealState {
   style: RevealStyle
   values: readonly number[]
@@ -55,7 +52,7 @@ export function applyItemEffects(
 
 function applyReveal(s: Slot, style: RevealStyle, v: number, size: Size2D): void {
   if (v === 1) return
-  const shown = clamp01(v)
+  const shown = clamp(v, 0, 1)
   switch (style) {
     case "fade":
       s.opacity *= shown
@@ -64,7 +61,7 @@ function applyReveal(s: Slot, style: RevealStyle, v: number, size: Size2D): void
       s.x *= v
       s.y *= v
       s.depth *= v
-      s.opacity *= clamp01(v * 4)
+      s.opacity *= clamp(v * 4, 0, 1)
       break
     case "rise":
       s.y -= (1 - v) * Math.max(40, size.height)
@@ -89,7 +86,7 @@ function applyWave(s: Slot, wave: WaveState, w: number, size: Size2D): void {
       s.y += wave.amount * w * Math.max(40, size.height)
       break
     case "fade":
-      s.opacity *= clamp01(1 - wave.amount * w)
+      s.opacity *= clamp(1 - wave.amount * w, 0, 1)
       break
     case "spin":
       s.rotation += wave.amount * w * 360
@@ -105,10 +102,6 @@ function applyFocus(s: Slot, focus: FocusState, f: number): void {
     s.scale *= 1 + focus.grow * f
     return
   }
-  s.opacity *= clamp01(1 - focus.dim * -f)
+  s.opacity *= clamp(1 - focus.dim * -f, 0, 1)
   s.scale *= Math.max(0, 1 + focus.grow * 0.5 * f)
-}
-
-function clamp01(v: number): number {
-  return v < 0 ? 0 : v > 1 ? 1 : v
 }

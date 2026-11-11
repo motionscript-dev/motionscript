@@ -28,7 +28,6 @@ import { command } from "@/tween/command-decorator";
 export type { NodeTime } from "@/components/trees/node/node-time";
 export type { PropInput, PropInputs } from "@/attributes/properties/inputs";
 
-/** Which scene graph a node belongs to. See {@link Node.dimension}. */
 export type NodeDimension = "2d" | "3d" | "audio";
 
 /** Where a node of each dimension is allowed to live, for the mismatch error. */
@@ -39,90 +38,39 @@ const HOSTS_OF: Record<NodeDimension, string> = {
 };
 
 export interface NodeMetadata<T extends Node> {
-    /**
-     * Handle written with this node at construction. Typed as {@link RefTarget}
-     * rather than `Reference<T>` so a ref declared as one of `T`'s *supertypes*
-     * is accepted (`createRef<Node2D>()` on a `<Rect>`) — see the note there
-     * for why that direction is the sound one.
-     */
+    /** Written with this node at construction. Typed {@link RefTarget} rather than `Reference<T>` so a ref declared as one of `T`'s supertypes is accepted (`createRef<Node2D>()` on a `<Rect>`). */
     ref?: RefTarget<T>;
 }
 
 export type NodeConfig<T extends Node, P> = PropInputs<P> & NodeMetadata<T>;
 
-/**
- * Everything {@link Node.attach} needs to put a subtree into a live scene.
- *
- * The three things tree membership supplies, and the only three: what assets are
- * available, what context the ancestors provide, and where the playhead is.
- */
+/** What {@link Node.attach} needs to put a subtree into a live scene: available assets, ancestor-provided context, and the playhead. */
 export interface AttachScope {
-    /** Metadata for the assets this scene may declare. */
     assets: AssetCatalog;
-    /** The token map the parent provides to this node. */
     context: ContextMap;
     /** Clip-relative time, in seconds. */
     time: number;
 }
 
-/**
- * A `children` child: a single {@link Node}, an arbitrarily-nested array of
- * children, or a falsy value. Nesting is allowed so `.map()` results can be
- * dropped straight in as a child, and falsy values are allowed so
- * `condition && Rect({ … })` works — the constructor flattens
- * (`.flat(Infinity)`) and filters out everything but `Node` instances.
- */
+/** A `children` child: a Node, nested arrays of them, or falsy (so `.map()` results and `cond && Rect(...)` work); the constructor flattens and drops all but `Node` instances. */
 export type NodeChildren = Node | false | null | undefined | NodeChildren[];
 
-/**
- * The props every node has, in either dimension.
- *
- * Deliberately tiny. Everything that reads as "a box on a page" — `x`/`y`,
- * `width`/`height`, `padding`, `flex`, anchors, `opacity` — lives on
- * {@link Node2DProps}, and everything that reads as "a thing in space" —
- * `position`, `quaternion`, `castShadow` — lives on `Node3DProps`, because a
- * prop that means nothing for half the tree is worse than no prop at all.
- */
+/** The props every node has, in either dimension. Deliberately tiny: box-on-a-page props live on {@link Node2DProps}, thing-in-space props on `Node3DProps`; a prop meaningless for half the tree is worse than none. */
 export interface NodeProps {
     children: NodeChildren;
-    /**
-     * Seeds {@link Node.id}. A document's `NodeSpec.id` supplies it — see
-     * `Registry.instantiate` — so an instantiated node answers to the identity
-     * its row was authored under. Left out, the node falls back to a UUID, which
-     * is what every hand-written `new Rect({…})` and component call gets.
-     */
+    /** Seeds {@link Node.id}; a document's `NodeSpec.id` supplies it (see `Registry.instantiate`). Defaults to a UUID. */
     id?: string;
-    /**
-     * The handle a node is *referenced by*, as against {@link NodeProps.id},
-     * which addresses it. `"=[card.x]"` in any prop reads the `x` of the node
-     * keyed `card` — see `NodeSpec.key`.
-     *
-     * Optional and never generated — a node has one only because an author wrote
-     * one, which is what makes it safe to point a formula at — and unique per
-     * document, which `document/validate.ts` enforces.
-     */
+    /** The handle a node is referenced by (`"=[card.x]"` reads `x` of the node keyed `card`), as against {@link NodeProps.id}, which addresses it. Never generated, and unique per document (`document/validate.ts`). */
     key?: string;
 }
 
 /**
- * The dimension-agnostic base of the scene graph: tree, identity, reactive
- * properties, commands, context, clock, asset declaration, teardown. Nothing
- * about *where* a node is or *how* it draws — that's {@link Node2D} / `Node3D`.
- * They meet only at `Canvas3D`; mixing them anywhere else throws (see
- * {@link acceptsChild}).
- *
- * Subclasses call {@link initProps} from their own constructor rather than the
- * base doing it: a subclass's field initializers only run *after* `super()`
- * returns, so applying `property` defaults any earlier would write into cells
- * that don't exist yet.
+ * The dimension-agnostic base of the scene graph; where a node is and how it draws belong to {@link Node2D} /
+ * `Node3D`, which meet only at `Canvas3D` (mixing elsewhere throws, see {@link acceptsChild}). Subclasses call
+ * {@link initProps} from their own constructor: field initializers run after `super()`, so applying defaults here would write into cells that don't exist yet.
  */
 export abstract class Node<P extends NodeProps = NodeProps> implements PropHost {
-    /**
-     * Which scene graph this node belongs to.
-     *
-     * A getter rather than a field so it is answerable from the prototype during
-     * construction, before any subclass field initializer has run.
-     */
+    /** A getter so it is answerable from the prototype during construction, before subclass field initializers run. */
     abstract get dimension(): NodeDimension;
 
     /** The trees this type takes children from, answerable from the prototype as {@link dimension} is. */
@@ -131,21 +79,14 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
     }
 
     constructor(props?: NodeConfig<any, P>) {
-        // Retain the raw props (see _props doc) so a provider's provideContext can
-        // read which keys the author passed. Captured before any default
-        // application so it reflects exactly what the author passed. The object is
-        // retained by reference, so a subclass expanding prop sugar in place
-        // afterwards (`size`, `transform3D`) is reflected here too.
+        // Retained by reference before any default application, so a provider's provideContext sees exactly what the
+        // author passed and a subclass expanding sugar in place (`size`, `transform3D`) is reflected.
         this._props = props;
-        // Neither is a property: identity does not tween, so neither has any
-        // business in the table `set()`, `to()` and the baseline restore walk
-        // iterate.
+        // Neither is a property: identity doesn't tween, so it stays out of the table set(), to() and the baseline restore iterate.
         const identity = props as { id?: string; key?: string } | undefined;
         this.key = identity?.key;
-        // Nullish, never falsy: `""` is the scene root's real id, not a missing
-        // one (`checkRootShape` in document/validate.ts defines the root as the
-        // row holding it), and a UUID in its place would have the host's tree
-        // report a root no document row mentions.
+        // Nullish, never falsy: `""` is the scene root's real id (`checkRootShape` in document/validate.ts), and a UUID
+        // in its place would give the host a root no document row mentions.
         this.id = identity?.id ?? crypto.randomUUID();
     }
 
@@ -155,10 +96,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
     private _hidden = false;
     private _locked = false;
 
-    /**
-     * Hidden by the editor — no paint, no pick, no layout slot. See
-     * {@link NodeEditorState.hidden}.
-     */
+    /** Hidden by the editor: no paint, no pick, no layout slot. See {@link NodeEditorState.hidden}. */
     get hidden(): boolean {
         return this._hidden;
     }
@@ -168,31 +106,18 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return this._locked;
     }
 
-    /**
-     * @internal — written only by `applyEditorStates`, which owns both flags for
-     * the whole tree. Not a setter pair, so a caller cannot set one and leave the
-     * other holding a previous frame's answer.
-     */
+    /** @internal Written only by `applyEditorStates`, which owns both flags for the whole tree; not a setter pair, so one can't be set leaving the other stale. */
     _setEditorState(hidden: boolean, locked: boolean): void {
         this._hidden = hidden;
         this._locked = locked;
     }
 
-    /**
-     * Fire the `ref` and apply every declared property, reading
-     * initial values from `props`.
-     *
-     * Called by the concrete constructor ({@link Node2D}'s, `Node3D`'s) rather
-     * than by this one, because a subclass's field initializers run *after*
-     * `super()` returns: doing this here would apply props while the cells those
-     * props write into are still `undefined`.
-     */
+    /** Fires the `ref` and applies every declared property from `props`. Called by the concrete constructor, not this one: field initializers run after `super()`, so doing it here would write into cells that are still `undefined`. */
     protected initProps(props?: NodeConfig<any, P>): void {
         if (props?.ref) {
             props.ref(this as any);
         }
 
-        // Apply every declared property, reading initial values from props.
         for (const meta of getPropertyMeta(this)) {
             const propsVal = props ? (props as any)[meta.key] : undefined;
             const initial = propsVal !== undefined ? propsVal : meta.default;
@@ -200,11 +125,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         }
     }
 
-    /**
-     * Adopt the `children` prop. Called by the concrete constructor after its own
-     * defaults are in place, so a child never lands in a tree whose parent has not
-     * finished sizing itself.
-     */
+    /** Adopts the `children` prop, after the concrete constructor's defaults are in place so a child never lands in a parent that hasn't sized itself. */
     protected adoptChildrenProp(props?: NodeConfig<any, P>): void {
         if (props && (props as any).children) {
             const raw = Array.isArray((props as any).children) ? (props as any).children : [(props as any).children];
@@ -214,16 +135,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         }
     }
 
-    /**
-     * Whether `child` may be adopted by this node.
-     *
-     * A node holds children of its own dimension; the places the trees meet are
-     * `Canvas3D`, which takes 2D and 3D, and `Canvas2D`, which takes 2D and
-     * audio. Both partition what they accept. Rejecting the mix here rather than
-     * letting it through is deliberate: a `Box3D` parented to a `Rect` would be
-     * silently skipped by both the layout walk and the 3D walk, and would simply
-     * never appear.
-     */
+    /** Whether `child` may be adopted. A node takes children of its own dimension; `Canvas3D` takes 2D and 3D, `Canvas2D` takes 2D and audio. Mixing elsewhere is rejected because a `Box3D` under a `Rect` would be skipped by both walks and silently never appear. */
     protected acceptsChild(child: Node): boolean {
         return child.dimension === this.dimension;
     }
@@ -251,14 +163,9 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
     private _assets: AssetCatalog | null = null;
     protected _parent: Node | null = null;
 
-    /**
-     * Whether this node is in a live scene tree. Gates measure/layout/render,
-     * asset declaration and every command — checked at the handful of places
-     * the framework dispatches from, not per method.
-     */
+    /** Whether this node is in a live scene tree; gates measure/layout/render, asset declaration and every command (checked where the framework dispatches, not per method). */
     private _mounted = false;
 
-    /** See {@link _mounted}. */
     get mounted(): boolean {
         return this._mounted;
     }
@@ -273,7 +180,6 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return this._assets;
     }
 
-    /** Token→value map pushed down from ancestor providers, bound by {@link attach}. */
     private _context: ContextMap = ContextMap.EMPTY;
     /** True once {@link attach} has reached this node. */
     private _contextBound = false;
@@ -286,27 +192,18 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return this._context.get(ctx);
     }
 
-    /** Assigned in the constructor — see {@link NodeProps.id}. */
     readonly id: string;
 
     /**
-     * The slots behind this node's `property` fields. See {@link PropCells}.
+     * The slots behind this node's `property` fields; the authoring surface is the props and `set()`/`to()`/`captureProps()`.
      *
-     * @internal — the authoring surface is the declared props themselves, plus
-     * `set()`/`to()`/`captureProps()`.
+     * @internal
      */
     __cells?: PropCells;
 
     protected _children: Node[] = [];
 
-    /**
-     * Flatten a constructor's raw `children` prop into the `Node` instances it
-     * contains, without mutating or adding them — the same normalisation the
-     * constructor applies before adding them, exposed standalone so
-     * {@link applyDefaultSize} overrides can inspect children's own resolved
-     * `width`/`height` *before* they're attached (children are constructed,
-     * defaults and all, before being passed in as props).
-     */
+    /** Flattens a constructor's raw `children` prop into its `Node`s without mutating or adding them, so {@link applyDefaultSize} overrides can inspect children's resolved `width`/`height` before attachment. */
     protected static flattenChildrenProp(props: { children?: unknown } | undefined): Node[] {
         const childProp = props ? props.children : undefined;
         if (!childProp) return [];
@@ -314,18 +211,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return (raw as unknown[]).flat(Infinity).filter((c: unknown): c is Node => c instanceof Node);
     }
 
-    // ---- Reactive properties ----------------------------------------------
-
-    /**
-     * Declare a prop on this node. Creates a {@link PropSlot}-backed accessor
-     * for `field`, applies an initial value (callback → binding; otherwise
-     * constant), and registers optional tween/mapper metadata used by `set()`
-     * and `to()`.
-     *
-     * Subsequent calls for the same field reuse the existing slot and act as
-     * a value assignment, so subclasses can override a parent's default by
-     * calling applyProp again without losing the slot or its bindings.
-     */
+    /** Declares a prop: creates a {@link PropSlot}-backed accessor for `field`, applies the initial value (a callback binds, otherwise constant) and registers tween/mapper metadata. A repeat call for the same field is a value assignment, so a subclass can override a parent's default without losing the slot or its bindings. */
     protected applyProp<Ext, Int = Ext>(
         field: string,
         initial: Ext | (() => Ext) | undefined,
@@ -343,9 +229,8 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         if (typeof value === "function") {
             const extFn = value as () => any;
             if (mapper) {
-                // A binding that reads `undefined` — a node reference to a node that is
-                // not there — leaves the prop as a node built without it, and never
-                // reaches the mapper, which holds the shape the prop's readers go through.
+                // A binding reading `undefined` (a node reference to an absent node) leaves the prop as a node built without
+                // it and skips the mapper, which holds the shape the prop's readers go through.
                 let unset: { value: unknown } | undefined;
                 slot.bind(() => {
                     const read = extFn();
@@ -365,12 +250,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return collectProperties(this) as P;
     }
 
-    /**
-     * This node's **class** name, for a message or a host's type column. Not an
-     * authored identity — those are {@link id} and {@link key}, and nothing in
-     * the document model is called a name any more. Nor is it the registry key a
-     * document writes in `NodeSpec.type`: a minifier is free to rename a class.
-     */
+    /** This node's class name, for messages and a host's type column. Not an authored identity ({@link id}, {@link key}) nor the registry key in `NodeSpec.type`: a minifier may rename a class. */
     get className(): string {
         return this.constructor.name;
     }
@@ -378,11 +258,8 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
     set(props: { [K in keyof P]?: P[K] | (() => P[K]) }): void {
         const slots = this.__cells?.slots;
         if (!slots) return;
-        // Iterate the caller's keys (usually 1–3) rather than every registered
-        // prop (15+): set() runs in the per-frame hot path. Only keys backed by
-        // a slot are written; unknown keys are ignored — which is also what
-        // lets a subclass distribute its own sugar (2D's `size`, `transform3D`)
-        // into real keys and then delegate here.
+        // Iterate the caller's keys (usually 1-3), not every registered prop (15+): set() runs in the per-frame hot path.
+        // Unknown keys are ignored, which lets a subclass distribute its sugar (2D's `size`, `transform3D`) into real keys and delegate here.
         for (const key in props) {
             const val = (props as any)[key];
             if (val !== undefined && slots.has(key)) this._writeProp(key, val);
@@ -393,15 +270,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return toCommand<P>(this, args.data ?? {}, args.duration, args.easing);
     }
 
-    /**
-     * Build a {@link Command} from a pure function of normalized time — an
-     * animation this node can be *evaluated* at, not only run through. The pair
-     * to {@link to}, for the built-in commands whose values at `t` are not a prop
-     * list, and what a component command's timeline lowers to.
-     *
-     * Snapshot whatever the animation starts from *outside* `at`: reading a prop
-     * inside it would re-read the value the command is itself writing.
-     */
+    /** Builds a {@link Command} from a pure function of normalized time: an animation this node can be evaluated at, not only run. The pair to {@link to}, for commands whose values at `t` aren't a prop list. Snapshot the starting state outside `at`: reading a prop inside it would re-read what the command is writing. */
     protected command<Props = P>(
         at: (t: number) => Partial<Props>,
         duration: number = 1,
@@ -416,21 +285,11 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         );
     }
 
-    /**
-     * Resolve a single `to()` step into a flat {@link TweenStepper} — all the
-     * per-key setup (mapper, numeric-vs-custom routing) happens once here, then
-     * `advance(dt)` is allocation-free. Used by both a chain's iterator path and
-     * the batched `parallel` path.
-     *
-     * A subclass with positional sugar of its own (2D's `size` and anchors)
-     * expands `to` in place and then delegates here.
-     */
+    /** Resolves one `to()` step into a flat {@link TweenStepper}: per-key setup (mapper, numeric-vs-custom routing) happens once here, so `advance(dt)` is allocation-free. Used by a chain's iterator path and the batched `parallel` path. A subclass with positional sugar expands `to` in place, then delegates here. */
     _prepareStep(to: Partial<P>, duration: number, easing?: EasingFunction): TweenStepper {
         if (!this._mounted) return inertStepper(duration);
-        // A tween runs in stored space, so the destination is mapped once, here,
-        // and every step after it is a stored value written to the slot as it is.
-        // Writing a step through the setter would map it a second time, which only
-        // an idempotent mapper survives.
+        // A tween runs in stored space: the destination is mapped once here and every step writes a stored value as is.
+        // Writing through the setter would map twice, which only an idempotent mapper survives.
         const numCells: PropSlot<number>[] = [];
         const numFrom: number[] = [];
         const numEnd: number[] = [];
@@ -466,19 +325,14 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
             const easedT = easing ? easing(t) : t;
             lerp(easedT);
             if (hasCustom) for (const fn of customLerps) fn(easedT);
-            // A discrete prop has nothing between its endpoints, so it snaps at
-            // the end rather than interpolating. Applied here rather than only in
-            // `advance` because a `seek` past the end has, by definition, reached
-            // that end — leaving it out meant `seek(duration)` and running to
-            // `duration` produced different nodes, and only the second was right.
+            // A discrete prop snaps at the end. Applied here, not only in `advance`, because a `seek` past the end has
+            // reached that end; otherwise `seek(duration)` and running to `duration` would differ.
             if (hasSnaps && t >= 1) for (const [slot, val] of stringSnaps) slot.set(val);
         };
 
         let elapsed = 0;
         return {
-            // Tracks `elapsed`, so a seek and a subsequent advance agree about
-            // where the tween is. Without it, seeking forward then advancing
-            // rewound to `dt`.
+            // Tracks `elapsed` so a seek and a subsequent advance agree on where the tween is.
             seek: (e: number) => {
                 elapsed = e;
                 apply(duration > 0 ? Math.min(e / duration, 1) : 1);
@@ -502,45 +356,17 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return initial === undefined ? undefined : mapper(initial, undefined);
     }
 
-    // ---- State stack (save / restore) -------------------------------------
-    // A per-node LIFO stack of property snapshots, mirroring Motion Canvas's
-    // node.save()/restore(). `save()` pushes a snapshot of every declared prop;
-    // `restore()` pops the most recent one and either snaps to it (no duration)
-    // or tweens the numeric props back to it over `duration`.
+    // State stack (save / restore): a per-node LIFO of property snapshots, as Motion Canvas's save()/restore().
 
     /** @internal LIFO stack of save() snapshot layers. Underscore-internal so the prop companion can read it; not authoring surface. */
     _stateStack: PropLayer[] = [];
 
-    /**
-     * Push a snapshot of this node's current state onto its save stack.
-     *
-     * Every reactive prop (`x`, `y`, `scale`, `opacity`, `fill`, …) is captured,
-     * preserving reactive bindings — a prop bound to `() => other().x` is saved
-     * as the binding, not just its resolved value, so {@link restore} re-binds
-     * it rather than freezing the value. Calls stack: each `save()` pushes a new
-     * layer, and each {@link restore} pops the most recent one.
-     *
-     * @example
-     * node.save();
-     * node.moveTo({ data: { x: 200, y: 0 }, duration: 1 });
-     * node.restore({ duration: 1 });   // animate back to where it was saved
-     */
+    /** Pushes a snapshot of every reactive prop onto the save stack. Bindings are saved as bindings (not resolved values), so {@link restore} re-binds them. Calls stack. */
     save(): void {
         saveState(this);
     }
 
-    /**
-     * Pop the most recent {@link save} snapshot and roll this node back to it.
-     *
-     * Called with no `duration` (or `0`), every prop is reapplied instantly —
-     * plain values are set, reactive bindings are re-bound. Called with a
-     * positive `duration`, the numeric props (and any with a custom `tween`)
-     * animate toward their saved values over that many seconds; once the tween
-     * finishes the full snapshot is reapplied, which re-binds any reactive props
-     * and snaps non-tweenable props (e.g. strings) to their saved values.
-     *
-     * A no-op (returns immediately) if there is nothing on the stack.
-     */
+    /** Pops the latest {@link save} snapshot and rolls back to it. With no (or zero) `duration` every prop is reapplied instantly; with one, numeric and custom-tween props animate back, then the full snapshot is reapplied to re-bind reactive props and snap non-tweenable ones. No-op on an empty stack. */
     restore(): void;
     restore(args: CommandArgs<Record<string, never>> & { duration: number }): Command<Record<string, never>>;
     restore(args?: CommandArgs<Record<string, never>>): void | Command<Record<string, never>> {
@@ -553,8 +379,6 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return restoreAnimated(this, layer, duration, args?.easing);
     }
 
-    // ---- Clock ------------------------------------------------------------
-
     protected _time: MutableNodeTime = createNodeTime();
 
     /** This node's place on the scene clock. See {@link NodeTime}. */
@@ -564,51 +388,27 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
     }
 
     /**
-     * Advance **this node's** clock to `total` clip-seconds and sample its
-     * derived render state.
-     *
-     * Per-node, not per-subtree: {@link attach} already recurses, so a recursive
-     * advance here would re-advance every descendant once per ancestor.
-     *
-     * Sampling happens here, not at render: this runs on every advanced frame in
-     * every playback path (forward, scrub, precomp), whereas `render` runs only
-     * for displayed frames. Sampling per-frame is what makes velocity correct on
-     * the first frame after a scrub/rewind, where sampling only at render time
-     * read zero. The advance loop runs before `generator.next()` (so audio
-     * scheduling in generator bodies reads the right time), which means x/y here
-     * still hold the previous frame's value — velocity therefore trails the
-     * rendered position by one frame. That lag is constant and identical forward
-     * vs. scrub, and imperceptible for motion blur.
+     * Advances this node's clock (not its subtree: {@link attach} already recurses) and samples its derived render
+     * state. Sampling happens here, not at render: this runs on every advanced frame in every playback path while
+     * `render` runs only for displayed ones, so velocity is right on the first frame after a scrub. It runs before
+     * `generator.next()` (so audio scheduling in generator bodies reads the right time), so x/y still hold the
+     * previous frame's value and velocity trails the rendered position by one constant frame.
      */
     private _advanceOwnTime(total: number): void {
         advanceNodeTime(this._time, total);
         this._sample();
     }
 
-    /**
-     * Sample this node's own derived render state for the current frame. Nothing
-     * to derive in the general case; {@link Node2D} samples its motion here.
-     *
-     * @internal The per-node half of `sampleTree` — a walk, not a node method.
-     */
+    /** @internal Per-node half of `sampleTree`; nothing to derive here, {@link Node2D} samples its motion. */
     _sample(): void { }
 
-    /**
-     * Record this node's current position as the motion history's previous
-     * frame, stamped `at`, deriving no velocity.
-     *
-     * @internal The per-node half of `primeMotionTree`.
-     */
+    /** @internal Per-node half of `primeMotionTree`: records the current position as the motion history's previous frame at `at`, deriving no velocity. */
     _primeMotion(at: number): void { }
 
-    // ---- Attachment -------------------------------------------------------
-
     /**
-     * Put this subtree into the scene: mark it mounted, bind the asset catalog
-     * and inherited context, advance its clock to `scope.time`.
-     *
-     * Safe and cheap to call every frame — an unchanged catalog/context
-     * short-circuits, and {@link resolveContext} fires only on first attach.
+     * Puts this subtree into the scene: marks it mounted, binds the asset catalog and inherited context, advances its
+     * clock to `scope.time`. Cheap to call every frame: an unchanged catalog/context short-circuits and
+     * {@link resolveContext} fires only on first attach.
      *
      * @internal Driven by `ClipInstance` per frame, and by {@link add} for a mid-frame subtree.
      */
@@ -619,9 +419,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         if (this._assets !== scope.assets) this._assets = scope.assets;
 
         const next = this.provideContext(scope.context);
-        // Unchanged map, already bound, and not this instance's first attach ⇒
-        // the whole subtree already holds `next` and the walk below would be pure
-        // repetition of the context half. The time half still has to run.
+        // Unchanged map, already bound, and not the first attach: the subtree already holds `next`, so only the time half runs.
         const contextChanged = !this._contextBound || this._context !== next;
         if (contextChanged) {
             this._context = next;
@@ -637,8 +435,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
     }
 
     /**
-     * Take this subtree out of the scene. Not a teardown — props/children/bindings
-     * stay, so it can be attached elsewhere (`reparent`). {@link dispose} tears down.
+     * Takes this subtree out of the scene without tearing it down, so it can be attached elsewhere (`reparent`); {@link dispose} tears down.
      *
      * @internal Driven by {@link remove}/{@link clear}.
      */
@@ -663,39 +460,21 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         if (scope) child.attach(scope);
     }
 
-    // ---- Context lifecycle ------------------------------------------------
-
-    /**
-     * Apply inherited context **values** to this node, once, after it's linked
-     * into the tree and ancestor providers have resolved: a component's
-     * `inherit` entries. Runs exactly once per instance.
-     */
+    /** Applies inherited context values once, after linking into the tree and ancestor providers resolve (a component's `inherit` entries). */
     protected resolveContext(ctx: ContextMap): void { }
 
-    /**
-     * The {@link ContextMap} handed to descendants: a component's `provide`
-     * adds its tokens. The base passes the parent's map through unchanged.
-     */
+    /** The {@link ContextMap} for descendants; a component's `provide` adds tokens, the base passes the parent's through. */
     protected provideContext(parent: ContextMap): ContextMap {
         return parent;
     }
 
-    /**
-     * Bind `node`'s asset catalog, context and clock without making it a child —
-     * for a node used purely as a pixel source (`Tex.surface`), laid out on
-     * demand rather than sitting in the tree.
-     */
+    /** Binds `node`'s asset catalog, context and clock without making it a child, for a node used as a pixel source (`Tex.surface`) and laid out on demand. */
     protected attachDetached(node: Node): void {
         const scope = this._currentScope();
         if (scope) node.attach(scope);
     }
 
-    /**
-     * Declare what this node draws from its props and inherited context alone —
-     * never `layoutBounds` or the clock. The runtime records what this reads and
-     * calls it again only when one of those props is written, so anything else it
-     * depends on is a change nobody will ask about.
-     */
+    /** Declares what this node draws from its props and inherited context alone, never `layoutBounds` or the clock: the runtime records what this reads and re-runs it only when those props are written, so any other dependency is a change nobody will ask about. */
     declareAssets(assets: AssetScope): void { }
 
     get children(): Node[] {
@@ -703,21 +482,13 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         return this._children;
     }
 
-    /**
-     * Every child, both dimensions, unfiltered — unlike {@link children}, which
-     * a {@link Node2D} filters to its own kind. Used where index has to match
-     * the authored tree (picking), since filtering would renumber it.
-     */
+    /** Every child, both dimensions, unfiltered (unlike {@link children}, which {@link Node2D} filters): for index-matching the authored tree, as picking does. */
     get _allChildren(): readonly Node[] {
         if (_observer !== null) _observer.read(this._structureSlot());
         return this._children;
     }
 
-    /**
-     * Add children — a node, an array, or a nested mix; falsy entries
-     * (`cond && node`) are dropped. A child of the other dimension throws —
-     * see {@link acceptsChild}.
-     */
+    /** Adds children (a node, array, or nested mix; falsy entries dropped). A child of the other dimension throws, see {@link acceptsChild}. */
     add(child: NodeChildren): void {
         if (child instanceof Node) {
             this._addChild(child);
@@ -738,7 +509,6 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         }
     }
 
-    /** Remove every child, detaching each (see {@link remove}). */
     clear(): void {
         for (const child of this._children) {
             if (_observer !== null) this._structureChanged(child);
@@ -748,15 +518,7 @@ export abstract class Node<P extends NodeProps = NodeProps> implements PropHost 
         this._children.length = 0;
     }
 
-    /**
-     * Insert `child` at `index` among this node's children.
-     *
-     * On {@link Node} rather than {@link Node2D} because it is tree machinery —
-     * `ClipTimeline.syncPresence` reaches for it on whatever a spec's
-     * `parentId` names, which since audio joined the graph is not always a 2D
-     * node. `Node2D` overrides it for the animated insert, which measures the
-     * child off-tree and so needs a laid-out one.
-     */
+    /** Inserts `child` at `index`. On {@link Node} because it's tree machinery (`ClipTimeline.syncPresence` calls it on whatever a spec's `parentId` names, not always 2D); `Node2D` overrides it for the animated insert, which measures the child off-tree. */
     addChildAt(args: CommandArgs<{ child: Node; index: number }>): void | Command<Record<string, never>> {
         const { child, index } = args.data as { child: Node; index: number };
         this.assertAcceptsChild(child);

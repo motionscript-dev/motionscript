@@ -2,25 +2,9 @@ import type { DynamicNodeConfig } from "@motionscript/core";
 import * as sdk from "@motionscript/core/sdk";
 import * as esbuild from "esbuild-wasm";
 
-/**
- * `browser`'s real, working default for `Registry.addNodeFromSource` — the
- * `sdk` half is cheap (re-exports, no WASM) and imported eagerly; the compiler
- * is the expensive half, and stays behind a lazy `import()` so an app that
- * never registers a source-string node never pays for it, however long the
- * engine has been running.
- *
- * `core` has no compiler dependency of its own and cannot import the published
- * `@motionscript/sdk` barrel (that package depends on `core`, so the reverse
- * would be circular) — `browser` is where this concern actually belongs: the
- * package whose entire job is "what running in an actual browser tab looks
- * like" already owns the renderer, `WebAudioSink` and `WebTicker` on exactly that
- * basis.
- */
+/** `browser`'s working default for `Registry.addNodeFromSource`: the cheap `sdk` half is imported eagerly, the compiler stays behind a lazy `import()` so an app that never registers a source-string node never pays for it. `core` cannot import the published `@motionscript/sdk` barrel (circular) and has no compiler dependency, so the concern lives here, which already owns the renderer, `WebAudioSink` and `WebTicker`. */
 
-// Default to the wasm shipped by esbuild-wasm, resolved lazily — `import.meta.url`
-// is empty in a non-ESM output (an IIFE bundle, which is what the headless page
-// loads), and `new URL("…", "")` throws on import, before a caller has had the
-// chance to pass an explicit URL that would have made the default irrelevant.
+// Default to the wasm shipped by esbuild-wasm, resolved lazily: `import.meta.url` is empty in a non-ESM output (the headless page's IIFE), and `new URL("…", "")` would throw on import before a caller could pass an explicit URL.
 function defaultCompilerWasmUrl(): string {
     return new URL("esbuild-wasm/esbuild.wasm", import.meta.url).href;
 }
@@ -43,12 +27,7 @@ function defaultCompiler(wasmUrl?: string): Promise<(source: string) => Promise<
     })());
 }
 
-/**
- * Resolves a full `DynamicNodeConfig`, filling in whatever the caller left
- * unset with `browser`'s own default. Synchronous — the WASM import happens
- * on `compile`'s first actual call, not here, so attaching this to every
- * engine costs nothing until a source string is genuinely registered.
- */
+/** Resolves a full `DynamicNodeConfig`, filling unset fields with `browser`'s default. Synchronous: the WASM import happens on `compile`'s first call, so attaching this to every engine is free until a source string is registered. */
 export function resolveDynamicNodes(
     partial: Partial<DynamicNodeConfig> | undefined,
     compilerWasmUrl?: string,

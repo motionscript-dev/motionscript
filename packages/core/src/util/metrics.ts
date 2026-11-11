@@ -1,12 +1,4 @@
-/**
- * Two numbers a component ends up needing, neither of which belongs to any one
- * of them.
- *
- * Both were written for the chart family and are used well outside it — a
- * graph's plane rounds its ticks with one, a diagram divides its entrance with
- * the other. Leaving them there would make a package with nothing to do with
- * charts depend on charts for a page of arithmetic.
- */
+/** Two numbers a component needs that belong to none of them: written for the chart family but used well outside it (a graph rounds ticks with one, a diagram divides its entrance with the other), so keeping them there would make a non-chart package depend on charts. */
 
 /** Round a raw step up to a tidy value (1/2/5 × 10ⁿ) so markers land round. */
 export function niceStep(raw: number): number {
@@ -17,23 +9,7 @@ export function niceStep(raw: number): number {
   return nice * mag
 }
 
-/**
- * How an axis's staggered entrance is divided up, so the whole thing fits inside
- * `duration` instead of running past it.
- *
- * The standalone components this family was ported from read `duration` as *one
- * marker's* slide, and then added the stagger between them and a full-length
- * caption move on the end — so `enter(0.8)` on a five-marker axis actually took
- * about 2.2 seconds. That's fine when a scene is a hand-written script whose
- * beats are whatever they turn out to be. It is not fine here: an editor lays a
- * command out on the timeline at the duration it declares, times its parallel
- * siblings against it, and sums those durations into the scene's length. A
- * generator that overruns is a command that renders in the wrong place.
- *
- * So the budget runs the other way: the caption takes a fixed share off the top,
- * and the markers' per-move duration is solved for from what's left, given the
- * stagger. Same shape of animation, honest arithmetic.
- */
+/** Divides an axis's staggered entrance so the whole thing fits inside `duration`. The ported components read `duration` as one marker's slide and then added stagger and a caption move, so `enter(0.8)` on five markers took ~2.2 s; an editor lays a command at its declared duration and sums those into the scene's length, so an overrun renders in the wrong place. The caption takes a fixed share off the top and the per-marker move is solved from what's left, given the stagger. */
 export function enterBudget(
   duration: number,
   count: number,

@@ -7,87 +7,45 @@ import type {
 import type { Transform3D } from "./transform";
 import type { Color } from "@/attributes/shape/fill/color/parser";
 
-/**
- * Per-node state supplied to {@link RenderContext3D.begin} for the duration of a
- * `Node3D`'s draw scope — the 3D counterpart of `NodeRenderState`.
- *
- * There is no layout rect and no motion here, because neither means anything for
- * an object in space: a 3D node's whole placement *is* its `transform`.
- */
+/** Per-node state for a `Node3D`'s draw scope, the 3D counterpart of `NodeRenderState`. No layout rect or motion: a 3D node's whole placement is its `transform`. */
 export interface Node3DRenderState {
-    /**
-     * Stable node identifier.
-     *
-     * This is what gives the renderer's cache real identity: keyed by the node
-     * that recorded it, a drawable survives a conditional sibling appearing or
-     * disappearing, where a positional index would renumber and rebuild the tail.
-     */
+    /** Stable node identifier: keys the renderer's cache so a drawable survives a conditional sibling appearing or disappearing, where a positional index would renumber and rebuild the tail. */
     id: string;
     /** This node's placement relative to its parent. */
     transform?: Transform3D;
 }
 
 /**
- * The rendering context passed to every `Node3D` when it draws itself.
- *
- * The 3D sibling of `RenderContext2D`, and deliberately not its subclass: the two
- * share no members, because a 3D scene is described with a camera, lights and
- * meshes rather than with paths, paint and clips.
- *
- * The division of labour mirrors 2D exactly. A {@link Graphics3D} is *what one
- * node draws* — geometry and material, nothing else — the way a `Graphics2D` is
- * shapes and paint. Everything that belongs to the scene rather than to a thing
- * in it is a call on the context:
+ * The context passed to every `Node3D` when it draws itself: the 3D sibling of `RenderContext2D`, not its subclass
+ * (they share no members: a 3D scene is a camera, lights and meshes, not paths, paint and clips). A {@link Graphics3D}
+ * is what one node draws (geometry and material); everything belonging to the scene is a call on the context:
  *
  *   protected renderSelf(ctx: RenderContext3D): void {
  *       ctx.light({ type: "ambient", intensity: 0.4 });
  *   }
  *
- * `begin(state)` / `end()` bracket each node's draw call and carry its identity
- * and placement, so nesting is the node tree's nesting and the renderer can
- * cache per node rather than per slot.
+ * `begin(state)` / `end()` bracket each node's draw and carry its identity and placement, so nesting is the node
+ * tree's and the renderer can cache per node. `Scene3D` is the shipped implementation, recording calls into a value
+ * a backend replays.
  *
- * `Scene3D` is the implementation core ships; it records the calls into a value a
- * backend replays.
- *
- * There is no `background`. What is drawn behind a 3D scene is either a **2D
- * fill** on the viewport — which composites correctly already, is unaffected by
- * anything in the 3D pass, and gets the whole fill chain — or a sky, which is
- * part of {@link environment} because an HDRI that lights a scene and the
- * panorama you see behind it are one thing.
+ * There is no `background`: behind a 3D scene is either a **2D fill** on the viewport (which composites correctly and
+ * gets the whole fill chain) or a sky, part of {@link environment} since an HDRI that lights a scene is the panorama
+ * seen behind it.
  */
 export abstract class RenderContext3D {
-    /**
-     * Open a node draw scope. Must be paired with {@link end}. Everything
-     * recorded until then is nested under this node and inherits its transform.
-     */
+    /** Opens a node draw scope, paired with {@link end}: everything recorded until then nests under this node and inherits its transform. */
     abstract begin(state: Node3DRenderState): void;
 
-    /** Close the innermost scope opened by {@link begin}. */
     abstract end(): void;
 
-    /** Draw what this node paints. */
     abstract draw(graphics: Graphics3D): void;
 
-    /** Add a light at the current scope. */
     abstract light(light: LightData3D, transform?: Transform3D): void;
 
-    /**
-     * Place the scene camera at the current scope.
-     *
-     * Recorded in the hierarchy rather than set as a scene-wide field, so a camera
-     * nested inside a moving group is carried by that group — the renderer
-     * composes its world transform the same way it does for a mesh. A scene with
-     * no camera gets a default framing; a scene that declares more than one keeps
-     * the last, since there is only ever one view.
-     */
+    /** Places the scene camera at the current scope. Recorded in the hierarchy, not as a scene-wide field, so a camera in a moving group is carried by it (composed like a mesh's world transform). No camera gets a default framing; with several, the last wins. */
     abstract camera(camera: CameraData3D): void;
 
-    // ── Scene-wide settings ──────────────────────────────────────────────────
-    //
-    // Unlike a light or a camera these have no position, so they are not
-    // hierarchical: a scene has exactly one fog and one environment, and the last
-    // node to set one wins.
+    // Scene-wide settings have no position, so they are not hierarchical: a scene has one fog and one environment, and the last node to set one wins.
 
     /** Set the scene fog. A bare colour is sugar for `{ color }`; `null` clears it. */
     abstract fog(fog: FogData3D | Color | null): void;

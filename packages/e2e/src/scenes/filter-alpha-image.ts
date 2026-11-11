@@ -21,13 +21,13 @@ export default scene((stage) => {
                         width: 'fill',
                         height: 'fill',
                         cornerRadius: 24,
-                        fill: Fills.image('cat.jpg', { fit: 'fill', filters: Adjustments.alpha(1) }),
+                        fill: Fills.image('cat.jpg', { fit: 'fill', preset: { adjustments: Adjustments.alpha(1) } }),
                     }),
                 ],
             }),
         ] }),
     );
 }, [
-    () => image().to({ data: { fill: Fills.image('cat.jpg', { fit: 'fill', filters: Adjustments.alpha(0.1) }) }, duration: 1.2, easing: easeInOut('quad') }),
+    () => image().to({ data: { fill: Fills.image('cat.jpg', { fit: 'fill', preset: { adjustments: Adjustments.alpha(0.1) } }) }, duration: 1.2, easing: easeInOut('quad') }),
     holdTail(1.2),
 ]);

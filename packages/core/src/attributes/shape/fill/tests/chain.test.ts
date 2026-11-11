@@ -228,10 +228,9 @@ describe('Fills builders – the rest of the roster', () => {
         });
     });
 
-    it('video forwards a preset unresolved, and the deprecated filters beside it', () => {
+    it('video forwards a preset unresolved', () => {
         const preset = { adjustments: [], intensity: 0.5 } as never;
-        const filters = [] as never;
-        expect(one(Fills.video('clip.mp4', { preset, filters }))).toMatchObject({ type: 'video', preset, filters });
+        expect(one(Fills.video('clip.mp4', { preset }))).toMatchObject({ type: 'video', preset });
     });
 
     it('video keeps a null timestamp, which hands the playhead back', () => {

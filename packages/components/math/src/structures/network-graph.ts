@@ -2,16 +2,17 @@ import {
     component2d,
     Graphics2D,
     Types,
-    type Color,
     type Fill,
     type FillResolved,
     type NodeOf,
+    type Color as _Color,
+
     type NormalizedColor,
-    type PaintProps,
     type RenderContext,
     type ShadowResolved,
     type Size2D,
-    type Stroke,
+    type Stroke as _Stroke,
+
     type StrokeResolved,
     type Values,
     type Vector2,
@@ -31,22 +32,6 @@ export interface GraphPosition {
     vertex: string;
     x: number;
     y: number;
-}
-
-export interface NetworkGraphProps extends PaintProps {
-    vertices?: string[];
-    edges?: GraphEdge[];
-    directed?: boolean;
-    arrangement?: GraphLayout;
-    root?: string;
-    positions?: GraphPosition[];
-    vertexRadius?: number;
-    vertexStroke?: Stroke;
-    labels?: boolean;
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-    partFills?: PartFill[];
 }
 
 // Every list keeps each entry as it was written, a blank or a repeat included, so
@@ -99,15 +84,11 @@ const state = {
     layoutMix: Types.number(1, { private: true }),
 };
 
-/** What a graph is drawn from: its own entries, as its fields and its node both read them. */
 export type GraphValues = Values<typeof state>;
 
 /**
- * Vertices and the edges between them, arranged by a rule: in a circle, by
- * springs, as a tree from `root`, or in a grid. Its `fill` is the vertices and
- * its `stroke` the edges, with an arrowhead each when `directed`. `arrangeTo`
- * moves every vertex to where another rule places it; `partFillTo` paints a
- * vertex, or an edge written `a-b`. (`layout` is every node's own box.)
+ * Vertices and the edges between them, arranged by a rule (circle, springs, tree,
+ * grid). Its `fill` is the vertices and its `stroke` the edges. (`layout` is every node's own box.)
  */
 export const NetworkGraph = component2d({
     key: "networkGraph",

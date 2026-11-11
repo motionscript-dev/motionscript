@@ -5,48 +5,21 @@ import {
     type FrameSpec, type Size2D, spansCovering, StateEvaluator, type StorageAdapter, type Theme, yieldToScheduler,
 } from "@motionscript/core";
 
-/**
- * Rendering a timeline is portable; *encoding* it is not.
- *
- * Everything about driving the frames — discovery, state evaluation, asset
- * windows, the bounded warm-and-re-render retry that makes a frame accurate,
- * audio scheduling, progress, cancellation — is the same work whatever the
- * output format. Only the codec differs, so it is injected as a `VideoFrameSink`
- * (exporter.ts: mediabunny over WebCodecs).
- */
+/** Rendering a timeline is portable; encoding is not, so the codec is injected as a `VideoFrameSink` (exporter.ts: mediabunny over WebCodecs). */
 
-/** Image formats a still can be encoded to. */
 export type ScreenshotFormat = "png" | "jpeg";
 
 export type { FrameSpec };
 
-/** One scheduled audio request, with the absolute time its track starts at. */
 export interface ScheduledAudioRequest {
     request: AudioRequest;
-    /**
-     * Seconds to add to the request's own times, which are clip-relative: its
-     * track's start. Getting it wrong produces an export that looks right and
-     * drifts out of sync, which no pixel comparison catches.
-     */
+    /** Seconds added to the request's clip-relative times (its track's start). A wrong value exports in apparent sync and drifts, which no pixel comparison catches. */
     globalOffset: number;
 }
 
-/**
- * Where finished frames go.
- *
- * `TAudio` ties the sink to its {@link AudioMixer}: what a mixer produces is
- * platform-specific (a Web Audio `AudioBuffer`, interleaved PCM, a temp file) and
- * only its own sink consumes it, so this module relays it without naming it.
- */
+/** Where finished frames go. `TAudio` ties the sink to its {@link AudioMixer}: the mixed form is platform-specific and only its own sink consumes it. */
 export interface VideoFrameSink<TAudio = unknown> {
-    /**
-     * Called once before the first frame, with the resolved output geometry.
-     *
-     * `hasAudio` is here rather than left for the sink to infer because a muxer
-     * generally has to declare its tracks before writing any, and whether the
-     * timeline schedules any audio is only known after discovery — which happens
-     * inside the orchestrator, after the sink was constructed.
-     */
+    /** Called once before the first frame. `hasAudio` is passed because a muxer declares its tracks before writing, and whether any audio is scheduled is only known after discovery, which runs after the sink is built. */
     start(info: {
         width: number;
         height: number;
@@ -56,14 +29,9 @@ export interface VideoFrameSink<TAudio = unknown> {
     }): Promise<void>;
 
     /**
-     * One frame has been drawn and the surface flushed. Times are in seconds.
-     *
-     * **Deliberately does not receive pixels.** A browser sink wraps the canvas
-     * the renderer already drew into and lets WebCodecs pull from it directly, with no
-     * readback; handing a buffer here instead would force a full GPU→CPU
-     * `readPixels` on every frame of every export. A sink that *does* need bytes
-     * (ffmpeg over stdin) reads them itself, because it holds the render target it
-     * was constructed with. Do not "simplify" this signature.
+     * One frame has been drawn and the surface flushed. **Deliberately does not receive pixels**: a browser sink lets
+     * WebCodecs pull from the canvas, while a buffer here would force a GPU->CPU `readPixels` on every frame. A sink
+     * that needs bytes (ffmpeg over stdin) reads them from its own render target. Do not "simplify" this signature.
      */
     addFrame(timestamp: number, duration: number): Promise<void>;
 
@@ -79,11 +47,7 @@ export interface AudioMixer<TAudio = unknown> {
     mix(requests: readonly ScheduledAudioRequest[], totalDuration: number): Promise<TAudio | null>;
 }
 
-/**
- * Audio is mixed offline at the end of a run (or irrelevant, for a still), so the
- * `AssetManager` just needs an `AudioSink`-shaped sink that does nothing during
- * the per-frame pass.
- */
+/** Audio is mixed offline at the end, so the per-frame pass needs an `AudioSink` that does nothing. */
 export class NoopAudioSink extends AudioSink {
     /** Nothing here records a request, so `AssetManager` can skip the whole sync. */
     override get schedulesAudio(): boolean { return false; }
@@ -97,39 +61,24 @@ export class NoopAudioSink extends AudioSink {
     stop(): void { }
 }
 
-/** The platform pieces both entry points need. */
-/**
- * What the frame loop draws with. Any backend's context and adapter: the loop
- * uses only core's base members, so another renderer exports through it too.
- */
+/** What the frame loop draws with: any backend's context and adapter (the loop uses only core's base members). */
 interface RenderHarness {
     renderContext: CanvasRenderContext2D & { pixelRatio: number };
-    /** The same adapter the context was built with. */
     storageAdapter: StorageAdapter;
     assetCatalog: AssetCatalog;
 }
 
-/** Fields shared by the video and still entry points. */
 interface CommonParams extends RenderHarness {
     /** Its fps and viewport resolved — see `Session`. */
     project: ProjectDocument;
-    /** The vocabulary its clips compile against. */
     registry: Registry;
     /** Theme for a project that carries none of its own. */
     theme?: Theme;
-    /**
-     * What the backend drew but not as the document says (a feature it lacks,
-     * a shader that does not compile, a GPU error), once per kind, feature and
-     * node. A lost device or a crashed backend is not reported here: the render
-     * throws a {@link RenderBackendError} instead.
-     */
+    /** What the backend drew but not as the document says, once per kind, feature and node. A lost device or crashed backend throws a {@link RenderBackendError} instead. */
     onIssue?: (issue: RenderIssue) => void;
 }
 
-/**
- * Hand the context's issues since the last call to `onIssue`, once per key in
- * `seen`, and throw on one that means the frames drawn are not to be trusted.
- */
+/** Hands the context's issues since the last call to `onIssue`, once per key in `seen`; throws on one that makes the drawn frames untrustworthy. */
 function drainIssues(renderContext: CanvasRenderContext2D, seen: Set<string>, onIssue?: (issue: RenderIssue) => void): void {
     for (const raw of renderContext.takeRenderIssues()) {
         const issue = toRenderIssue(raw);
@@ -153,11 +102,7 @@ async function renderWarmFrame(
     }
 }
 
-/**
- * Switch the adapter to decoding exactly what each frame draws, so a frame is
- * the same pixels whatever was rendered on this adapter before it. Returns the
- * restore: an adapter lent by a live preview must not come back pinned to it.
- */
+/** Makes the adapter decode exactly what each frame draws, so a frame is the same whatever was rendered before. Returns the restore: a live preview's adapter must not come back pinned. */
 function exactDecodes(storageAdapter: StorageAdapter): () => void {
     const previous = storageAdapter.getDecodePolicy();
     storageAdapter.setDecodePolicy("exact");
@@ -190,10 +135,7 @@ function prepare(params: CommonParams) {
     // have replaced it; applied before the first build, which resolves tokens.
     const applyTheme = () => setTheme(project.theme ?? params.theme);
     applyTheme();
-    // The render context *is* the measurer — `RenderContext2D` extends
-    // `MeasureContext2D` so a node measures and draws through one object. Named
-    // rather than cast so the compiler checks it; this package has no test suite
-    // to catch it otherwise.
+    // The render context *is* the measurer (it extends `MeasureContext2D`); named rather than cast so the compiler checks it.
     const measurer: MeasureContext2D = renderContext;
     const scope = { registry, viewport, fps, assets: assetCatalog, measurer };
     const loads: { manager?: AssetManager } = {};
@@ -203,11 +145,7 @@ function prepare(params: CommonParams) {
     return { store, precomper, stateEvaluator, measurer, fps, viewport, loads, applyTheme };
 }
 
-/**
- * Load the layout gates of `trackIds`, then rebuild any of them whose compile
- * measured a face before it was resident — every build here runs before a
- * single asset has loaded.
- */
+/** Loads the layout gates of `trackIds`, then rebuilds any whose compile measured a face before it was resident (every build runs before an asset has loaded). */
 async function settleLayoutGates(store: ClipStore, manager: AssetManager, trackIds: readonly string[]): Promise<void> {
     const gates = trackIds.flatMap((id) => store.layoutGates(id).filter((record) => !manager.isReady(record.src)));
     if (gates.length > 0) await manager.loadRecords(gates);
@@ -215,15 +153,10 @@ async function settleLayoutGates(store: ClipStore, manager: AssetManager, trackI
 }
 
 /**
- * Collect every audio request with the absolute offset it plays at. See
- * {@link ScheduledAudioRequest.globalOffset}.
- *
- * Exported because a **split** export has to mix its audio somewhere other than
- * alongside its frames: the video is rendered in pieces by separate workers, and
- * concatenating separately-encoded AAC would put the encoder's priming delay at
- * every join. The coordinator mixes once over the whole timeline instead — and
- * must schedule it exactly as this does. A second implementation that drifted by
- * a track offset would produce a file that plays perfectly and is out of sync.
+ * Collects every audio request with the absolute offset it plays at ({@link ScheduledAudioRequest.globalOffset}).
+ * Exported because a **split** export mixes once over the whole timeline in the coordinator (concatenated AAC would
+ * put the encoder's priming delay at every join) and must schedule exactly as this does: a drifted copy would give
+ * a file that plays perfectly and is out of sync.
  */
 export function collectAudio(precomp: AssetTimelineResult): ScheduledAudioRequest[] {
     const out: ScheduledAudioRequest[] = [];
@@ -238,13 +171,7 @@ export interface RenderTimelineParams<TAudio> extends CommonParams {
     scale?: number;
     sink: VideoFrameSink<TAudio>;
     mixer?: AudioMixer<TAudio>;
-    /**
-     * Set false to render a silent file: no mix, and no audio track declared on
-     * the container at all.
-     *
-     * Distinct from muting. The audio is still discovered — the pass that finds
-     * it is the one that finds the frames' assets — it simply is not encoded.
-     */
+    /** Set false for a silent file: no mix and no audio track. Not muting: audio is still discovered (the same pass finds the frames' assets), just not encoded. */
     includeAudio?: boolean;
     /**
      * Render only these frames, timestamped from 0, with no audio: one segment of a
@@ -255,13 +182,7 @@ export interface RenderTimelineParams<TAudio> extends CommonParams {
     signal?: AbortSignal;
 }
 
-/**
- * Drive every frame of `project` (or of `frames`) into `sink`, then mix audio and finalize.
- *
- * The caller owns the render context and its surface — this neither creates nor
- * disposes them, because how a surface comes to exist is exactly the thing that
- * differs between backends.
- */
+/** Drives every frame of `project` (or `frames`) into `sink`, then mixes audio and finalizes. The caller owns the render context and surface; this neither creates nor disposes them. */
 export async function renderTimeline<TAudio>(
     params: RenderTimelineParams<TAudio>,
 ): Promise<Uint8Array | void> {
@@ -304,16 +225,10 @@ export async function renderTimeline<TAudio>(
 
         const frameDuration = 1 / fps;
         let globalTime = 0;
-        // An export is the most perfectly monotonic forward walk of a timeline there
-        // is — exactly the access pattern an adapter's look-ahead decode window is
-        // built for. Left at the default (`false`, i.e. "paused") every video frame
-        // instead takes the random-access branch: a seek + decode the render has to
-        // wait on, followed by a *second* full render of the frame once it lands (see
-        // `renderWarmFrame`). Telling the adapter we are playing turns that into one
-        // sequential decode pass per clip.
-        //
-        // Restored in the `finally` so a cancelled export doesn't leave an adapter the
-        // caller still owns believing a playhead is running.
+        // An export is a perfectly monotonic forward walk, the pattern the adapter's look-ahead decode window is built
+        // for. At the default (not playing) every video frame instead takes the random-access branch: a seek + decode
+        // plus a second full render (see `renderWarmFrame`). Restored in the `finally` so a cancelled export doesn't
+        // leave a caller-owned adapter believing a playhead is running.
         storageAdapter.setPlaying(true);
         try {
             for (let f = start; f < end; f++) {
@@ -332,9 +247,7 @@ export async function renderTimeline<TAudio>(
                 // Video occupies most of the range; the audio mix and finalize are the tail.
                 onProgress?.((done / frameCount) * (wantsAudio ? 0.85 : 1));
 
-                // Hand the host back its event loop periodically so a long export stays
-                // interruptible. Core's yield is feature-detected and prefers a real
-                // macrotask over a clamped setTimeout, in the browser and in Node alike.
+                // Hand the host back its event loop periodically so a long export stays interruptible.
                 if ((f + 1) % 4 === 0) await yieldToScheduler();
             }
         } finally {
@@ -365,22 +278,16 @@ export interface DrawFrameParams extends CommonParams {
 }
 
 export interface DrawnFrame {
-    /** The frame actually drawn, after clamping the request into range. */
     frame: number;
     totalFrames: number;
 }
 
-/**
- * Every track covering {@link frame} failed to build. Drawn anyway, it would be
- * a blank frame — the consequence, with the cause hidden — so a still and an
- * export both refuse it.
- */
+/** Every track covering {@link frame} failed to build; drawn anyway it would be a blank frame with the cause hidden, so a still and an export both refuse it. */
 export class NothingToDrawError extends Error {
     override readonly name = "NothingToDrawError";
 
     constructor(
         readonly frame: number,
-        /** One per track covering the frame. */
         readonly failures: readonly BuildError[],
     ) {
         const causes = failures.map((failure) => `  ${failure.trackId}: ${failure.message}`).join("\n");
@@ -388,20 +295,7 @@ export class NothingToDrawError extends Error {
     }
 }
 
-/**
- * Draw one frame of `project` into the caller's render context and leave it on
- * the surface.
- *
- * Same discovery/evaluator/warm-retry path as {@link renderTimeline}, so a still
- * is the same render the video would produce at that frame — and only the tracks
- * on that frame are discovered, since a track's span is known without it.
- *
- * The drawing is shared while what happens to the frame varies: a still encodes
- * it, a live preview leaves it on a visible canvas. The context is the
- * caller's throughout — this neither creates, resizes nor disposes it — so a host
- * holding one surface can call this repeatedly and keep both the surface and the
- * storage adapter's decode cache warm.
- */
+/** Draws one frame into the caller's render context and leaves it on the surface, via the same path as {@link renderTimeline} so a still equals the video's frame. Only tracks on that frame are discovered. The context stays the caller's (never created, resized or disposed), so a host can call this repeatedly and keep the decode cache warm. */
 export async function drawFrameAt(params: DrawFrameParams): Promise<DrawnFrame> {
     const { scale = 1, frame, project } = params;
     const harness: RenderHarness = params;
@@ -434,19 +328,13 @@ export async function drawFrameAt(params: DrawFrameParams): Promise<DrawnFrame> 
         return { frame: targetFrame, totalFrames };
     } finally {
         restorePolicy();
-        // The pass flushed the surface before returning, so the pixels survive the
-        // tree being torn down here. In `finally` so a throw mid-draw doesn't leak
-        // a live scene graph.
+        // The pass flushed the surface, so the pixels survive teardown; in `finally` so a mid-draw throw doesn't leak a scene graph.
         stateEvaluator.dispose();
         store.dispose();
     }
 }
 
-/**
- * Throw a {@link NothingToDrawError} for the first frame in `first..last` whose
- * every track failed to build. Only a build that threw counts: `buildErrors` also
- * carries a node's failed declaration, and a track with one still draws.
- */
+/** Throws {@link NothingToDrawError} for the first frame in `first..last` whose every track failed to build. Only a build that threw counts: `buildErrors` also carries a node's failed declaration, and such a track still draws. */
 function assertDrawable(store: ClipStore, precomp: AssetTimelineResult, first: number, last = first): void {
     const failed = new Map(precomp.buildErrors
         .filter((error) => store.failed(error.trackId))

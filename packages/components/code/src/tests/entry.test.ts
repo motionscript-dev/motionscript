@@ -30,7 +30,7 @@ const LINE_NUMBER_COLOR = [0.45, 0.5, 0.55, 1];
 
 /** The grammar streams in at runtime; without it every row is one flat token. */
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 /**

@@ -18,41 +18,25 @@ import type {
 import { effectiveSpanIn } from "./types";
 
 /**
- * Schema validation for a {@link VisualDocument}.
- *
- * Hand-rolled rather than pulled from a schema library because
- * `@motionscript/core` has **no runtime dependencies**, and a renderer that
- * makes every consumer install a validator to draw a rectangle has made the
- * wrong trade.
- *
- * It checks *structure*, not props. Whether `cornerRadius` accepts a string is
- * the node class's business — it declares that with `property`, and it is
- * checked where it is applied. What can only be checked here is what spans
- * rows: that a parent exists, that the tree has no cycle, that a command's
- * target is present when the command runs. Audio rows are the exception: a
- * ramp or a transition is JSON their nodes read unchecked, and one a device
- * cannot schedule fails long after the document was accepted.
+ * Hand-rolled because `@motionscript/core` has no runtime dependencies. Checks structure, not props (a node
+ * class checks those where applied): what spans rows, i.e. that a parent exists, the tree has no cycle, and a
+ * command's target is present when it runs. Audio rows are the exception: a ramp or transition is JSON their
+ * nodes read unchecked, and one a device cannot schedule fails long after the document was accepted.
  */
 
-/** One problem with a document. `path` locates it, JSON-Pointer style. */
 export interface ValidationIssue {
-    /** Where the problem is — `"nodes[2].parentId"`, `"commands[7].at"`. */
     path: string;
-    /** What is wrong, in a sentence a host can show. */
     message: string;
 }
 
-/** What {@link validateDocument} checks against beyond the format itself. */
 export interface ValidateOptions {
     /**
-     * Also report every node type and command this registry cannot build — the
-     * strict check a build no longer makes, since a build stands an inert
-     * placeholder in for an unknown type and skips an unknown command.
+     * Also report every node type and command this registry cannot build. A build stands an inert placeholder in
+     * for an unknown type and skips an unknown command, so this is the strict check.
      */
     registry?: Registry;
 }
 
-/** The result of {@link validateDocument}. */
 export interface ValidationResult {
     valid: boolean;
     issues: ValidationIssue[];
@@ -64,7 +48,6 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-/** A finite, non-negative number — what every time and duration field must be. */
 function isTime(v: unknown): v is number {
     return typeof v === "number" && Number.isFinite(v) && v >= 0;
 }
@@ -193,8 +176,10 @@ function checkNodeSpec(node: unknown, path: string, issues: ValidationIssue[]): 
     let ok = true;
     const { id, type, parentId, layerOrder, props, key } = node as Partial<NodeSpec>;
 
-    // "" is reserved for the scene root (see `checkRootShape`) — every other
-    // node needs a real id, since an empty one could never be a command's target.
+    /**
+     * `""` is reserved for the scene root (see `checkRootShape`); any other node needs a real id, since an empty
+     * one could never be a command's target.
+     */
     if (typeof id !== "string") {
         issues.push({ path: `${path}.id`, message: "id must be a string." });
         ok = false;
@@ -222,8 +207,9 @@ function checkNodeSpec(node: unknown, path: string, issues: ValidationIssue[]): 
             issues.push({ path: `${path}.key`, message: "key must be a non-empty string when present." });
             ok = false;
         } else if (key.includes("]") || key.includes(".")) {
-            // `[key.prop]` is the reference syntax, so either character names
-            // something an expression could never spell.
+            /**
+             * `[key.prop]` is the reference syntax, so either character names something an expression could never spell.
+             */
             issues.push({
                 path: `${path}.key`,
                 message: `node key "${key}" cannot contain "]" or "." — it is referenced as "[${key}.prop]".`,
@@ -234,21 +220,15 @@ function checkNodeSpec(node: unknown, path: string, issues: ValidationIssue[]): 
     return ok;
 }
 
-/** One node spec, with where it was declared, so an issue can point at it. */
 interface NodeSite {
     spec: NodeSpec;
     path: string;
 }
 
 /**
- * Gather every authored {@link NodeSpec.key} and check that no two rows claim one.
- *
- * Keys are their own namespace rather than part of {@link checkIdSpace}'s, and the
- * grammar is why: `[x]` is always a variable and `[x.p]` is always a
- * node, so the two can never be confused for one another — and a key is never a
- * `targetId`, which is the collision that one exists to prevent. Unique among keys
- * all the same: two rows keyed `card` would make `[card.x]` read whichever the
- * build reached last.
+ * Keys are their own namespace, separate from {@link checkIdSpace}: `[x]` is always a variable and `[x.p]`
+ * always a node, and a key is never a `targetId`. Unique among keys all the same, or `[card.x]` would read
+ * whichever row the build reached last.
  */
 function checkNodeKeys(sites: readonly NodeSite[], issues: ValidationIssue[]): Map<string, NodeSite> {
     const byKey = new Map<string, NodeSite>();
@@ -269,12 +249,8 @@ function checkNodeKeys(sites: readonly NodeSite[], issues: ValidationIssue[]): M
 }
 
 /**
- * The row with `id: ""` is the document's root, and must be unparented and of
- * the type that document kind's root is.
- *
- * `canvas2d` for a scene, `audioBus` for an audio document — one rule, one
- * parameter, because the *convention* is the same in both: the root is an
- * ordinary row rather than a special field, and `targetId: null` names it.
+ * The row with `id: ""` is the root: unparented and of the document kind's root type (`canvas2d` for a scene,
+ * `audioBus` for audio). `targetId: null` names it.
  */
 function checkRootShape(
     spec: NodeSpec,
@@ -328,7 +304,6 @@ function checkCommandSpec(cmd: unknown, path: string, issues: ValidationIssue[])
     return ok;
 }
 
-/** One declared variable, with where it was declared, so an issue can point at it. */
 interface VariableSite {
     spec: VariableSpec;
     path: string;
@@ -346,8 +321,9 @@ function checkVariableSpec(v: unknown, path: string, issues: ValidationIssue[]):
         issues.push({ path: `${path}.id`, message: "id must be a non-empty string." });
         ok = false;
     } else if (id.includes("]")) {
-        // `[id]` is the reference syntax, so a `]` in an id names something an
-        // expression could never spell.
+        /**
+         * `[id]` is the reference syntax, so a `]` in an id names something an expression could never spell.
+         */
         issues.push({ path: `${path}.id`, message: `variable id "${id}" cannot contain "]" — it is referenced as "[${id}]".` });
         ok = false;
     }
@@ -372,7 +348,6 @@ function checkVariableSpec(v: unknown, path: string, issues: ValidationIssue[]):
     return ok;
 }
 
-/** Read a document's `variables` rows, checking each row's shape. */
 function variableRows(rows: unknown, issues: ValidationIssue[]): VariableSite[] {
     if (rows === undefined) return [];
     if (!Array.isArray(rows)) {
@@ -387,7 +362,6 @@ function variableRows(rows: unknown, issues: ValidationIssue[]): VariableSite[] 
     return sites;
 }
 
-/** Gather every declared variable and check that no id is claimed twice. */
 function checkVariables(sites: VariableSite[], issues: ValidationIssue[]): Map<string, VariableSite> {
     const byId = new Map<string, VariableSite>();
     for (const site of sites) {
@@ -405,11 +379,8 @@ function checkVariables(sites: VariableSite[], issues: ValidationIssue[]): Map<s
 }
 
 /**
- * A reference split into the node key and prop it names, or `undefined` when it
- * has no dot and so names a variable instead.
- *
- * The dot is the whole discriminator, in the parser (which hands the bracket's
- * contents over as one opaque name), here, and in `ClipTimeline`.
+ * `undefined` when the ref has no dot and so names a variable. The dot is the discriminator in the parser,
+ * here and in `ClipTimeline`.
  */
 function splitNodeRef(ref: string): { key: string; prop: string } | undefined {
     const dot = ref.indexOf(".");
@@ -417,13 +388,9 @@ function splitNodeRef(ref: string): { key: string; prop: string } | undefined {
 }
 
 /**
- * Check every expression inside an authored value.
- *
- * Three failures worth catching before anything is built: a formula that does not
- * parse, one naming a variable nothing declares, and one naming a node key
- * nothing is keyed with. All are silent otherwise — the first would reach the
- * timeline as a throw from deep inside a build, and the other two would bind a
- * prop to nothing at all.
+ * A formula that does not parse, one naming an undeclared variable, and one naming a node key nothing carries.
+ * All are silent otherwise: the first would throw from deep inside a build, the others would bind a prop to
+ * nothing.
  */
 function checkExpressions(
     value: unknown,
@@ -470,22 +437,15 @@ function checkExpressions(
     }
 }
 
-/** One expression-bound prop: what it is called in a reference, and what it reads. */
 interface BoundProp {
-    /** `"key.prop"` — exactly what another prop would write inside `[…]`. */
     id: string;
-    /** Where the prop was authored, so an issue points at the row. */
     path: string;
-    /** The `"key.prop"`s this prop's expressions read. */
     reads: string[];
 }
 
 /**
- * Collect the {@link BoundProp}s one props bag contributes.
- *
- * Per *top-level* prop, because that is the granularity a binding is installed at
- * — `bindProps` walks a bag's own keys and binds each — so a formula nested inside
- * `padding` makes `padding` the prop that reads.
+ * Per top-level prop, the granularity a binding is installed at (`bindProps` binds each key), so a formula
+ * nested inside `padding` makes `padding` the prop that reads.
  */
 function boundProps(key: string, props: unknown, path: string, out: BoundProp[]): void {
     if (!isPlainObject(props)) return;
@@ -503,16 +463,11 @@ function boundProps(key: string, props: unknown, path: string, out: BoundProp[])
 }
 
 /**
- * Refuse a prop that reads a prop that reads it back.
+ * Refuse a prop that reads a prop that reads it back. Variables cannot cycle (nothing reads a variable), but
+ * `[key.prop]` can. At runtime `PropSlot.get` refuses to re-enter and returns the last settled value, so a
+ * cycle would otherwise be a frame that quietly disagrees with the document.
  *
- * A failure mode `[key.prop]` introduces and variables never had: nothing can read
- * a variable, so no chain of them could close. At runtime it does not crash —
- * `PropSlot.get` refuses to re-enter and hands back the last value it settled on —
- * which is exactly why it is caught here: the cost of a cycle is otherwise a frame
- * that quietly disagrees with the document.
- *
- * Edges are per prop, not per node. `a.x → b.y → a.z` terminates, and rejecting it
- * would reject a working document.
+ * Edges are per prop, not per node: `a.x -> b.y -> a.z` terminates and must not be rejected.
  */
 function checkExpressionCycles(bound: readonly BoundProp[], issues: ValidationIssue[]): void {
     const byId = new Map(bound.map((b) => [b.id, b]));
@@ -546,17 +501,15 @@ function checkExpressionCycles(bound: readonly BoundProp[], issues: ValidationIs
 }
 
 /**
- * Check that ids are unique, every `parentId` resolves, and no node is its own
- * ancestor.
- *
- * The cycle check is not defensive padding: a parent loop makes the layout walk
- * recurse until the stack overflows, and the trace points at the layout engine
- * rather than at the two rows that point at each other.
+ * Check ids are unique, every `parentId` resolves, and no node is its own ancestor. A parent loop makes the
+ * layout walk recurse until the stack overflows, with a trace pointing at the layout engine rather than the
+ * two rows.
  */
 function checkTree(sites: readonly NodeSite[], issues: ValidationIssue[]): void {
-    // `sites` holds only the rows that passed their shape check, so a position in
-    // it is not a position in the document: every issue path comes from the
-    // site, which remembers where its row was authored.
+    /**
+     * `sites` holds only rows that passed their shape check, so a position in it is not a position in the
+     * document: every issue path comes from the site.
+     */
     const bySite = new Map<string, NodeSite>();
     for (const site of sites) {
         if (bySite.has(site.spec.id)) {
@@ -600,17 +553,9 @@ function checkTree(sites: readonly NodeSite[], issues: ValidationIssue[]): void 
 }
 
 /**
- * Nodes and variables share one id space.
- *
- * They have to: a command names its target with one field, and which table that
- * field is looked up in is a fact of the command's *type*. Two rows answering to
- * one id would still resolve correctly here, but a host's timeline groups its
- * rows by `targetId` — so the collision would show up as two unrelated things
- * drawn on the same track, which is not a bug anyone would think to look for in
- * the document.
- *
- * A {@link NodeSpec.key} is deliberately *not* in this space — see
- * {@link checkNodeKeys}.
+ * Nodes and variables share one id space: a command names its target with one field, and a host groups
+ * timeline rows by `targetId`, so a collision would draw two unrelated things on one track. A {@link
+ * NodeSpec.key} is deliberately not in this space (see {@link checkNodeKeys}).
  */
 function checkIdSpace(
     nodes: NodeSpec[],
@@ -629,11 +574,8 @@ function checkIdSpace(
 }
 
 /**
- * Refuse the fields the format folded away, by name.
- *
- * A document written before nodes carried their own spans would otherwise fail
- * as "nodes must be an array" or an unresolved `[id]`, neither of which names
- * the fix.
+ * Refuse the fields the format folded away, by name: a document written before nodes carried spans would
+ * otherwise fail as "nodes must be an array" or an unresolved `[id]`, neither of which names the fix.
  */
 function checkRetiredFields(doc: object, issues: ValidationIssue[]): void {
     if ((doc as { constants?: unknown }).constants !== undefined) {
@@ -644,7 +586,6 @@ function checkRetiredFields(doc: object, issues: ValidationIssue[]): void {
     }
 }
 
-/** A `formatVersion`, when present, is one this engine can read. Absent is format 0. */
 function checkFormatVersion(doc: object, issues: ValidationIssue[]): void {
     const version = (doc as { formatVersion?: unknown }).formatVersion;
     if (version === undefined) return;
@@ -658,7 +599,6 @@ function checkFormatVersion(doc: object, issues: ValidationIssue[]): void {
     }
 }
 
-/** A project's fields from before `tracks` was the one list, and where each went. */
 const RETIRED_PROJECT_FIELDS: Readonly<Record<string, string>> = {
     visualTracks: "visual and audio tracks were merged into `tracks` — move each row there.",
     audioTracks: "visual and audio tracks were merged into `tracks` — move each row there.",
@@ -668,7 +608,6 @@ const RETIRED_PROJECT_FIELDS: Readonly<Record<string, string>> = {
     constants: "a project has no constants — declare `variables` in each clip.",
 };
 
-/** Every node type and command a clip names, against `registry`. */
 function checkVocabulary(
     sites: readonly NodeSite[],
     commands: readonly { spec: CommandSpec; path: string }[],
@@ -699,9 +638,8 @@ function checkVocabulary(
 }
 
 /**
- * The node rows every clip kind shares, checked the same way whichever holds
- * them — a cycle or a missing parent is the same bug in a still and a
- * composition.
+ * Checked the same way whichever clip kind holds them: a cycle or missing parent is the same bug in a still
+ * and a composition.
  */
 function checkNodes(nodes: unknown, rootType: string, issues: ValidationIssue[]): NodeSite[] {
     if (!Array.isArray(nodes)) {
@@ -720,7 +658,6 @@ function checkNodes(nodes: unknown, rootType: string, issues: ValidationIssue[])
     return sites;
 }
 
-/** A timed node's span: two times in order, and none at all on the root. */
 function checkSpan(spec: TimedNodeSpec, path: string, issues: ValidationIssue[]): void {
     const { startAt, endAt } = spec;
     if (startAt !== undefined && !isTime(startAt)) {
@@ -737,7 +674,6 @@ function checkSpan(spec: TimedNodeSpec, path: string, issues: ValidationIssue[])
     }
 }
 
-/** Validate a still: a node tree, and nothing about time. */
 function validateStill(doc: StillDocument, issues: ValidationIssue[], registry: Registry | undefined): void {
     checkRetiredFields(doc, issues);
     if ((doc as { commands?: unknown }).commands !== undefined) {
@@ -773,19 +709,13 @@ function validateStill(doc: StillDocument, issues: ValidationIssue[], registry: 
     checkExpressionCycles(bound, issues);
 }
 
-/** Validate a composition: a still's rules over its nodes, plus their spans and the commands on them. */
 function validateComposition(doc: CompositionDocument, issues: ValidationIssue[], registry: Registry | undefined): void {
     validateTimedDocument(doc, "canvas2d", issues, registry);
 }
 
 /**
- * Validate an audio document.
- *
- * Every rule a composition has, with `audioBus` as the root type — because an
- * audio document *is* a composition, structurally. Sharing the checks rather
- * than restating them is what keeps a cycle, a duplicate id or a command
- * running before its target the same bug — and the same message — whichever
- * kind of clip it appears in.
+ * An audio document is structurally a composition with `audioBus` as the root type, so the checks are shared:
+ * a cycle, duplicate id or command running before its target is the same message in any clip kind.
  */
 function validateAudio(doc: AudioDocument, issues: ValidationIssue[], registry: Registry | undefined): void {
     validateTimedDocument(doc, "audioBus", issues, registry);
@@ -797,7 +727,6 @@ const RETIRED_COMMANDS: Readonly<Record<string, string>> = {
     variable: "a variable is declared in `variables`.",
 };
 
-/** The shared body of {@link validateComposition} and {@link validateAudio}. */
 function validateTimedDocument(
     doc: CompositionDocument | AudioDocument,
     rootType: string,
@@ -813,8 +742,7 @@ function validateTimedDocument(
         issues.push({ path: "duration", message: "duration must be a finite number of seconds >= 0." });
     }
 
-    // Variables, gathered before anything else looks at a prop: every
-    // expression check needs to know what is declared.
+    /** Gathered first: every expression check needs to know what is declared. */
     const variables = checkVariables(variableRows(doc.variables, issues), issues);
 
     const nodeSites = checkNodes(doc.nodes, rootType, issues);
@@ -823,8 +751,7 @@ function validateTimedDocument(
     checkIdSpace(nodes, variables, issues);
     const keyed = checkNodeKeys(nodeSites, issues);
 
-    // The commands that passed their shape check, each with the row it was
-    // authored in: a position in this list is not a position in `commands`.
+    /** Each with the row it was authored in: a position in this list is not a position in `commands`. */
     const valid: { spec: CommandSpec; path: string }[] = [];
     const ids = new Set<string>();
     doc.commands.forEach((c: unknown, i: number) => {
@@ -842,14 +769,11 @@ function validateTimedDocument(
         valid.push({ spec: c, path: `commands[${i}]` });
     });
 
-    // A command cannot act on a node that is not there yet. This is the one
-    // ordering rule the document has, and it is the one a timeline editor
-    // breaks by dragging a tween earlier than the node it animates. "There" is
-    // the effective span — a child cannot enter before its parent does.
-    //
-    // A variable target is exempt because a variable has no lifespan: it holds
-    // its declared value from t=0, so there is no "before it exists" to run
-    // ahead of. See `VariableSpec`.
+    /**
+     * A command cannot act on a node that is not there yet: the one ordering rule, and the one a timeline editor
+     * breaks by dragging a tween earlier than its node. "There" is the effective span (a child cannot enter before
+     * its parent). A variable target is exempt: it holds its declared value from t=0.
+     */
     const byId = new Map(nodes.map((n) => [n.id, n]));
     if (registry) checkVocabulary(nodeSites, valid, rootType, variables, registry, issues);
     for (const { spec: c, path } of valid) {
@@ -869,8 +793,10 @@ function validateTimedDocument(
         }
     }
 
-    // Expressions, wherever a prop can be authored: a node's props (the scene
-    // root included), a `to`/`set` props bag, or a named command's arguments.
+    /**
+     * Expressions wherever a prop can be authored: node props (root included), a `to`/`set` props bag, or a named
+     * command's arguments.
+     */
     const declared = new Set(variables.keys());
     const keys = new Set(keyed.keys());
     for (const site of nodeSites) {
@@ -878,8 +804,10 @@ function validateTimedDocument(
     }
     for (const { spec: c, path } of valid) checkExpressions(c.args, `${path}.args`, declared, keys, issues);
 
-    // Cycles, over the two places a document installs a binding: a node's own
-    // props, and a `set` — the one command whose args reach `node.set()`.
+    /**
+     * Cycles over the two places a binding is installed: a node's own props and `set`, the one command whose args
+     * reach `node.set()`.
+     */
     const bound: BoundProp[] = [];
     for (const site of nodeSites) {
         if (site.spec.key) boundProps(site.spec.key, site.spec.props, `${site.path}.props`, bound);
@@ -892,13 +820,7 @@ function validateTimedDocument(
     checkExpressionCycles(bound, issues);
 }
 
-/**
- * Validate a clip document.
- *
- * Returns every issue rather than throwing on the first: a host showing a
- * document's problems wants the list, and a fix-one-rerun loop over a large
- * scene is what makes an importer feel broken.
- */
+/** Returns every issue rather than throwing on the first, so a host can show the list. */
 export function validateDocument(doc: unknown, options: ValidateOptions = {}): ValidationResult {
     const issues: ValidationIssue[] = [];
 
@@ -925,12 +847,8 @@ export function validateDocument(doc: unknown, options: ValidateOptions = {}): V
 }
 
 /**
- * Validate a **project** document: the tracks, and every clip in them.
- *
- * Each clip is validated with the same rules a standalone one gets — a cycle or
- * an unresolved expression is the same bug wherever it appears — with its issues
- * prefixed by the track that carries it, so a host can point at the row rather
- * than at "some clip".
+ * Each clip is validated by the same rules as a standalone one, with issues prefixed by the track that carries
+ * it.
  */
 export function validateProjectDocument(doc: unknown, options: ValidateOptions = {}): ValidationResult {
     const issues: ValidationIssue[] = [];
@@ -953,12 +871,11 @@ export function validateProjectDocument(doc: unknown, options: ValidateOptions =
         if (project[field] !== undefined) issues.push({ path: field, message });
     }
 
-    // The one field that used to be three. Zero tracks is a legitimate state,
-    // not a mistake to reject — a freshly created project has no clips yet,
-    // and every host of this array already treats an empty one as ordinary
-    // rather than exceptional (`exportProject`/`mixTimelineAudio` no-op,
-    // `screenshotProject` raises its own specific "nothing to screenshot").
-    // Validation would be the odd one out insisting otherwise.
+    /**
+     * Zero tracks is legitimate: a new project has no clips, and every host of this array treats an empty one as
+     * ordinary (`exportProject`/`mixTimelineAudio` no-op, `screenshotProject` raises its own "nothing to
+     * screenshot").
+     */
     if (!Array.isArray(project.tracks)) {
         issues.push({ path: "tracks", message: "tracks must be an array." });
         return { valid: false, issues };
@@ -986,9 +903,10 @@ export function validateProjectDocument(doc: unknown, options: ValidateOptions =
         if (track.startAt !== undefined && !isTime(track.startAt)) {
             issues.push({ path: `${path}.startAt`, message: "startAt must be a finite number of seconds >= 0." });
         }
-        // Required, not defaulted: a length that falls back to whatever a media
-        // file happens to be is how a three-minute bed silently stretches a
-        // thirty-second edit.
+        /**
+         * Required, not defaulted: a length that falls back to a media file's would silently stretch a three-minute
+         * bed into a thirty-second edit.
+         */
         if (!isTime(track.duration)) {
             issues.push({
                 path: `${path}.duration`,
@@ -1009,9 +927,8 @@ export function validateProjectDocument(doc: unknown, options: ValidateOptions =
 }
 
 /**
- * Keyed by clip object, because a host re-validates the whole project after every
- * edit and an edit replaces only the clip it touched. A clip mutated in place is
- * not seen again — the same identity contract `Session.replace` already holds.
+ * Keyed by clip object: a host re-validates the whole project after every edit, which replaces only the clip
+ * it touched. A clip mutated in place is not seen again (the identity contract `Session.replace` holds).
  */
 const CLIP_ISSUES = new WeakMap<object, readonly ValidationIssue[]>();
 
@@ -1025,7 +942,6 @@ function clipIssuesOf(clip: unknown, options: ValidateOptions): readonly Validat
     return issues;
 }
 
-/** {@link validateProjectDocument}, but throwing. */
 export function assertValidProjectDocument(doc: unknown, options?: ValidateOptions): void {
     const { valid, issues } = validateProjectDocument(doc, options);
     if (!valid) {
@@ -1034,10 +950,7 @@ export function assertValidProjectDocument(doc: unknown, options?: ValidateOptio
     }
 }
 
-/**
- * {@link validateDocument}, but throwing. For a caller that has no UI to show
- * issues in and wants the document or an error.
- */
+/** For a caller with no UI to show issues in. */
 export function assertValidDocument(doc: unknown, options?: ValidateOptions): ClipDocument {
     const { valid, issues } = validateDocument(doc, options);
     if (!valid) {

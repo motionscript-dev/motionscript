@@ -12,8 +12,8 @@ import {
 } from "./types";
 
 /**
- * Deep equality over JSON values: key order is irrelevant, an `undefined`-valued
- * key equals an absent one (neither survives serialization), arrays are ordered.
+ * Key order is irrelevant, an `undefined`-valued key equals an absent one (neither survives serialization),
+ * arrays are ordered.
  */
 export function jsonEqual(a: unknown, b: unknown): boolean {
     if (a === b) return true;
@@ -46,7 +46,6 @@ export function jsonEqual(a: unknown, b: unknown): boolean {
 export interface RowChanges {
     added: Set<string>;
     removed: Set<string>;
-    /** Present on both sides with any semantic field different. */
     changed: Set<string>;
 }
 
@@ -58,22 +57,16 @@ export interface ClipDiff {
     rootChanged: boolean;
     duration: boolean;
     nodes: RowChanges & {
-        /** `type`, `key` or `props` differ. */
         respec: Set<string>;
-        /** `parentId` differs. */
         moved: Set<string>;
-        /** `startAt` or `endAt` differ, as spans. */
         span: Set<string>;
-        /** Parents (`""` for top level) whose kept children sit in a different sibling order. */
         reorderedParents: Set<string>;
     };
     commands: RowChanges & {
-        /** `at` values whose kept commands appear in a different relative array order. */
         reorderedAts: Set<number>;
     };
-    /** `changed` is `value` or `lerp`; a `name` is a label and never counts. */
+    /** A `name` is a label and never counts. */
     variables: RowChanges;
-    /** Keys present on both sides that name a different node id. */
     remappedKeys: Set<string>;
 }
 
@@ -95,12 +88,9 @@ function emptyDiff(): ClipDiff {
 }
 
 /**
- * What differs between two versions of one clip, by row id.
- *
- * Only semantic fields are compared, so an edit that cannot change what the
- * clip builds (a variable's `name`, key order inside `props`, `startAt: 0`
- * against an absent one) is not a change. Audio documents are compared as the
- * compositions they lower to, which is what the timeline builds.
+ * Only semantic fields are compared, so an edit that cannot change what the clip builds (a variable's `name`,
+ * key order inside `props`, `startAt: 0` against an absent one) is not a change. Audio documents are compared
+ * as the compositions they lower to.
  */
 export function diffClip(prev: ClipDocument, next: ClipDocument): ClipDiff {
     const diff = emptyDiff();
@@ -274,7 +264,6 @@ function keyed(rows: readonly NodeSpec[]): Map<string, string> {
     return out;
 }
 
-/** Child ids per parent, in the order `syncPresence` inserts them: `layerOrder`, ties by array index. */
 function siblingOrder(rows: readonly NodeSpec[]): Map<string, string[]> {
     const groups = new Map<string, Array<{ id: string; order: number; index: number }>>();
     rows.forEach((row, index) => {
@@ -292,7 +281,6 @@ function siblingOrder(rows: readonly NodeSpec[]): Map<string, string[]> {
     return out;
 }
 
-/** Command ids per exact `at`, in array order — the tiebreak `inTimelineOrder` uses. */
 function groupByAt(rows: readonly CommandSpec[]): Map<number, string[]> {
     const out = new Map<number, string[]>();
     for (const row of rows) {
@@ -303,7 +291,6 @@ function groupByAt(rows: readonly CommandSpec[]): Map<number, string[]> {
     return out;
 }
 
-/** Whether the ids both lists hold appear in the same relative order in each. */
 function sameRelativeOrder(a: readonly string[], b: readonly string[]): boolean {
     const inB = new Set(b);
     const inA = new Set(a);

@@ -4,26 +4,13 @@ import type { FillData } from '../registry';
 import { lerpNumber } from '@/tween/lerp';
 import { Vector2 } from '@/attributes/layout/vector2';
 
-/**
- * Sparse per-pixel speckle — dust, static, stipple.
- *
- * A *source*, painted inside the shape's own path: unlike `Effects.grain`, which
- * modulates whatever has already been drawn (including children and, in backdrop
- * mode, what lies beneath), this simply stacks as another fill layer. Reach for
- * the effect to grain a composite; reach for this to texture one shape.
- *
- * For a continuous noise *field* rather than speckle — cloud, marble, smoke —
- * see {@link FractalNoiseFillProp}.
- */
+/** Sparse per-pixel speckle (dust, static, stipple), painted inside the shape's own path as another fill layer. Unlike `Effects.grain`, which modulates whatever was already drawn (children, or the backdrop), reach for this to texture one shape. For a continuous field (cloud, marble, smoke) see {@link FractalNoiseFillProp}. */
 export interface NoiseFillProp {
     type: 'noise';
     size?: Vector2;
     density?: number;
     color?: Color;
-    /**
-     * Random field offset. Tween it to make the speckle crawl — without this the
-     * field is fixed, and animated static could only be had from the grain effect.
-     */
+    /** Random field offset; tween it to make the speckle crawl (otherwise the field is fixed). */
     seed?: number;
     opacity?: number;
     blend?: BlendMode;

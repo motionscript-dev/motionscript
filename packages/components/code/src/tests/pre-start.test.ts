@@ -23,7 +23,7 @@ import { ensureHighlighter } from '../highlight';
 const STAGE = { width: 1200, height: 800 };
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 /** Every token one frame draws, in draw order, with the opacity it was painted at. */

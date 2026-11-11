@@ -3,15 +3,11 @@ import { LaneGovernor, type GovernorOptions } from "./governor";
 import type { ExportLane, LaneReport, LaneSession, SegmentSpec } from "./lane";
 import type { ExportChunk } from "./plan";
 
-export interface RunLanesOptions {
+interface RunLanesOptions {
     lanes: readonly ExportLane[];
     spec: SegmentSpec;
     chunks: readonly ExportChunk[];
-    /**
-     * A finished range, in whatever order ranges finish. Once the governor
-     * settles, adjacent chunks still queued are merged, so a range can span
-     * several of the planned chunks; it is named by the first.
-     */
+    /** A finished range, in whatever order ranges finish. Once the governor settles, adjacent queued chunks are merged, so a range can span several planned chunks; it is named by the first. */
     onChunk: (chunk: ExportChunk, bytes: Uint8Array) => void;
     /** Frames drawn so far across every lane. Drops when a failed range's frames are discarded. */
     onFrames?: (frames: number) => void;
@@ -32,18 +28,7 @@ interface Job {
     attempts: number;
 }
 
-/**
- * Render every chunk across the lanes the governor admits, pulling from one queue
- * in timeline order, so the earliest finish first and the join rarely waits.
- *
- * Small chunks are what let the governor measure early and lanes share the work,
- * but each costs a fresh encoder and scene build; once the governor settles, a
- * lane takes its share of what is left as one merged range instead (all of it,
- * when one lane is running). A lane opens only once admitted, so a window that
- * is not needed never competes with the first for the GPU. A range that fails is
- * retried once on another lane and its lane is retired; a second failure, or the
- * caller's abort, ends the run.
- */
+/** Renders every chunk across the lanes the governor admits, pulling from one queue in timeline order so the join rarely waits. Small chunks let the governor measure early, but each costs a fresh encoder and scene build, so once it settles a lane takes its share of what is left as one merged range. A lane opens only once admitted. A failed range is retried once on another lane (its lane retired); a second failure, or the caller's abort, ends the run. */
 export async function runLanes(options: RunLanesOptions): Promise<void> {
     const { lanes, spec, chunks, signal } = options;
     const now = options.now ?? (() => performance.now());

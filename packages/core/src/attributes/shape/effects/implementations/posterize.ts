@@ -1,20 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * After Effects-style Posterize.
- *
- * Quantizes each colour channel into `levels` evenly-spaced brightness steps, so
- * smooth gradients collapse into flat bands. `levels` is the number of tones per
- * channel (matching AE's single "Level" parameter): 2 → pure two-tone per
- * channel, higher values keep more detail. Below 2 there is nothing to band, so
- * the effect is a no-op.
- */
+/** After Effects-style Posterize: quantizes each channel into `levels` evenly spaced steps (AE's single "Level"), collapsing gradients into flat bands. Below 2 there is nothing to band: a no-op. */
 export interface PosterizeEffect extends ModedEffect, EffectFields<typeof posterizeSpec.params> {
     type: "posterize";
 }
 
-/** The {@link PosterizeEffect} spec: its parameters, defaults and ranges. */
 export const posterizeSpec = defineEffect({
     type: "posterize",
     group: "color",

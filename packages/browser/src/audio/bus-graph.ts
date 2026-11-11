@@ -1,35 +1,14 @@
 import { busStopKey, type AudioBusStop, type AudioEffect } from "@motionscript/core";
 import { applyTransitions, buildAudioEffectGraph } from "./effect-graph";
 
-/**
- * The live chains for one audio context's buses.
- *
- * Held per context rather than per clip, because that is the whole difference
- * between a bus and per-clip processing: every clip naming a bus connects into
- * the *same* nodes, so a reverb on a bus is one tail the group shares rather
- * than one tail each. Flattening the levels into per-clip gain would sound
- * right; flattening the effects would not.
- */
+/** The live chains for one audio context's buses. Held per context, not per clip: every clip naming a bus connects into the *same* nodes, so a bus reverb is one shared tail (flattening levels into per-clip gain sounds right; flattening effects would not). */
 export class AudioBusGraph {
     constructor(
         private readonly ctx: BaseAudioContext,
-        /** Where the last bus in a chain connects — the master, or the destination. */
         private readonly destination: AudioNode,
     ) { }
 
-    /**
-     * The input node a clip on `bus` should connect to, building the chain the
-     * first time it is asked for.
-     *
-     * `bus` is source-adjacent first, so `bus[0]` is the one the clip feeds and
-     * each stop after it is that bus's own parent. An empty or absent chain
-     * returns the destination, which is what every clip did before buses
-     * existed.
-     *
-     * `startTime` is the context time a new chain's schedule starts from, and
-     * `clipTime` the same instant in the stops' own seconds. A curve on a stop
-     * runs over its `startAt`–`endAt`, so the two are what place it.
-     */
+    /** The input node a clip on `bus` should connect to, building the chain on first ask. `bus` is source-adjacent first (`bus[0]` is the one the clip feeds; each later stop is its parent); an empty or absent chain returns the destination. `startTime` is the context time a new chain's schedule starts from and `clipTime` the same instant in the stops' own seconds, which place a curve over its `startAt`–`endAt`. */
     inputFor(bus: readonly AudioBusStop[] | undefined, startTime: number, clipTime: number): AudioNode {
         if (!bus || bus.length === 0) return this.destination;
         return this.chainFrom(bus, 0, startTime, clipTime);
@@ -52,19 +31,7 @@ export class AudioBusGraph {
     private readonly nodes: AudioNode[] = [];
     private readonly oscillators: OscillatorNode[] = [];
 
-    /**
-     * Build (or reuse) the chain for `bus[index]`, connected to whatever
-     * `bus[index + 1]` resolves to.
-     *
-     * Recursive rather than iterative because a bus's *output* has to exist
-     * before its own nodes can connect to it, and the outermost bus is the last
-     * entry.
-     *
-     * Reused by everything that changes what it sounds like, down to the master,
-     * not by id alone: a bus edited under a playing device, or one id on two
-     * tracks, is a different chain, and one built for the first would play the
-     * second through stale levels and a curve anchored to the wrong span.
-     */
+    /** Builds (or reuses) the chain for `bus[index]`, connected to whatever `bus[index + 1]` resolves to. Recursive because a bus's *output* must exist before its own nodes connect to it. Reuse is keyed by everything that changes what it sounds like, not by id alone: a bus edited under a playing device, or one id on two tracks, is a different chain, and a stale one would play stale levels and a curve anchored to the wrong span. */
     private chainFrom(bus: readonly AudioBusStop[], index: number, startTime: number, clipTime: number): AudioNode {
         if (index >= bus.length) return this.destination;
 

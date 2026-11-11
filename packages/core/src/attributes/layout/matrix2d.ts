@@ -1,28 +1,13 @@
 import { Vector2 } from "@/attributes/layout/vector2";
 
 /**
- * A 2D transform stored as the members of a 3×3 matrix:
+ * A 2D transform stored as the members of a 3x3 matrix `| a c e | b d f | g h i |` (DOM column order), so matrices
+ * compose in draw order: `parent.multiply(child)` is the world transform of `child`. Point mapping is
+ * `x' = (a·x + c·y + e) / w`, `y' = (b·x + d·y + f) / w`, `w = g·x + h·y + i`.
  *
- * ```
- * | a c e |
- * | b d f |
- * | g h i |
- * ```
- *
- * Point mapping is `x' = (a·x + c·y + e) / w`, `y' = (b·x + d·y + f) / w`, with
- * `w = g·x + h·y + i`. This is the same column-order convention the DOM
- * uses, so matrices compose in draw order: `parent.multiply(child)` is the world
- * transform of `child`.
- *
- * **The bottom row is optional, and leaving it off means `[0 0 1]`** — an
- * ordinary affine transform, where `w` is 1 everywhere and the divide falls
- * away. Every matrix in the engine was exactly that until
- * {@link nodeProjectedMatrix} arrived: a node tilted out of its own plane
- * projects through a *homography*, and a homography does not fit in six numbers.
- * Rather than a second matrix type — with a second `multiply`, `invert` and
- * `applyToPoint` beside it, which is precisely how a renderer and a hit test end
- * up disagreeing about where a node is — the row lives here, and everything that
- * has no use for it simply omits it.
+ * **The bottom row is optional; omitted means `[0 0 1]`**, an ordinary affine transform. A node tilted out of its
+ * plane projects through a homography, which does not fit in six numbers; a single matrix type keeps the renderer
+ * and the hit test from disagreeing about where a node is.
  */
 /** @internal */
 export interface Matrix2D {
@@ -40,21 +25,14 @@ export function isProjective(m: Matrix2D): boolean {
     return (m.g ?? 0) !== 0 || (m.h ?? 0) !== 0 || (m.i ?? 1) !== 1;
 }
 
-/**
- * Guard the perspective divide. A point on the vanishing line has `w = 0` and
- * projects to infinity, which is a real answer no coordinate can hold; clamping
- * to a tiny same-signed `w` sends it far off-screen instead, which is where it
- * belongs and is a number the caller can keep doing arithmetic with. Without
- * this, one degenerate corner turns an anchor set into `Infinity`/`NaN` and
- * takes the selection box, the hit test and any layout reading it with it.
- */
+/** Guards the perspective divide: clamping a vanishing-line point (`w = 0`) to a tiny same-signed `w` sends it far off-screen instead of poisoning anchors, hit tests and layout with Infinity/NaN. */
 const MIN_W = 1e-6;
 function safeW(w: number): number {
     if (w > MIN_W || w < -MIN_W) return w;
     return w < 0 ? -MIN_W : MIN_W;
 }
 
-/** @internal The identity transform — maps every point to itself. */
+/** @internal The identity transform. */
 export function identity(): Matrix2D {
     return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 }
@@ -64,16 +42,7 @@ export function translation(tx: number, ty: number): Matrix2D {
     return { a: 1, b: 0, c: 0, d: 1, e: tx, f: ty };
 }
 
-/**
- * `m1 · m2` — the transform that applies `m2` first, then `m1`. Composing an
- * ancestor with a descendant (`ancestor.multiply(descendant)`) yields the
- * descendant's world transform.
- *
- * Two affine matrices take the six-member path they always did — that is every
- * composition in a scene with no 3D in it, once per node per parent per frame —
- * and the general 3×3 product runs only when one side actually carries a
- * perspective row.
- */
+/** `m1 · m2`: applies `m2` first, then `m1`. Two affine matrices take the six-member path (every composition in a 3D-free scene); the 3x3 product runs only when a side carries a perspective row. */
 /** @internal */
 export function multiply(m1: Matrix2D, m2: Matrix2D): Matrix2D {
     if (isProjective(m1) || isProjective(m2)) return multiplyProjective(m1, m2);
@@ -87,7 +56,6 @@ export function multiply(m1: Matrix2D, m2: Matrix2D): Matrix2D {
     };
 }
 
-/** The full 3×3 product, rows `[a c e] [b d f] [g h i]`. See {@link multiply}. */
 function multiplyProjective(m1: Matrix2D, m2: Matrix2D): Matrix2D {
     const g1 = m1.g ?? 0, h1 = m1.h ?? 0, i1 = m1.i ?? 1;
     const g2 = m2.g ?? 0, h2 = m2.h ?? 0, i2 = m2.i ?? 1;
@@ -113,11 +81,7 @@ export function applyToPoint(m: Matrix2D, p: Vector2): Vector2 {
     return { x: x / w, y: y / w };
 }
 
-/**
- * The inverse transform, or `null` when `m` is singular (a zero scale collapses
- * the plane, so no inverse exists). Used to map a viewport-space point back into
- * a node's local space for hit testing.
- */
+/** The inverse, or `null` when `m` is singular (zero scale). Maps a viewport point back into a node's local space for hit testing. */
 /** @internal */
 export function invert(m: Matrix2D): Matrix2D | null {
     if (isProjective(m)) return invertProjective(m);
@@ -134,12 +98,7 @@ export function invert(m: Matrix2D): Matrix2D | null {
     };
 }
 
-/**
- * The inverse of a homography — the adjugate over the determinant, written out
- * in this module's row naming. A projective inverse is still a homography, which
- * is what lets picking keep mapping a viewport point back into a node's local
- * space with nothing but {@link applyToPoint} once the node is tilted.
- */
+/** Inverse of a homography (adjugate over determinant); still a homography, so picking keeps working with {@link applyToPoint} on a tilted node. */
 function invertProjective(m: Matrix2D): Matrix2D | null {
     const { a, b, c, d, e, f } = m;
     const g = m.g ?? 0, h = m.h ?? 0, i = m.i ?? 1;
@@ -164,14 +123,9 @@ function invertProjective(m: Matrix2D): Matrix2D | null {
 }
 
 /**
- * The viewport transform a camera scope pushes, in canvas (y-down) space — a
- * literal transcription of `RenderContext2D.beginCamera`:
- *
- *   translate(vx, vy) · rotate(-heading) · scale(zoom) · translate(-lookAt.x, +lookAt.y)
- *
- * `lookAt` is a y-up world point, hence the sign flip on its y. `vx`/`vy` are the
- * viewport centre the camera's callers pass (`layoutBounds.x`, `-layoutBounds.y`).
- * Kept next to {@link nodeLocalMatrix} so the two stay in step with the renderer.
+ * The viewport transform a camera scope pushes, in canvas (y-down) space; a transcription of `RenderContext2D.beginCamera`:
+ * `translate(vx, vy) · rotate(-heading) · scale(zoom) · translate(-lookAt.x, +lookAt.y)`. `lookAt` is y-up, hence the
+ * sign flip; `vx`/`vy` are the viewport centre. Keep in step with {@link nodeLocalMatrix} and the renderer.
  */
 /** @internal */
 export function cameraMatrix(
@@ -180,8 +134,7 @@ export function cameraMatrix(
     const rad = (-heading * Math.PI) / 180;
     const cos = Math.cos(rad);
     const sin = Math.sin(rad);
-    // rotate(-heading) · scale(zoom), the same clockwise canvas convention as
-    // nodeLocalMatrix's R·S block.
+    // rotate(-heading) · scale(zoom): clockwise canvas convention, as in nodeLocalMatrix.
     const a = zoom * cos;
     const b = zoom * sin;
     const c = zoom * -sin;
@@ -193,16 +146,9 @@ export function cameraMatrix(
 }
 
 /**
- * Build the local transform for a node, matching the renderer's
- * `RenderContext2D.transform` exactly (canvas y-down space):
- * `T(cx + pivotX, cy + pivotY) · R(deg) · S(scale) · T(-pivotX, -pivotY)`.
- *
- * @param cx       Canvas-space x of the node's layout-cell lookAt.
- * @param cy       Canvas-space y of the node's layout-cell origin (y-down).
- * @param rotation Rotation in degrees, clockwise (canvas convention).
- * @param scale    Uniform scale factor.
- * @param pivotX   Pivot offset in pixels, x.
- * @param pivotY   Pivot offset in pixels, y (canvas y-down).
+ * Local transform for a node, matching the renderer's `RenderContext2D.transform` exactly (canvas y-down):
+ * `T(cx + pivotX, cy + pivotY) · R(deg) · S(scale) · T(-pivotX, -pivotY)`. `rotation` is degrees clockwise;
+ * `cx`/`cy` are the node's layout-cell origin; the pivot offsets are in pixels.
  */
 /** @internal */
 export function nodeLocalMatrix(
@@ -227,11 +173,7 @@ export function nodeLocalMatrix(
     };
 }
 
-/**
- * The out-of-plane half of a node's transform — the mirrors, the two extra
- * rotation axes, the push along z and the perspective divide that makes them
- * read as depth rather than as squashing. See {@link nodeProjectedMatrix}.
- */
+/** The out-of-plane half of a node's transform: mirrors, the two extra rotation axes, the push along z and the perspective divide. See {@link nodeProjectedMatrix}. */
 /** @internal */
 export interface Projection3D {
     /** Tilt about the horizontal axis, degrees. Positive tips the top away. */
@@ -239,15 +181,9 @@ export interface Projection3D {
     /** Tilt about the vertical axis, degrees. Positive swings the right edge away. */
     rotationY: number;
     /**
-     * In-plane rotation belonging to the 3D block, degrees clockwise — the Z axis
-     * of `Rx · Ry · Rz`.
-     *
-     * A prop of its own rather than a second name for the node's `rotation`, and
-     * that is a deliberate separation: `rotation` is the node's **shape** — it
-     * turns the box, the selection outline turns with it, and handles follow —
-     * while this is part of the projection, which is paint. The two compose (a
-     * Z rotation is a Z rotation, so they add), but they are two independent
-     * numbers and editing one never moves the other.
+     * In-plane rotation of the 3D block, degrees clockwise (the Z axis of `Rx · Ry · Rz`). Separate from the node's
+     * `rotation`: that is the node's **shape** (box, outline and handles turn with it), this is paint. They add, but
+     * editing one never moves the other.
      */
     rotationZ: number;
     /** Push along the view axis in px, applied after the rotations. Inert without `perspective`. */
@@ -271,12 +207,7 @@ export const NO_PROJECTION_3D: Projection3D = {
     flipVertical: false,
 };
 
-/**
- * Whether `p` asks for anything {@link nodeLocalMatrix} cannot already express.
- * The gate in front of every projective path in the engine: a scene with no 3D
- * in it keeps the six-number matrix, the decomposed `translate/rotate/scale`
- * render path, and the affine `multiply` it always had.
- */
+/** Whether `p` asks for anything {@link nodeLocalMatrix} cannot express; the gate in front of every projective path, so 3D-free scenes keep the affine matrix and `multiply`. */
 /** @internal */
 export function hasProjection3D(p: Projection3D): boolean {
     return (
@@ -290,15 +221,9 @@ export function hasProjection3D(p: Projection3D): boolean {
 }
 
 /**
- * Whether a plane carrying this projection has turned its back on the viewer —
- * the test behind `backfaceVisible`.
- *
- * Read off the tilt alone. The plane's normal starts at `(0,0,1)` and comes out
- * of `Rx·Ry` with a z of `cos(rotationX)·cos(rotationY)`; the in-plane rotation
- * can't change which way it points, and neither, deliberately, can a *mirror*.
- * CSS derives the answer from the whole accumulated matrix, where a `scaleX(-1)`
- * inverts orientation and hides the element — which is a surprising way to lose
- * a node you only meant to flip. Here a flip is a flip and a turn is a turn.
+ * Whether a plane has turned its back on the viewer (behind `backfaceVisible`). Read off the tilt alone: the normal's
+ * z is `cos(rotationX)·cos(rotationY)`; in-plane rotation and, deliberately, a *mirror* don't change it. CSS derives
+ * it from the whole matrix, so `scaleX(-1)` hides the element, a surprising way to lose a node you only flipped.
  */
 /** @internal */
 export function facesAway(rotationX: number, rotationY: number): boolean {
@@ -307,39 +232,15 @@ export function facesAway(rotationX: number, rotationY: number): boolean {
 }
 
 /**
- * A node's local transform with the out-of-plane half folded in — the same space
- * and the same pivot convention as {@link nodeLocalMatrix}, which this reduces to
- * exactly when {@link hasProjection3D} is false.
- *
- * The composition, innermost first:
+ * A node's local transform with the out-of-plane half folded in; reduces exactly to {@link nodeLocalMatrix} when
+ * {@link hasProjection3D} is false. Composition, innermost first:
  *
  *   `T(pivot) · P(perspective) · Tz(depth) · Rx · Ry · Rz(rotationZ + rotation) · S(scale) · T(-pivot) · F(flip)`
  *
- * — everything about the pivot except the mirrors, which reflect about the
- * node's own centre so that flipping cannot move the node (see `F` below),
- *
- * which is CSS's own order for `rotateX(a) rotateY(b) rotateZ(c)` — the in-plane
- * rotation innermost, so that adding a tilt never changes what the node's own
- * `rotation` already meant.
- *
- * The Z angle is the **sum** of the two in-plane rotations the node carries, and
- * they stay two: `rotation` turns the node's *shape* — its box turns with it, and
- * so does anything reading that box — while {@link Projection3D.rotationZ} is
- * part of the projection, which is paint (see `Node2D._localMatrix`). Summing them
- * is not a coupling but the definition of composing two rotations about one axis;
- * neither number moves when the other is edited.
- *
- * The content is planar — every point enters with `z = 0` — so the whole thing
- * collapses to a 3×3 homography over `(x, y, 1)` rather than needing a 4×4 and a
- * separate divide step. The projected z survives only as the perspective row.
- *
- * @param cx     Canvas-space x of the node's positioned centre.
- * @param cy     Canvas-space y of the node's positioned centre (y-down).
- * @param rotation In-plane rotation in degrees, clockwise (the Z axis).
- * @param scale  Uniform scale factor.
- * @param pivotX Pivot offset from the centre in px, x.
- * @param pivotY Pivot offset from the centre in px, y (canvas y-down).
- * @param p      The out-of-plane fields.
+ * The mirrors reflect about the node's own centre, not the pivot, so flipping cannot move the node. The Z angle is
+ * the sum of `rotation` (shape) and {@link Projection3D.rotationZ} (paint), which stay two numbers (see
+ * `Node2D._localMatrix`). Content is planar (`z = 0`), so everything collapses to a 3x3 homography over `(x, y, 1)`;
+ * the projected z survives only as the perspective row. Parameters as {@link nodeLocalMatrix}, `p` the out-of-plane fields.
  */
 /** @internal */
 export function nodeProjectedMatrix(
@@ -381,20 +282,10 @@ export function nodeProjectedMatrix(
     const tx = cx + pivotX;
     const ty = cy + pivotY;
 
-    // The mirrors, applied **innermost and about the node's own centre** — a
-    // final column negation, which is what `M · diag(fx, fy, 1)` comes to.
-    //
-    // Not about the pivot, unlike everything else here, and that is the whole
-    // point: a flip is an in-place reflection. Composing it with the pivot the
-    // way CSS's `scaleX(-1)` does means a node hinged anywhere but its middle
-    // *swings* when you flip it — its position readout changes, its corner
-    // handles land somewhere else, and the gesture stops meaning "mirror this"
-    // and starts meaning "mirror this and move it". Every design tool flips
-    // about the selection's own centre for that reason. Written as a column
-    // scale rather than a `T(c)·F·T(-c)` sandwich because that is what one
-    // reduces to here — the local frame is already centred on the node — which
-    // leaves `e`/`f`/`i` untouched and makes "a flip cannot move the node" a
-    // property of the arithmetic rather than a thing to remember.
+        // The mirrors, applied innermost and about the node's own centre (a final column negation, `M · diag(fx, fy, 1)`).
+        // Not about the pivot like everything else: composing with the pivot, as CSS's `scaleX(-1)` does, makes a node
+        // hinged off-centre swing when flipped. The frame is already centred, so a column scale leaves `e`/`f`/`i`
+        // untouched and "a flip cannot move the node" falls out of the arithmetic.
     const fx = p.flipHorizontal ? -1 : 1;
     const fy = p.flipVertical ? -1 : 1;
     return {

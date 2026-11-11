@@ -4,13 +4,7 @@ import { lerpNumber } from "@/tween/lerp";
 /** Which color channel(s) a curves adjustment targets. */
 export type CurvesChannel = 'rgb' | 'r' | 'g' | 'b' | 'a';
 
-/**
- * Remaps pixel values along a tone curve defined by control points.
- *
- * Points are [input, output] pairs in the [0, 1] range. The renderer
- * interpolates a smooth curve through them. Applies to composite RGB
- * by default; set `channel` to target a single channel.
- */
+/** Remaps pixel values along a tone curve through [input, output] control points in [0, 1] (the renderer interpolates a smooth curve). Composite RGB by default; set `channel` for one. */
 export interface CurvesFilter {
     type: 'curves';
     /** Curve control points as [input, output] pairs in [0, 1]. */

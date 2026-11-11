@@ -2,17 +2,10 @@ import { EMPTY_TEXT_STYLE, TEXT_SHAPING_KEYS, textOps } from "@/attributes/text/
 import type { ResolvedTextSpan, TextShapingKey, TextStyle } from "@/attributes/text/types";
 import { Graphics2D, type GraphicsOp, type GraphicsShapeOp } from "./graphics2d";
 
-/** The recorded `text` op, state and all. */
 type TextOp = Extract<GraphicsShapeOp, { kind: "text" }>;
-/** The recorded `richText` op, state and all. */
 type RichTextOp = Extract<GraphicsShapeOp, { kind: "richText" }>;
 
-/**
- * The span-level half of {@link TEXT_SHAPING_KEYS}. A `richText` op carries its
- * typography per span rather than on the shape, so a default has to be filled in
- * span by span — except `lineHeight`/`textAlign`, which lay the block out as a
- * whole and so live on the op itself.
- */
+/** The span-level half of {@link TEXT_SHAPING_KEYS}: a `richText` op carries typography per span, so defaults are filled span by span, except `lineHeight`/`textAlign`, which lay out the whole block and live on the op. */
 const SPAN_KEYS = [
     'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing',
 ] as const satisfies readonly TextShapingKey[];
@@ -22,27 +15,9 @@ const RICHTEXT_BLOCK_KEYS = [
     'lineHeight', 'textAlign',
 ] as const satisfies readonly TextShapingKey[];
 
-/**
- * `graphics` with `style` filled into every `text`/`richText` op that left a
- * shaping field unset — the drawn-text half of `<DefaultTextStyle>`.
- *
- * A `Text` node inherits defaults through the context channel, once, at bind
- * time (`applyTextDefaults`); a raw `Graphics2D` has no node to bind, so it
- * inherits here instead, at draw time, from the scope it is drawn in. Called
- * from `RenderContext2D.draw`, so a custom node's `ctx.draw(...)`, an offscreen
- * rasterization and the precomp pass's asset walk all see the same resolved op
- * list — which is what makes an inherited font actually *load* rather than
- * merely be asked for.
- *
- * A key counts as unset only when it is `undefined`: an op that names a value
- * always wins, exactly as an author-set prop beats an inherited one on a node.
- * Returns `graphics` itself when nothing changes, which is the common case (the
- * scene sets no defaults, or every op already names its own).
- */
+/** `graphics` with `style` filled into every `text`/`richText` op that left a shaping field unset: the drawn-text half of `<DefaultTextStyle>`. A `Text` node inherits through the context channel at bind; a raw `Graphics2D` has no node to bind, so it inherits here at draw time from the scope it is drawn in. Called from `RenderContext2D.draw`, so custom `ctx.draw(...)`, offscreen rasterization and the precomp asset walk see the same resolved ops (an inherited font actually *loads*). A key is unset only when `undefined`: an op naming a value wins. Returns `graphics` itself when nothing changes. */
 export function applyGraphicsTextDefaults(graphics: Graphics2D, style: TextStyle): Graphics2D {
-    // Not gated on `style` alone any more: an op naming a `variant` has
-    // something to inherit even in a scope that sets nothing, so the walk has to
-    // happen either way. The lazy copy below is what keeps that cheap.
+    // Not gated on `style` alone: an op naming a `variant` has something to inherit even in a scope that sets nothing. The lazy copy below keeps the walk cheap.
     const ambient = hasShapingDefaults(style) ? style : EMPTY_TEXT_STYLE;
 
     const ops = graphics.ops();
@@ -56,23 +31,14 @@ export function applyGraphicsTextDefaults(graphics: Graphics2D, style: TextStyle
             ? patchText(op, effective)
             : patchRichText(op, effective);
         if (!patched) continue;
-        // Copy lazily: an op list with nothing to fill in keeps its identity, so
-        // a fully-specified Text node allocates nothing on the way through.
+        // Copy lazily: an op list with nothing to fill in keeps its identity, so a fully specified Text node allocates nothing.
         if (!next) next = ops.slice();
         next[i] = patched;
     }
     return next ? graphics._withOps(next) : graphics;
 }
 
-/**
- * The defaults one op inherits: its `variant`'s preset laid over the enclosing
- * scope's.
- *
- * That order is the node ladder one level down — an explicit value beats a
- * variant beats an inherited `<DefaultTextStyle>` — and it is why the merge is
- * here rather than in the caller: the ambient scope is per *subtree* while a
- * variant is per *op*, so they cannot be flattened before the walk.
- */
+/** The defaults one op inherits: its `variant`'s preset laid over the enclosing scope's (explicit beats variant beats inherited `<DefaultTextStyle>`). Merged here, not by the caller, because the ambient scope is per subtree while a variant is per op, so they can't be flattened before the walk. */
 function effectiveStyle(variant: string | undefined, ambient: TextStyle): TextStyle {
     return textOps.mergeStyle(ambient, variant ? textOps.preset(variant) : undefined);
 }
@@ -103,9 +69,7 @@ function patchSpans(
     style: TextStyle,
 ): ResolvedTextSpan[] | null {
     if (!spans || spans.length === 0) return null;
-    // A span has no autofit mode — it is a run inside a block, sized by the
-    // block — so an inherited `'autofit'` is skipped rather than written through
-    // as a bad number.
+    // A span has no autofit mode (it is sized by its block), so an inherited `'autofit'` is skipped rather than written through as a bad number.
     const spanStyle = style.fontSize === "autofit" ? { ...style, fontSize: undefined } : style;
     let next: ResolvedTextSpan[] | null = null;
     for (let i = 0; i < spans.length; i++) {

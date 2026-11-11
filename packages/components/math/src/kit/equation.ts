@@ -1,26 +1,20 @@
 import { expressionOps, type ExpressionNode } from "@motionscript/sdk";
-import { createBoundedCache } from "./cache";
-import { compileExpressionCached, MATH_DIALECT, type CompiledExpression } from "./expression";
+import { createBoundedCache, memoParse } from "./cache";
+import { compilerFor, MATH_DIALECT, type CompiledExpression } from "./expression";
 
 /**
  * A plotted equation, read the way it is written rather than by a `kind` prop:
- *
- * | Written as | Is |
- * |---|---|
- * | `sin(x)`, `y = sin(x)` | a function of `x` |
- * | `x = y^2` | a function of `y` |
- * | `r = 1 + cos(theta)` | polar, in `theta` |
- * | `(cos(t), sin(t))` | parametric, in `t` |
- * | `x^2 + y^2 = 4` | implicit, in `x` and `y` |
+ * `sin(x)` or `y = sin(x)` is a function of `x`, `x = y^2` of `y`,
+ * `r = 1 + cos(theta)` polar, `(cos(t), sin(t))` parametric, and
+ * `x^2 + y^2 = 4` implicit.
  */
 export type Equation =
     | { kind: "function"; of: "x" | "y"; f: CompiledExpression }
     | { kind: "polar"; f: CompiledExpression }
     | { kind: "parametric"; x: CompiledExpression; y: CompiledExpression }
-    /** Drawn where `f(x, y)` is zero. */
     | { kind: "implicit"; f: CompiledExpression };
 
-/** The free variable each kind is sampled over, for a host's help text. */
+/** The free variable each kind is sampled over, for a host's help. */
 export const EQUATION_VARIABLES = {
     function: ["x"],
     polar: ["theta"],
@@ -28,31 +22,10 @@ export const EQUATION_VARIABLES = {
     implicit: ["x", "y"],
 } as const satisfies Record<Equation["kind"], readonly string[]>;
 
-const parsed = createBoundedCache<Equation | Error>(256);
+/** `source` as an {@link Equation}, or the reason it is not one. */
+export const parseEquation = memoParse<Equation>(256, read);
 
-/**
- * `source` as an {@link Equation}, or the reason it is not one. Memoised, so an
- * unchanged equation is the identical object and a geometry cache can key on it.
- */
-export function parseEquation(source: string, params: readonly string[] = []): Equation | Error {
-    const key = `${params.join(",")}|${source}`;
-    const hit = parsed.get(key);
-    if (hit !== undefined) return hit;
-    let result: Equation | Error;
-    try {
-        result = read(source.trim(), params);
-    } catch (error) {
-        result = error instanceof Error ? error : new Error(String(error));
-    }
-    parsed.set(key, result);
-    return result;
-}
-
-/**
- * Why `source` will not plot, or `null` when it will. An empty one is not an
- * error (nobody has written it yet), and neither is a name it does not know:
- * that is a named value, see {@link equationParams}.
- */
+/** Why `source` will not plot, or `null`. Empty text is no error, and neither is an unknown name: that is a named value ({@link equationParams}). */
 export function equationError(source: string): string | null {
     if (source.trim() === "") return null;
     const equation = parseEquation(source, equationParams(source));
@@ -64,10 +37,7 @@ const VARIABLE_NAMES: ReadonlySet<string> = new Set(["r", ...Object.values(EQUAT
 
 const named = createBoundedCache<readonly string[]>(256);
 
-/**
- * Every name `source` reads, in the order it first names them, variables
- * included. Empty for text that does not parse.
- */
+/** Every name `source` reads, in the order first named, variables included; empty for text that does not parse. */
 export function equationNames(source: string): readonly string[] {
     const hit = named.get(source);
     if (hit !== undefined) return hit;
@@ -85,10 +55,7 @@ export function equationNames(source: string): readonly string[] {
     return result;
 }
 
-/**
- * The named values `source` reads: every name that is not a variable, a
- * function or a constant.
- */
+/** The named values `source` reads: every name that is not a variable, function or constant. */
 export function equationParams(source: string): readonly string[] {
     return equationNames(source).filter((name) => !VARIABLE_NAMES.has(name));
 }
@@ -113,12 +80,7 @@ function collectNames(node: ExpressionNode, into: Set<string>): void {
 }
 
 function read(source: string, params: readonly string[]): Equation {
-    if (source === "") throw new Error("Empty equation");
-    const compile = (text: string, variables: readonly string[]): CompiledExpression => {
-        const result = compileExpressionCached(text.trim(), variables, params);
-        if (result instanceof Error) throw result;
-        return result;
-    };
+    const compile = compilerFor(params);
 
     const pair = splitTuple(source);
     if (pair?.length === 2) return { kind: "parametric", x: compile(pair[0], ["t"]), y: compile(pair[1], ["t"]) };

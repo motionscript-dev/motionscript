@@ -1,25 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * After Effects-style Mosaic / pixelate.
- *
- * `blocks` is the *number of blocks* across the node on each axis, exactly like
- * AE's Mosaic "Horizontal Blocks" / "Vertical Blocks". A count equal to the
- * node's pixel dimension on that axis leaves the image untouched (one block per
- * pixel); lower counts give larger, coarser blocks. For a 1920×1080 image,
- * `{ x: 1920, y: 1080 }` is pristine and `{ x: 200, y: 180 }` is heavily
- * pixelated.
- *
- * `sharpColors` mirrors AE's "Sharp Colors" checkbox: when `true` each block is
- * a single solid colour with hard edges (nearest-neighbour); when `false` the
- * block colours are smoothly interpolated between centres (linear).
- */
+/** After Effects-style Mosaic. `blocks` is the *number of blocks* across the node per axis (AE's "Horizontal/Vertical Blocks"): a count equal to the node's pixel dimension leaves the image untouched, lower is coarser. `sharpColors` (AE's "Sharp Colors") makes each block one solid colour (nearest-neighbour) instead of smoothly interpolated between centres. */
 export interface PixelateEffect extends ModedEffect, EffectFields<typeof pixelateSpec.params> {
     type: "pixelate";
 }
 
-/** The {@link PixelateEffect} spec: its parameters, defaults and ranges. */
 export const pixelateSpec = defineEffect({
     type: "pixelate",
     group: "stylize",

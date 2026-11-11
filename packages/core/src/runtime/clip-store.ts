@@ -18,14 +18,13 @@ import { AudioIndex } from "./audio-index";
 import { requestOf } from "@/attributes/audio/schedule";
 import { busPathOf, busPathTo, findBusById, NodeAudio } from "@/components/trees/audio/node-audio";
 
-/** The owner key the placed commands' sounds go under. */
 const COMMAND_AUDIO = "@commands";
 import { ClipInstance, type RuntimeScope } from "./clip-instance";
 import type { PlacedSound } from "@/document/timeline";
 import { placeTracks, spanFrames, trackFrameCount, type TrackSpan } from "./placement";
 import type { BuildError, AssetTimelineProfile, TrackAssets, TrackAssetsProfile } from "./asset-timeline";
 
-/** Half a 60 Hz frame, leaving the other half for input handling and paint. */
+/** Half a 60 Hz frame, leaving the other half for input and paint. */
 export const DEFAULT_PRECOMP_BUDGET_MS = 8;
 
 export interface ClipStoreOptions {
@@ -36,7 +35,7 @@ export interface ClipStoreOptions {
     audio?: boolean;
     /** False disposes an instance as soon as its refinement lands, for a caller that never draws. */
     keepInstances?: boolean;
-    /** Whether a layout gate is resident. Absent takes every gate as resident. */
+    /** Absent takes every gate as resident. */
     isReady?: (key: string) => boolean;
 }
 
@@ -45,11 +44,9 @@ export interface StoreRunOptions {
     budgetMs?: number;
     /** Polled after every yield; true leaves the build parked where it is. */
     isCancelled?: () => boolean;
-    /** Called each time a track's refinement lands. */
     onProgress?: () => void;
 }
 
-/** What one {@link ClipStore.setProject} did to the tracks it kept. */
 export interface StoreUpdate {
     /** Asset keys whose clip-local record changed, per track refined in place. */
     deltas: Map<string, ReadonlySet<string>>;
@@ -63,29 +60,25 @@ interface Entry {
     track: Track;
     frameCount: number;
     instance: ClipInstance | null;
-    /** A build or refinement parked between slices. */
     steps: Generator<void, void, void> | null;
     running: boolean;
     /** Replaced or disposed while it was running; torn down once it returns. */
     discarded: boolean;
     profile: TrackAssetsProfile | undefined;
-    /** The refinement for this clip and duration, once it has landed. */
     discovered: TrackAssets | null;
     errors: BuildError[];
     index: AssetIndex;
     audio: AudioIndex;
-    /** The owners the placed commands' sounds last went under. */
     commandAudio: Set<string>;
-    /** The placed commands' sounds by owner, for one refinement; dropped when the track's audio is published. */
+    /** By owner, for one refinement; dropped when the track's audio is published. */
     commandSounds: Map<string, PlacedSound[]> | null;
     deps: OwnerDependencies;
     assetDeps: Map<string, readonly SlotId[]>;
     audioDeps: Map<string, readonly SlotId[]>;
     ownerErrors: Map<string, BuildError>;
     audioErrors: Map<string, BuildError>;
-    /** What the last build or patch stepped around: placeholders and skipped commands. */
     issues: BuildError[];
-    /** Building threw: nothing draws until the clip changes or the track is rebuilt. */
+    /** Nothing draws until the clip changes or the track is rebuilt. */
     failure: BuildError | null;
     refineError: BuildError | null;
     /** Bumped whenever something other than an evaluator moved the instance. */
@@ -96,14 +89,10 @@ interface Entry {
 }
 
 /**
- * One build per track: the instance a track's clip compiles to, the asset index
- * its refinement produced, and its audio — shared by whoever needs them, so the
- * evaluator draws the tree discovery refined rather than building one of its own.
- *
- * A build runs as a generator so a background driver can park it between slices;
- * whoever needs the track sooner drains the parked build instead of starting
- * another. Dependencies are kept by {@link SlotId}, which a rebuild reproduces,
- * so an instance can be thrown away and built again without refining.
+ * One build per track, shared by whoever needs it, so the evaluator draws the tree discovery refined rather
+ * than building its own. A build runs as a generator so a background driver can park it between slices;
+ * whoever needs the track sooner drains the parked build. Dependencies are kept by {@link SlotId}, which a
+ * rebuild reproduces, so an instance can be rebuilt without refining.
  */
 export class ClipStore {
     constructor(project: ProjectDocument, private readonly _scope: RuntimeScope, options: ClipStoreOptions = {}) {
@@ -126,7 +115,6 @@ export class ClipStore {
         return this._spans;
     }
 
-    /** Bumped by every change a published result could show. */
     get version(): number {
         return this._version;
     }
@@ -136,10 +124,9 @@ export class ClipStore {
     }
 
     /**
-     * Take a new document. A track holding the same clip keeps everything; a changed
-     * clip whose built tree patches in place re-declares only the owners the patch
-     * can have changed; anything else starts again. A theme change starts every
-     * track again, since colours resolve against it as props are written.
+     * A track holding the same clip keeps everything; a changed clip whose tree patches in place re-declares only
+     * the owners the patch can have changed; anything else starts again. A theme change starts every track again,
+     * since colours resolve against it as props are written.
      */
     setProject(next: ProjectDocument): StoreUpdate {
         const update: StoreUpdate = { deltas: new Map(), rebuilt: [] };
@@ -168,12 +155,9 @@ export class ClipStore {
     }
 
     /**
-     * Start every track again against the same document.
-     *
-     * For a change the document does not carry: the catalog these clips build
-     * against gained an entry, so a track that failed for want of it, or measured
-     * against the old size, has to be built again. {@link setProject} cannot say
-     * so, since it compares documents and this one has not changed.
+     * For a change the document does not carry: the catalog gained an entry, so a track that failed for want of
+     * it, or measured against the old size, must be rebuilt. {@link setProject} cannot tell, since it compares
+     * documents.
      */
     reset(): void {
         if (this._disposed) return;
@@ -184,7 +168,6 @@ export class ClipStore {
         this._version++;
     }
 
-    /** `trackId`'s built tree, building it — or draining its parked build — first. `null` when building throws. */
     ensureBuilt(trackId: string): ClipInstance | null {
         const entry = this._entries.get(trackId);
         if (!entry || entry.running || this._disposed) return null;
@@ -196,7 +179,6 @@ export class ClipStore {
         return entry.instance;
     }
 
-    /** Build and refine `trackId` now, unless it already has been. */
     discover(trackId: string): void {
         const entry = this._entries.get(trackId);
         if (!entry || entry.running || this._disposed) return;
@@ -210,9 +192,8 @@ export class ClipStore {
     }
 
     /**
-     * Discover every undiscovered track, earliest start first, yielding between
-     * slices. A build whose track changed while it was parked is dropped; a
-     * cancelled one stays parked for whoever needs the track next.
+     * A build whose track changed while parked is dropped; a cancelled one stays parked for whoever needs the
+     * track next.
      */
     async runAsync(options: StoreRunOptions = {}): Promise<void> {
         const { budgetMs = DEFAULT_PRECOMP_BUDGET_MS, isCancelled, onProgress } = options;
@@ -240,7 +221,6 @@ export class ClipStore {
         }
     }
 
-    /** The built tree, if there is one that is not mid-build. */
     instanceOf(trackId: string): ClipInstance | null {
         const entry = this._entries.get(trackId);
         return entry && !entry.steps ? entry.instance : null;
@@ -258,7 +238,6 @@ export class ClipStore {
         return !!this._entries.get(trackId)?.discovered;
     }
 
-    /** What refinement found, in clip-local frames; `undefined` until it has. */
     trackAssets(trackId: string): TrackAssets | undefined {
         return this._entries.get(trackId)?.discovered ?? undefined;
     }
@@ -268,18 +247,15 @@ export class ClipStore {
         return entry?.discovered ? entry.errors : [];
     }
 
-    /** Owners whose segments hold `key`. */
     ownersOf(trackId: string, key: string): ReadonlySet<string> {
         return this._entries.get(trackId)?.index.owners(key) ?? new Set();
     }
 
-    /** Records that must be resident before `trackId` measures. */
     layoutGates(trackId: string): readonly AssetRecord[] {
         const entry = this._entries.get(trackId);
         return entry?.discovered ? entry.index.layoutGates() : [];
     }
 
-    /** Record a segment the draw found missing. Whether that changed the track's records. */
     learn(trackId: string, ownerKey: string, decl: AssetDecl, localFrame: number): boolean {
         const entry = this._entries.get(trackId);
         if (!entry?.discovered) return false;
@@ -288,13 +264,9 @@ export class ClipStore {
     }
 
     /**
-     * Rebuild every listed track whose compile measured a layout gate before it was
-     * resident, now that one of those gates is. A gate becomes resident once, so a
-     * track rebuilds at most once per gate. Whether anything was rebuilt.
-     *
-     * Every such track, not only one with a layout-reading command: a node may keep
-     * what it measured (`code` caches its token advances and layouts), and nothing
-     * but a fresh tree drops metrics taken against the fallback face.
+     * A gate becomes resident once, so a track rebuilds at most once per gate. Every such track is rebuilt, not
+     * only one with a layout-reading command: a node may keep what it measured (`code` caches token advances), and
+     * only a fresh tree drops metrics taken against the fallback face.
      */
     settleGates(trackIds: Iterable<string>): boolean {
         const isReady = this._options.isReady;
@@ -321,9 +293,8 @@ export class ClipStore {
     }
 
     /**
-     * Throw `trackId`'s tree away so the next {@link ensureBuilt} builds it fresh,
-     * keeping what refinement found — for an editor override written straight onto
-     * a live prop, which the timeline would never restore.
+     * Keeps what refinement found. For an editor override written straight onto a live prop, which the timeline
+     * would never restore.
      */
     rebuild(trackId: string): void {
         const entry = this._entries.get(trackId);
@@ -348,7 +319,6 @@ export class ClipStore {
         entry.generation++;
     }
 
-    /** Release every track further than `horizon` frames from `frame`. */
     trim(frame: number, horizon: number): void {
         for (let i = 0; i < this._spans.length; i++) {
             const span = this._spans[i];
@@ -418,7 +388,7 @@ export class ClipStore {
             patch = null;
         }
         if (!patch) return this._fresh(track);
-        // Nothing to apply; the tree keeps the document it was built from, which diffs the same.
+        /** Nothing to apply; the tree keeps the document it was built from, which diffs the same. */
         if (patch.diff.identical) return this._resize(entry, track, frameCount);
 
         const refined = entry.discovered !== null && this._refine !== "none";
@@ -466,7 +436,7 @@ export class ClipStore {
         return entry;
     }
 
-    /** The same clip over a different length: a shorter one clips the index, a longer one was never swept past its old end. */
+    /** A shorter clip clips the index; a longer one was never swept past its old end. */
     private _resize(entry: Entry, track: Track, frameCount: number): Entry {
         const duration = entry.track.duration;
         entry.track = track;
@@ -524,7 +494,6 @@ export class ClipStore {
         while (entry.steps && !this._step(entry)) { /* drained */ }
     }
 
-    /** One slice. True once the build has finished or been abandoned. */
     private _step(entry: Entry): boolean {
         const steps = entry.steps;
         if (!steps) return true;
@@ -548,10 +517,7 @@ export class ClipStore {
         return true;
     }
 
-    /**
-     * Build one track's clip, then refine what its nodes declare over the frames
-     * that can change it. Yields only between frames, where the tree is consistent.
-     */
+    /** Yields only between frames, where the tree is consistent. */
     private *_steps(entry: Entry, build: boolean, refine: boolean): Generator<void, void, void> {
         const profile = entry.profile;
         const { fps, assets: catalog } = this._scope;
@@ -638,7 +604,6 @@ export class ClipStore {
         for (const key of new Set([...entry.assetDeps.keys(), ...entry.audioDeps.keys()])) this._link(entry, key);
     }
 
-    /** Re-declare what a patch can have changed, splicing each owner's new segments onto what it kept. */
     private _applyDirty(entry: Entry, dirty: DirtyOwners, frameCount: number): Set<string> {
         const keys = new Set<string>();
         const collect = (delta: { keys: ReadonlySet<string> }) => {
@@ -738,10 +703,7 @@ export class ClipStore {
         else entry.deps.set(key, [...assets ?? [], ...audio ?? []]);
     }
 
-    /**
-     * Declare an arriving owner's audio: the sounds its placed commands play.
-     * It reads no slots, but is linked for audio like every arrival.
-     */
+    /** Reads no slots, but is linked for audio like every arrival. */
     private _declareAudio(entry: Entry, ownerKey: string, slots: Map<string, PropSlot<unknown>[]>): void {
         slots.set(ownerKey, []);
         const sounds = entry.instance ? this._commandSoundsOf(entry, entry.instance).get(ownerKey) : undefined;
@@ -751,9 +713,8 @@ export class ClipStore {
     }
 
     /**
-     * What the placed commands play, as one owner: a sound is scheduled ahead of
-     * time from where its command sits, not written per frame. Rebuilt whenever
-     * the track's audio is published, so a moved or edited command moves its sound.
+     * A sound is scheduled ahead of time from where its command sits, not written per frame. Rebuilt whenever the
+     * track's audio is published, so an edited command moves its sound.
      */
     private _declareCommandAudio(entry: Entry): void {
         const instance = entry.instance;
@@ -821,11 +782,7 @@ export class ClipStore {
         };
     }
 
-    /**
-     * Republish what the track's indices hold. A snapshot, so a result already
-     * handed out does not change; the prior one is kept, and nothing bumps, when
-     * nothing in it would differ. Whether it changed.
-     */
+    /** A snapshot, so a result already handed out does not change; nothing bumps when nothing would differ. */
     private _refresh(entry: Entry, landed = false): boolean {
         this._declareCommandAudio(entry);
         const prior = entry.discovered;
@@ -861,14 +818,13 @@ export class ClipStore {
         return true;
     }
 
-    /** Placed commands by their recorded write sets, named once per set. */
     private _placedWrites(entry: Entry): Map<object, PlacedWrites> {
         const instance = entry.instance!;
         const out = new Map<object, PlacedWrites>();
         let namer: SlotNamer | undefined;
         for (const placed of instance.placedCommands()) {
             let named = entry.writes.get(placed.writes);
-            // An entrance's hold moves with its neighbours while its write set stays.
+            /** An entrance's hold moves with its neighbours while its write set stays. */
             if (!named || named.start !== placed.holdFrom) {
                 namer ??= new SlotNamer(instance);
                 named = { start: placed.holdFrom, writes: namer.idsOf(placed.writes) };
@@ -879,10 +835,7 @@ export class ClipStore {
         return out;
     }
 
-    /**
-     * Run a compile, noting every face it measured that was not resident: a
-     * layout-reading command built then captured the fallback's metrics.
-     */
+    /** A layout-reading command built against a non-resident face captured the fallback's metrics. */
     private _compile(entry: Entry, run: (measurer: MeasureContext2D) => void): void {
         const isReady = this._options.isReady;
         const inner = this._scope.measurer;
@@ -937,13 +890,11 @@ function keptBefore(segments: readonly AssetSegment[], from: number): AssetSegme
 }
 
 /**
- * Confine a clip's **bounded** audio to its own `[0, clipDuration)`, so a source
- * outlasting the track does not sound past its cut. Open requests pass through,
- * to be resolved against the project total on assembly.
+ * Confine a clip's bounded audio to its own `[0, clipDuration)`, so a source outlasting the track does not
+ * sound past its cut. Open requests pass through, to be resolved against the project total on assembly.
  *
- * Every bus is confined, open request or not: a bus is a node of this clip, so
- * one nothing removes is present until the clip ends, and that is the span its
- * curves run over.
+ * Every bus is confined: a bus is a node of this clip, so one nothing removes is present until the clip ends,
+ * and that is the span its curves run over.
  */
 function clampAudioToClip(requests: readonly AudioRequest[], clipDuration: number): AudioRequest[] {
     const out: AudioRequest[] = [];

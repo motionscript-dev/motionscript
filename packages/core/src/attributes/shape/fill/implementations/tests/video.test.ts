@@ -87,7 +87,7 @@ describe('resolveVideoTimestamp', () => {
     });
 
     it('quantizes to the posterizeTime grid, in source-time space', () => {
-        const fill = video({ trimStart: 1, filters: [{ type: 'posterizeTime', fps: 4 }] });
+        const fill = video({ trimStart: 1, preset: { adjustments: [{ type: 'posterizeTime', fps: 4 }] } });
         // 1.6s into the clip snaps back to the 0.25s grid measured from trimStart.
         expect(resolveVideoTimestamp(fill, 0.6, DURATION)).toBeCloseTo(1.5);
     });

@@ -21,18 +21,16 @@ export interface RefineOptions {
     fps: number;
     frameCount: number;
     catalog: AssetCatalog;
-    /**
-     * Limit the sweep to these owners, each from its frame on. A limited owner's
-     * segments start no earlier than its frame: the caller keeps what it had before.
-     */
+    /** A limited owner's segments start no earlier than its frame: the caller keeps what it had before. */
     owners?: ReadonlyMap<string, number>;
-    /** Like {@link owners}, for every owner a composite built below each row — keys a caller cannot know ahead. */
+    /**
+     * Like {@link owners}, for every owner a composite built below each row (keys a caller cannot know ahead).
+     */
     below?: ReadonlyMap<string, number>;
-    /** False only watches owners arrive, declaring nothing — for a caller that wants `onArrive` alone. */
+    /** False only watches owners arrive, for a caller that wants `onArrive` alone. */
     declare?: boolean;
     /** Binds a `Tex.surface` source before it declares. Defaults to the declaring node's scope. */
     bindSubtree?: (node: Node) => void;
-    /** Once per owner, with the tree in the state the owner arrives in. */
     onArrive?: (node: Node, ownerKey: string, span: NodeSpan, frame: number) => void;
     onPhase?: (phase: "evaluate" | "declare") => void;
 }
@@ -41,7 +39,6 @@ export interface OwnerResult {
     ownerKey: string;
     nodeId: string | undefined;
     segments: AssetSegment[];
-    /** Every slot any of its declarations read. */
     deps: ReadonlySet<PropSlot<unknown>>;
     /** A throwing declaration: the owner keeps no segments, and `prop` names the last slot it read. */
     error?: { message: string; stack?: string; prop?: string };
@@ -49,23 +46,17 @@ export interface OwnerResult {
 
 export interface RefineResult {
     owners: Map<string, OwnerResult>;
-    /** Dependency slot → the owners that read it. */
     readers: Map<PropSlot<unknown>, Set<string>>;
 }
 
 /**
- * Find each owner's asset segments, frame-exactly, without declaring every frame.
+ * A declaration is a pure function of the slots it reads, so an owner is declared at arrival and again only on
+ * frames where something could have changed one of those slots: every frame a command writing one is active
+ * (which catches a swap part-way through a command, and overlapping writers), the first frame after it ends,
+ * and any frame the tree's presence or structure changed under a read. A redeclaration whose dependencies hold
+ * the values they held reuses its result.
  *
- * A declaration is a pure function of the slots it reads, so an owner is declared
- * at arrival and again only on frames where something could have changed one of
- * those slots: every frame a command that writes one is active (which is what
- * catches a swap part-way through a command, and overlapping writers, since the
- * evaluation applies all of them), the first frame after it ends, and any frame
- * the tree's presence or structure changed under a read. A redeclaration whose
- * dependencies all hold the values they held last time reuses its result.
- *
- * Yields after each frame it evaluates. The instance must be built; the sweep
- * leaves it at an arbitrary time.
+ * Yields after each frame it evaluates. The instance must be built; the sweep leaves it at an arbitrary time.
  */
 export function* refineAssets(instance: ClipInstance, options: RefineOptions): Generator<void, RefineResult, void> {
     const sweep = new Sweep(instance, options);
@@ -73,11 +64,9 @@ export function* refineAssets(instance: ClipInstance, options: RefineOptions): G
     return sweep.result();
 }
 
-// ─── Sweep ────────────────────────────────────────────────────────────────────
-
 interface Placed {
     id: string;
-    /** The first frame the command is active on, and the last (`to < from` when it lands between frames). */
+    /** `to < from` when it lands between frames. */
     from: number;
     to: number;
     writes: Set<PropSlot<unknown>>;
@@ -97,7 +86,6 @@ interface OwnerState {
     present: boolean;
     arrivedAt: number;
     arrived: boolean;
-    /** Closed presence intervals, inclusive. */
     intervals: [number, number][];
     history: Declared[];
     deps: PropSlot<unknown>[] | null;
@@ -105,7 +93,6 @@ interface OwnerState {
     /** A presence or structure slot it read was written: the values cannot tell. */
     stale: boolean;
     allDeps: Set<PropSlot<unknown>>;
-    /** Indices of the placed commands whose frames are already queued for it. */
     scheduled: Set<number>;
     rounds: number;
     error?: OwnerResult["error"];
@@ -131,7 +118,6 @@ class Sweep {
 
         this._placed = _instance.placedCommands().map((p) => ({
             id: p.spec.id,
-            // An entrance writes its first frame from `holdFrom`, ahead of its start.
             ...this._activeFrames(p.holdFrom, p.start - p.holdFrom + p.duration),
             writes: new Set(p.writes),
         }));
@@ -152,7 +138,6 @@ class Sweep {
         }
     }
 
-    /** Evaluate and declare the next due frame. False once nothing is left. */
     step(): boolean {
         const frame = heapPop(this._heap);
         if (frame === undefined) return false;
@@ -192,7 +177,6 @@ class Sweep {
 
     private readonly _last: number;
     private _start = 0;
-    /** Frames up to here have had their presence and structure reconciled. */
     private _walked = -1;
     private _placed: Placed[] = [];
     private readonly _writers = new Map<PropSlot<unknown>, number[]>();
@@ -206,7 +190,6 @@ class Sweep {
     /** Owners re-queued from before the frame being processed. */
     private readonly _rewound = new Set<OwnerState>();
     private _frame = -1;
-    /** Whether the frame being processed has handed out its due owners yet. */
     private _dueTaken = false;
     /** Read once: in Node, `process.env` is a lookup per access, and it sat on every declaration. */
     private readonly _dev = isDev();
@@ -217,8 +200,7 @@ class Sweep {
     };
 
     /**
-     * The spans whose edges can move an owner in or out. Limited to named owners,
-     * only their rows' — an effective span already folds in every ancestor's, and
+     * Limited to named owners, only their rows' spans: an effective span already folds in every ancestor's, and
      * visiting every row's edges would make one edited node cost a walk of the clip.
      */
     private _structureSpans(): NodeSpan[] {
@@ -252,8 +234,10 @@ class Sweep {
     private _evaluate(frame: number): void {
         this._options.onPhase?.("evaluate");
         const seconds = frameTime(frame, this._options.fps, this._instance.duration);
-        // Clocks move only where the tree can change, and before it does, so a node
-        // is attached in the state it arrives in. Declarations must not read them.
+        /**
+         * Clocks move only where the tree can change, and before it does, so a node is attached in the state it
+         * arrives in. Declarations must not read them.
+         */
         if (frame > this._walked && (frame === this._start || this._structureFrames.has(frame))) {
             this._instance.attach(seconds);
         }
@@ -264,8 +248,9 @@ class Sweep {
             this._commandWrote(index, slot);
         }));
 
-        // Presence only moves forward: a frame revisited for a re-queued owner reads
-        // what it recorded the first time through.
+        /**
+         * Presence only moves forward: a frame revisited for a re-queued owner reads what it recorded the first time.
+         */
         if (frame <= this._walked) return;
         if (frame === this._start || this._pseudo.size > 0) this._reconcile(frame);
         for (const slot of this._pseudo) {
@@ -277,7 +262,6 @@ class Sweep {
         this._walked = frame;
     }
 
-    /** Seed owners that are now mounted, and close the ones that are not. */
     private _reconcile(frame: number): void {
         const seen = new Set<OwnerState>();
         this._instance.forEachOwner((node, key, span) => {
@@ -425,7 +409,6 @@ class Sweep {
         }
     }
 
-    /** Every frame a command is active on from `from`, and the first after it ends. */
     private _forEachDueFrame(placed: Placed, from: number, visit: (frame: number) => void): void {
         const first = Math.max(from, placed.from);
         const last = Math.min(this._last, placed.to);
@@ -435,8 +418,8 @@ class Sweep {
     }
 
     /**
-     * A command wrote a slot compile did not see it write. Its readers may have
-     * missed every frame of it, so each is re-queued from where the command starts.
+     * A command wrote a slot compile did not see it write. Its readers may have missed every frame of it, so each
+     * is re-queued from where the command starts.
      */
     private _commandWrote(index: number, slot: PropSlot<unknown>): void {
         const placed = this._placed[index];
@@ -513,8 +496,6 @@ class Sweep {
         heapPush(this._heap, frame);
     }
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isPseudo(slot: PropSlot<unknown>): boolean {
     return slot._name === STRUCTURE_SLOT || slot._name.startsWith(PRESENCE_PREFIX);

@@ -5,7 +5,6 @@ export interface BulgeEffect extends ModedEffect, EffectFields<typeof bulgeSpec.
     type: "bulge";
 }
 
-/** The {@link BulgeEffect} spec: its parameters, defaults and ranges. */
 export const bulgeSpec = defineEffect({
     type: "bulge",
     group: "distort",

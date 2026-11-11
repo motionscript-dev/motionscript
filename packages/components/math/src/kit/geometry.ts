@@ -34,6 +34,10 @@ export function inflate(area: Extents, margin: number): Extents {
     return { minX: area.minX - margin, minY: area.minY - margin, maxX: area.maxX + margin, maxY: area.maxY + margin };
 }
 
+export function radians(degrees: number): number {
+    return (degrees * Math.PI) / 180;
+}
+
 export function clamp(value: number, min: number, max: number): number {
     return value < min ? min : value > max ? max : value;
 }

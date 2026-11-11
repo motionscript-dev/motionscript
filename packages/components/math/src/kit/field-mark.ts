@@ -23,12 +23,7 @@ import { drawMark, type MarkPaint, type MarkReading } from "./mark";
 import { fillAt, lerpFillScale, readFillScale } from "./scale";
 import { lerpParams, lerpSource, readSource, scopeFor, type PlotSource } from "./source";
 
-/**
- * What a mark drawn from a vector field, `(P(x, y), Q(x, y))`, shares: arrows,
- * or the lines that follow it, all in one stroke. Without strength fills it is
- * one path in the stroke's paint; with them, what it draws is sorted by the
- * field's strength into a few shades.
- */
+// Without strength fills a field mark is one path in the stroke's paint; with them it is sorted by strength into a few shades.
 
 export interface FieldProps extends PaintProps {
     expression?: string | PlotSource;
@@ -70,7 +65,6 @@ export const FIELD_COMMANDS = {
     paramsTo: { args: ["params"] as const },
 };
 
-/** What a field mark is drawn from. */
 export interface FieldValues {
     readonly expression: PlotSource;
     readonly params: ExpressionScope;

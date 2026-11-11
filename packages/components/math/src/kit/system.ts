@@ -19,20 +19,11 @@ import type { CoordinateMap } from "./coords";
 import { settle, SYSTEM, systemPlane } from "./graph";
 import { openPlane, placeOnMap } from "./place";
 
-/**
- * What a coordinate system shares: a node whose children sit in its graph
- * coordinates. A child's `x`/`y` are in the system's units and the child keeps
- * its own size, so anything can be put on a graph: a dot, a label, an image. A
- * mark is drawn through the system's map instead and laid out on its ink.
- *
- * The system's `stroke` is its axis line (so `endCap` is the tip) and its `fill`
- * the backdrop. Ticks, grid and labels are drawing ops, never child nodes: a
- * document's children would otherwise share their indices with them.
- */
-
+// A child's `x`/`y` are in the system's units and it keeps its own size; a mark is drawn through the map and laid out on its ink.
+// The `stroke` is the axis line (`endCap` is its tip), the `fill` the backdrop. Ticks, grid and labels are drawing ops, never
+// child nodes: they would share their indices with a document's children.
 const CENTRE: Vector2 = { x: 0, y: 0 };
 
-/** What a system's helpers read of its state. */
 export interface SystemState {
     readonly padding: InsetsResolved;
     readonly fill: Fill;

@@ -2,77 +2,43 @@ import type { NormalizedColor } from "@motionscript/sdk";
 import type { CodeLayout } from "./layout";
 import { IdLine } from "./tokens";
 
-// A single animated token entry owned by one dim transition. Keyed by stable
-// token id rather than (line, tokenIndex) so concurrent animations don't clobber
-// each other when one shifts the indices of tokens the other is animating.
+/** Keyed by token id, not (line, index), so a concurrent edit that shifts indices doesn't clobber it. */
 export interface AnimToken {
     id: number;
     opacity: number[];
     opacityKeys: number[];
 }
 
-/**
- * A highlight cross-fade: opacity, and nothing else.
- *
- * Structure is untouched, so several of these stack happily and a listing held
- * under a highlight still hits the static-layout cache.
- */
+/** A highlight cross-fade: opacity only, so several stack and a highlighted listing still hits the static-layout cache. */
 export interface DimTransition {
     kind: "dim";
     tokens: AnimToken[];
     progress: number;
 }
 
-/**
- * When each part of a structural edit happens, in normalized transition time.
- *
- * The order is what an edit *looks like* being made: what is going away leaves
- * first, what stays reflows into its new place, and only then does what is new
- * appear. Running them together is what made a replacement look like a
- * cross-dissolve of two unrelated listings.
- */
+/** When each part of an edit happens, in normalized time: out, then move, then in. Run together, a replacement reads as a cross-dissolve of two listings. */
 export interface Phases {
-    /** Removed tokens fade out. Null when the edit removes nothing. */
+    /** Null when the edit removes nothing. */
     out: [number, number] | null;
-    /** Surviving tokens travel, and the block resizes. Always present. */
+    /** Surviving tokens travel and the block resizes. */
     move: [number, number];
-    /** Added tokens fade (and slide) in. Null when the edit adds nothing. */
+    /** Null when the edit adds nothing. */
     in: [number, number] | null;
 }
 
-/**
- * One edit in flight: the structure before, the structure after, and who is
- * doing what.
- *
- * Both endpoints are fixed for the transition's whole life, which is why the
- * two resolved layouts hang off it — they are computed once and reused for
- * every frame the edit spans, rather than rebuilt per frame from a structure
- * that is being mutated underneath.
- */
+/** One edit in flight. Both endpoints are fixed, so the two layouts are computed once and reused for every frame. */
 export interface StructuralTransition {
     kind: "structural";
     from: IdLine[];
     to: IdLine[];
     removedIds: Set<number>;
     addedIds: Set<number>;
-    /**
-     * Ids of rows in `to` that did not exist before, and so enter as a whole
-     * row rather than as tokens spliced into one.
-     *
-     * They enter by fading in place, and that is the *only* thing they do. An
-     * earlier version slid each one in from the edge the block had just grown
-     * along — appended rows rising from below, prepended ones descending, ones
-     * spliced into the middle arriving from the left. Every one of those is a
-     * claim about where the line came from, and a listing has no such story to
-     * tell: text is written where it belongs, it does not travel there. Sliding
-     * also puts the row under the neighbours it is meant to sit between for the
-     * length of its entrance, which reads as the listing redrawing itself.
-     */
+    /** Rows of `to` that enter as a whole row. They only fade in place: text is written where it belongs, and sliding one in puts it under its neighbours. */
     enteringLineIds: Set<number>;
     fromColorById: Map<number, string | undefined>;
     phases: Phases;
     progress: number;
-    /** @internal Layout cache — see {@link StructuralTransition}. */
+    /** @internal */
     layoutKey: string | null;
     fromLayout: CodeLayout | null;
     toLayout: CodeLayout | null;
@@ -86,10 +52,7 @@ export interface RowBand {
     radius: number;
 }
 
-/**
- * One set of row bands becoming another. Bands at the same position in both
- * lists travel and recolour; one with no counterpart fades.
- */
+/** Bands at the same position in both lists travel and recolour; one with no counterpart fades. */
 export interface RowsTransition {
     kind: "rows";
     from: RowBand[];
@@ -99,20 +62,14 @@ export interface RowsTransition {
 
 export type CodeTransition = DimTransition | StructuralTransition | RowsTransition;
 
-/**
- * Decides *when* (in normalized transition time) each part of a structural
- * edit happens, given only whether the edit removes/adds anything.
- * `phasesFor` below is the default implementation (exported as
- * `defaultCodePhases`) — pass a `phaseStrategy` of this shape to `<Code>` to
- * replace it with your own timing.
- */
+/** Decides the {@link Phases} from whether the edit removes or adds anything; `defaultCodePhases` is the default. */
 export type CodePhaseStrategy = (hasRemoved: boolean, hasAdded: boolean) => Phases;
 
 export interface TokenState {
     opacity: number;
 }
 
-/** Sample a piecewise-linear curve (keys → values) at progress `p` in [0, 1]. */
+/** Samples a piecewise-linear curve at progress `p`. */
 export function sampleCurve(keys: number[], values: number[], p: number): number {
     if (p <= keys[0]) return values[0];
     if (p >= keys[keys.length - 1]) return values[values.length - 1];
@@ -144,15 +101,8 @@ export function makeAnim(id: number, curve: { keys: number[]; values: number[] }
     return { id, opacity: curve.values, opacityKeys: curve.keys };
 }
 
-/**
- * The phase schedule for an edit, shaped by what the edit actually contains.
- *
- * A fixed schedule wastes time it does not need: a pure append has nothing to
- * fade out, so holding the first 40% of the duration empty just makes the
- * animation feel late. Each shape gets the whole duration spent on the parts
- * that exist, with adjacent phases overlapping enough to read as one movement.
- */
-export function phasesFor(hasRemoved: boolean, hasAdded: boolean): Phases {
+/** A pure append has nothing to fade out, so each edit shape spends the whole duration on the phases it has. */
+export function defaultCodePhases(hasRemoved: boolean, hasAdded: boolean): Phases {
     // The overlaps are deliberate and small. Butt-joining the phases leaves the
     // block sitting empty at its new size for a beat between the old content
     // leaving and the new content arriving; letting the arrival start while the
@@ -164,18 +114,12 @@ export function phasesFor(hasRemoved: boolean, hasAdded: boolean): Phases {
     return { out: null, move: [0, 1], in: null };
 }
 
-/** {@link phasesFor} under the name a `phaseStrategy` default is looked up by. */
-export const defaultCodePhases: CodePhaseStrategy = phasesFor;
-
-/** How far through the "everything reflows" phase a frame is, eased. A settled frame (no edit) is always fully moved. */
+/** Eased progress of the move phase; a settled frame (no edit) is fully moved. */
 export function moveProgress(edit: { phases: Phases; progress: number } | null): number {
     return edit ? smoothstep(windowProgress(edit.phases.move, edit.progress)) : 1;
 }
 
-/**
- * Resolve the per-token opacity multiplier for the current frame from the
- * persistent highlight dim plus every active dim transition.
- */
+/** Per-token opacity: the persistent highlight dim, overridden by each active dim transition. */
 export function resolveTokenStates(
     tokenLines: IdLine[],
     transitions: CodeTransition[],

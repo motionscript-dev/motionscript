@@ -1,21 +1,14 @@
-// @motionscript/headless — render Motion Script projects from Node.
-//
-// It drives the **browser** engine in a headless page. That is not an
-// implementation detail: an in-process rasterizer could
-// not draw `Canvas3D` at all and threw on any audio, so a server export and a
-// user's preview were different pictures with nothing to say so. Here they are
-// the same code.
+// @motionscript/headless: render Motion Script projects from Node by driving the **browser** engine in a headless page,
+// so a server export and a user's preview are the same code (an in-process rasterizer could not draw `Canvas3D` and
+// threw on audio).
 //
 //     const engine = createServerEngine({ projectRoot: './my-project' });
 //     const still = await engine.renderImage({ document, frame: 'last' });
 //     const video = await engine.renderVideo({ document });
 //
-// The entry is a **file**, not an object: a module such as `src/project.ts`,
-// exporting the `nodes` and `shaders` its
-// documents name, and optionally a default project document for a request that
-// brings none. Node types are classes, and a class does not survive a process
-// boundary — so the entry is bundled into the page rather than passed to it.
-// Documents are data, and arrive per request.
+// The entry is a **file** (a module such as `src/project.ts` exporting the `nodes` and `shaders` its documents name, and
+// optionally a default project): node types are classes, which do not survive a process boundary, so the entry is
+// bundled into the page. Documents are data and arrive per request.
 
 export { MotionScriptServerEngine, createServerEngine } from './server-engine.js';
 export type { ServerEngineOptions, ServerImageOptions, ServerImage, ServerVideoOptions } from './server-engine.js';

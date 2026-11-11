@@ -17,9 +17,7 @@ import { shaderFill } from "./implementations/shader";
 import { imageFill } from "./implementations/image";
 import { videoFill } from "./implementations/video";
 import { canvas3DFill } from "./implementations/canvas3d";
-// The one value import from `render3d` into the fill layer, for the bare-scene
-// coercion in `resolveFill`. Acyclic: `render3d` only imports `Color` back from
-// here, and does so type-only.
+// The one value import from `render3d` into the fill layer (bare-scene coercion in `resolveFill`); acyclic since `render3d` imports `Color` back type-only.
 import { Scene3D } from "@/render3d/scene3d";
 
 type FillResult<T extends FillResolved> = Omit<Omit<T, "type">, "blend">;
@@ -65,36 +63,13 @@ export function resolveFill(prop: FillProp): FillResolved {
     return space !== undefined ? { ...resolved, space } : resolved;
 }
 
-/**
- * What an empty media slot paints: an image fill naming no source.
- *
- * The renderer turns an empty `src` into the transparency checkerboard rather
- * than into nothing. Both media nodes reach for this when their own source is
- * unset, so the two cannot end up drawing different placeholders.
- *
- * Resolved once and shared: it has no props to vary, and the two places that key
- * per-fill state by object identity (`paintSlot`, `preflighted`) are both scoped
- * to one node's single `applyFills` call, where this can appear only once.
- *
- * Declared here rather than beside the image fill's own implementation because
- * resolving one needs {@link resolveFill}, and that lives on this side of the
- * dependency — the implementations are what the registry imports, not the other
- * way round.
- */
+/** What an empty media slot paints: an image fill naming no source, which the renderer draws as the transparency checkerboard. Both media nodes use it so they draw the same placeholder. Resolved once and shared: it has no props, and the per-fill state keyed by identity (`paintSlot`, `preflighted`) is scoped to one node's `applyFills`, where this appears once. Declared here because resolving needs {@link resolveFill}, which sits on this side of the dependency. */
 export const UNSET_MEDIA_FILL: FillResolved = resolveFill({
     type: "image",
     src: "",
 } as FillProp);
 
-/**
- * True when `a` and `b` can be interpolated into a single fill by {@link
- * lerpFill} without throwing — i.e. they share a type with the same `blend`, or
- * they're a color/gradient pair {@link canCoerce} can promote to one type.
- *
- * Pairs that fail this (e.g. color↔image, image↔video, or same-type fills with
- * differing blend modes) have no meaningful single-type in-between; {@link
- * fillOps}'s `lerp` cross-fades them as two stacked layers instead.
- */
+/** True when `a` and `b` can be interpolated into one fill by {@link lerpFill}: same type and `blend`, or a color/gradient pair {@link canCoerce} can promote. Other pairs (color↔image, image↔video, differing blends) have no single-type in-between; {@link fillOps}'s `lerp` cross-fades them as two stacked layers. */
 export function canLerpFill(a: FillResolved, b: FillResolved): boolean {
     if (a.type === b.type) return a.blend === b.blend;
     return canCoerce(a, b);
@@ -103,10 +78,7 @@ export function canLerpFill(a: FillResolved, b: FillResolved): boolean {
 export function lerpFill(a: FillResolved, b: FillResolved, t: number): FillResolved {
     const clamped = Math.min(1, Math.max(0, t));
 
-    // Cross-type tween (color↔gradient, or gradient↔gradient of different
-    // kinds): promote both endpoints to a common type, then lerp with that
-    // type's lerp. blend cannot interpolate, so it snaps with the rest of the
-    // coerced shape.
+    // Cross-type tween (color↔gradient, or differing gradients): promote both to a common type, then lerp; blend cannot interpolate, so it snaps with the coerced shape.
     if (a.type !== b.type) {
         if (!canCoerce(a, b)) {
             throw new Error(`No registered lerp for fills of type "${a.type}" and "${b.type}"`);
@@ -121,7 +93,6 @@ export function lerpFill(a: FillResolved, b: FillResolved, t: number): FillResol
     return { ...a, ...get(a.type).lerp(a, b, clamped) };
 }
 
-/** Returns `fill` with its effective opacity scaled by `factor` (clamped to ≥0). */
 function scaleOpacity(fill: FillResolved, factor: number): FillResolved {
     return { ...fill, opacity: (fill.opacity ?? 1) * Math.max(0, factor) };
 }
@@ -130,7 +101,6 @@ export function declareFill(fill: FillResolved, assets: AssetScope): void {
     FILLS.get(fill.type)?.declare?.(fill, assets);
 }
 
-/** The fill-layer attribute's op set — the `fill` prop's resolve/lerp pair. */
 export const fillOps: AttributeOps<Fill, FillResolved[]> = {
     resolve: (prop) => resolveChainFill(prop).map(resolveFill),
     lerp: (from, to, t) => {
@@ -143,12 +113,7 @@ export const fillOps: AttributeOps<Fill, FillResolved[]> = {
             const f = from[i];
             const tf = to[i];
             if (f && tf) {
-                // Interpolate in place when the two fills share an interpolatable
-                // shape (same type, or a coercible color/gradient pair). When they
-                // don't (e.g. color↔image, image↔video) there is no single-type
-                // in-between, so cross-fade instead: paint the outgoing fill fading
-                // out beneath the incoming fill fading in. The dropped-out endpoints
-                // are omitted so a static array of one fill stays a single layer.
+                // Interpolate in place when the fills share an interpolatable shape; otherwise cross-fade, painting the outgoing fill fading out beneath the incoming one. Dropped endpoints are omitted so a static one-fill array stays a single layer.
                 if (canLerpFill(f, tf)) {
                     result.push(lerpFill(f, tf, clamped));
                 } else {

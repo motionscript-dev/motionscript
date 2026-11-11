@@ -40,10 +40,10 @@ root `package.json`).
 ```bash
 pnpm install
 pnpm build            # turbo run build, all packages, topological order
-pnpm build:lib        # build everything except the docs site and apps/* (CI runs this before tests; needs Rust for the renderer)
+pnpm build:lib        # build everything except apps/* (CI runs this before tests; needs Rust for the renderer)
 pnpm test             # pnpm -r test, every package's vitest suite
-pnpm lint             # turbo run lint, every package except the docs site
-pnpm typecheck        # turbo run typecheck, every package except the docs site
+pnpm lint             # turbo run lint, every package
+pnpm typecheck        # turbo run typecheck, every package
 pnpm check            # CI's checks in one go: build:lib, notices, changesets, lint, typecheck, test
 pnpm dev [react|engine...]        # the example hosts (after build:lib)
 pnpm release [--dry-run]          # what CI runs on alpha (prereleases) and main (stable); by hand for a first publish

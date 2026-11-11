@@ -1,11 +1,5 @@
 import type { Extents, Vector2 } from "@motionscript/sdk";
 
-/**
- * Turns a curve into the polylines that draw it: adaptively, so a straight
- * stretch costs two points and a tight bend as many as it needs, and broken
- * wherever the curve is, at an asymptote or the edge of its domain.
- */
-
 /** A curve's parameter to its pixel, written into `out`. `false` where the curve is undefined. */
 export type CurveProjection = (t: number, out: Vector2) => boolean;
 

@@ -19,7 +19,7 @@ import { tokenizeCodeToIdLines } from '../tokens';
  */
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 let warn: MockInstance<typeof console.warn>;

@@ -15,7 +15,7 @@ export default scene((stage) => {
                 cornerRadius: 24,
                 fill: Fills.image('kingfisher.jpg', {
                     fit: 'fill',
-                    filters: Adjustments.colorAdjustment({
+                    preset: { adjustments: Adjustments.colorAdjustment({
                         brightness: 0,
                         contrast: 1,
                         saturation: 1,
@@ -24,7 +24,7 @@ export default scene((stage) => {
                         highlights: 0,
                         temperature: 0,
                         tint: 0,
-                        vignette: 0 }) }),
+                        vignette: 0 }) } }),
             }),
         ] }),
     );
@@ -32,7 +32,7 @@ export default scene((stage) => {
     () => rect().to({ data: {
             fill: Fills.image('kingfisher.jpg', {
                 fit: 'fill',
-                filters: Adjustments.colorAdjustment({
+                preset: { adjustments: Adjustments.colorAdjustment({
                     brightness: 0.2,
                     contrast: 1.5,
                     saturation: 1.8,
@@ -41,6 +41,6 @@ export default scene((stage) => {
                     highlights: -0.3,
                     temperature: 0.4,
                     tint: -0.2,
-                    vignette: 0.6 }) }) }, duration: 1.6, easing: easeInOut('quad') }),
+                    vignette: 0.6 }) } }) }, duration: 1.6, easing: easeInOut('quad') }),
     holdTail(1.6),
 ]);

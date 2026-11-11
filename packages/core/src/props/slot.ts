@@ -1,10 +1,6 @@
 import type { SlotObserver } from "./observer";
 
-/**
- * A captured state of a {@link PropSlot}: the thunk it was bound to, or the
- * plain value it held. Produced by {@link PropSlot.snapshot} and consumed by
- * {@link PropSlot.restoreFrom}.
- */
+/** A captured state of a {@link PropSlot} (the thunk it was bound to, or the plain value), from {@link PropSlot.snapshot} to {@link PropSlot.restoreFrom}. */
 /** @internal */
 export interface PropSnapshot<T> {
     value: T;
@@ -26,20 +22,11 @@ export function _setObserver(observer: SlotObserver | null): SlotObserver | null
 }
 
 /**
- * The storage behind one `property`: a plain value, or a thunk evaluated on
- * every read.
- *
- * There is no dependency graph and nothing to invalidate. A bound slot
- * recomputes when it is asked, which is what makes a document expression
- * (`"=4[g]+3"`), an author's `width={() => …}` and an alignment binding reading
- * a box written mid-layout all correct without anything declaring an edge. The
- * cache-and-invalidate version of this could only get the last one right by
- * observing the write, and paid for it everywhere: a `peek()`/`get()` split at
- * every write path, so a read taken inside whatever computation happened to be
- * running did not register an edge with no business existing.
- *
- * The bet is that recomputing is cheaper than tracking. Bindings here are
- * arithmetic over a handful of reads, and a frame's draw dwarfs all of them.
+ * The storage behind one `property`: a plain value, or a thunk evaluated on every read. There is no dependency graph and
+ * nothing to invalidate: a bound slot recomputes when asked, so a document expression (`"=4[g]+3"`), an author's
+ * `width={() => …}` and an alignment binding reading a box written mid-layout are all correct without declaring an
+ * edge. (A cache-and-invalidate version could only get the last one right by observing the write, and paid for it at
+ * every write path.) The bet is that recomputing is cheaper than tracking: bindings are arithmetic over a few reads.
  */
 export class PropSlot<T> {
     private _value: T;

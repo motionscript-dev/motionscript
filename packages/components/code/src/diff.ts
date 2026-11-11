@@ -1,65 +1,32 @@
 import type { IdLine, IdToken } from "./tokens";
 
-/**
- * The result of diffing one listing structure against another: the *next*
- * structure, with token and line ids carried over from the previous one
- * wherever the content survived, plus the three sets a transition needs to know
- * which role each token plays.
- *
- * Identity is the whole product here. `const variable = 3` becoming
- * `const number = 3` should move `const` and `= 3` rather than dissolve and
- * rebuild them, and a token can only *move* if the frame after the edit still
- * knows it is the same token.
- */
-/**
- * How a `Code` node decides which token became which across an edit. Given
- * the old and new tokenized structures, return the carried-over structure
- * plus the added/removed/renamed-line bookkeeping a transition needs.
- * `diffCode` below is the default implementation (exported as
- * `defaultCodeDiff`) — pass a `diffStrategy` of this shape to `<Code>` to
- * replace it with your own.
- */
+/** Decides which token became which across an edit; `diffCode` (exported as `defaultCodeDiff`) is the default. */
 export type CodeDiffStrategy = (from: IdLine[], to: IdLine[]) => CodeEdit;
 
+/** The next structure with ids carried over wherever content survived, so a surviving token moves rather than dissolves and rebuilds. */
 export interface CodeEdit {
-    /** The new structure. Ids are rewritten in place onto the tokens handed in. */
+    /** The new structure; ids are rewritten in place onto the tokens handed in. */
     lines: IdLine[];
-    /** Ids present only in the old structure — these fade out. */
     removedIds: Set<number>;
-    /** Ids present only in the new structure — these fade in. */
     addedIds: Set<number>;
-    /** Ids of {@link lines} that did not exist before — these enter as a whole row. */
+    /** Lines that did not exist before; they enter as a whole row. */
     newLineIds: Set<number>;
     /** Previous colour of a surviving token whose highlighting changed, for the cross-fade. */
     fromColorById: Map<number, string | undefined>;
 }
 
-/**
- * How similar two lines must be before they are treated as *one line that was
- * edited* rather than as one line deleted and another inserted.
- *
- * Below this, a row's tokens have so little in common that carrying ids across
- * would animate glyphs sliding between unrelated words. Above it, the edit reads
- * the way it was made.
- */
+/** Below this similarity two lines are one deleted and one inserted, not one edited: carrying ids across would slide glyphs between unrelated words. */
 const LINE_MATCH_FLOOR = 0.45;
 
 /**
- * The most line pairs one run of changed lines is scored against each other, and
- * the most across a whole edit.
- *
- * Scoring every pair is quadratic: with 50-character lines it took 31 ms at 200
- * lines and 741 ms at 1,000, paid again for each edit command when it is built.
- * So the lines are first paired where they cannot be in doubt (see
- * {@link alignLines}), and only a run left between two such anchors is scored.
- * A run past the first limit, or what is left of the second, is not compared: its
- * lines leave and enter as whole rows. That is the budget, and an edit that stays
- * inside it is diffed exactly as before.
+ * Most line pairs scored in one run of changed lines, and across a whole edit.
+ * Scoring every pair is quadratic (741 ms at 1,000 lines), so only a run between
+ * two anchors (see {@link alignLines}) is scored; past the budget its lines leave
+ * and enter as whole rows.
  */
-export const LINE_ALIGN_CELLS = 40_000;
-export const EDIT_ALIGN_CELLS = 160_000;
+const LINE_ALIGN_CELLS = 40_000;
+const EDIT_ALIGN_CELLS = 160_000;
 
-/** Weight a token carries when judging similarity: its visible characters. */
 function tokenWeight(tok: IdToken): number {
     return tok.content.trim().length;
 }
@@ -71,12 +38,9 @@ function lineWeight(line: IdLine): number {
 }
 
 /**
- * Dice coefficient over the two lines' token multisets, weighted by visible
- * characters so `variable` counts for far more than a run of spaces.
- *
- * Two blank lines are identical (1); a blank line against a non-blank one shares
- * nothing (0), which keeps the blank rows a reformat introduces from anchoring
- * themselves onto real code.
+ * Dice coefficient over the lines' token multisets, weighted by visible characters.
+ * Two blank lines are identical (1) but a blank against a non-blank shares nothing
+ * (0), so blank rows a reformat introduces never anchor onto real code.
  */
 function similarity(a: IdLine, b: IdLine): number {
     const wa = lineWeight(a);
@@ -103,22 +67,15 @@ function similarity(a: IdLine, b: IdLine): number {
 }
 
 /**
- * Align two sequences by maximising total `score`, skipping is free.
- *
- * A plain LCS would only ever pair *identical* elements, which is the wrong tool
- * twice over: two lines that differ by one word are the same line, and two
- * tokens that differ only in colour are the same token. Scoring the pairing and
- * letting anything that scores ≤ 0 fall out expresses that directly, and because
- * skips cost nothing the alignment stays in order.
- *
- * Returns the matched index pairs, in order.
+ * Matched index pairs, in order, maximising total `score`; a pair scoring <= 0 is
+ * skipped. An LCS would pair only identical elements, but two lines that differ by
+ * one word are the same line.
  */
 function align(
     aLength: number,
     bLength: number,
     score: (i: number, j: number) => number,
 ): Array<[number, number]> {
-    // dp[i][j] = best score aligning a[0..i) with b[0..j).
     const width = bLength + 1;
     const dp = new Float64Array((aLength + 1) * width);
     const pairScore = new Float64Array(aLength * bLength);
@@ -156,19 +113,11 @@ function align(
     return pairs;
 }
 
-/**
- * Match the tokens of one line against another's.
- *
- * Scored by visible characters rather than token count, so an alignment that
- * keeps `items.reduce` together beats one that keeps four more spaces. A token
- * pairs only when its content is unchanged — a changed word is a different word,
- * and should be seen to be replaced.
- */
+/** Scored by visible characters, so keeping `items.reduce` beats keeping four spaces; a changed word is a different token. */
 function alignTokens(from: IdToken[], to: IdToken[]): Array<[number, number]> {
     return align(from.length, to.length, (i, j) => {
         if (from[i].content !== to[j].content) return 0;
-        // Whitespace still pairs (it holds indentation together), just weakly
-        // enough that it never outranks real content.
+        // Whitespace pairs weakly: it holds indentation together but never outranks content.
         return tokenWeight(to[j]) || 0.25;
     });
 }
@@ -179,7 +128,7 @@ function sameTokens(a: IdLine, b: IdLine): boolean {
     return true;
 }
 
-/** A line's text, token boundaries included, for telling identical lines apart from similar ones. */
+/** Text with token boundaries, so identical lines tell apart from similar ones. */
 function signature(line: IdLine): string {
     let out = "";
     for (const tok of line.tokens) out += tok.content + "\u0001";
@@ -187,14 +136,10 @@ function signature(line: IdLine): string {
 }
 
 /**
- * Pair the lines of two listings, in order.
- *
- * Lines that are the same at the start and at the end are paired outright. In
- * what is left, a line that occurs exactly once on each side is an anchor, and
- * the longest run of anchors that keeps their order splits the rest into runs of
- * changed lines, each scored against itself within the budget (see
- * {@link LINE_ALIGN_CELLS}). A one-line edit to a long listing therefore never
- * builds a table bigger than the lines around it.
+ * Pairs lines in order: identical head and tail outright, then the longest ordered
+ * run of lines occurring once on each side as anchors, with each run between
+ * anchors scored within the budget. A one-line edit to a long listing therefore
+ * never builds a table bigger than the lines around it.
  */
 function alignLines(from: IdLine[], to: IdLine[]): Array<[number, number]> {
     const fromSig = from.map(signature);
@@ -234,11 +179,7 @@ function alignLines(from: IdLine[], to: IdLine[]): Array<[number, number]> {
     return pairs;
 }
 
-/**
- * The lines that occur once in `from[fa, fb)` and once in `to[ta, tb)`, reduced to
- * the longest subsequence that is increasing on both sides (patience sorting).
- * Blank lines are never anchors: they say nothing about where they belong.
- */
+/** Lines occurring once on each side, reduced to the longest subsequence increasing on both (patience sorting); blanks never anchor. */
 function anchorLines(
     fromSig: string[],
     toSig: string[],
@@ -264,7 +205,6 @@ function anchorLines(
         seenTo.add(sig);
     }
 
-    // In `to` order, each candidate carries its `from` position.
     const candidates: Array<[number, number]> = [];
     for (let j = ta; j < tb; j++) {
         const i = fromAt.get(toSig[j]);
@@ -291,13 +231,7 @@ function anchorLines(
     return chain.reverse();
 }
 
-/**
- * Carry `from`'s identities onto `to`, and report what changed.
- *
- * `to` is freshly tokenized and owns ids nobody has seen yet, so rewriting them
- * in place is safe and is what makes the transition cheap: after this, the two
- * structures share an id for every token that survived the edit.
- */
+/** Carries `from`'s ids onto `to`; `to` is freshly tokenized, so rewriting its ids in place is safe. */
 export function diffCode(from: IdLine[], to: IdLine[]): CodeEdit {
     const removedIds = new Set<number>();
     const addedIds = new Set<number>();

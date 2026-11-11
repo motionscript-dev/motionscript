@@ -1,18 +1,10 @@
 /**
- * Arc length, and everything measured in it: total length, the sampler, dashing
- * and trimming.
+ * Arc length and everything measured in it: length, the sampler, dashing and trimming. Separate from the normal form
+ * because flattening is the expensive half of path geometry (bounding solves extrema in closed form, and `Path.measure`
+ * / `Text.measure` run every layout pass), so it happens here on demand.
  *
- * Separate from the normal form because it is the expensive half of path
- * geometry and most callers never need it — bounding a path solves extrema in
- * closed form, and `Path.measure` / `Text.measure` run on every layout pass. So
- * flattening happens here, on demand.
- *
- * **One resolution.** There used to be three — 20 steps for
- * `length`, 32 for the trim segments, 50 for the sampler and the
- * dash walker — and `dash` combined two of them, scaling its dash
- * cycle against a length measured at 20 while walking the path at 50. Sharing
- * one number makes `length(d) === sampler(d).length` an invariant rather than a
- * coincidence.
+ * **One resolution** ({@link SAMPLE_STEPS}) for all of it, so `length(d) === sampler(d).length` is an invariant rather
+ * than a coincidence (`dash` once scaled its cycle against a length measured at 20 while walking the path at 50).
  */
 import { Vector2 } from "@/attributes/layout/vector2";
 import { PathCommand, PathData } from "@/render/descriptors/path";
@@ -57,14 +49,7 @@ export function measureContours(contours: PathContour[]): PathMetric {
     return { contours: measured, length: total };
 }
 
-/**
- * The parameter `t` at arc-length distance `d` into a segment.
- *
- * Read off the flattened table rather than binary-searched: the table is already
- * built, and a search that re-samples the curve on every probe cost 320 point
- * evaluations per query to answer the same question less consistently — its
- * answer disagreed with the sampler's, which read the same curve off a polyline.
- */
+/** The parameter `t` at arc-length `d` into a segment, read off the flattened table rather than binary-searched (re-sampling per probe cost 320 point evaluations per query and disagreed with the sampler). */
 export function paramAtDist(metric: SegmentMetric, d: number): number {
     const { cumulative, length } = metric;
     if (length <= 0) return 0;
@@ -88,21 +73,11 @@ export function length(d: PathData | null | undefined): number {
     return measureContours(contours(d)).length;
 }
 
-/**
- * Build a {@link PathSampler} from any {@link PathData}.
- *
- * The tangent is the chord of the flattened segment the distance lands in, not
- * the curve's analytic derivative. Less exact, and deliberately kept: every
- * glyph on every text-on-path is placed with it, so changing it is a visual
- * change that deserves its own commit rather than a side effect of this one.
- */
+/** Builds a {@link PathSampler}. The tangent is the chord of the flattened segment, not the analytic derivative: less exact, but every glyph on text-on-path is placed with it, so changing it is a visual change of its own. */
 export function sampler(d: PathData): PathSampler {
     const metric = measureContours(contours(d));
 
-    // One point list across every contour. The jump from one contour's end to the
-    // next one's start carries no length — text does not flow across it, matching
-    // SVG `textPath` — so it is recorded as a zero-length step rather than a gap
-    // in the table.
+    // One point list across every contour. The jump between contours carries no length (text does not flow across it, as in SVG `textPath`), so it is a zero-length step rather than a gap.
     const points: Vector2[] = [];
     const cumulative: number[] = [];
     let total = 0;
@@ -155,7 +130,6 @@ export function sampler(d: PathData): PathSampler {
     return { length: total, frameAt };
 }
 
-/** A contour's flattened polyline. */
 function contourPoints(metric: ContourMetric): Vector2[] {
     const first = metric.metrics[0]?.segment.from ?? metric.contour.start;
     const points: Vector2[] = [first];
@@ -165,14 +139,7 @@ function contourPoints(metric: ContourMetric): Vector2[] {
     return points;
 }
 
-/**
- * Walks a flattened subpath at constant speed, emitting `M`/`L` commands for the
- * "on" runs of the dash pattern. `scaledDash` alternates on/off lengths starting
- * with "on"; the index wraps so the pattern repeats along the whole subpath, and
- * `offset` is how far into it the subpath starts. A zero-length dash is a dot:
- * a run a sliver long along the path, so the cap drawn on it has a direction —
- * including the dots an open subpath is fit to start and end on.
- */
+/** Walks a flattened subpath at constant speed emitting `M`/`L` for the "on" runs of the dash pattern (`scaledDash` alternates on/off from "on", wrapping; `offset` is the start into it). A zero-length dash is a dot, a sliver long so its cap has a direction, including the dots an open subpath is fit to start and end on. */
 function dashSubpath(points: Vector2[], scaledDash: number[], offset: number, closed: boolean): string {
     if (points.length < 2) return '';
 
@@ -260,14 +227,7 @@ function dashSubpath(points: Vector2[], scaledDash: number[], offset: number, cl
     return parts.join(' ');
 }
 
-/**
- * How far `pattern` is stretched to fit one contour of a path `total` long —
- * the renderer's rule as well as {@link dash}'s. A closed contour is fit with
- * the rest of the path, to whole cycles of `total`; an open one is fit alone to
- * whole cycles less the final gap, so it starts and ends on a dash. An odd
- * pattern alternates across cycles, has no final gap to drop, and fits as
- * closed. `null` when there is nothing to fit.
- */
+/** How far `pattern` is stretched to fit one contour of a path `total` long (the renderer's rule too). A closed contour is fit with the rest of the path, to whole cycles of `total`; an open one alone, to whole cycles less the final gap so it starts and ends on a dash. An odd pattern alternates across cycles, has no final gap, and fits as closed. `null` when there is nothing to fit. */
 export function dashScale(
     pattern: number[],
     contour: { length: number; closed: boolean },
@@ -283,16 +243,7 @@ export function dashScale(
     return total / (Math.max(1, Math.round(total / cycle)) * cycle);
 }
 
-/**
- * Converts path geometry into a dashed SVG path string, each contour fit by
- * {@link dashScale} and starting `offset` into the pattern, as the renderer
- * dashes a stroke.
- *
- * @param d    The path to dash.
- * @param dash Alternating on/off lengths (e.g. `[4, 2]` = 4 on, 2 off).
- * @returns An SVG path `d` string containing only the visible dash segments,
- *          or `''` when there is nothing to draw.
- */
+/** Converts path geometry into a dashed SVG path string, each contour fit by {@link dashScale} and starting `offset` into the pattern as the renderer dashes a stroke. `dash` alternates on/off lengths; returns only the visible segments, or `''`. */
 export function dash(d: PathData | null | undefined, dash: number[], offset = 0): string {
     if (!dash || dash.length === 0) return '';
 
@@ -309,13 +260,7 @@ export function dash(d: PathData | null | undefined, dash: number[], offset = 0)
     return runs.join(' ');
 }
 
-/**
- * The portion of `d` between the normalized arc-length fractions `start` and
- * `end` (both 0..1), as a fresh command list.
- *
- * A full `0..1` range or an empty path is returned unchanged; an empty or
- * inverted range returns `[]`.
- */
+/** The portion of `d` between normalized arc-length fractions `start` and `end` (0..1) as a fresh command list. A full range or empty path returns unchanged; an empty or inverted range returns `[]`. */
 export function trim(d: PathData, start: number, end: number): PathData {
     if (start === 0 && end === 1) return d;
 
@@ -334,9 +279,7 @@ export function trim(d: PathData, start: number, end: number): PathData {
     let accumulated = 0;
 
     for (const contour of metric.contours) {
-        // Each contour opens its own `M`. Sharing one across all of them — which
-        // is what a single flat segment list did — draws a line across the gap
-        // between two contours that the source never had.
+        // Each contour opens its own `M`; sharing one would draw a line across the gap between contours.
         let needsMove = true;
 
         for (const metricEntry of contour.metrics) {

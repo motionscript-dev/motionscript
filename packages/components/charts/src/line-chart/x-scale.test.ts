@@ -88,7 +88,7 @@ describe("resolveXScale", () => {
     const scale = resolveXScale(data, "Month")
 
     expect(scale.kind).toBe("time")
-    // The regression that started this: twelve months used to be twelve zeros.
+    // Each month has its own x; none collapse onto 0.
     expect(strictlyRising(xs(data, "Month"))).toBe(true)
     // February is shorter than January, and the axis says so.
     const [jan, feb, mar] = xs(data, "Month")
@@ -164,8 +164,7 @@ describe("resolveXScale", () => {
   })
 
   it("takes one text cell as proof the column isn't numeric", () => {
-    // The old `num()` reading plotted the "n/a" row at 0, which on a column of
-    // thousands drags the whole y-relationship out of shape.
+    // Plotting the "n/a" row at 0 would drag the x scale out of shape.
     const data = rows("x", [10, "n/a", 30])
     expect(resolveXScale(data, "x").kind).toBe("ordinal")
   })

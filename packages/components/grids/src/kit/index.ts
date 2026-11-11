@@ -13,6 +13,3 @@ export {
   type GridTransition,
   type StaggerArgs,
 } from "./item-grid"
-
-// Once this kit's own; kept on its barrel for whoever imports them from it.
-export { findNode2D, frameIn } from "@motionscript/sdk"

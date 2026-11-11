@@ -6,51 +6,22 @@
 export interface Reference<T> {
     (): T;
     (node: T | null): void;
-    /**
-     * Phantom — never assigned at runtime, and never called. It exists so that
-     * `T` appears in a *contravariant* position, which is what makes
-     * {@link RefTarget} safe. The call signatures alone can't decide it: the
-     * zero-arg getter `(): T` is assignable to any `(x) => void`, so a slot
-     * typed as just the setter would silently accept a `Reference` of an
-     * unrelated node type.
-     * @internal
-     */
+    /** Phantom (never assigned or called): puts `T` in a *contravariant* position, which makes {@link RefTarget} safe: the zero-arg getter `(): T` is assignable to any `(x) => void`, so a slot typed as just the setter would accept a `Reference` of an unrelated node type. @internal */
     readonly __accepts?: (node: T) => void;
 }
 
 /**
- * A slot that can *receive* a `T` — a `Reference<T>`, or one declared as any
- * **supertype** of `T`.
- *
- * This is the type a node's `ref` prop takes, and the widening is deliberate:
- * the framework only ever writes into a ref (`props.ref(this)` in the `Node2D`
- * constructor) and the author only ever reads, so handing a `Rect` to a
- * `Reference<Node2D>` is sound in both directions — the write stores a
- * subtype, the read yields the supertype the author asked for. That is what
- * lets one ref hold whichever shape a factory happened to build:
- *
- * ```ts
- * const ref = createRef<Node2D>();
- * Rect({ ref });      // ✔ Rect is a Node2D
- * Ellipse({ ref });   // ✔ so is Ellipse
- * ```
- *
- * The opposite direction stays an error, because it is the unsound one: a
- * `Reference<Rect>` on a `Text` would be handed a `Text` at runtime while
- * still typing every read as a `Rect`.
- *
- * A plain setter function is accepted too, which makes React-style callback
- * refs (`ref={n => …}`) work without a separate type.
+ * A slot that can *receive* a `T`: a `Reference<T>`, or one declared as any **supertype** of `T`. The widening is
+ * deliberate: the framework only writes into a ref (`props.ref(this)`) and the author only reads, so a `Rect` into a
+ * `Reference<Node2D>` is sound. The opposite direction stays an error (a `Reference<Rect>` on a `Text` would type reads
+ * as a `Rect`). A plain setter function is accepted too, for React-style callback refs.
  */
 export type RefTarget<T> = {
     (node: T | null): void;
     readonly __accepts?: (node: T) => void;
 };
 
-/**
- * Creates a typed reference holder — analogous to React's `createRef`,
- * but expressed as a single overloaded function rather than a `{ current }` object.
- */
+/** Creates a typed reference holder, like React's `createRef` but one overloaded function rather than a `{ current }` object. */
 export function createRef<T>(): Reference<T> {
     let current: T | null = null;
 

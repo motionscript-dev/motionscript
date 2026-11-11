@@ -8,18 +8,7 @@ interface LaidOutHost {
 
 const LAYOUTS = new WeakMap<object, PropLayout>();
 
-/**
- * Where each prop of one node class sits in its instances' slot lists, and the
- * accessors that read it, defined once on the class's prototype.
- *
- * On the prototype rather than on each instance, so every node of a type shares
- * one hidden class and a prop read in layout or render stays monomorphic. The
- * accessors reach their slot by index: closures made at one site share their
- * feedback, so a lookup by name inside one would see every prop of every class.
- *
- * An instance that has not registered a field, or a prototype that already
- * defines one itself, reads and writes as if the accessor were not there.
- */
+/** Where each prop of one node class sits in its instances' slot lists, and the accessors that read it, defined once on the class's prototype so every node of a type shares one hidden class and a prop read in layout or render stays monomorphic. Accessors reach their slot by index (closures made at one site share feedback, so a lookup by name would see every prop of every class). An instance that hasn't registered a field, or a prototype that already defines one, reads and writes as if the accessor were absent. */
 export class PropLayout {
     static of(proto: object): PropLayout {
         let layout = LAYOUTS.get(proto);

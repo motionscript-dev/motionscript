@@ -4,17 +4,7 @@ import { PropSlot } from "./slot";
 /** @internal */
 export type TweenFn<T> = (from: T, to: T, t: number) => T;
 
-/**
- * The slots behind an object's `property`-declared fields, plus the per-field
- * metadata `set()` and `to()` route through.
- *
- * One object rather than three loose maps on the host, because the host is a
- * `Node` and every public field it carries is published API. Grouping them
- * means a node exposes one internal name instead of three, and gives the thing
- * a name a reader can look up.
- *
- * @internal
- */
+/** The slots behind an object's `property`-declared fields plus the per-field metadata `set()` and `to()` route through. One object rather than three loose maps because every public field on the host (a `Node`) is published API. @internal */
 export interface PropCells {
     /** Field → its live slot. Present for every registered prop. */
     slots: Map<string, PropSlot<any>>;
@@ -30,8 +20,7 @@ export interface PropCells {
 
 /** @internal */
 export interface PropHost {
-    /** See {@link PropCells}. Absent until the first prop is registered, and
-     *  cleared by `dispose()`. */
+    /** See {@link PropCells}. Absent until the first prop is registered; cleared by `dispose()`. */
     __cells?: PropCells;
 }
 

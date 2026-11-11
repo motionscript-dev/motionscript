@@ -21,7 +21,6 @@ import {
     type Vector2 as _Vector2,
     type PathBounds,
     type ShadowResolved,
-    type ShapeProps,
     type Size2D,
     type StrokeResolved,
     type Type,
@@ -32,17 +31,6 @@ import { geoGeometry, type GeoBorders, type GeoContour, type GeoGeometry, type G
 import { geoDataVersion, geoLoader } from "./loader"
 import { geoRegistry } from "./registry"
 import { geoFilesFor, normalizeIso, selectGeoFeatures, type GeoFrame, type GeoLevel } from "./selection"
-
-export interface GeoBorderProps extends ShapeProps {
-    /** ISO 3166-1 alpha-2 (`"FR"`) or ISO 3166-2 (`"US-CA"`) codes. */
-    iso: string | readonly string[]
-    level: GeoLevel
-    /** 0–1: 1 is full resolution, lower is a more stylised outline. */
-    detail: number
-    projection: GeoProjectionKind
-    frame: GeoFrame
-    borders: GeoBorders
-}
 
 interface Chunk {
     data: string

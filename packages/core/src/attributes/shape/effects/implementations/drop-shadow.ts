@@ -1,32 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * A shadow cast from the node's **alpha silhouette** rather than from its
- * geometry — the drop shadow that a `shadow` prop can't give you when the shape
- * on screen isn't the shape of the path.
- *
- * A shape's `shadow` fills the node's own outline with the shadow colour and
- * blurs it, which is exactly right for a rect, an ellipse or a star. It is
- * exactly wrong for anything whose visible form comes from *pixels*: a cut-out
- * PNG, a video with an alpha channel, a line of text, a whole subtree. All of
- * those cast a blurred **rectangle**, because the rectangle is what their path
- * is — and on a cut-out subject that reads as a bug rather than as a shadow.
- *
- * So this one is computed from what the node actually drew. Same relationship
- * to `shadow` that {@link OutlineEffect} has to `stroke`: the geometry version
- * is cheaper and sharper where the path *is* the picture, and this one is the
- * answer everywhere else.
- *
- * Offsets are in the scene's own axes — a positive `y` lifts the shadow upward,
- * matching `ShadowProp.offset` rather than the y-down device space the shader
- * runs in, so the two kinds of shadow move the same way under the same numbers.
- */
+/** A shadow cast from the node's **alpha silhouette** rather than its geometry. A shape's `shadow` fills the node's outline, right for a rect or star but wrong for anything whose form comes from *pixels* (a cut-out PNG, alpha video, text, a subtree), which would cast a blurred rectangle. Computed from what the node drew, as {@link OutlineEffect} is to `stroke`. Offsets are in scene axes (positive `y` lifts the shadow), matching `ShadowProp.offset`, not the shader's y-down device space. */
 export interface DropShadowEffect extends ModedEffect, EffectFields<typeof dropShadowSpec.params> {
     type: "dropShadow";
 }
 
-/** The {@link DropShadowEffect} spec: its parameters, defaults and ranges. */
 export const dropShadowSpec = defineEffect({
     type: "dropShadow",
     group: "stylize",

@@ -11,8 +11,6 @@
 
 /** @internal Chainable filter builder API, chain classes, and the loose author-facing unions. */
 /** @internal */ export { Adjustments, VideoAdjustments, AdjustmentChain, VideoAdjustmentChain, resolveChainAdjustments } from './chain';
-/** @internal @deprecated Renamed to `Adjustments`/`VideoAdjustments`. */
-/** @internal */ export { ImageFilters, VideoFilters } from './chain';
 /** @internal */ export type { ImageAdjustment, VideoAdjustment } from './chain';
 
 /** @internal Per-builder options. Each builder takes one of these, or its dominant scalar. */
@@ -28,10 +26,7 @@
     EchoFilterOptions as VideoEchoFilterOptions,
 } from './chain';
 
-/**
- * @internal Unions of concrete filter types: pixel (`MediaAdjustment`), video-only,
- * and the node effects that double as filters.
- */
+/** @internal Unions of concrete filter types: pixel, video-only, and node effects that double as filters. */
 /** @internal */ export type { MediaAdjustment, VideoOnlyAdjustment, EffectAdjustment } from './union';
 
 /** @internal Interpolation/equality registry: constants map plus the lerp helpers. */

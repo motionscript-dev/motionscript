@@ -16,7 +16,7 @@ import { at, make, render } from './harness.fixtures';
  */
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 /** The three tokens that tell the lines apart. */

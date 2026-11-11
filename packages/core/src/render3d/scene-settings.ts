@@ -4,17 +4,7 @@ import type { Uniform3D } from "./material";
 import type { Vector3Input } from "./vector3";
 
 /**
- * Depth haze that fades distant geometry toward a colour.
- *
- * One shape rather than a discriminated pair: setting {@link density} is
- * exponential fog and setting {@link near}/{@link far} is linear, which is what
- * the old `type` field said twice. Writing `type: "exponential"` beside a `far`
- * silently dropped the `far`; there is nothing to get wrong now.
- *
- * `color` is derived from the viewport's own fill when omitted. Fog that does not
- * match what is behind it reads as a grey wall rather than as distance, and the
- * two colours being separately typed by hand is exactly how they drift.
- */
+ /** Depth haze fading distant geometry toward a colour. One shape: {@link density} gives exponential fog, {@link near}/{@link far} linear. `color` is derived from the viewport's own fill when omitted; fog that doesn't match what is behind it reads as a grey wall, not distance. */
 export interface FogData3D {
     color?: Color;
     /** Linear fog: distance at which fog begins. */
@@ -26,38 +16,19 @@ export interface FogData3D {
 }
 
 /**
- * Image-based lighting, and the sky it comes from.
+ * Image-based lighting and the sky it comes from, one control because an HDRI that lights a scene is the same
+ * panorama seen behind it. A solid colour, gradient or flat image behind the scene is a **2D fill** on the
+ * `Canvas3D`; only a sky that *reprojects* as the camera turns needs the 3D pass.
  *
- * Light and background are one control because they are one physical thing: an
- * HDRI that lights a scene is the same panorama you see behind it, and having
- * them as two nodes meant setting one, wondering why metal was black or why the
- * sky was missing, and setting the other.
- *
- * This is also *all* that is left of the old `Background3D`. A solid colour, a
- * gradient or a flat image behind the scene is a **2D fill** — `Canvas3D` is a
- * `Rect` and already composites its 3D pass over its own fill layers, the
- * renderer already clears transparent, and neither lighting nor fog touches a
- * three background, so the 3D path was doing strictly less than the 2D one it sat
- * in front of. What genuinely needs the 3D pass is a sky that *reprojects* as the
- * camera turns, which is this.
- *
- * ── What renders today ────────────────────────────────────────────────────────
- * Only {@link preset} `"studio"` (a neutral grey room generated per renderer).
- * {@link src} and {@link faces} are declared, tracked by the asset window and
- * recorded, but no backend loads an HDR, EXR or cubemap: an environment that
- * names only those lights nothing and draws no {@link background}. {@link params}
- * is not applied either. In development, the first of each warns.
+ * What renders today: only {@link preset} `"studio"` (a neutral grey room generated per renderer). {@link src} and
+ * {@link faces} are declared, tracked by the asset window and recorded, but no backend loads an HDR, EXR or cubemap,
+ * so an environment naming only those lights nothing and draws no {@link background}. {@link params} is not applied
+ * either. In development the first of each warns.
  */
 export interface EnvironmentData3D extends Passthrough3D {
-    /**
-     * A 360° panorama — `.hdr`/`.exr` for real IBL, or a plain image.
-     * **Not loaded yet**: see the note on the type.
-     */
+    /** A 360° panorama (`.hdr`/`.exr` for real IBL, or a plain image). **Not loaded yet**: see the type. */
     src?: string;
-    /**
-     * Six faces, in three's order: +X, −X, +Y, −Y, +Z, −Z.
-     * **Not loaded yet**: see the note on the type.
-     */
+    /** Six faces in three's order: +X, −X, +Y, −Y, +Z, −Z. **Not loaded yet**: see the type. */
     faces?: readonly string[];
     /** A built-in studio interior. Needs no asset — the fastest way to good metal. The only environment that renders. */
     preset?: "studio";
@@ -71,17 +42,7 @@ export interface EnvironmentData3D extends Passthrough3D {
     blur?: number;
 }
 
-/**
- * Scene-wide shadow settings.
- *
- * `quality` stands in for the map resolution and the filter three exposes
- * separately (`pcf`, `pcfSoft`, `vsm`, `mapSize`): those two are chosen together
- * in practice, and neither is a design decision. Individual lights soften their
- * own shadow; objects opt out with `shadow={false}`.
- *
- * Enabling shadows recompiles every material that receives them, so treat this as
- * setup rather than something to animate.
- */
+/** Scene-wide shadow settings. `quality` stands in for the map resolution and filter three exposes separately (`pcf`, `pcfSoft`, `vsm`, `mapSize`), which are chosen together and aren't design decisions. Lights soften their own shadow; objects opt out with `shadow={false}`. Enabling shadows recompiles every receiving material, so treat it as setup, not something to animate. */
 export interface ShadowSettings3D {
     enabled?: boolean;
     /** Default `"medium"`. */
@@ -98,13 +59,7 @@ export function resolveShadows3D(value: Shadows3D | undefined): ShadowSettings3D
     return { enabled: true, ...value };
 }
 
-/**
- * How high-dynamic-range colour is mapped into displayable range.
- *
- * `"aces"` is the filmic default most renderers use and handles bright
- * highlights gracefully; `"none"` clips them. Materials opt out individually with
- * `toneMapped: false` — useful for UI-like overlays that must keep an exact colour.
- */
+/** How HDR colour maps into displayable range: `"aces"` is the filmic default that handles bright highlights; `"none"` clips them. Materials opt out with `toneMapped: false` (UI-like overlays needing an exact colour). */
 export type ToneMapping3D =
     | "none"
     | "linear"
@@ -122,28 +77,15 @@ export interface ToneSettings3D {
 }
 
 /**
- * A full-frame post-processing pass, applied after the scene renders.
+ * A full-frame post-processing pass after the scene renders. Short on purpose: a `Canvas3D` is a `Node2D`, so its
+ * `effects` chain (vignette, grain, grading, blur, chromatic aberration) already runs over the composited result, and
+ * viewport `antialias` does MSAA. What remains needs the 3D pass: `ssao` and `dof` read depth, `outline` reads object
+ * ids, `bloom` reads **HDR radiance before tone mapping** (an emissive surface blooms here and merely brightens in 2D),
+ * and `shaderPass` is the escape hatch. Post-processing forces an offscreen target, so any pass costs more than none.
  *
- * Deliberately short, because most of what used to be here is a 2D effect. A
- * `Canvas3D` is a `Node2D`, so it already carries the whole `effects` chain —
- * vignette, grain, colour grading, blur, chromatic aberration and the rest run
- * over the composited result with no 3D pass involved, and post-process
- * antialiasing is what the viewport's own `antialias` already does with MSAA.
- *
- * What is left are the passes that genuinely need what only the 3D pass has:
- * `ssao` and `dof` read the depth buffer, `outline` reads object ids, and `bloom`
- * reads **HDR radiance before tone mapping** — which is why an emissive surface
- * blooms here and merely brightens under the 2D chain. `shaderPass` stays as the
- * escape hatch for a pass that needs to sit inside the 3D composite.
- *
- * Post-processing forces the render through an offscreen target, so a scene with
- * any of these costs more than one without, even for a cheap effect.
- *
- * **No pass is applied yet.** The chain is recorded on the scene and read only to
- * track the textures a `shaderPass` names; a scene with `bloom` renders exactly
- * like one without, and so does every `params` on an effect. The first `post` set
- * in development warns. Until the passes land, use the 2D `effects` of the
- * `Canvas3D`, which run over its composited result.
+ * **No pass is applied yet.** The chain is recorded and read only to track the textures a `shaderPass` names; a scene
+ * with `bloom` renders like one without, and so does every `params`. The first `post` set in development warns.
+ * Meanwhile use the 2D `effects` of the `Canvas3D`.
  */
 export type PostEffect3D =
     /** Bleeds light from bright pixels, in HDR. What makes `emission` actually glow. */

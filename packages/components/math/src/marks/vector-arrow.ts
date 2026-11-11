@@ -2,7 +2,6 @@ import {
     component2d,
     Types,
     type NodeOf,
-    type PaintProps,
     type Vector2,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Node2D as _Node2D,
@@ -13,14 +12,9 @@ import {
     type StrokeResolved as _StrokeResolved,
 } from "@motionscript/sdk";
 import { omit, PAINT, PAINT_COMMANDS } from "../kit/component";
+import { radians } from "../kit/geometry";
 import { PLANE_ENTRY } from "../kit/graph";
 import { drawMark, graphPoint, inkSize, ownPoint, reading, traced, type MarkReading, type MarkState } from "../kit/mark";
-
-export interface VectorArrowProps extends PaintProps {
-    tail?: Vector2;
-    head?: Vector2;
-    bend?: number;
-}
 
 /** Degrees of arc per drawn segment of a bent arrow. */
 const BEND_STEP = 4;
@@ -52,11 +46,7 @@ const end = (which: "tail" | "head") => ({
     },
 });
 
-/**
- * An arrow from `tail` to `head`, two graph points. Its arrowhead is the stroke's
- * `endCap`, so a plain segment, a double arrow or a dashed one is a change of
- * stroke. (`from` and `to` are not its names because every node has a `to`.)
- */
+/** An arrow from `tail` to `head`, two graph points; its arrowhead is the stroke's `endCap`. (Not `from`/`to`: every node has a `to`.) */
 export const VectorArrow = traced(component2d({
     key: "vectorArrow",
     state,
@@ -76,7 +66,7 @@ export type VectorArrow = NodeOf<typeof VectorArrow>;
 function traceArrow(s: ArrowValues, { map, shift }: MarkReading): Vector2[][] {
     const a = map.toPoint(s.tail.x + shift.x, s.tail.y + shift.y);
     const b = map.toPoint(s.head.x + shift.x, s.head.y + shift.y);
-    const sweep = (s.bend * Math.PI) / 180;
+    const sweep = radians(s.bend);
     const chord = Math.hypot(b.x - a.x, b.y - a.y);
     if (Math.abs(sweep) < 1e-3 || chord === 0) return [[a, b]];
 

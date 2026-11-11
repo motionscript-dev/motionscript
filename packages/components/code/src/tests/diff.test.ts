@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { diffCode, EDIT_ALIGN_CELLS, LINE_ALIGN_CELLS } from '../diff';
+import { diffCode } from '../diff';
 import { makeIdLine, makeIdToken, type IdLine } from '../tokens';
+
+/** The per-run budget the README documents. */
+const LINE_ALIGN_CELLS = 40_000;
 
 /**
  * Build a structure by hand rather than through the tokenizer: these are tests
@@ -192,10 +195,6 @@ describe('diffCode on a long listing', () => {
 
         expect(edit.newLineIds.size).toBe(rows);
         expect(edit.removedIds.size).toBe(before.reduce((n, line) => n + line.tokens.length, 0));
-    });
-
-    it('declares a per-edit limit above the per-run one', () => {
-        expect(EDIT_ALIGN_CELLS).toBeGreaterThan(LINE_ALIGN_CELLS);
     });
 });
 

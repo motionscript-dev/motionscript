@@ -5,7 +5,6 @@ export interface MagnifyEffect extends ModedEffect, EffectFields<typeof magnifyS
     type: "magnify";
 }
 
-/** The {@link MagnifyEffect} spec: its parameters, defaults and ranges. */
 export const magnifySpec = defineEffect({
     type: "magnify",
     group: "distort",

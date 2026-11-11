@@ -17,7 +17,6 @@ import { loadRenderer, type RendererWasmOption } from "./renderer";
 export interface MixTimelineAudioParams extends RendererWasmOption {
     /** A project, or a lone still or composition as the one track of one. */
     document: ProjectDocument | VisualDocument;
-    /** The vocabulary its clips compile against. Defaults to what the library ships. */
     registry?: Registry;
     /** Win over the document's own; 1920×1080 at 60 fps when neither says. */
     viewport?: Size2D;
@@ -30,30 +29,14 @@ export interface MixTimelineAudioParams extends RendererWasmOption {
 const EMPTY_MANIFEST: AssetManifest = { image: {}, video: {}, audio: {}, font: {} };
 
 /**
- * Mix a timeline's audio without rendering a single frame.
+ * Mixes a timeline's audio without rendering a frame. A **split** export cannot mix per piece (separately-encoded AAC
+ * puts the encoder's priming delay at every join: a click and drift at each boundary), so the coordinator mixes the
+ * whole timeline once here. Returns `null` when no audio is scheduled (the common case, not a failure), so the caller
+ * muxes video only rather than declaring an empty track.
  *
- * `exportVideo` normally does this as part of the render, and for a
- * single-threaded export that is exactly right. A **split** export cannot: its
- * video is rendered in pieces by separate workers, and concatenating
- * separately-encoded AAC puts the encoder's priming delay at every join — a click
- * at each boundary and a track that drifts further out of sync with every one. So
- * the coordinator mixes the whole timeline once, here, and the joined file gets a
- * single continuous audio track.
- *
- * Returns `null` when the timeline schedules no audio at all, which is the common
- * case and not a failure — the caller should then mux video only rather than
- * declare an empty track.
- *
- * ## Why this discovers
- *
- * Audio requests are an *output of discovery*: each node declares its clips as it
- * enters the tree, and the pass that finds what a clip's frames draw is the one
- * that puts its nodes in the tree, so there is no way to know what plays when
- * without it.
- *
- * Nothing is drawn, so this takes the renderer's measure context rather than a
- * render context: discovery lays each clip out, which needs text measured, not
- * rasterized. No canvas, no surface, no GPU, so WebGPU is not required.
+ * It must discover: audio requests are an *output of discovery* (each node declares its clips as it enters the tree), so
+ * there is no knowing what plays when without it. Nothing is drawn, so it takes the renderer's measure context, not a
+ * render context: text is measured, not rasterized, and WebGPU is not required.
  */
 export async function mixTimelineAudio(
     params: MixTimelineAudioParams,

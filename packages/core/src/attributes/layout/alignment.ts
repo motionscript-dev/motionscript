@@ -2,11 +2,7 @@ import { Vector2, lerpVector2 } from "./vector2";
 import { BoxBounds } from "@/layout/bounds";
 import type { AttributeOps } from "@/attributes/shared/operators";
 
-/**
- * Named positions inside a box: the nine alignment keys (`center`, `topLeft`, …).
- * Each maps to a per-axis point in `[-1, 1]`: x is -1 (left) … +1 (right), y is
- * -1 (bottom) … +1 (top) — the y-up convention used throughout layout.
- */
+/** The nine named positions inside a box (`center`, `topLeft`, …), each a per-axis point in `[-1, 1]` (x -1 left … +1 right, y -1 bottom … +1 top: layout's y-up convention). */
 export type AlignmentKey =
     | "center"
     | "topLeft"
@@ -18,18 +14,7 @@ export type AlignmentKey =
     | "centerLeft"
     | "centerRight";
 
-/**
- * A normalised point inside a box — the single value type behind every "which
- * point of this thing" prop: `Node2D.pivot` (what it rotates about), a container's
- * `align` (where children sit), a gradient's `center` (where it emits from) and
- * an image fill's `anchor` (which point of the source meets the box).
- *
- * Those props keep distinct names because they position *different things*; what
- * they share is this type, this `[-1, 1]` y-up space, and this vocabulary — so a
- * value read off one can be handed to another and mean the same place.
- *
- * Accepts a named position (`'center'`) or an explicit {@link Vector2}.
- */
+/** A normalised point inside a box: the one type behind every "which point of this thing" prop (`Node2D.pivot`, a container's `align`, a gradient's `center`, an image fill's `anchor`). They keep distinct names because they position different things, but share this `[-1, 1]` y-up space so a value read off one can be handed to another. A named position or a {@link Vector2}. */
 export type Alignment = AlignmentKey | Vector2;
 
 const ALIGNMENTS: Record<AlignmentKey, Vector2> = {
@@ -61,35 +46,18 @@ function resolveOne(value: Alignment): Vector2 {
     return { x: value.x, y: value.y };
 }
 
-/**
- * The alignment attribute's op set: `pivot`, `align`, `center` and `anchor` all
- * use `resolve`/`lerp`. The rest is the shared alignment-*positioning* math for
- * `Node2D` — used by both the constructor (reactive binding form) and a `to()`
- * step (one-shot form): a named alignment (`'topRight'`, `'centerLeft'`, …)
- * resolves to a normalised pivot `a` in `[-1, 1]` (y-up), and landing that
- * alignment on a target scene-space point means the node's centre sits at
- * `target - a·(size/2)` — the inverse of the offset from centre to the
- * alignment. Kept here rather than duplicated between `Node2D`'s constructor
- * and `_prepareStep`.
- */
+/** The alignment attribute's op set: `resolve`/`lerp` for `pivot`, `align`, `center` and `anchor`, plus the shared alignment-*positioning* math for `Node2D` (constructor binding and one-shot `to()`): landing a named alignment (pivot `a`, y-up) on a target scene-space point puts the node's centre at `target - a·(size/2)`. */
 
 export type AlignmentOps = {
     /** The nine named keys in reading order, top-left to bottom-right. */
     readonly keys: readonly AlignmentKey[];
-    /** Whether `value` is one of the nine named keys — the strings `resolve` accepts. */
     isKey(value: unknown): value is AlignmentKey;
-    /** Validate a node's alignment-positioning props: at most one named alignment, and an
-     * alignment cannot be combined with an explicit `pivot` (the alignment derives one). */
+    /** Validates a node's alignment props: at most one named alignment, never combined with an explicit `pivot` (the alignment derives one). */
     validateProps(props: Record<string, unknown>): void;
-    /** The first named alignment key present in `props`, or `undefined` if none. */
     findKey(props: Record<string, unknown>): AlignmentKey | undefined;
-    /** Resolve a named alignment + the centre offset that lands it on `target`, given a
-     * concrete layout rect. Used by the one-shot `to()` path: returns the pivot to
-     * apply plus the absolute `x`/`y` the node's centre must move to. */
+    /** Resolves a named alignment and the centre offset that lands it on `target` for a concrete layout rect (one-shot `to()`): the pivot plus the absolute `x`/`y` the centre moves to. */
     resolveTargetOnce(alignmentKey: AlignmentKey, rect: BoxBounds, target: Vector2): { pivot: Vector2; x: number; y: number };
-    /** Reactive binding form used by the constructor: given a (possibly dynamic) target
-     * accessor and a live layout-rect accessor, returns the pivot to write plus `x`/`y`
-     * binding callbacks that re-evaluate whenever the target or the node's layout changes. */
+    /** Reactive form for the constructor: returns the pivot to write plus `x`/`y` binding callbacks that re-evaluate when the target or the node's layout changes. */
     bindTarget(alignmentKey: AlignmentKey, getTarget: () => Vector2, getRect: () => BoxBounds): { pivot: Vector2; x: () => number; y: () => number };
 }
 export const alignmentOps: AttributeOps<Alignment, Vector2> & AlignmentOps = {

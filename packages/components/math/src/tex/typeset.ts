@@ -36,17 +36,8 @@ import { createBoundedCache } from "../kit/cache";
 import { omit } from "../kit/component";
 import { lerpPartFills, partPaint, readPartFills, withPartFill, type PartFill, type PartFillResolved } from "../kit/part-fills";
 
-/**
- * A formula typeset to glyph paths: what `latex` and `latexMatrix` share. A
- * node says where its formula comes from (`formula`); this lays it out, draws
- * it, writes it on, paints its parts, and morphs it into another.
- *
- * A morph is held by the entries the formula is written from: mid-tween each
- * holds both ends ({@link Morph}), so a seek to any time draws the morph there
- * from the node's own state, and a plain `to({ latex })` morphs as `morphTo` does.
- */
+// Mid-morph an entry holds both ends (Morph), so a seek draws the morph from the node's own state.
 
-/** A value on its way to another: what an entry the formula is written from holds mid-tween. */
 export class Morph<T> {
     constructor(readonly from: T, readonly to: T, readonly t: number) { }
 }
@@ -75,7 +66,6 @@ export function morphOf<T>(parts: readonly Morphing<unknown>[], combine: (ends: 
 
 const { start: _start, end: _end, ...glyphPaint } = Paint.state;
 
-/** What every formula has: the glyphs' paint, the flow its children are laid out in, its size, its part fills and how much of it is written. */
 export const TYPESET = {
     // A formula writes itself on (`written`), so it trims no outline.
     ...glyphPaint,
@@ -83,10 +73,6 @@ export const TYPESET = {
     fontSize: 16,
     /** Paints for parts of the formula, named by their source. Later entries win where two name a glyph. */
     partFills: Types.custom<PartFill[], PartFillResolved[]>([], { resolve: readPartFills, lerp: lerpPartFills, kind: "vector" }),
-    /**
-     * How much of the formula is written, 0 to 1: its glyphs are drawn one after
-     * another, each outlined and then filled.
-     */
     written: Types.number(1, { min: 0, max: 1, step: 0.01 }),
     /** Reported for a host that read it; the morph is held by the formula's own entries. */
     morphProgress: Types.number(0, { animatable: false }),
@@ -95,9 +81,7 @@ export const TYPESET = {
 export const TYPESET_COMMANDS = {
     ...omit(Paint.commands, "progressTo", "flash"),
     ...commandsFor(TYPESET, {
-        /** Write the formula on, or off: its glyphs one after another, each outlined and then filled. */
         writeTo: { args: ["written"] },
-        /** Paint one part of the formula, leaving the rest as it is. */
         partFillTo: {
             args: {
                 part: Types.text(""),
@@ -115,9 +99,6 @@ export const TYPESET_COMMANDS = {
 
 type TypesetValues = Values<typeof TYPESET>;
 
-// ---- the formula at a moment ------------------------------------------------
-
-/** What is drawn of a formula now: its glyphs, its parts, its centre frame and size, and mid-morph each end's part fills. */
 export interface FormulaFrame {
     readonly tokens: readonly AnimatedToken[];
     readonly parts: readonly LatexPart[];
@@ -148,7 +129,6 @@ function atRest(source: string, fontSize: number): FormulaFrame {
 const resting = new WeakMap<LatexToken[], FormulaFrame>();
 
 function restingFrame(result: LatexPathResult): FormulaFrame {
-    // The typeset result is shared by every reader of the formula; its tokens wrapped once.
     let frame = resting.get(result.tokens);
     if (!frame) {
         frame = {
@@ -217,15 +197,12 @@ export function formulaFrame(
     };
 }
 
-// ---- measuring, laying out, loading -----------------------------------------
-
-/** Its formula's size and its padding, hugging; the factory applies a set or filling size. */
+/** Hugging size; the factory applies a set or filling one. */
 export function measureFormula(frame: FormulaFrame, s: { readonly padding: InsetsResolved }): Size2D {
     const pad = s.padding;
     return { width: frame.width + pad.left + pad.right, height: frame.height + pad.top + pad.bottom };
 }
 
-/** Its children, laid out in its box clear of its stroke, as a shape lays out its own. */
 export function layoutFormula(box: BoxBounds, s: Flow.FlowState & { readonly stroke: StrokeResolved[] }, children: readonly ChildView<any>[]): readonly Placement2D[] {
     return Flow.layout(box, s, children, strokeInset(s.stroke));
 }
@@ -244,18 +221,12 @@ export function loadFormula(loader: Loader): void {
     loader.task(MATHJAX_LOADER, loadMathJax, { before: "layout" });
 }
 
-// ---- drawing ------------------------------------------------------------------
-
-/** How much of one glyph's writing overlaps the next one's. */
+/** The share of one glyph's writing that overlaps the next one's. */
 const WRITE_OVERLAP = 0.6;
 /** The outline a glyph is written with, as a share of the type size. */
 const WRITE_STROKE = 1 / 32;
 
-/**
- * The glyphs, in a node's paint order: each one's shadow, fill and stroke
- * (the shadow op first, so the paint after it casts it), the pen's line while
- * it is being written, then the children, then the overlay through the glyphs.
- */
+/** Glyphs (shadow, fill, stroke, then the pen's line while written), then children, then the overlay through the glyphs. */
 export function drawFormula(ctx: RenderContext, s: TypesetValues, frame: FormulaFrame): void {
     ctx.inFront(() => drawGlyphs(ctx, s, frame));
     ctx.children();
@@ -365,8 +336,6 @@ function eachToken(
     });
 }
 
-// ---- parts --------------------------------------------------------------------
-
 /**
  * The box around one part of the formula, centred on the node's own centre and
  * y-up, or `null` when the formula does not write `part` (or is mid-morph).
@@ -416,8 +385,6 @@ export function latexPartBounds(node: object, part: string, occurrence = 1): Box
     const frame = formulaOf(node);
     return frame ? partBoundsIn(frame, part, occurrence) : undefined;
 }
-
-// ---- paint helpers ------------------------------------------------------------
 
 function fillsByToken(partFills: readonly PartFillResolved[], parts: readonly LatexPart[], count: number): TokenFills {
     const out: TokenFills = new Array(count);

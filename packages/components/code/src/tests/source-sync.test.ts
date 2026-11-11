@@ -8,7 +8,7 @@ import { ensureHighlighter } from '../highlight';
 import { GithubDarkStyle, GithubLightStyle } from '../style';
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 function attach<T extends Node>(node: T): T {

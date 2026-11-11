@@ -125,5 +125,3 @@ export const SphereGrid = ItemGrid.define(component2d({
 }), arranger)
 
 export type SphereGrid = NodeOf<typeof SphereGrid>
-/** What a call or a document row may set. */
-export type SphereGridProps = NonNullable<Parameters<typeof SphereGrid>[0]>

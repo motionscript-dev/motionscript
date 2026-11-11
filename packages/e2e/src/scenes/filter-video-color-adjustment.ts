@@ -15,7 +15,7 @@ export default scene((stage) => {
                 cornerRadius: 24,
                 fill: Fills.video('video.mp4', {
                     fit: 'fill',
-                    filters: VideoAdjustments.colorAdjustment({ contrast: 1, saturation: 1, temperature: 0, vignette: 0 }) }),
+                    preset: { adjustments: VideoAdjustments.colorAdjustment({ contrast: 1, saturation: 1, temperature: 0, vignette: 0 }) } }),
             }),
         ] }),
     );
@@ -23,6 +23,6 @@ export default scene((stage) => {
     () => rect().to({ data: {
             fill: Fills.video('video.mp4', {
                 fit: 'fill',
-                filters: VideoAdjustments.colorAdjustment({ contrast: 1.6, saturation: 1.8, temperature: 0.4, vignette: 0.6 }) }) }, duration: 1.4, easing: easeInOut('quad') }),
+                preset: { adjustments: VideoAdjustments.colorAdjustment({ contrast: 1.6, saturation: 1.8, temperature: 0.4, vignette: 0.6 }) } }) }, duration: 1.4, easing: easeInOut('quad') }),
     holdTail(1.4),
 ]);

@@ -30,8 +30,6 @@ describe("the package's nodes", () => {
     }
   })
 
-  // The classes also declared `parentKey: "shape"` and `forkable: true`, editor
-  // metadata a component no longer carries: what is left of "a shape" is its entries.
   it("describe themselves as shapes: a shape's paints, layout and paint commands", () => {
     for (const key of ["lineGridPattern", "dotGridPattern", "gridPattern"]) {
       expect(Object.keys(registry.describe(key)!.properties!)).toEqual(expect.arrayContaining(

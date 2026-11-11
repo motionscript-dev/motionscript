@@ -423,7 +423,7 @@ export const SCENE_DOCS: SceneDoc[] = ([
         doc: dynamicDocument,
     },
     {
-        id: 'view-3d', name: '3D (WebGL)',
+        id: 'view-3d', name: '3D',
         description: 'A lit box turning in a Canvas3D — the path the CPU renderer could not draw at all.',
         doc: view3dDocument,
     },

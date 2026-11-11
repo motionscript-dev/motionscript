@@ -3,40 +3,18 @@ import type { AssetScope } from "@/assets/scope";
 import type { Color, NormalizedColor } from "../fill/color/parser";
 import { parseColor } from "../fill/color/parser";
 
-/**
- * Which layer an effect runs on: the node's own content (`"foreground"`, the
- * default) or the **backdrop** — the content already painted beneath the node.
- * A backdrop effect is applied to whatever lies underneath the node and clipped
- * to the node's silhouette, so the node's own edges stay sharp (Figma-style).
- */
+/** `foreground` (default) is the node's own content; `backdrop` is what is already painted beneath it, clipped to the node's silhouette (Figma-style). */
 export type EffectMode = "foreground" | "backdrop";
 
 /**
- * How a backend must realise an effect.
- *
- * - `"filter"` (the default) — the effect transforms colours in place, so it
- *   composes as a plain image filter alongside its neighbours in the chain.
- * - `"shader"` — the effect *resamples pixel positions* (warps, bands, or
- *   otherwise reads neighbouring texels), so it needs the content snapshotted
- *   into a texture and redrawn through a lens rather than composed.
- *
- * This is a statement about the effect, not about any particular backend: it
- * says the effect needs random access to its source, which is why it belongs
- * here next to `lerp`/`equals` rather than in the renderer.
+ * How a backend must realise an effect: `"filter"` (default) transforms colours in place and composes as a
+ * plain image filter; `"shader"` resamples pixel positions, so it needs the content snapshotted into a texture.
  */
 export type EffectSurface = "filter" | "shader";
 
-/**
- * Axis (or axes) an effect acts along.
- *
- * `"both"` (= `{ x: 1, y: 1 }`) uses the full 2D vector; `"x"`/`"y"` isolate a
- * single axis; a {@link Vector2} gives fractional control per axis. Shared by
- * every axis-selecting effect so `scatter` and `motionBlur` speak the same
- * vocabulary.
- */
+/** `"both"` is `{ x: 1, y: 1 }`; a {@link Vector2} gives fractional control per axis. */
 export type EffectAxis = "x" | "y" | "both" | Vector2;
 
-/** Resolve an {@link EffectAxis} to its per-axis scale vector. */
 export function resolveEffectAxis(axis: EffectAxis): Vector2 {
     switch (axis) {
         case "x": return { x: 1, y: 0 };
@@ -46,7 +24,6 @@ export function resolveEffectAxis(axis: EffectAxis): Vector2 {
     }
 }
 
-/** Do two {@link EffectAxis} values resolve to the same scale vector? */
 export function sameEffectAxis(a: EffectAxis, b: EffectAxis): boolean {
     const av = resolveEffectAxis(a);
     const bv = resolveEffectAxis(b);
@@ -54,13 +31,8 @@ export function sameEffectAxis(a: EffectAxis, b: EffectAxis): boolean {
 }
 
 /**
- * Resolve a colour-valued effect option to its RGBA tuple.
- *
- * Colour options are stored **as authored** (a CSS string, a theme alias, or an
- * already-normalised tuple) rather than parsed at build time, so a raw effect
- * literal — `{ type: 'outline', color: 'primary', … }` — behaves exactly like the
- * builder form, and a theme alias still resolves against whatever `setTheme`
- * installed. Backends call this to get numbers; `lerp` calls it on both ends.
+ * Colour options are stored **as authored** (CSS string, theme alias or tuple), not parsed at build time, so a
+ * raw effect literal behaves like the builder form and a theme alias resolves against the current `setTheme`.
  */
 export function resolveEffectColor(color: Color): NormalizedColor {
     return Array.isArray(color) ? color : parseColor(color);
@@ -74,83 +46,36 @@ export function sameEffectColor(a: Color, b: Color): boolean {
     return av[0] === bv[0] && av[1] === bv[1] && av[2] === bv[2] && av[3] === bv[3];
 }
 
-/**
- * Mixin: every effect declares the layer it targets via {@link EffectMode}.
- * Omitted is treated as `"foreground"`. A single uniform field across all effects
- * means the backdrop/foreground classifier never has to branch on `type`.
- */
+/** Omitted `mode` is `"foreground"`; one uniform field means the backdrop classifier never branches on `type`. */
 export interface ModedEffect {
     mode?: EffectMode;
     /**
-     * Confine the effect's output to the alpha it was handed — the node's own
-     * silhouette, rather than the rectangle its bleed would otherwise fill.
-     *
-     * Off (the default) a blur, bloom, outline or streak spreads *past* the
-     * content that produced it, which is usually the point. On, the effect is
-     * clipped back into the shape: a bloom that lights the node without
-     * haloing the page around it, a blur that softens a fill without fraying its
-     * edge — Figma's "clip content" applied to the effect rather than the layer.
-     *
-     * Honoured on both render paths — `EffectRegistry.compose` clips an
-     * ImageFilter chain per effect, and `resolveForegroundCapture` blends a
-     * shader effect's lens into the content it was given — so the flag means the
-     * same thing whichever way an effect happens to be realised.
-     *
-     * Redundant in `mode: 'backdrop'`, where the effect is already confined to
-     * the node's silhouette by definition.
+     * Confine the effect's output to the node's own silhouette rather than the rectangle its bleed would fill
+     * (a bloom that doesn't halo the page, a blur that doesn't fray the edge). Honoured on both render paths;
+     * redundant in `mode: 'backdrop'`, which is already confined.
      */
     clip?: boolean;
 }
 
-/**
- * Cross-cutting options accepted by every effect builder — the builder-side view
- * of {@link ModedEffect}. Each builder's own options type intersects this, so
- * `mode` is spelled the same way everywhere:
- *
- *     Effects.blur({ radius: 8, mode: 'backdrop' })
- *
- * This is the extension point for future chain-wide options (e.g. a wet/dry
- * `mix`): add the field here and to {@link EFFECT_OPTION_KEYS} and every builder
- * picks it up.
- */
+/** Cross-cutting options accepted by every effect builder. A new chain-wide option goes here and in {@link EFFECT_OPTION_KEYS}. */
 export type EffectOptions = ModedEffect;
 
-/**
- * The {@link EffectOptions} keys {@link withEffectOptions} copies onto a built
- * effect. `satisfies` keeps this in lockstep with the interface (mirroring
- * `TEXT_STYLE_KEYS`), and `withEffectOptions` iterates it rather than naming
- * fields, so adding an option here is the only edit needed.
- */
+/** The {@link EffectOptions} keys {@link withEffectOptions} copies; `satisfies` keeps it in step with the interface. */
 export const EFFECT_OPTION_KEYS = ["mode", "clip"] as const satisfies readonly (keyof EffectOptions)[];
 
-/**
- * Merge cross-cutting options onto a built effect, **skipping undefined keys**.
- *
- * Omitting rather than writing `undefined` matters: the per-effect `equals()`
- * implementations compare `mode` directly, so a spread that sets `mode:
- * undefined` is not equal to an effect that never set it at all.
- */
+/** Merges options onto a built effect, **skipping undefined keys**: `equals()` compares `mode` directly, so an explicit `mode: undefined` would differ from an unset one. */
 export function withEffectOptions<T extends object>(base: T, options?: EffectOptions): T & EffectOptions {
     const out = { ...base } as T & EffectOptions;
     if (!options) return out;
     for (const key of EFFECT_OPTION_KEYS) {
         const value = options[key];
-        // Indexed write through a widened view: the keys no longer share one
-        // value type (`mode` is an EffectMode, `clip` a boolean), so `out[key]`
-        // narrows to their intersection — `never` — under a union key.
+        // Written through a widened view: `out[key]` would narrow to `never` under a union key.
         if (value !== undefined) (out as Record<string, unknown>)[key] = value;
     }
     return out;
 }
 
-/**
- * Normalise a builder's single argument to its options object.
- *
- * Every effect builder takes exactly one parameter; those with a dominant
- * animated scalar also accept that scalar directly, so `blur(8)` and
- * `blur({ radius: 8 })` produce the same effect. `key` names the field a bare
- * number maps onto.
- */
+/** Every builder takes one argument; those with a dominant scalar also accept it directly, so `blur(8)` equals `blur({ radius: 8 })`. `key` is the field a bare number maps onto. */
 export function scalarOptions<O extends object>(
     arg: number | O | undefined,
     key: keyof O,
@@ -161,55 +86,20 @@ export function scalarOptions<O extends object>(
 }
 
 export interface EffectData<T> {
-    /**
-     * Linearly interpolates between two effect states.
-     * @param from The starting state of the effect.
-     * @param to The target state of the effect.
-     * @param t The interpolation factor (usually a normalized value between 0 and 1).
-     * @returns A new effect state representing the blended value.
-     */
     lerp: (from: T, to: T, t: number) => T;
 
-    /**
-     * Compares two effect states for deep equality.
-     * @param a The first effect state.
-     * @param b The second effect state.
-     * @returns True if the effects are structurally identical, otherwise false.
-     */
     equals: (a: T, b: T) => boolean;
 
-    /**
-     * How a backend must realise this effect. Defaults to `"filter"`; effects
-     * that resample pixel positions declare `"shader"`. Drives which render path
-     * the effect takes — see {@link EffectSurface}.
-     *
-     * A predicate handles effects whose surface depends on their own fields —
-     * a foreground shader composes as a filter, while the same effect in
-     * backdrop mode resamples what is beneath it.
-     */
+    /** Defaults to `"filter"`; may be a predicate when the surface depends on fields (a foreground shader composes as a filter, the same effect in backdrop mode resamples). */
     surface?: EffectSurface | ((effect: T) => EffectSurface);
 
     /**
-     * Normalise an authored effect into the shape the rest of the pipeline
-     * expects — the mirror of `FillData.resolve`, which a fill has and an effect
-     * did not.
-     *
-     * Called once per property write, through `resolveChainEffects`, which is
-     * the single funnel every effect reaches a node by (the `effects` prop's
-     * mapper and `Graphics2D.effects`). That makes it the one place a stored
-     * document can be migrated forward — an older spelling of a type or a field
-     * is rewritten here rather than being understood separately by `lerp`,
-     * `equals`, the surface predicate and the backend.
-     *
-     * **Return the effect unchanged when nothing needs rewriting.** It runs on
-     * every write, so allocating a copy per call would churn for the
-     * overwhelming majority of effects, which need no normalisation at all.
+     * Normalise an authored effect, called once per property write via `resolveChainEffects`, so this is the one
+     * place a stored document can be migrated forward. **Return the effect unchanged when nothing needs
+     * rewriting**: it runs on every write and identity avoids churn.
      */
     resolve?(effect: T): T;
 
-    /**
-     * An effect that samples a texture declares it here, as an image fill does:
-     * an undeclared asset is a lookup the effect can only read as "no texture".
-     */
+    /** Declare textures the effect samples, as an image fill does; an undeclared asset reads as "no texture". */
     declare?(effect: T, assets: AssetScope): void;
 }

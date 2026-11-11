@@ -25,13 +25,7 @@ import {
 
 import { addTiledLines } from "../kit"
 
-/** One mark's place on an axis, and whether it lands on the coarse grid. */
-interface GridPosition {
-  pos: number
-  isMajor: boolean
-}
-
-// Calls the tiling `LineGridPattern` uses, so dots stay on its intersections at every offset.
+// The tiling `LineGridPattern` uses, so dots stay on its intersections at every offset.
 function gridPositions(
   min: number,
   max: number,
@@ -39,9 +33,9 @@ function gridPositions(
   offset: number,
   subdivisions: number,
   overscan: number
-): GridPosition[] {
-  const out: GridPosition[] = []
-  // Anchored at the near edge, so a column or row sits on each edge of the box for any count of cells.
+): { pos: number; isMajor: boolean }[] {
+  const out: { pos: number; isMajor: boolean }[] = []
+  // Anchored at the near edge, so a column or row sits on each edge of the box for any cell count.
   addTiledLines(min, max, step, offset, subdivisions, overscan, (pos, isMajor) => {
     out.push({ pos, isMajor })
   }, min)
@@ -51,19 +45,15 @@ function gridPositions(
 const state = {
   ...Paint.state,
   ...Flow.state,
-  /** Cells along each axis, as in `LineGridPattern.divisions`: 4 puts 5 major dots on each axis. */
+  /** Cells along each axis, as in `LineGridPattern.divisions`: 4 puts 5 major dots on each. */
   divisions: 4,
-  /** Splits each division again. `1` draws only the major dots; `2` puts one minor dot between each pair. */
+  /** `1` draws only the major dots; `2` puts one minor dot between each pair. */
   subdivisions: 1,
   /** Radius of a major dot. */
   radius: 3,
-  /**
-   * A minor dot's radius as a fraction of a major one's. A fraction rather than a
-   * second paint stack, so the whole field stays one fill and a gradient crosses
-   * every dot in it.
-   */
+  /** A minor dot's radius as a fraction of a major one's, not a second paint stack, so a gradient crosses every dot. */
   subScale: 0.5,
-  /** Pans the field, as `LineGridPattern.offset` does, so the two stay aligned while both scroll. */
+  /** As `LineGridPattern.offset`, so the two stay aligned while both scroll. */
   offset: Types.custom<Vector2>({ x: 0, y: 0 }, { lerp: lerpVector2 }),
 }
 
@@ -77,16 +67,11 @@ interface DotField {
 
 /**
  * A field of dots on the same `divisions` / `subdivisions` / `offset` as
- * `LineGridPattern`, so laid over one the dots sit on its intersections.
- *
- * The silhouette is the dots, which `Paint.draw` paints with `shadow`, `fill`,
- * `overlay` and `stroke`. A dot grid has no "paper": a rectangle behind it is how
- * it gets a background.
- *
- * What `clip` confines the children to, and what picking tests, is the node's
- * box rather than the silhouette, which clips outer dots as they pan out and
- * keeps the node selectable between dots. `start` / `end` act on nothing:
- * trimming a disc leaves a crescent, not a partial grid.
+ * `LineGridPattern`, so laid over one the dots sit on its intersections. The
+ * dots are the silhouette `Paint.draw` paints; a background is a rectangle behind
+ * it. `clip` and picking use the node's box, not the silhouette, so outer dots
+ * clip as they pan out and the node stays selectable between dots. `start` and
+ * `end` act on nothing: trimming a disc leaves a crescent, not a partial grid.
  */
 export const DotGridPattern = component2d({
   key: "dotGridPattern",
@@ -104,10 +89,8 @@ export const DotGridPattern = component2d({
 })
 
 export type DotGridPattern = NodeOf<typeof DotGridPattern>
-/** What a call or a document row may set. */
-export type DotGridPatternProps = NonNullable<Parameters<typeof DotGridPattern>[0]>
 
-/** Every dot in the field as one un-painted union: the paint stacks belong to the grid, not to a dot. */
+/** Every dot as one un-painted union: the paint stacks belong to the grid, not a dot. */
 function dots(size: Size2D, s: DotField): Graphics2D | null {
   const { width, height } = size
   if (width <= 0 || height <= 0) return null
@@ -143,8 +126,7 @@ function dots(size: Size2D, s: DotField): Graphics2D | null {
   let drew = false
   for (const column of xs) {
     for (const row of ys) {
-      // A dot is major only where *both* axes are — an intersection of two
-      // major rules, which is exactly the point a line grid draws heaviest.
+      // Major only where both axes are: an intersection of two major rules.
       const size = column.isMajor && row.isMajor ? major : minor
       if (size <= 0) continue
       field.ellipse({ x: column.pos, y: row.pos, width: size * 2, height: size * 2 })

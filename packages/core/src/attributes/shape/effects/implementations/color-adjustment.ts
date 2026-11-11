@@ -1,22 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Photographic tonal and colour adjustments as a **node effect** — the grading
- * panel `Adjustments.colorAdjustment` gives an image fill, now available on any
- * node. All fields are optional and default to neutral.
- *
- * Shares its type name and renderer handler with `ColorAdjustmentFilter` (the
- * media-fill filter) with one deliberate difference: no `vignette` field. That
- * knob was never implemented on the filter — a vignette needs each pixel's
- * position, which a colour matrix does not have — so the node effect leaves it
- * out and `Effects.vignette()` provides the real thing.
- */
+/** Photographic tonal and colour adjustments as a **node effect** (the grading panel `Adjustments.colorAdjustment` gives an image fill); all fields optional and neutral by default. Shares its type name and renderer handler with `ColorAdjustmentFilter` except for `vignette`, which a colour matrix cannot do (it needs each pixel's position): use `Effects.vignette()`. */
 export interface ColorAdjustmentEffect extends ModedEffect, EffectFields<typeof colorAdjustmentSpec.params> {
     type: "colorAdjustment";
 }
 
-/** The {@link ColorAdjustmentEffect} spec: its parameters, defaults and ranges. */
 export const colorAdjustmentSpec = defineEffect({
     type: "colorAdjustment",
     group: "color",

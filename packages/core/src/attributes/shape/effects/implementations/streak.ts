@@ -1,18 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Anamorphic glare — a bright pass smeared along one axis and screened back on.
- *
- * Where `bloom` spreads light equally in all directions, this spreads it along
- * `angle` only. That asymmetry is the entire anamorphic look: the horizontal
- * flare a wide lens throws off a highlight, rather than a halo around it.
- */
+/** Anamorphic glare: a bright pass smeared along `angle` only and screened back on. Where `bloom` spreads light equally, this asymmetry is the whole look (the horizontal flare a wide lens throws off a highlight, not a halo). */
 export interface StreakEffect extends ModedEffect, EffectFields<typeof streakSpec.params> {
     type: "streak";
 }
 
-/** The {@link StreakEffect} spec: its parameters, defaults and ranges. */
 export const streakSpec = defineEffect({
     type: "streak",
     group: "light",

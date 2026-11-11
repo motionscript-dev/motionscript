@@ -6,37 +6,14 @@ import { lerpNumber } from '@/tween/lerp';
 import { lerpVector2, Vector2 } from '@/attributes/layout/vector2';
 
 /**
- * Which noise function the octaves are summed from.
- *
- * - `'value'` — smoothed value noise. The cheapest, and the softest: clouds,
- *   haze, paper fibre, subtle mottling.
- * - `'simplex'` — gradient noise. More even, fewer axis-aligned artefacts than
- *   value noise, and the right default for anything organic seen up close.
- * - `'ridged'` — simplex folded about zero and inverted, so the *zero crossings*
- *   become sharp crests. Mountains, lightning, veins, marble.
- * - `'worley'` — cellular (Voronoi) distance. Not a sum of smooth octaves but a
- *   distance field, so it gives edges rather than blur: scales, cracked earth,
- *   caustics, stained glass.
+ * Which noise function the octaves are summed from: `'value'` (smoothed; cheapest and softest: clouds, haze, paper),
+ * `'simplex'` (gradient; more even, the default for anything organic up close), `'ridged'` (simplex folded and inverted
+ * so zero crossings become sharp crests: mountains, lightning, marble), `'worley'` (cellular distance field, giving
+ * edges rather than blur: scales, cracked earth, caustics).
  */
 export type FractalNoiseBasis = 'value' | 'simplex' | 'ridged' | 'worley';
 
-/**
- * Fractal (fBm) noise — the procedural material source.
- *
- * Where {@link NoiseFillProp} is sparse per-pixel speckle (dust, static), this
- * is a continuous *field*: several octaves of smooth noise summed at rising
- * frequency and falling amplitude, which is what produces cloud, smoke, marble,
- * wood, terrain and plasma rather than grain.
- *
- * It is a fill, so it paints inside the shape's path and stacks with the rest of
- * the fill array. It composes with the effect layer rather than duplicating it:
- * `duotone` over it is marble, `threshold` over it is an organic matte,
- * `posterize` over it is topographic banding, and `displace` pointed at the same
- * look is water.
- *
- * `seed` shifts the whole field, so tweening it drifts the pattern; tween
- * `offset` instead to *travel* through it, which is what reads as flowing.
- */
+/** Fractal (fBm) noise, the procedural material source: unlike the per-pixel speckle of {@link NoiseFillProp}, a continuous *field* of octaves summed at rising frequency and falling amplitude (cloud, smoke, marble, terrain). Composes with the effect layer (`duotone` over it is marble, `threshold` an organic matte). `seed` shifts the whole field; tween `offset` instead to *travel* through it, which reads as flowing. */
 export interface FractalNoiseFillProp {
     type: 'fractalNoise';
     /** Which noise function the octaves come from (default `'simplex'`). */
@@ -89,7 +66,6 @@ function toNormalized(c: Color): NormalizedColor {
 const BLACK: NormalizedColor = [0, 0, 0, 1];
 const WHITE: NormalizedColor = [1, 1, 1, 1];
 
-/** Normalise the `frequency` shorthand to a per-axis cycle count. */
 const toFrequency = (f: number | Vector2 | undefined): Vector2 =>
     f === undefined ? { x: 3, y: 3 } : typeof f === 'number' ? { x: f, y: f } : f;
 

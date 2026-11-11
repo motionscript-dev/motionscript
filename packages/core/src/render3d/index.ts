@@ -1,19 +1,4 @@
-/**
- * 3D scene description.
- *
- * The same split as 2D, one dimension over: a {@link Graphics3D} is what a single
- * node draws (the `Graphics2D` of 3D), a {@link RenderContext3D} is what it draws
- * *into*, and a {@link Scene3D} is the recorded result — camera, lights, fog and
- * every drawable — that a backend replays.
- *
- * Unlike `@/render` (whose descriptors are `@internal`, since nodes build them on
- * the author's behalf), the vocabulary here is **public**: a `Node3D` takes these
- * descriptors as props, and a hand-built `Scene3D` is the escape hatch for
- * painting 3D through an arbitrary 2D path.
- *
- * Nothing in this directory imports a renderer, and no field holds a DOM handle —
- * so `three` never enters core.
- */
+/** 3D scene description, the same split as 2D one dimension over: a {@link Graphics3D} is what a node draws, a {@link RenderContext3D} what it draws into, a {@link Scene3D} the recorded result a backend replays. Unlike `@/render` (descriptors `@internal`, as nodes build them for the author), this vocabulary is **public**: a `Node3D` takes these descriptors as props and a hand-built `Scene3D` paints 3D through an arbitrary 2D path. Nothing here imports a renderer or holds a DOM handle, so `three` never enters core. */
 
 export { Graphics3D } from "./graphics3d";
 export type {

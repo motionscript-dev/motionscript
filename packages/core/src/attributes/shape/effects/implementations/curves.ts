@@ -3,29 +3,15 @@ import type { ModedEffect, EffectData } from "../effect-data";
 import type { CurvesChannel } from "../../filters/implementations/curves";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Tone curve as a **node effect** — the same adjustment `Adjustments.curves`
- * applies to a photo, now available on any node, so a group of shapes or a text
- * block can be graded the same way.
- *
- * Shares its type name, fields and renderer handler with {@link CurvesFilter}
- * (the media-fill filter); the only difference is the `mode` flag every scene
- * effect carries. Keeping them one implementation is deliberate — a curve should
- * not mean two different things depending on what it is attached to.
- */
+/** Tone curve as a **node effect**, the same adjustment `Adjustments.curves` applies to a photo. Shares type name, fields and renderer handler with {@link CurvesFilter} (they differ only by the `mode` flag), so a curve doesn't mean two things depending on what it is attached to. */
 export interface CurvesEffect extends ModedEffect, EffectFields<typeof curvesSpec.params> {
     type: "curves";
 }
 
-/** The {@link CurvesEffect} spec: its parameters, defaults and ranges. */
 export const curvesSpec = defineEffect({
     type: "curves",
     group: "color",
-    // A curve is a *lookup*, and a colour matrix cannot express one: it is affine
-    // by construction and a curve is authored for its bends. Evaluating it per
-    // pixel needs the source as a shader it can read — the same reason `lut` is a
-    // shader scope, and the same trade: exact, at the cost of a pass. See the
-    // renderer's `curvesEffectHandler` for what that means for ordering.
+    // A curve is a *lookup*, which an affine colour matrix cannot express, so evaluating it per pixel needs the source as a readable shader (as `lut`): exact, at the cost of a pass. See the renderer's `curvesEffectHandler` for ordering.
     surface: "shader",
     neutral: { points: [[0, 0], [1, 1]] },
     params: {

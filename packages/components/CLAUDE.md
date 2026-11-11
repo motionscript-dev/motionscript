@@ -1,6 +1,6 @@
 # CLAUDE.md — `packages/components`
 
-Seven published kits (`audio`, `charts`, `code`, `geo`, `grids`, `math`,
+Seven published kits (`audio`, `charts`, `code`, `geography`, `grids`, `math`,
 `patterns`): components plus helpers, installed as a
 dependency, or copied into a project from the same source (the files each
 `registry.json` item lists).

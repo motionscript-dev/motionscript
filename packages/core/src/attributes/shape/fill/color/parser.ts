@@ -1,18 +1,7 @@
 /**
- * CSS color string parser → normalized [R, G, B, A] float tuple.
- *
- * Supported formats:
- *  - Named colors (CSS Level 4, 148 entries) and theme aliases via {@link setTheme}
- *  - Hex: `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`
- *  - `rgb()` / `rgba()` — legacy comma and modern space/slash syntax
- *  - `hsl()` / `hsla()`
- *  - `lab()`, `lch()`
- *  - `oklab()`, `oklch()`
- *  - Tailwind-style opacity suffix: `"white/10"`, `"primary/90"` (percent 0–100)
- *
- * All output values are in the linear 0–1 range suitable for WebGL uniforms.
- * Named-color lookup is O(1); all other formats are parsed with lightweight
- * regex — no DOM, no `getComputedStyle`.
+ * CSS colour string -> normalized [R, G, B, A] tuple (0-1, for GPU uniforms). Accepts named colours (CSS plus theme
+ * aliases via {@link setTheme}), hex, rgb/hsl, lab/lch, oklab/oklch and a Tailwind-style opacity suffix (`"white/10"`).
+ * No DOM, no `getComputedStyle`.
  */
 
 import { CSS_COLOR_MAP } from './constants';
@@ -23,15 +12,11 @@ export type NormalizedColor = [number, number, number, number];
 /** Loose color input accepted by prop interfaces — CSS string or pre-normalized tuple. */
 export type Color = string | NormalizedColor;
 
-// ── Color space helpers ───────────────────────────────────────────────────────
-
-/** Applies the sRGB gamma curve to a single linear-light channel. */
 function gammaEncode(c: number): number {
     c = Math.max(0, Math.min(1, c));
     return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
 }
 
-/** Converts a linear-light sRGB triple to gamma-encoded sRGB. */
 function linearToSrgb(r: number, g: number, b: number, a: number): NormalizedColor {
     return [gammaEncode(r), gammaEncode(g), gammaEncode(b), a];
 }
@@ -45,17 +30,7 @@ function xyzD65ToLinearSrgb(X: number, Y: number, Z: number): [number, number, n
     ];
 }
 
-// ── Argument parser ───────────────────────────────────────────────────────────
-
-/**
- * Splits the inner content of a CSS color function into exactly three channel
- * tokens and an alpha value. Handles the slash-alpha syntax used by modern
- * `rgb()` / `hsl()` as well as the legacy comma-alpha form used by `rgba()` /
- * `hsla()`; both go through {@link readAlpha}, so a percentage alpha means the
- * same in either. Returns `null` for the wrong number of arguments or an alpha
- * that is not a number, which {@link parseColor} reports as an unsupported
- * format.
- */
+/** Splits a colour function's inner content into three channel tokens and an alpha (slash or legacy comma form, via {@link readAlpha}). `null` on a wrong argument count or non-numeric alpha. */
 function parseArgs(inner: string): { tokens: string[]; alpha: number } | null {
     const slashIdx = inner.lastIndexOf('/');
     let alphaToken: string | undefined;
@@ -82,7 +57,6 @@ function readChannel(token: string, percentScale: number, numberScale = 1): numb
     return token.endsWith('%') ? (Number(token.slice(0, -1)) / 100) * percentScale : Number(token) / numberScale;
 }
 
-/** Degrees per CSS angle unit (`deg`, `grad`, `rad`, `turn`). */
 const ANGLE_UNIT_DEGREES: Record<string, number> = { deg: 1, grad: 0.9, rad: 180 / Math.PI, turn: 360 };
 
 /** Reads a CSS hue/angle token to degrees. A bare number is degrees; an unknown unit or a non-number is `NaN`. */
@@ -97,8 +71,6 @@ function finiteColor(color: NormalizedColor): NormalizedColor | null {
     return color.every(Number.isFinite) ? color : null;
 }
 
-// ── Per-format parsers ────────────────────────────────────────────────────────
-
 // Use a globalThis key so multiple bundled copies of this module (e.g. the
 // prebuilt player bundle and the Vite-compiled user code) share one map.
 const _g = globalThis as Record<string, unknown>;
@@ -110,33 +82,19 @@ const THEME_COLOR_MAP = _g.__msThemeMap as Map<string, NormalizedColor>;
 if (!_g.__msParsedColors) _g.__msParsedColors = new Map<string, NormalizedColor>();
 const PARSED = _g.__msParsedColors as Map<string, NormalizedColor>;
 
-// Typography presets ride the same shared-global pattern as the color map, so
-// the prebuilt player bundle and the user's Vite-compiled code read one registry
-// — `setTheme` (called once per build at the player/headless entry points)
-// populates both before any scene generator runs.
+// Typography presets share the same global-map pattern so bundled copies read one registry.
 if (!_g.__msTypographyMap) _g.__msTypographyMap = new Map<string, Record<string, unknown>>();
 const TYPOGRAPHY_MAP = _g.__msTypographyMap as Map<string, Record<string, unknown>>;
 
-// Structural mirror of `@/project/config`'s `Theme` (and its color token shape),
-// declared locally so this module stays a leaf — `config.ts` imports `Color`
-// from here, so importing `Theme` back would be a cycle. The project's `Theme`
-// is structurally compatible, so `setTheme(config.theme)` just works.
-// `typography` presets are stored opaquely (the parser never reads their fields),
-// so the value type is the loose `object` — this stays assignable from `Theme`'s
-// `TypographyPreset` (a `TextStyle` interface, which lacks an implicit string
-// index signature and so is not a `Record<string, unknown>`).
+// Structural mirror of `Theme` declared locally so this module stays a leaf (`config.ts` imports `Color` from
+// here; importing `Theme` back would be a cycle). Typography presets are stored opaquely, hence the loose `object`.
 type ColorTokenInput = Color | { [key: string]: ColorTokenInput };
 interface ThemeInput {
     colors?: Record<string, ColorTokenInput>;
     typography?: Record<string, object>;
 }
 
-/**
- * Recursively flatten nested color groups into dash-joined, lowercased keys
- * (`{ brand: { 500: '#…' } }` → `brand-500`), parsing each leaf to a normalized
- * color. Arrays are leaves (a pre-normalized `[R,G,B,A]` tuple); strings are
- * leaves; only plain objects recurse.
- */
+/** Flattens nested colour groups into dash-joined lowercase keys (`brand-500`), parsing each leaf. Arrays and strings are leaves. */
 function flattenColors(
     tokens: Record<string, ColorTokenInput> | undefined,
     prefix: string,
@@ -155,29 +113,13 @@ function flattenColors(
 }
 
 /**
- * Registers a project theme: named colors (referenceable by name in any color
- * string) and typography presets (selected via a `Text`/`RichText` `variant`).
- *
- * Color entries take precedence over CSS named colors; nested color groups are
- * flattened to dash-joined names (`{ brand: { 500: … } }` → `brand-500`). Call
- * with no argument, `null`, or an empty object to clear both registries — a
- * document's own `theme` is optional, and a host reading one out of storage
- * (a database column, a JSON file) typically gets that absence back as `null`
- * rather than `undefined`.
- *
- * The `default` typography key is reserved: it's read directly by
- * {@link applyTextDefaults} (not just via `variant`) and applied to every
- * `Text`/`RichText` as a project-wide base style.
+ * Registers a project theme: named colours (usable in any colour string; they win over CSS names) and typography
+ * presets (selected via `variant`). No argument, `null` or `{}` clears both, since a host reading a document's
+ * optional `theme` from storage gets `null`. The `default` typography key is reserved: it is the project-wide base
+ * style read by {@link applyTextDefaults}.
  *
  * @example
- * setTheme({
- *   colors: { brand: "#ff6b35", accent: { 500: "oklch(70% 0.2 145)" } },
- *   typography: {
- *     default: { fontFamily: "Inter", fontSize: 32 },
- *     header: { fontSize: 96, fontWeight: 700 },
- *   },
- * });
- * // Later: fill: "brand", fill: "accent-500", Text({ variant: "header" })
+ * setTheme({ colors: { brand: "#ff6b35", accent: { 500: "oklch(70% 0.2 145)" } }, typography: { header: { fontSize: 96 } } });
  */
 export function setTheme(input: ThemeInput | null = {}): void {
     const theme = input ?? {};
@@ -187,30 +129,25 @@ export function setTheme(input: ThemeInput | null = {}): void {
     flattenColors(theme.colors, '', THEME_COLOR_MAP);
     if (theme.typography) {
         for (const [name, preset] of Object.entries(theme.typography)) {
-            // Stored opaquely; `applyTextDefaults` reads fields by key. The `object`
-            // preset is widened to the readable record shape at this boundary only.
+            // Stored opaquely; widened to the readable record shape at this boundary only.
             TYPOGRAPHY_MAP.set(name.toLowerCase(), preset as Record<string, unknown>);
         }
     }
 }
 
-/** Looks up a registered typography preset by variant name (case-insensitive);
- *  `undefined` if none is registered. */
+/** Case-insensitive; `undefined` if none is registered. */
 export function getTypographyPreset(name: string): Record<string, unknown> | undefined {
     return TYPOGRAPHY_MAP.get(name.toLowerCase());
 }
 
-/** Looks up a color name in the theme map first, then the CSS named-color table. */
 function parseNamedColor(str: string): NormalizedColor | null {
     return THEME_COLOR_MAP.get(str) ?? CSS_COLOR_MAP.get(str) ?? null;
 }
 
-/** Parses `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA` hex strings. */
 function parseHex(str: string): NormalizedColor | null {
     if (!str.startsWith('#')) return null;
     let hex = str.slice(1);
     if (!/^[0-9a-f]+$/.test(hex)) return null;
-    // Expand shorthand: #RGB → #RRGGBB, #RGBA → #RRGGBBAA
     if (hex.length === 3 || hex.length === 4)
         hex = hex.split('').map(c => c + c).join('');
     const int = parseInt(hex, 16);
@@ -221,7 +158,6 @@ function parseHex(str: string): NormalizedColor | null {
     return null;
 }
 
-/** Parses `rgb()` / `rgba()` — both percentage and 0-255 channel forms. */
 function parseRgb(str: string): NormalizedColor | null {
     const m = str.match(/^rgba?\s*\((.+)\)/);
     if (!m) return null;
@@ -270,7 +206,6 @@ function parseLch(str: string): NormalizedColor | null {
     return finiteColor(labToNormalized(L, C * Math.cos(rad), C * Math.sin(rad), args.alpha));
 }
 
-/** Parses `oklab(L a b)` (Oklab perceptually uniform color space). */
 function parseOklab(str: string): NormalizedColor | null {
     const m = str.match(/^oklab\s*\((.+)\)/);
     if (!m) return null;
@@ -281,7 +216,6 @@ function parseOklab(str: string): NormalizedColor | null {
     return finiteColor(oklabToNormalized(L, a, b, args.alpha));
 }
 
-/** Parses `oklch(L C H)` (polar form of Oklab). */
 function parseOklch(str: string): NormalizedColor | null {
     const m = str.match(/^oklch\s*\((.+)\)/);
     if (!m) return null;
@@ -293,8 +227,6 @@ function parseOklch(str: string): NormalizedColor | null {
     const rad = readHue(args.tokens[2]) * (Math.PI / 180);
     return finiteColor(oklabToNormalized(L, C * Math.cos(rad), C * Math.sin(rad), args.alpha));
 }
-
-// ── CIE conversion helpers ────────────────────────────────────────────────────
 
 /** Converts CIE L*a*b* (D50) to a normalized sRGB color. */
 function labToNormalized(L: number, a: number, b: number, alpha: number): NormalizedColor {
@@ -323,19 +255,7 @@ function oklabToNormalized(L: number, a: number, b: number, alpha: number): Norm
     );
 }
 
-// ── Opacity suffix ─────────────────────────────────────────────────────────────
-
-/**
- * Splits a Tailwind-style opacity suffix (`"white/10"`, `"primary/90"`) off the
- * end of a color string. The suffix is a slash followed by a number (optionally
- * with a `%`) interpreted as a percentage 0–100.
- *
- * Only a trailing slash that sits *outside* any parentheses is treated as an
- * opacity modifier, so the internal slash-alpha syntax of `rgb()` / `hsl()`
- * (e.g. `rgb(0 0 255 / 0.25)`) is left untouched.
- *
- * @returns the bare color string and the opacity fraction (1 when absent).
- */
+/** Splits a Tailwind-style opacity suffix (`"white/10"`, percent 0-100) off a colour string. Only a slash outside parentheses counts, so `rgb(0 0 255 / 0.25)` is untouched. Returns the bare string and the opacity fraction. */
 function splitOpacitySuffix(str: string): { color: string; opacity: number } {
     if (str.includes('(')) return { color: str, opacity: 1 };
     const m = str.match(/^(.*[^/])\/\s*([\d.]+)%?$/);
@@ -345,15 +265,7 @@ function splitOpacitySuffix(str: string): { color: string; opacity: number } {
     return { color: m[1].trim(), opacity: Math.max(0, Math.min(1, pct / 100)) };
 }
 
-// ── Main entry point ──────────────────────────────────────────────────────────
-
-/**
- * Parses a CSS color string into a normalized `[R, G, B, A]` array (0.0–1.0).
- *
- * Supported formats: named colors (CSS + theme), hex, rgb/rgba, hsl/hsla,
- * lab, lch, oklab, oklch, plus a Tailwind-style opacity suffix (`"white/10"`).
- * Falls back to opaque black and logs a warning for unrecognised input.
- */
+/** Parses a CSS colour string into normalized `[R, G, B, A]`; warns and returns opaque black for unrecognised input. */
 export function parseColor(cssStr: string): NormalizedColor {
     const known = PARSED.get(cssStr);
     if (known) return known;

@@ -14,28 +14,11 @@ export interface PropertyMeta {
     options?: PropOptions<any, any>;
     /** How a host edits this prop — see {@link PropertyEditor}. */
     editor?: PropertyEditor;
-    /** @deprecated Nothing sets it: the engine withdraws no property. Kept so a host that tests it still compiles. */
-    withdrawn?: boolean;
 }
 
-/**
- * What a host needs to draw a control for a property.
- *
- * Declared **on the property**, because that is the thing it edits. A node type
- * used to describe its controls in a separate list — a `fields` array beside the
- * class, or a manifest beside the package — and a list of props next to a class
- * of props is the shape that drifts: rename one and nothing says the other is
- * now describing something that no longer exists.
- *
- * Nothing here is read while rendering. A frame is identical whether a prop
- * declares a range or not; this exists so an editor has one place to ask.
- */
+/** What a host needs to draw a control for a property. Declared **on the property**, not in a separate `fields` list beside the class, which drifts when one is renamed. Nothing here is read while rendering. */
 export interface PropertyEditor {
-    /**
-     * The control to draw. Inferred when absent — a typed entry knows its
-     * own (`Types.color` is a colour), and a plain `property` reads it off
-     * the default's type.
-     */
+    /** The control to draw; inferred when absent (a typed entry knows its own, a plain `property` reads the default's type). */
     kind?: string;
     /** Bounds and granularity for a numeric control. */
     min?: number;
@@ -43,40 +26,23 @@ export interface PropertyEditor {
     step?: number;
     /** What the number means, for a host that labels it — `"°"`, `"s"`, `"×"`. */
     unit?: string;
-    /** The choices, for an enum. */
     options?: readonly string[];
     /** Whether a document may tween it. Defaults to true. */
     animatable?: boolean;
-    /**
-     * The controls *inside* an object-valued prop.
-     *
-     * An axis config or a theme is one property holding several editable values,
-     * and a host draws them as a group. Declaring them here keeps them attached
-     * to the prop they belong to rather than flattened into a list that has to
-     * name its own parent.
-     */
+    /** The controls *inside* an object-valued prop (an axis config, a theme), drawn as a group and kept attached to their parent prop. */
     properties?: Record<string, PropertyEditor>;
     /** Whatever a control needs that this vocabulary does not name. */
     [option: string]: unknown;
 }
 
-/** Symbol used to store property metadata on class prototypes. */
 export const PROPERTY_META = Symbol("propertyMeta");
 
-/**
- * Every `property` on an instance's class, inherited included, ordered base →
- * subclass so `initProps` applies them in declaration order. A subclass that
- * redeclares a key replaces the inherited declaration whole — default, mapper,
- * tween and editor — at the position the base gave it.
- */
+/** Every `property` on an instance's class, inherited included, ordered base -> subclass so `initProps` applies them in declaration order. A subclass redeclaring a key replaces the inherited declaration whole, at the position the base gave it. */
 export function getPropertyMeta(instance: object): PropertyMeta[] {
     return mostDerived<PropertyMeta>(instance, PROPERTY_META);
 }
 
-/**
- * The per-key declarations stored under `symbol` along `instance`'s prototype
- * chain: base first, one entry per key, the most-derived declaration of each.
- */
+/** The per-key declarations stored under `symbol` along the prototype chain: base first, one entry per key, the most-derived of each. */
 export function mostDerived<M extends { key: string }>(instance: object, symbol: symbol): M[] {
     const chain: object[] = [];
     let proto = Object.getPrototypeOf(instance);
@@ -101,36 +67,22 @@ export function mostDerived<M extends { key: string }>(instance: object, symbol:
     return result;
 }
 
-/**
- * A registration for one member of a node class: what `property(...)` and
- * `command(...)` return, applied to the class's prototype under the member's
- * key by {@link declareMembers}.
- */
+/** A registration for one member of a node class, applied to the prototype under the member's key by {@link declareMembers}. */
 export type MemberRegistration = (target: object, key: string) => void;
 
 /**
- * Registers properties and commands on a node class, in the order given.
- *
- * Core's own base classes (`Node`, `Node2D`, `Node3D`, …) declare their props
- * as `declare` fields and register them here, right after the class body.
- * Order is meaningful: {@link getPropertyMeta} lists properties in
- * registration order, which is the order `Registry.describe` hands a host's
- * inspector, so a new entry goes where it should appear.
+ * Registers properties and commands on a node class, in the order given. Core's own base classes declare their props
+ * as `declare` fields and register them here, right after the class body. Order is meaningful: {@link getPropertyMeta}
+ * lists properties in registration order, which is the order `Registry.describe` hands a host's inspector. Node types
+ * outside core are components (`component2d`), which do this themselves.
  *
  * @example
  * ```ts
- * class Dial extends Node2D<DialProps> {
- *     declare level: number;
- *     turn(args: CommandArgs<{ by: number }>) { … }
- * }
  * declareMembers(Dial, {
  *     level: property({ default: 0 }),
  *     turn: command({ args: ["by"] }),
  * });
  * ```
- *
- * Node types outside core are components (`component2d`), which do this for
- * their `props` and `commands` themselves.
  */
 export function declareMembers<C extends abstract new (...args: never[]) => object>(
     ctor: C,
@@ -142,21 +94,9 @@ export function declareMembers<C extends abstract new (...args: never[]) => obje
 }
 
 /**
- * Declares a property on a `Node` subclass: applied to the prototype under the
- * property's key, directly or through {@link declareMembers}. Redeclaring an
- * inherited key overrides it; see {@link getPropertyMeta}.
- *
- * @example
- * ```ts
- * declareMembers(Glow, {
- *     radius: property({ default: 0 }),
- *     fill: property({ mapper: fillOps.resolve, tween: fillOps.lerp }),
- * });
- * ```
- *
- * The `default` value is used when the corresponding key is absent from the
- * constructor `props` object. The `mapper` / `tween` options are forwarded
- * directly to `applyProp()`.
+ * Declares a property on a `Node` subclass, applied to the prototype under the property's key (directly or through
+ * {@link declareMembers}). `default` is used when the key is absent from the constructor `props`; `mapper` / `tween`
+ * are forwarded to `applyProp()`. Redeclaring an inherited key overrides it; see {@link getPropertyMeta}.
  */
 export function property<Ext = any, Int = Ext>(opts?: {
     default?: Ext;

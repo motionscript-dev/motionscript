@@ -1227,6 +1227,10 @@ impl Gpu {
     /// surface), converted to a 3D map on the GPU.
     pub fn scene3d_bind(&mut self, scene: u32, tex: u32, image: u32, srgb: bool) {
         let list = self.bindings3d.entry(scene).or_default();
+        // The host binds again every frame; the same binding keeps its map and draws nothing new.
+        if list.iter().any(|b| b.tex == tex && b.image == image && b.srgb == srgb) {
+            return;
+        }
         list.retain(|b| b.tex != tex);
         list.push(Binding3d { tex, image, srgb, seen: 0 });
     }
@@ -1467,10 +1471,16 @@ impl Gpu {
         }
     }
 
-    pub fn free_image(&mut self, id: u32) {
+    /// Image `id` is no longer a 3D scene: its renderer and bindings go, or
+    /// it would go on drawing the scene into whatever the id holds now.
+    pub fn drop_scene3d(&mut self, id: u32) {
         self.scenes3d.remove(&id);
         self.dirty3d.retain(|&d| d != id);
         self.bindings3d.remove(&id);
+    }
+
+    pub fn free_image(&mut self, id: u32) {
+        self.drop_scene3d(id);
         self.maps3d.retain(|(i, _), _| *i != id);
         if let Some(slot) = self.images.get_mut(id as usize)
             && let Some(img) = slot.take()

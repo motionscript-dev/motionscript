@@ -26,7 +26,7 @@ import { cartesianMap, lineThrough, resolveInterval, type AxisScaling, type Coor
 import { clamp } from "../kit/geometry";
 import { drawSystem, systemLayout, systemMap, systemOpenPlane, systemProvides, systemSize } from "../kit/system";
 import { formatTick, ticksFor, type Ticks } from "../kit/ticks";
-import { along, AXIS_COLOR, drawLabels, drawn, loadFormulas, type Label, lerpInterval, readInterval, withoutTips } from "../kit/furniture";
+import { along, AXIS_COLOR, drawLabels, drawn, loadFormulas, intervalEntry, type Label, withoutTips } from "../kit/furniture";
 
 export interface Axes2dProps extends PaintProps {
     xRange?: Interval;
@@ -59,13 +59,11 @@ export interface AxisLayout {
     at(value: number): Vector2;
 }
 
-const interval = (initial: Interval) => Types.custom<Interval>(initial, { resolve: readInterval, lerp: lerpInterval });
-
 /** An x and a y axis's entries: what a number plane is built on too. */
 export const AXES = {
     ...PAINT,
-    xRange: interval([-5, 5]),
-    yRange: interval([-3, 3]),
+    xRange: intervalEntry([-5, 5]),
+    yRange: intervalEntry([-3, 3]),
     /** The spacing of each axis's ticks; zero picks a tidy one for the axis's length. */
     xStep: Types.number(0, { min: 0 }),
     yStep: Types.number(0, { min: 0 }),
@@ -91,7 +89,6 @@ export const AXES_COMMANDS = {
     rangeTo: { args: ["xRange", "yRange"] as const },
 };
 
-/** What axes are drawn from: their own entries, as a number plane's helpers read them too. */
 export type AxesValues = Values<typeof AXES> & { readonly padding: InsetsResolved; readonly clip: boolean };
 
 /** What axes declare before they are laid out: their face, and MathJax for a title written as a formula. */

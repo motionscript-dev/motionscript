@@ -1,26 +1,14 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Where the outline sits relative to the node's silhouette — the same three
- * choices Figma and Illustrator offer for a stroke:
- *
- * - `"outside"` grows outward from the edge, leaving the content untouched.
- * - `"inside"` eats inward, so the node's footprint never changes.
- * - `"center"` straddles the edge, half of `width` on each side.
- */
+/** Where the outline sits relative to the silhouette, as in Figma and Illustrator: `"outside"` grows outward leaving the content untouched, `"inside"` eats inward so the footprint never changes, `"center"` straddles the edge. */
 export type OutlinePosition = "outside" | "center" | "inside";
 
-/**
- * A coloured band traced around the node's silhouette — the alpha outline
- * (a.k.a. "stroke" in Figma) that geometry strokes can't give you when the
- * silhouette comes from text, an image's alpha, or a whole subtree.
- */
+/** A coloured band traced around the node's silhouette (the alpha outline): what a geometry stroke can't give when the silhouette comes from text, an image's alpha, or a subtree. */
 export interface OutlineEffect extends ModedEffect, EffectFields<typeof outlineSpec.params> {
     type: "outline";
 }
 
-/** The {@link OutlineEffect} spec: its parameters, defaults and ranges. */
 export const outlineSpec = defineEffect({
     type: "outline",
     group: "stylize",

@@ -6,51 +6,19 @@ import type { ModedEffect, EffectData } from "../effect-data";
 import { resolveEffectColor, sameEffectColor } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * What the glow reads to decide how much a pixel glows.
- *
- * `"luminance"` is the photographic reading — bright pixels bleed, dark ones
- * don't, and {@link GlowEffect.threshold} sets where the cut falls.
- * `"alpha"` ignores colour entirely and glows every opaque pixel equally, which
- * is what you want when the glow is a halo around a shape rather than light
- * escaping an image.
- */
+/** What the glow reads for strength: `"luminance"` (bright pixels bleed; {@link GlowEffect.threshold} sets the cut) or `"alpha"` (every opaque pixel glows equally: a halo around a shape rather than light escaping an image). */
 export type GlowChannel = "luminance" | "alpha";
 
-/**
- * What the glow is coloured with.
- *
- * - `"none"` keeps the source's own colours, scaled by intensity.
- * - `"solid"` paints the whole glow one {@link GlowEffect.color}.
- * - `"ramp"` maps glow strength through {@link GlowEffect.colors} /
- *   {@link GlowEffect.stops}, which is what makes a glow read as heat, neon or
- *   an aurora rather than as a brighter copy of the layer.
- */
+/** What the glow is coloured with: `"none"` keeps the source colours scaled by intensity, `"solid"` one {@link GlowEffect.color}, `"ramp"` maps strength through {@link GlowEffect.colors} / {@link GlowEffect.stops} (heat, neon, aurora). */
 export type GlowTint = "none" | "solid" | "ramp";
 
-/**
- * How the ramp repeats once {@link GlowEffect.cycles} takes it past one pass.
- *
- * The two names are the usual gradient tile modes, and mean what they mean there:
- * `"repeat"` restarts at the first stop (a hard seam between last and first),
- * `"mirror"` walks back down through the stops (seamless, at the cost of
- * halving the apparent frequency).
- */
+/** How the ramp repeats past one pass ({@link GlowEffect.cycles}): `"repeat"` restarts at the first stop (hard seam), `"mirror"` walks back down (seamless, halves the apparent frequency). */
 export type GlowLoopStyle = "mirror" | "repeat";
 
 /** Where the source layer sits relative to the glow it produced. */
 export type GlowOriginal = "behind" | "front" | "hidden";
 
-/**
- * A glow: the bright (or opaque) parts of a layer, spread outward and composited
- * back — optionally recoloured through a ramp keyed on how strongly each pixel
- * glows.
- *
- * The difference from `bloom`, which is otherwise the same three numbers: bloom
- * is a `"filter"` effect and is therefore bounded by the node's own rect, and it
- * can only screen its bright-pass back. This spreads past the box, chooses its
- * compositing, and can be coloured. See {@link EffectData.surface} below.
- */
+/** A glow: bright (or opaque) parts of a layer spread outward and composited back, optionally recoloured through a ramp. Unlike `bloom`, a `"filter"` effect bounded by the node's rect that can only screen its bright-pass back, this spreads past the box, chooses its compositing and can be coloured. See {@link EffectData.surface}. */
 export interface GlowEffect extends ModedEffect, EffectFields<typeof glowSpec.params> {
     type: "glow";
 }
@@ -59,7 +27,6 @@ export interface GlowEffect extends ModedEffect, EffectFields<typeof glowSpec.pa
 const GLOW_RAMP_COLORS: Color[] = ["white", "#ffa640"];
 const GLOW_RAMP_STOPS: number[] = [0, 1];
 
-/** The {@link GlowEffect} spec: its parameters, defaults and ranges. */
 export const glowSpec = defineEffect({
     type: "glow",
     group: "light",
@@ -93,14 +60,7 @@ export const glowSpec = defineEffect({
         tint: param.choice(["none", "solid", "ramp"] satisfies GlowTint[], { default: "none", control: "segmented", optionsLabel: "glowTint", order: 4 }),
         /** The glow's colour when `tint` is `'solid'`. */
         color: param.color({ default: "white", order: 5 }),
-        /**
-         * Ramp colours when `tint` is `'ramp'`, parallel to `stops`.
-         *
-         * Componentwise when both ramps have the same number of stops. When the
-         * counts differ there is no correspondence to interpolate along (stop 2
-         * of 3 and stop 2 of 5 are not the same place), so it snaps at the
-         * midpoint: a ramp that silently gained stops mid-tween reads as a bug.
-         */
+        /** Ramp colours when `tint` is `'ramp'`, parallel to `stops`. Componentwise for equal stop counts; otherwise there is no correspondence to interpolate along, so it snaps at the midpoint. */
         colors: param.of<Color[]>()({
             kind: "colors",
             default: GLOW_RAMP_COLORS,

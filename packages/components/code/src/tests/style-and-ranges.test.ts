@@ -8,7 +8,7 @@ import { ensureHighlighter } from '../highlight';
 import { compileStyle, type CodeHighlightStyle } from '../style';
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 function styled(color: string, name = 'same-name'): CodeHighlightStyle {

@@ -1,13 +1,10 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * The playhead, held outside React.
- *
- * A frame number written at clock rate through `useState` re-renders whoever
- * owns the player, and on a high-refresh display that is faster than the
- * project's own frame rate. Nothing in a render depends on it: the controller
- * paints straight onto the canvas and React is not involved. So the number
- * lives here, and only the components that actually display it subscribe.
+ * The playhead, held outside React: a frame written at clock rate through
+ * `useState` would re-render the player's owner faster than the project's frame
+ * rate, and nothing in a render depends on it (the controller paints straight
+ * onto the canvas). Only components that display it subscribe.
  */
 export interface PlayheadStore {
     subscribe(onChange: () => void): () => void;
@@ -35,12 +32,7 @@ export function createPlayheadStore(): PlayheadStore {
     };
 }
 
-/**
- * Subscribe *this* component to the playhead.
- *
- * Typed structurally rather than against `Player` so the store and the hook
- * that reads it don't import each other.
- */
+/** Subscribe *this* component to the playhead. Takes `{ playhead }` rather than `Player` to avoid an import cycle with `use-motion-player`. */
 export function usePlayhead(player: { playhead: PlayheadStore }): number {
     const { playhead } = player;
     return useSyncExternalStore(playhead.subscribe, playhead.getSnapshot, playhead.getSnapshot);

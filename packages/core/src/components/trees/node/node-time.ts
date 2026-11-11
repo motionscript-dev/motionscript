@@ -1,16 +1,4 @@
-/**
- * A node's place on the scene's clock, read via `node.time`.
- *
- * Advanced once per frame by `Node.attach`, and consumed by motion sampling,
- * the render context's `elapsed`, and anything a node's own `tick()` derives
- * from time.
- *
- * `creation` is seeded on the node's **first** advance rather than at
- * construction, so `elapsed` measures how long a node has been *in the scene* —
- * which is what an entrance animation, a video's playhead and a per-node
- * dissolve all actually mean. A node built during the generator's third second
- * and added then reads `elapsed === 0` on its first frame.
- */
+/** A node's place on the scene's clock (`node.time`), advanced once per frame by `Node.attach`; consumed by motion sampling, the render context's `elapsed` and anything a node's `tick()` derives from time. `creation` is seeded on the **first** advance, not at construction, so `elapsed` measures time *in the scene* (what entrance animations, a video's playhead and per-node dissolves mean): a node built in the generator's third second reads `elapsed === 0` on its first frame. */
 export interface NodeTime {
     /** Seconds since the clip started. */
     readonly total: number;
@@ -21,8 +9,7 @@ export interface NodeTime {
 }
 
 /**
- * The writable form the runtime advances. Nodes hand out {@link NodeTime}, which
- * is the same shape with every field read-only.
+ * The writable form the runtime advances; nodes hand out {@link NodeTime}, the same shape read-only.
  *
  * @internal
  */

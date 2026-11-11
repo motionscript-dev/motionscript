@@ -26,7 +26,6 @@ vi.mock("../geometry", async (original) => {
         buildLatexPath: (text: string, fontSize: number) => ({
             tokens: [...text].map((ch, i) => ({ token: ch, path: square(i * 10) })),
             parts: [],
-            commands: [],
             width: text.length * 10 * (fontSize / 16),
             height: 8,
             bounds: [0, 0, text.length * 10, 8] as [number, number, number, number],

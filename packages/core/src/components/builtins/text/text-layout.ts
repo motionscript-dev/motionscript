@@ -57,8 +57,7 @@ export function casedText(s: TextValues, src: TextSource): string {
 
 /** The block's size: hugged to its glyphs, filled across, and its own height even when it fills, so a hugging ancestor sees its content. */
 export function measureGlyphs(s: TextValues, src: TextSource, constraints: SizeConstraints, scope: MeasureContext2D): Size2D {
-    // Text-on-path: the visual extent is the path's bounding box, not a text
-    // line box. Size the node to the path (node-local coords, like Path).
+    // Text-on-path: the visual extent is the path's bounding box (node-local coords, like Path), not a line box.
     if (src.glyphPath != null) {
         const { width, height } = pathOps.size(src.glyphPath);
         const wm = s.width;
@@ -72,10 +71,8 @@ export function measureGlyphs(s: TextValues, src: TextSource, constraints: SizeC
     const measureFontSize = s.fontSize === "autofit" ? 16 : s.fontSize;
     const paragraphs = casedText(s, src).split("\n");
 
-    // A styled run changes the box, which is why measuring cannot read the
-    // node's five font fields and stop there: one word set two sizes up makes
-    // the line taller and the block wider. So when runs are styled the
-    // intrinsic size is summed across the pieces, each in its own style.
+    // A styled run changes the box (one word set two sizes up makes the line taller and the block wider), so with styled
+    // runs the intrinsic size is summed across the pieces, each in its own style.
     const styled = textSegments(s, src);
     const lineStyles = styled === null
         ? null
@@ -99,9 +96,7 @@ export function measureGlyphs(s: TextValues, src: TextSource, constraints: SizeC
     const hm = s.height;
     const resolvedW = typeof wm === "number" ? wm : wm === "hug" ? intrinsicW : constraints.maxWidth ?? 0;
 
-    // When wrap is on and the box has a finite width narrower than the text,
-    // height needs to account for the extra lines produced by wrapping. Each
-    // line is as tall as its tallest run.
+    // With wrap on and a finite box narrower than the text, height must account for wrapped lines, each as tall as its tallest run.
     const wraps = src.wraps && resolvedW > 0;
     const lineSizes = lineStyles === null
         ? null
@@ -117,20 +112,14 @@ export function measureGlyphs(s: TextValues, src: TextSource, constraints: SizeC
     return { width: resolvedW, height: typeof hm === "number" ? hm : intrinsicH };
 }
 
-/**
- * The string cut at every style boundary, each piece styled by the runs over
- * it, the later winning. Also folds in the Write On reveal window. `null` when neither is
- * active, so rendering keeps its single-op path; and always `null` on a path,
- * where the string is laid along it as one run.
- */
+/** The string cut at every style boundary, each piece styled by the runs over it (the later winning), folding in the Write On reveal window. `null` when neither is active, keeping rendering's single-op path, and always `null` on a path, where the string is one run. */
 export function textSegments(s: TextValues, src: TextSource): TextSegment[] | null {
     if (src.glyphPath != null) return null;
     const runs = src.runs.filter(r => r.end > r.start);
     const text = casedText(s, src);
     if (text.length === 0) return null;
 
-    // Write On: a glyph has no path to trim, so `start`/`end` are a
-    // character-reveal window instead: opacity over a range of characters.
+    // Write On: a glyph has no path to trim, so `start`/`end` are a character-reveal window (opacity over a range of characters).
     const hasReveal = s.start > 0 || s.end < 1;
     if (runs.length === 0 && !hasReveal) return null;
 
@@ -217,11 +206,7 @@ export function textState(s: TextValues, src: TextSource, size: Size2D | undefin
     };
 }
 
-/**
- * The node's own face, plus whatever a piece sets in another, and the pieces'
- * paints. Naming a family here is what lets it load before layout, rather than
- * being discovered by measuring against the fallback face.
- */
+/** The node's own face plus whatever a piece sets in another, and the pieces' paints; naming a family here lets it load before layout rather than being discovered by measuring against the fallback face. */
 export function declareGlyphAssets(s: TextValues, src: TextSource, assets: Pick<AssetScope, "font" | "fill">): void {
     // Nothing may name a family at all; an `undefined` key is not a font to load.
     if (s.fontFamily) assets.font(s.fontFamily, s.fontWeight);

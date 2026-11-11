@@ -52,8 +52,8 @@ describe('the package barrel', () => {
         ]);
     });
 
-    it.each(['Semaphore', 'withDeadline', 'toRenderError', 'cleanPageErrorMessage', 'serveFile', 'splitFrames'])(
-        'does not export %s, which nothing calls or which is internal',
+    it.each(['serveFile', 'splitFrames'])(
+        'does not export %s, which is internal',
         (name) => {
             expect(barrel).not.toHaveProperty(name);
         },

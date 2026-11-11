@@ -2,17 +2,7 @@ import type { FilterData } from "../registry";
 import type { BlendMode } from "../../fill/blend";
 import { lerpNumber } from "@/tween/lerp";
 
-/**
- * Composites the current video frame with a trail of past frames (After Effects'
- * Echo), each delayed by `delay` seconds and faded by a `decay` factor. Needs
- * several decoded frames at once, so — unlike the pixel filters — it is rendered
- * by a dedicated multi-pass path in the video fill renderer rather than the
- * `setImageFilter` chain. Video-only; a no-op on image fills.
- *
- * The trail reaches back `echoes * delay` source seconds; frames outside the
- * adapter's decoded back-window are simply skipped (the trail fills in over the
- * first second of playback after a cold seek).
- */
+/** Composites the current video frame with a trail of past frames (After Effects' Echo), each delayed by `delay` seconds and faded by `decay`. It needs several decoded frames at once, so a dedicated multi-pass path in the video fill renderer draws it, not the `setImageFilter` chain. Video-only; a no-op on image fills. The trail reaches back `echoes * delay` source seconds; frames outside the adapter's decoded back-window are skipped (it fills in over the first second after a cold seek). */
 export interface VideoEchoFilter {
     type: 'echo';
     /** Number of past-frame taps drawn behind the current frame. */

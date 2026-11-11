@@ -6,19 +6,11 @@ import { applySpeedToPlaybackRate, buildAudioEffectGraph, buildLevel, playbackOf
 type ActiveSource = {
     source: AudioBufferSourceNode;
     request: AudioRequest;
-    /** Effect and level nodes to disconnect on teardown. */
     nodes: AudioNode[];
-    /** Tremolo LFOs to stop on teardown. */
     oscillators: OscillatorNode[];
 };
 
-/**
- * Web Audio implementation of {@link AudioSink} — decodes and caches source
- * buffers, then schedules/plays {@link AudioRequest}s as `AudioBufferSourceNode`s
- * through a shared master gain (global mute and volume). `schedule` registers the
- * active set of requests for the current frame; `syncTo` then starts/stops
- * sources to match `clipTime`, so playback follows scrubbing and seeks.
- */
+/** Web Audio implementation of {@link AudioSink}: decodes and caches source buffers, then plays {@link AudioRequest}s as `AudioBufferSourceNode`s through a shared master gain (global mute and volume). `syncTo` starts/stops sources to match `clipTime`, so playback follows scrubbing and seeks. */
 export class WebAudioSink extends AudioSink {
     private readonly borrowed: AudioContext | undefined;
     private _context: AudioContext | null = null;
@@ -37,11 +29,7 @@ export class WebAudioSink extends AudioSink {
         this.borrowed = context;
     }
 
-    /**
-     * The context, created on first use rather than with the sink: a new
-     * AudioContext opens the audio device (50–65 ms on a desktop), and a
-     * session that never plays or decodes sound never needs one.
-     */
+    /** Created on first use rather than with the sink: a new AudioContext opens the audio device (50–65 ms on desktop), which a session that never plays never needs. */
     getContext(): AudioContext {
         this._context ??= this.borrowed ?? new AudioContext();
         return this._context;
@@ -61,11 +49,7 @@ export class WebAudioSink extends AudioSink {
         return this._graph;
     }
 
-    /**
-     * Resume the AudioContext. Must be called from within a user gesture
-     * (e.g. a click handler) the first time, or browsers keep the context
-     * suspended and no audio is heard.
-     */
+    /** Resumes the AudioContext; the first call must come from a user gesture or browsers keep it suspended and nothing is heard. */
     unlock(): void {
         if (this.context.state === "suspended") {
             this.context.resume();
@@ -81,10 +65,7 @@ export class WebAudioSink extends AudioSink {
         const existing = this.decoding.get(src);
         if (existing) return existing;
 
-        // decodeAudioData detaches `data` — that's fine, the caller in
-        // AssetManager.fetchAudio discards its reference immediately after
-        // awaiting append. Skipping the defensive .slice(0) saves a multi-MB
-        // allocation per audio source.
+        // decodeAudioData detaches `data`; the AssetManager caller discards its reference after awaiting append, so skipping a defensive .slice(0) saves a multi-MB allocation per source.
         const job = this.context.decodeAudioData(data).then((buffer) => {
             this.bufferCache.set(src, buffer);
         }).finally(() => {
@@ -215,7 +196,6 @@ export class WebAudioSink extends AudioSink {
             active.source.disconnect();
             for (const node of active.nodes) node.disconnect();
         } catch {
-            // already stopped
         }
         this.active.delete(id);
     }
@@ -231,7 +211,6 @@ export class WebAudioSink extends AudioSink {
         try {
             this._graph?.master.disconnect();
         } catch {
-            // already disconnected
         }
         const owned = this.borrowed ? null : this._context;
         if (owned && owned.state !== "closed") {

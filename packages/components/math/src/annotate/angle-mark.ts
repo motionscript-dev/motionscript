@@ -2,10 +2,10 @@ import {
     component2d,
     Graphics2D,
     Types,
-    type Color,
     type NodeOf,
+    type Color as _Color,
+
     type NormalizedColor,
-    type PaintProps,
     type PathCommand,
     // Named so the emitted declaration reaches these through the sdk, not core.
     type Node2D as _Node2D,
@@ -18,18 +18,8 @@ import {
 import { listed, omit, PAINT, PAINT_COMMANDS, painted } from "../kit/component";
 import { outlineBounds, OWN_FRAME } from "../kit/follow";
 import { drawLabels, loadFormulas } from "../kit/furniture";
+import { radians } from "../kit/geometry";
 import { strokeShape } from "../kit/mark";
-
-export interface AngleMarkProps extends PaintProps {
-    fromAngle?: number;
-    toAngle?: number;
-    radius?: number;
-    corner?: "arc" | "square" | "auto";
-    label?: string;
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-}
 
 /** Degrees of arc per drawn segment. */
 const ARC_STEP = 4;
@@ -37,7 +27,7 @@ const ARC_STEP = 4;
 const RIGHT_SLOP = 0.5;
 
 const point = (radius: number, degrees: number) => {
-    const turn = (degrees * Math.PI) / 180;
+    const turn = radians(degrees);
     return { x: radius * Math.cos(turn), y: radius * Math.sin(turn) };
 };
 

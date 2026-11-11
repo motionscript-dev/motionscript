@@ -9,9 +9,8 @@ import type { ClipInstance } from "./clip-instance";
 import { frameTime } from "./placement";
 
 /**
- * A slot named by what a rebuild of the clip reproduces — the owner key of the
- * node holding it and the prop's name — so what a declaration read survives the
- * instance it was read on.
+ * Named by what a rebuild of the clip reproduces (the owner key of the node holding it plus the prop's name),
+ * so what a declaration read survives the instance it was read on.
  */
 export type SlotId = string;
 
@@ -38,7 +37,6 @@ function nameOf(id: SlotId): string {
     return id.slice(id.lastIndexOf(HOSTED) + 1);
 }
 
-/** Names slots against one instance. */
 export class SlotNamer {
     constructor(private readonly _instance: ClipInstance) { }
 
@@ -86,7 +84,6 @@ function removeFrom<K, V>(map: Map<K, Set<V>>, key: K, value: V): boolean {
 
 const NONE: ReadonlySet<never> = new Set();
 
-/** What each owner's declarations read, and the reverse: who reads each slot. */
 export class OwnerDependencies {
     set(ownerKey: string, slots: Iterable<SlotId>): void {
         this.remove(ownerKey);
@@ -121,17 +118,14 @@ export class OwnerDependencies {
         return this._readers.get(id) ?? NONE;
     }
 
-    /** Owners a composite built below `row`. */
     ownersBelow(row: string): ReadonlySet<string> {
         return this._ownersBelow.get(row) ?? NONE;
     }
 
-    /** Read slots `ownerKey`'s node holds. */
     slotsHostedBy(ownerKey: string): ReadonlySet<SlotId> {
         return this._byHost.get(ownerKey) ?? NONE;
     }
 
-    /** Read slots held by anything a composite built below `row`. */
     *slotsHostedBelow(row: string): Generator<SlotId> {
         for (const host of this._hostsBelow.get(row) ?? NONE) yield* this.slotsHostedBy(host);
     }
@@ -165,7 +159,6 @@ export class OwnerDependencies {
     }
 }
 
-/** A placed command's start and what it writes, by slot id. */
 export interface PlacedWrites {
     start: number;
     writes: readonly SlotId[];
@@ -174,26 +167,18 @@ export interface PlacedWrites {
 export interface DirtyInput {
     patch: TimelinePatch;
     deps: OwnerDependencies;
-    /**
-     * Placed commands before the patch and after it, keyed by their recorded write
-     * set — a set on both sides belongs to a command the patch did not rebuild.
-     */
+    /** Keyed by recorded write set: a set on both sides belongs to a command the patch did not rebuild. */
     before: ReadonlyMap<object, PlacedWrites>;
     after: ReadonlyMap<object, PlacedWrites>;
     fps: number;
-    /** The prop names the row's node registers, after the patch. */
     propsOf(rowId: string): ReadonlySet<string> | undefined;
-    /** Whether the row's node, after the patch, holds children it built for itself. */
     buildsChildren(rowId: string): boolean;
     isContextProvider(type: string): boolean;
 }
 
 export interface DirtyOwners {
-    /** Owners to declare again, each from its frame. */
     owners: Map<string, number>;
-    /** Rows whose composite-built owners are all declared again, from the frame. */
     below: Map<string, number>;
-    /** Rows gone from the clip; they and everything below them leave the index. */
     removed: Set<string>;
     /** Of the above, owners and rows declared from no later than they arrive — their audio is redone too. */
     arrivalOwners: Set<string>;
@@ -201,13 +186,10 @@ export interface DirtyOwners {
 }
 
 /**
- * The owners an applied patch can have changed the declarations of, each from
- * the first frame it can differ on.
- *
- * Every rule reads the recorded dependencies, so an edit no declaration read —
- * a position, a size, a tween of either — names nobody. Rules err towards naming
- * an owner: one named needlessly costs its declarations over its frames, one
- * missed keeps a window a fresh build would not have.
+ * Each from the first frame it can differ on. Every rule reads the recorded dependencies, so an edit no
+ * declaration read (a position, a size, a tween of either) names nobody. Rules err towards naming an owner:
+ * one named needlessly costs its declarations over its frames, one missed keeps a window a fresh build would
+ * not have.
  */
 export function dirtyOwners(input: DirtyInput): DirtyOwners {
     const { patch, deps, fps } = input;
@@ -326,10 +308,8 @@ export function dirtyOwners(input: DirtyInput): DirtyOwners {
 }
 
 /**
- * The props a re-instantiated row's edit changed, or `null` when every slot it
- * holds must be taken as changed: a new type, a new place, a new context above
- * it, or a prop that is not a slot of its own and so reaches its state some
- * other way.
+ * `null` when every slot it holds must be taken as changed: a new type, a new place, a new context above it,
+ * or a prop that is not a slot of its own and so reaches its state some other way.
  */
 function changedProps(id: string, input: DirtyInput, changedRows: ReadonlySet<string>): ReadonlySet<string> | null {
     const { prev, next, diff } = input.patch;
@@ -343,7 +323,6 @@ function changedProps(id: string, input: DirtyInput, changedRows: ReadonlySet<st
     return props ? changedSlots(a, b, props) : null;
 }
 
-/** The props that differ between two rows, or `null` when one of them is not a slot of `slots`. */
 function changedSlots(a: NodeSpec, b: NodeSpec, slots: ReadonlySet<string>): ReadonlySet<string> | null {
     const names = new Set<string>();
     for (const key of new Set([...Object.keys(a.props), ...Object.keys(b.props)])) {
@@ -367,7 +346,6 @@ function providerChangedAbove(index: DocIndex, id: string, changed: ReadonlySet<
     return false;
 }
 
-/** The first frame whose time reaches `seconds`. */
 export function firstFrameAt(seconds: number, fps: number): number {
     if (!(seconds > 0)) return 0;
     if (!Number.isFinite(seconds)) return Infinity;

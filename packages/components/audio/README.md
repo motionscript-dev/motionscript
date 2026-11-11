@@ -71,7 +71,7 @@ gradient or an image, so a voice declares no asset.
 `@motionscript/audio` exports the two nodes, `NODES`, the envelope type and
 `EMPTY_ENVELOPE`, and the pure helpers (`sampleEnvelope`, `forSpeaker`, `layOutBars`,
 `paintBars`, `groupByPaint`, `voiceColor`). `@motionscript/audio/kit` (`src/kit.ts`)
-exports the same helpers plus `clamp01` and `livePaintKey`. A copy of `full-waveform` or
+exports the same helpers plus `livePaintKey`. A copy of `full-waveform` or
 `live-waveform` (`registry.json`) takes three files into the project (`envelope.ts`,
 `shared.ts` and the node); the copy's imports stay relative, so none is rewritten to
 the kit specifier.

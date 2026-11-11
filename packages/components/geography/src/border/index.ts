@@ -1,11 +1,5 @@
-/**
- * GeoBorder: country and subdivision outlines by ISO 3166 code.
- *
- * A copy of `geo-border` takes only `geo-border.ts`. Everything it imports from
- * here — the source registry, the file cache, the geometry — stays behind the
- * package, so a forked node shares the host's registered sources instead of
- * owning an empty registry of its own.
- */
+// A copy of `geo-border` takes only `geo-border.ts`; the registry, file cache and geometry stay behind
+// the package, so a fork shares the host's registered sources instead of owning an empty registry.
 export * from "./format"
 export * from "./geo-border"
 export * from "./geometry"

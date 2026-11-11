@@ -8,34 +8,20 @@ export interface Corners<T> {
     bottomRight: T;
 }
 
-/**
- * The accepted input grammar for any per-corner property (radius, style),
- * generic over the corner value type `T`:
- *
- * - a single `T` applies uniformly to all four corners;
- * - `{ topLeft, … }` overrides individual corners (unspecified corners fall back
- *   to a previous value or the type's default when resolved);
- * - `{ top, bottom }` sets the top pair (`topLeft`, `topRight`) and/or the bottom
- *   pair (`bottomLeft`, `bottomRight`);
- * - `{ left, right }` sets the left pair (`topLeft`, `bottomLeft`) and/or the
- *   right pair (`topRight`, `bottomRight`).
- */
+/** The input grammar for any per-corner property, generic over the corner value `T`: a single `T` applies to all four; `{ topLeft, … }` overrides individual corners (the rest fall back to a previous value or the default); `{ top, bottom }` sets the top and/or bottom pair; `{ left, right }` the left and/or right pair. */
 export type CornersInput<T> =
     | T
     | Partial<Corners<T>>
     | { top?: T; bottom?: T }
     | { left?: T; right?: T };
 
-/** Narrows a {@link CornersInput} to its scalar form. */
 export type CornerScalarGuard<T> = (value: CornersInput<T>) => value is T;
 
 function makeUniform<T>(value: T): Corners<T> {
     return { topLeft: value, topRight: value, bottomLeft: value, bottomRight: value };
 }
 
-// The {top,bottom} / {left,right} axis shorthands map to corners as documented
-// on CornersInput. Centralised here so the mapping is a single, test-pinned
-// chokepoint rather than scattered across the resolver.
+// The {top,bottom} / {left,right} shorthands map to corners here, a single test-pinned chokepoint.
 function fromTopBottom<T>(v: { top?: T; bottom?: T }, fb: Corners<T>): Corners<T> {
     return {
         topLeft: v.top ?? fb.topLeft,
@@ -54,14 +40,7 @@ function fromLeftRight<T>(v: { left?: T; right?: T }, fb: Corners<T>): Corners<T
     };
 }
 
-/**
- * Resolves a {@link CornersInput} into a fully-specified {@link Corners}.
- *
- * Precedence per corner mirrors the rest of the codebase's mappers:
- * supplied value → `previous` → `fallback`. `isScalar` discriminates the scalar
- * form from the object forms (e.g. `typeof v === "number"` for radius, or a
- * string-literal check for style).
- */
+/** Resolves a {@link CornersInput} to a full {@link Corners}; precedence per corner is supplied value → `previous` → `fallback`. `isScalar` discriminates the scalar form from the object forms. */
 export function resolveCorners<T>(
     value: CornersInput<T>,
     fallback: T,
@@ -92,7 +71,6 @@ export function resolveCorners<T>(
     if ("left" in obj || "right" in obj) {
         return fromLeftRight(value as { left?: T; right?: T }, fb);
     }
-    // Empty object: keep the fallback for every corner.
     return { ...fb };
 }
 

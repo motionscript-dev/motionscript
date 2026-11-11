@@ -1,13 +1,7 @@
 import { shuffled } from "./random"
 import type { Slot } from "./slots"
 
-/**
- * The order a per-item effect sweeps through a grid's items. The first five
- * work on any grid; the rest follow one arrangement's own geometry — rows and
- * columns of a rectangular grid (or top-to-bottom and left-to-right of any
- * other), the way round a ring, the way along a path, front to back of a sphere
- * — and fall back to item order where the grid has no such thing.
- */
+/** The first five work on any grid; the rest follow one arrangement's geometry and fall back to item order where it has none. */
 export const STAGGER_ORDERS = [
   "index",
   "reverse",
@@ -44,12 +38,7 @@ export function staggerRanks(order: StaggerOrder, slots: readonly Slot[], seed: 
   return keys.map((key) => (key - min) / range)
 }
 
-/**
- * Item progress at command time `t`: each item runs over the same length of
- * time, starting `rank · stagger` in. The stagger lives inside the command's
- * duration, so a one-second reveal takes one second for four items or four
- * hundred.
- */
+/** Each item runs the same length, starting `rank · stagger` in; the stagger lives inside the command's duration. */
 export function staggerProgress(rank: number, t: number, stagger: number): number {
   const s = Math.max(0, Math.min(MAX_STAGGER, stagger))
   const p = s === 0 ? t : (t - rank * s) / (1 - s)

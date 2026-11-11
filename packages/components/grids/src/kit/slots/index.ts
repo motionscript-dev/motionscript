@@ -17,8 +17,6 @@ export * from "./sphere"
  */
 export type Arrangement = RectangularArrangement | RadialArrangement | PathArrangement | SphereArrangement
 
-export type ArrangementKind = Arrangement["kind"]
-
 /** Where each of `input.count` items sits under `arrangement`, in slot order. */
 export function slotsOf(arrangement: Arrangement, input: SlotInput): Slot[] {
   switch (arrangement.kind) {

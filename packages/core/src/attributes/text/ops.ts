@@ -1,16 +1,4 @@
-/**
- * Every text operation, on one object.
- *
- * `textOps` was already the text attribute's `resolve`/`lerp` pair; it now also
- * carries what a `TextStyle` needs — the preset lookup, the merge every
- * text-default channel is built on, a whole style's resolve/lerp pair — and span
- * flattening, the shape `pathOps` has.
- *
- * The two cascades built on these are deliberately not here. A node's
- * (`applyTextDefaults`) lives beside `DefaultTextStyle` and a drawn op's
- * (`applyGraphicsTextDefaults`) beside `draw()`: each belongs to its channel, not
- * to the style.
- */
+/** Every text operation on one object: `textOps` carries the attribute's `resolve`/`lerp` plus what a `TextStyle` needs (preset lookup, merge, a style's resolve/lerp pair) and span flattening. The two defaults cascades (`applyTextDefaults` beside `DefaultTextStyle`, `applyGraphicsTextDefaults` beside `draw()`) belong to their channels, not here. */
 import type { AttributeOps } from "@/attributes/shared/operators";
 import { fillOps } from "@/attributes/shape/fill/registry";
 import type { FillResolved } from "@/attributes/shape/fill/union";
@@ -20,17 +8,12 @@ import { shadowOps, type ShadowResolved } from "@/attributes/shape/shadow/shadow
 import { lerpNumber } from "@/tween/lerp";
 import type { ResolvedTextSpan, TextCase, TextShapingKey, TextSpan, TextStyle } from "./types";
 
-/** Every key a {@link TextStyle} can set. */
 export const TEXT_STYLE_KEYS = [
     'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
     'letterSpacing', 'lineHeight', 'textAlign', 'fill', 'stroke', 'shadow',
 ] as const satisfies readonly (keyof TextStyle)[];
 
-/**
- * The keys a drawn `text`/`richText` op can inherit. `fill`/`stroke`/`shadow` are
- * absent because in a `Graphics2D` they are group-scoped ops, not per-shape
- * slots: defaulting one would change which shapes the group's paint covers.
- */
+/** Keys a drawn `text`/`richText` op can inherit; `fill`/`stroke`/`shadow` are absent because in a `Graphics2D` they are group-scoped ops, and defaulting one would change which shapes the group's paint covers. */
 export const TEXT_SHAPING_KEYS = [
     'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
     'letterSpacing', 'lineHeight', 'textAlign',
@@ -40,36 +23,24 @@ export const TEXT_SHAPING_KEYS = [
 export const EMPTY_TEXT_STYLE: TextStyle = Object.freeze({});
 
 
-/** The text attribute's operations beyond `resolve`/`lerp`. */
 export interface TextOps {
-    // ── Styles ─────────────────────────────────────────────────────────────
     /** A `theme.typography` preset (case-insensitive), or {@link EMPTY_TEXT_STYLE} when none is registered. */
     preset(name: string): TextStyle;
     /** The keys `over` sets, laid onto `base`. Returns `base` itself when `over` sets nothing. */
     mergeStyle(base: TextStyle, over: TextStyle | undefined): TextStyle;
     /** `style ?? previous` per field, paints resolved. Idempotent, like every mapper. */
     resolveStyle(style: TextStyle | undefined, previous: TextStyle): TextStyle;
-    /**
-     * Interpolate two font sizes. `'autofit'` is a mode, not a magnitude, so it
-     * steps at the midpoint; two numbers interpolate. The rule {@link lerpStyle}
-     * applies to its `fontSize`, for a node's own `fontSize` property to share.
-     */
+    /** Interpolates two font sizes; `'autofit'` is a mode, not a magnitude, so it steps at the midpoint. */
     lerpFontSize(a: number | "autofit" | undefined, b: number | "autofit" | undefined, t: number): number | "autofit" | undefined;
     /** Interpolate two resolved styles; categorical and one-sided fields step at the midpoint. */
     lerpStyle(from: TextStyle, to: TextStyle, t: number): TextStyle;
     /** A style as `Text` constructor props: unset keys dropped, the family falling back to the host's. */
     styleProps(style: TextStyle): Record<string, unknown>;
 
-    // ── Spans ──────────────────────────────────────────────────────────────
     /** A span tree flattened against `base`: its text-bearing spans, in document order. */
     flatten(spans: readonly TextSpan[], base: Omit<ResolvedTextSpan, "text">): ResolvedTextSpan[];
 
-    // ── Case ───────────────────────────────────────────────────────────────
-    /**
-     * `text` recased, **at its own length**: a character whose case mapping
-     * would add characters (`ß` → `SS`) keeps its own form, because run offsets,
-     * selections and caret slots all index the string as typed.
-     */
+    /** `text` recased **at its own length**: a character whose mapping would add characters (`ß` → `SS`) keeps its own form, since run offsets, selections and caret slots index the string as typed. */
     applyCase(text: string, textCase: TextCase): string;
 }
 
@@ -92,10 +63,7 @@ export const textOps: AttributeOps<string, string> & TextOps = {
 };
 
 
-/**
- * Types and untypes: the common prefix and suffix hold still while `from`'s
- * differing middle shrinks away and `to`'s grows in.
- */
+/** Types and untypes: the common prefix and suffix hold still while `from`'s differing middle shrinks away and `to`'s grows in. */
 function lerp(from: string, to: string, t: number): string {
     if (t <= 0) return from;
     if (t >= 1) return to;
@@ -175,19 +143,11 @@ function lerpStyle(from: TextStyle, to: TextStyle, t: number): TextStyle {
     };
 }
 
-// Spread onto a node, an `undefined` key is stored as a value rather than read as
-// unset, so unset keys are dropped. The base is a fresh object per call because
-// `mergeStyle` returns it as-is when `style` sets nothing, and a frozen
-// `EMPTY_TEXT_STYLE` would then be handed out as props.
-//
-// `fontFamily` is dropped along with the rest rather than backfilled from
-// `hostTextFamily()`. Writing it here turned the *component's* own theme into an
-// author-set prop, and `applyTextDefaults` skips every key the props already
-// carry — so a chart axis reached the renderer holding the host family, or `""`
-// when no host had declared one, and the document's `<DefaultTextStyle>` and
-// `theme.typography.default` never got a look in. Leaving it unset puts a
-// component's text on the same cascade as an author's, with the host family
-// where it belongs: last, in `requireFontFamily`.
+// An `undefined` key spread onto a node is stored as a value, so unset keys are dropped. The base is a fresh object per
+// call because `mergeStyle` returns it as-is when `style` sets nothing, and the frozen `EMPTY_TEXT_STYLE` would be handed
+// out as props. `fontFamily` is deliberately not backfilled from `hostTextFamily()`: that would make the component's own
+// theme an author-set prop, and `applyTextDefaults` skips keys the props already carry, so `<DefaultTextStyle>` and
+// `theme.typography.default` would never be consulted. Unset, the host family stays last, in `requireFontFamily`.
 function styleProps(style: TextStyle): Record<string, unknown> {
     return mergeStyle({}, style) as Record<string, unknown>;
 }

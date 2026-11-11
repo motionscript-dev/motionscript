@@ -1,12 +1,6 @@
 import type { Size2D } from "@motionscript/sdk"
 
-/**
- * One place in an arrangement, in the grid's own frame: centred on it, y-up,
- * `depth` toward the viewer.
- *
- * Pure data, and the whole of what an arrangement produces — which is what lets
- * a morph blend any two of them item by item, whatever shapes they came from.
- */
+/** One place in an arrangement, in the grid's frame (y-up, `depth` toward the viewer). Pure data, so a morph can blend any two. */
 export interface Slot {
   x: number
   y: number

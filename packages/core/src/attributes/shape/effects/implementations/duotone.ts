@@ -1,19 +1,11 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * Duotone / gradient map — remap the content's luminance onto a two-colour ramp,
- * so black becomes `shadows`, white becomes `highlights`, and everything between
- * interpolates. Chroma in the source is discarded; only its brightness survives.
- *
- * The editorial two-colour treatment (Spotify covers, risograph posters) and the
- * general "tint a photo to brand colours" tool, both from one pair of colours.
- */
+/** Duotone / gradient map: the content's luminance remapped onto a two-colour ramp (black becomes `shadows`, white `highlights`); source chroma is discarded. */
 export interface DuotoneEffect extends ModedEffect, EffectFields<typeof duotoneSpec.params> {
     type: "duotone";
 }
 
-/** The {@link DuotoneEffect} spec: its parameters, defaults and ranges. */
 export const duotoneSpec = defineEffect({
     type: "duotone",
     group: "color",

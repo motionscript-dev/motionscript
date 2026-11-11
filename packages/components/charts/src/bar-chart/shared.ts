@@ -1,17 +1,3 @@
-/**
- * Types and pure helpers specific to the {@link BarChart} family: how a row's
- * values become the spans its columns cover, how the value axis is scaled around
- * them, and the theme the bars add to the shared chart vocabulary.
- *
- * Everything a line or a pie chart would want too — what a series is, the axis
- * domain model, the theme leaf resolvers, the legend and plot-panel branches —
- * lives in `../kit/shared.ts` and is imported here.
- *
- * Kept renderer-agnostic (no `Node` imports) so a host's inspector mapping
- * can build a partial {@link BarChartTheme} without
- * pulling the components in.
- */
-
 import {
   fillOps,
   lerpNumber,
@@ -26,6 +12,7 @@ import {
   type StrokeResolved,
   type TextStyle,
 } from "@motionscript/sdk"
+import { niceStep } from "@motionscript/sdk/component"
 
 import {
   CHART_PALETTE,
@@ -39,7 +26,6 @@ import {
   lerpLegendConfig,
   lerpPlotArea,
   lerpSeriesFills,
-  niceStep,
   num,
   resolveAxisConfig,
   resolveLegendConfig,
@@ -54,41 +40,25 @@ import {
   type Range,
 } from "../kit/shared"
 
-/**
- * One series in a {@link BarChart}: a column of the table drawn as one bar per
- * row — side by side with its siblings within each category's slot, or stacked
- * on top of them.
- *
- * The family-wide {@link ChartSeries} under a name that says what it draws here.
- */
+/** One bar per row, beside its siblings in the category slot or stacked on them: {@link ChartSeries} under the name for what it draws here. */
 export type BarSeries = ChartSeries
 
 /**
- * One drawn bar's span in **data units**: the value its base sits at and the
- * value its far end reaches.
- *
- * A span rather than a height because that is the one shape both modes fit. A
- * grouped bar runs from zero to its value; a stacked segment runs from the
- * running total below it to that total plus its own value. Negative values fall
- * out of the same arithmetic — the span simply runs the other way — so a chart
- * with a loss in it needs no special case, only a baseline that isn't the floor.
+ * One bar's span in data units. A span rather than a height because both modes
+ * fit it, and a negative value just runs the other way with no special case.
  */
 export interface BarSpan {
-  /** Value the bar's base sits at — 0 when grouped, the running total when stacked. */
+  /** Where the base sits: 0 when grouped, the running total below when stacked. */
   from: number
-  /** Value its far end reaches. */
   to: number
-  /** The value this bar plots — `to - from`, kept for the figure printed on it. */
+  /** `to - from`, kept for the figure printed on the bar. */
   value: number
 }
 
 /**
- * The spans one row's bars cover, one per series, in series order.
- *
- * Stacking is a running sum in the order the series are listed, which is also
- * the order they're drawn: series 0 sits on the baseline and each later one
- * rides on what's below it. A zero-valued series still yields a (degenerate)
- * span so the returned list stays index-aligned with the series list.
+ * One row's spans, in series order. Stacking is a running sum in listed order,
+ * so series 0 sits on the baseline. A zero value still yields a degenerate span,
+ * keeping the list index-aligned with the series.
  */
 export function barSpans(
   row: DataRecord,
@@ -106,13 +76,9 @@ export function barSpans(
 }
 
 /**
- * The index of the series whose segment ends a row's stack — the one that gets
- * the rounded cap, so a stack reads as one capped column rather than a pile of
- * separate boxes. `-1` when every value in the row is zero.
- *
- * Read off the *last non-zero* series rather than the last one listed, so a
- * series that happens to be 0 in this row doesn't take the cap and leave the
- * segment below it square.
+ * The series ending a row's stack, which gets the rounded cap; `-1` when the row
+ * is all zero. It is the last non-zero series, so a zero one does not take the
+ * cap and leave the segment below square.
  */
 export function stackCapIndex(row: DataRecord, series: BarSeries[]): number {
   let last = -1
@@ -122,18 +88,14 @@ export function stackCapIndex(row: DataRecord, series: BarSeries[]): number {
   return last
 }
 
-/** The captions beneath the baseline: one per row, read off the category column. */
 export function barCategories(data: DataRecord[], field: string): string[] {
   return data.map((row) => text(row, field))
 }
 
 /**
- * The `[min, max]` of everything the chart draws, **zero always included**.
- *
- * Zero is in the range whatever the data says, because a bar chart's baseline is
- * zero: a scale starting at 40 draws a column three times its neighbour for a
- * 10% difference, which is the classic way to lie with one. A chart that really
- * does want a cropped axis says so with an explicit range.
+ * The `[min, max]` of everything drawn, zero always included: a scale starting
+ * at 40 draws a column three times its neighbour for a 10% difference. A cropped
+ * axis takes an explicit range.
  */
 export function barValueExtent(
   data: DataRecord[],
@@ -151,14 +113,7 @@ export function barValueExtent(
   return lo < hi ? [lo, hi] : [0, 1]
 }
 
-/**
- * Effective value scale: the explicit `range`, else the data's extent nudged out
- * to tidy step bounds so the markers read as round numbers.
- *
- * `divisions` is how many segments the auto-range is stepped into (one fewer
- * than the marker count), so the ticks the axis draws land on the bounds this
- * picks.
- */
+/** The explicit `range`, else the data's extent nudged to tidy bounds; `divisions` (one fewer than the marker count) makes the drawn ticks land on them. */
 export function resolveBarScale(
   data: DataRecord[],
   series: BarSeries[],
@@ -173,50 +128,36 @@ export function resolveBarScale(
   return [Math.floor(lo / step) * step, Math.ceil(hi / step) * step]
 }
 
-// ---- Theme ---------------------------------------------------------------
-
-/** How the columns themselves are drawn and how the slot is divided up. */
+/** How the columns are drawn and the slot divided. */
 export interface BarStyleConfig {
-  /**
-   * Radius of a column's far-end corners, in px. Only the outer end rounds — an
-   * interior stacked segment stays square, so the stack reads as one column.
-   */
+  /** Radius in px of a column's far-end corners; an interior stacked segment stays square. */
   cornerRadius: number
-  /**
-   * Fraction of its category's slot the bars fill, `[0, 1]`. The remainder is
-   * the channel between one category and the next, which is what makes a bar
-   * chart read as groups rather than as a solid block.
-   */
+  /** Fraction of the category slot the bars fill, `[0, 1]`; the rest separates groups. */
   slotFill: number
-  /** Gap between the grouped bars *within* one slot, in px. Ignored when stacked. */
+  /** Gap in px between grouped bars within a slot; ignored when stacked. */
   groupGap: number
-  /** Optional outline on every column. */
   stroke: Stroke
-  /** Optional drop shadow on every column. */
   shadow: Shadow
 }
 
 /** A {@link BarChart}'s full, resolved visual theme. */
 export interface BarChartConfig {
-  /**
-   * Default per-series bar paint, cycled by series index (`i % length`). A
-   * series' own `fill`, when set, replaces its entry outright.
-   */
+  /** Cycled by series index; a series' own `fill` replaces its entry outright. */
   seriesFills: Fill[]
   bar: BarStyleConfig
-  /** The category axis beneath the baseline. */
+  /** The category axis. */
   xAxis: AxisConfig
-  /** The numeric value axis up the left. */
+  /** The value axis. */
   yAxis: AxisConfig
   plotArea: PlotAreaConfig
   legend: LegendConfig
-  /** The figure printed on each column, when the chart prints them. */
+  /** The figure printed on each column. */
   valueStyle: TextStyle
-  /** How far everything *outside* a spotlit series or category fades. */
+  /** How far everything outside a spotlit series or category fades. */
   spotlight: { dimOpacity: number }
 }
 
-/** Author-facing partial theme — every branch optional and deep-merged. */
+/** The author's partial theme, deep-merged onto {@link DEFAULT_BAR_CHART_THEME}. */
 export type BarChartTheme = {
   seriesFills?: Fill[]
   bar?: Partial<BarStyleConfig>
@@ -228,7 +169,6 @@ export type BarChartTheme = {
   spotlight?: Partial<BarChartConfig["spotlight"]>
 }
 
-/** The bar chart's out-of-the-box look. */
 export const DEFAULT_BAR_CHART_THEME: BarChartConfig = {
   seriesFills: DEFAULT_SERIES_FILLS,
   bar: {
@@ -238,9 +178,7 @@ export const DEFAULT_BAR_CHART_THEME: BarChartConfig = {
     stroke: [],
     shadow: [],
   },
-  // A category axis names its slots, so its captions are set like a caption
-  // rather than like a numeric marker: same size, less weight than the line
-  // chart's ticks, and centred on the slot.
+  // Captions rather than numeric markers: less weight than the line chart's ticks.
   xAxis: {
     ...DEFAULT_X_AXIS,
     labelStyle: { ...DEFAULT_X_AXIS.labelStyle, fontWeight: 600 },
@@ -293,12 +231,7 @@ function lerpBarStyle(
   }
 }
 
-/**
- * {@link BarChart}'s `theme` entry's resolve: merges the author's partial
- * {@link BarChartTheme} onto `previous` (falling back to
- * {@link DEFAULT_BAR_CHART_THEME} on first resolution), fully resolving every
- * leaf so the tween below always has resolved data to interpolate.
- */
+/** The `theme` entry's resolve: merges a partial {@link BarChartTheme} onto `previous` (first resolution: the default). */
 export function resolveBarChartTheme(
   theme: BarChartTheme | undefined,
   previous?: BarChartConfig
@@ -318,7 +251,6 @@ export function resolveBarChartTheme(
   }
 }
 
-/** {@link BarChart}'s `theme` entry's lerp — leaf by leaf. */
 export function lerpBarChartTheme(
   from: BarChartConfig,
   to: BarChartConfig,
@@ -342,7 +274,7 @@ export function lerpBarChartTheme(
   }
 }
 
-/** The paint series `index` is drawn in: its own override, else the palette's entry. */
+/** Series `index`'s own `fill`, else the palette's entry. */
 export function resolveBarFill(
   palette: Fill[],
   series: BarSeries,

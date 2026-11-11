@@ -12,33 +12,20 @@ import type { Fill } from "@/attributes/shape/fill/chain";
 import type { Stroke } from "@/attributes/shape/stroke/stroke";
 import type { Shadow } from "@/attributes/shape/shadow/shadow";
 import type { NodeEffect } from "@/attributes/shape/effects/union";
-// A direct leaf import, not the `@/attributes` barrel: this file sits inside a
-// cycle the barrel would close on itself (fill's canvas3d implementation →
-// render3d → Node2D → RenderContext2D → here), so importing the barrel here
-// leaves `effectsOps` (and anything else evaluated before it) undefined at
-// module-init time on that path.
+// A direct leaf import, not the `@/attributes` barrel: this file sits in a cycle (fill's canvas3d implementation ->
+// render3d -> Node2D -> RenderContext2D -> here) the barrel would close, leaving `effectsOps` undefined at module init.
 import { type Effect, effectsOps } from "@/attributes/shape/effects/chain";
 import type { Alignment } from "@/attributes/layout/alignment";
 import type { MaskOptions } from "@/attributes/mask/mask";
 
-/**
- * A union-level rotate/scale applied to the whole drawn silhouette. `center` is
- * the pivot the union turns about: either an explicit {@link Vector2} in the
- * graphics' local coordinate space, or a **named alignment** (`'center'`,
- * `'topRight'`, …) the renderer resolves against the union's bounding box. When
- * omitted the renderer pivots about the centre of that bounding box.
- */
+/** A union-level rotate/scale on the whole drawn silhouette. `center` is the pivot: an explicit {@link Vector2} in the graphics' local space or a named alignment resolved against the union's bounding box (default: its centre). */
 export interface GraphicsTransform {
     rotation: number;
     scale: number;
     center?: Alignment;
 }
 
-/**
- * The kinds of shape ops a {@link Graphics2D} can record. Each carries the partial
- * descriptor state for that shape, exactly as the old per-shape context methods
- * accepted.
- */
+/** The shape ops a {@link Graphics2D} can record, each carrying that shape's partial descriptor state. */
 export type GraphicsShapeOp =
     | { kind: "rect"; state: Partial<RectState> & ShapeAlignmentInput }
     | { kind: "ellipse"; state: Partial<EllipseState> & ShapeAlignmentInput }
@@ -49,12 +36,7 @@ export type GraphicsShapeOp =
     | { kind: "text"; state: Partial<TextState> & ShapeAlignmentInput }
     | { kind: "richText"; state: Partial<RichTextState> & ShapeAlignmentInput };
 
-/**
- * A single recorded operation in a {@link Graphics2D} command list. Shape ops
- * declare geometry; paint ops (fill/stroke/shadow) apply to the accumulated
- * shapes; cut/mask ops composite. The renderer replays this list in order via
- * `RenderContext2D.draw()`.
- */
+/** One recorded operation: shape ops declare geometry; paint ops (fill/stroke/shadow) apply to the accumulated shapes; cut/mask ops composite. Replayed in order via `RenderContext2D.draw()`. */
 export type GraphicsOp =
     | GraphicsShapeOp
     | { kind: "fill"; fills: Fill }
@@ -71,12 +53,8 @@ const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
 ]);
 
 /**
- * A renderer-agnostic, chainable shape/paint builder.
- *
- * `Graphics2D` records a sequence of shape declarations and paint/compositing
- * operations without touching any renderer. A built `Graphics2D` is handed to a
- * `RenderContext2D` via `ctx.draw(graphics)`, which replays the recorded ops
- * against its concrete drawing backend.
+ * A renderer-agnostic, chainable shape/paint builder: records shape declarations and paint/compositing ops without
+ * touching a renderer, then `ctx.draw(graphics)` replays them against the backend.
  *
  *   const g = new Graphics2D()
  *       .ellipse({ width: 100, height: 100 })
@@ -87,30 +65,17 @@ const SHAPE_KINDS = new Set<GraphicsOp["kind"]>([
  *       .effects(Effects.blur(6));  // graphics-level: blurs the whole drawn union
  *   ctx.draw(g);
  *
- * Multiple shapes chained before a paint call are combined into a single surface
- * and painted together (one gradient maps across all of them). `cut()` uses the
- * most-recently declared shape as a cutter against the shapes before it. The
- * `mask()/applyMask()/endMask()` ops support an inline mask scope within a single
- * `draw()`.
+ * Shapes chained before a paint call combine into a single surface painted together (one gradient maps across all).
+ * `cut()` uses the latest shape as a cutter against those before it; `mask()/applyMask()/endMask()` scope an inline mask.
  *
- * Transforms come in two flavours. A per-shape `rotation`/`scale` is passed
- * *inside* a shape's params (e.g. `.rect({ ..., rotation: 30, scale: 1.2 })`):
- * it's baked into that shape's geometry before it joins the union. The
- * graphics-level `.rotation(value, center?)` / `.scale(value, center?)`
- * modifiers instead transform the *whole union* of shapes about a pivot
- * (default: the union's bounding-box centre) — turning or growing the entire
- * drawn silhouette as one.
+ * Transforms come in two flavours: a per-shape `rotation`/`scale` inside a shape's params is baked into that shape's
+ * geometry before it joins the union, while graphics-level `.rotation(value, center?)` / `.scale(value, center?)`
+ * transform the whole union about a pivot (default: its bounding-box centre). `opacity()` is also graphics-level: it
+ * composites the whole drawn result as one layer, so a trailing `.opacity(0.4)` dims the union.
  *
- * `opacity()` is graphics-level: it composites the entire drawn result (all
- * shapes together) into one layer at the given alpha, exactly like a node-level
- * transform — so a trailing `.opacity(0.4)` dims the whole union.
- *
- * `effects()` scopes like `fill()`: it applies to the shapes and paints
- * accumulated *since the previous `effects()` call* (or the start), then closes
- * that group off — shapes declared after it start a fresh, unaffected group, as
- * if a new `Graphics2D` had begun. So `.ellipse().ellipse().fill().effects(Effects.blur(8))`
- * blurs those two ellipses as one union, and a following `.rect().fill()` renders
- * crisp. Chaining a second `.effects()` later filters only that later group.
+ * `effects()` scopes like `fill()`: it applies to the shapes and paints accumulated since the previous `effects()` call
+ * (or the start), then closes that group, so later shapes start fresh and unaffected. `.ellipse().ellipse().fill().effects(blur)`
+ * blurs those two ellipses as one union while a following `.rect().fill()` stays crisp.
  */
 export class Graphics2D {
     private _ops: GraphicsOp[] = [];
@@ -118,8 +83,6 @@ export class Graphics2D {
     private _rotation: number = 0;
     private _scale: number = 1;
     private _transformCenter?: Alignment;
-
-    // ─── Shapes ──────────────────────────────────────────────────────────────
 
     rect(state: Partial<RectState> & ShapeAlignmentInput): this {
         this._ops.push({ kind: "rect", state });
@@ -131,7 +94,6 @@ export class Graphics2D {
         return this;
     }
 
-    /** Declare a vector path, either from a `PathState` or a `PathBuilder`. */
     path(state: Partial<PathState> | PathBuilder): this {
         const resolved = state instanceof PathBuilder ? state.toPathState() : state;
         this._ops.push({ kind: "path", state: resolved });
@@ -163,8 +125,6 @@ export class Graphics2D {
         return this;
     }
 
-    // ─── Paint ───────────────────────────────────────────────────────────────
-
     fill(fills: Fill): this {
         this._ops.push({ kind: "fill", fills });
         return this;
@@ -180,23 +140,13 @@ export class Graphics2D {
         return this;
     }
 
-    // ─── Compositing ─────────────────────────────────────────────────────────
-
-    /**
-     * Use the last-declared shape as a cutter: union the shapes before it and
-     * subtract that last shape, leaving the result as the current surface so
-     * subsequent shapes and paint calls treat everything as one.
-     */
+    /** Uses the last-declared shape as a cutter: unions the shapes before it, subtracts it, and leaves the result as the current surface for subsequent shapes and paint. */
     cut(): this {
         this._ops.push({ kind: "cut" });
         return this;
     }
 
-    /**
-     * Open an inline mask scope. Shapes declared after this (until `applyMask()`)
-     * are the mask; shapes after `applyMask()` are the content. Close with
-     * `endMask()`.
-     */
+    /** Opens an inline mask scope: shapes until `applyMask()` are the mask, shapes after it are the content; close with `endMask()`. */
     mask(options?: MaskOptions): this {
         this._ops.push({ kind: "mask", options });
         return this;
@@ -212,61 +162,31 @@ export class Graphics2D {
         return this;
     }
 
-    // ─── Modifiers ───────────────────────────────────────────────────────────
-
-    /**
-     * Set the opacity of the whole graphics group (0–1). The entire drawn result
-     * is composited into one layer at this alpha, so overlapping shapes don't
-     * double up. Applies to everything in the list, not just the last shape.
-     */
+    /** Opacity of the whole graphics group (0-1): the entire drawn result composites into one layer at this alpha, so overlapping shapes don't double up. */
     opacity(opacity: number): this {
         this._opacity = opacity;
         return this;
     }
 
-    /**
-     * Apply image effects to the current shape group, scoped like {@link fill}:
-     * the shapes and paints recorded since the previous `effects()` call (or the
-     * start of this `Graphics2D`) are composited through the composed filter as one
-     * layer, so the effect reads that group's union silhouette (a blur bleeds
-     * across the group's combined edges, not each shape's). Calling `effects()`
-     * *closes* the group — shapes declared afterwards start a fresh, unfiltered
-     * group, as if a new `Graphics2D` had begun. Accepts an {@link Effect} — a
-     * single effect, an array, or an `Effects`/`EffectChain` builder result —
-     * normalised to a `NodeEffect[]`.
-     */
+    /** Image effects for the current shape group, scoped like {@link fill}: shapes and paints since the previous `effects()` call (or the start) composite through the filter as one layer, so the effect reads the group's union silhouette (a blur bleeds across the combined edges). Closes the group: later shapes start fresh and unfiltered. Accepts an {@link Effect}, normalised to a `NodeEffect[]`. */
     effects(effects: Effect): this {
         this._ops.push({ kind: "effects", effects: effectsOps.resolve(effects) });
         return this;
     }
 
-    /**
-     * Rotate the whole union of shapes (degrees) about `center` — either an
-     * explicit {@link Vector2} in local space or a **named alignment** (`'topRight'`,
-     * `'bottomCenter'`, …) resolved against the union's bounding box (default: the
-     * box's centre). Unlike a per-shape `rotation` passed inside a shape's params,
-     * this mutates the combined silhouette — every shape turns together as one
-     * figure.
-     */
+    /** Rotates the whole union (degrees) about `center` (an explicit {@link Vector2} or a named alignment resolved against the union's bounding box; default its centre), unlike a per-shape `rotation` inside a shape's params. */
     rotation(rotation: number, center?: Alignment): this {
         this._rotation = rotation;
         if (center !== undefined) this._transformCenter = center;
         return this;
     }
 
-    /**
-     * Scale the whole union of shapes about `center` — an explicit {@link Vector2}
-     * or a **named alignment** resolved against the union's bounding box (default:
-     * the box's centre). Like {@link rotation}, this transforms the combined
-     * silhouette rather than a single shape.
-     */
+    /** Scales the whole union about `center`, as {@link rotation}. */
     scale(scale: number, center?: Alignment): this {
         this._scale = scale;
         if (center !== undefined) this._transformCenter = center;
         return this;
     }
-
-    // ─── Consumption ─────────────────────────────────────────────────────────
 
     /** The recorded ops, in order. Consumed by `RenderContext2D.draw()`. */
     ops(): readonly GraphicsOp[] {
@@ -278,48 +198,23 @@ export class Graphics2D {
         return this._opacity;
     }
 
-    /**
-     * True when the whole graphics needs a composited layer (opacity < 1). Effects
-     * no longer force a whole-graphics layer — each `effects` op scopes its own
-     * layer to its shape group during replay (see {@link effects}).
-     */
+    /** True when the whole graphics needs a composited layer (opacity < 1); each `effects` op scopes its own layer during replay (see {@link effects}). */
     needsGroupLayer(): boolean {
         return this._opacity < 1;
     }
 
-    /**
-     * The union-level rotate/scale set by {@link rotation} / {@link scale}, or
-     * `null` when both are identity. The renderer applies this as a canvas
-     * transform about `center` (default: the union's bbox centre) wrapping the
-     * whole drawn union.
-     */
+    /** The union-level rotate/scale from {@link rotation} / {@link scale}, or `null` when both are identity; the renderer applies it as a canvas transform about `center` wrapping the drawn union. */
     groupTransform(): GraphicsTransform | null {
         if (this._rotation === 0 && this._scale === 1) return null;
         return { rotation: this._rotation, scale: this._scale, center: this._transformCenter };
     }
 
-    /** True when this Graphics2D has no shape ops (only paint/compositing) — used by
-     * renderers to paint an externally-prepared surface (e.g. a boolean result)
-     * without resetting their shape accumulator. */
+    /** True when there are no shape ops (only paint/compositing), so renderers can paint an externally-prepared surface (e.g. a boolean result) without resetting their shape accumulator. */
     isPaintOnly(): boolean {
         return !this._ops.some((op) => SHAPE_KINDS.has(op.kind));
     }
 
-    /**
-     * A structural copy of this graphics with its op list replaced and every
-     * group-level modifier (opacity, rotation, scale, transform centre) carried
-     * over.
-     *
-     * A copy rather than a mutation because a node is free to build one
-     * `Graphics2D` and submit it more than once — `Text` draws the same op list for
-     * its fill, overlay and stroke passes — and each submission may sit under
-     * different ambient state. Rewriting the shared instance would leak one
-     * scope's resolution into the next.
-     *
-     * `@internal` — the seam `applyGraphicsTextDefaults` (see
-     * `render/text-defaults.ts`) folds inherited text defaults through; not part
-     * of the authoring surface.
-     */
+    /** A structural copy with its op list replaced and every group-level modifier carried over. A copy because a node may submit one `Graphics2D` more than once (`Text` draws the same ops for fill, overlay and stroke), each under different ambient state; rewriting the shared instance would leak one scope's resolution into the next. The seam `applyGraphicsTextDefaults` (see `render/text-defaults.ts`) folds inherited text defaults through. */
     /** @internal */
     _withOps(ops: GraphicsOp[]): Graphics2D {
         const next = new Graphics2D();

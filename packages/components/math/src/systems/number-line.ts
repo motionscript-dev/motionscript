@@ -2,11 +2,10 @@ import {
     component2d,
     Graphics2D,
     Types,
-    type Color,
     type Extents,
     type NodeOf,
+    type Color as _Color,
     type NormalizedColor,
-    type PaintProps,
     type StrokeResolved,
     type Values,
     type Vector2,
@@ -20,29 +19,14 @@ import {
     type Stroke as _Stroke,
 } from "@motionscript/sdk";
 import { listed, PAINT, PAINT_COMMANDS } from "../kit/component";
-import { cartesianMap, resolveInterval, type AxisScaling, type CoordinateMap, type Interval } from "../kit/coords";
-import { along, AXIS_COLOR, drawLabels, drawn, lerpInterval, readInterval, withoutTips, type Label } from "../kit/furniture";
+import { cartesianMap, resolveInterval, type CoordinateMap } from "../kit/coords";
+import { along, AXIS_COLOR, drawLabels, drawn, intervalEntry, withoutTips, type Label } from "../kit/furniture";
 import { drawSystem, systemLayout, systemMap, systemOpenPlane, systemProvides, systemSize } from "../kit/system";
 import { formatTick, ticksFor } from "../kit/ticks";
 
-export interface NumberLineProps extends PaintProps {
-    range?: Interval;
-    step?: number;
-    scaling?: AxisScaling;
-    ticks?: boolean;
-    tickSize?: number;
-    longTicks?: number[];
-    labels?: boolean;
-    labelExclude?: number[];
-    labelSide?: "below" | "above";
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-}
-
 const state = {
     ...PAINT,
-    range: Types.custom<Interval>([-5, 5], { resolve: readInterval, lerp: lerpInterval }),
+    range: intervalEntry([-5, 5]),
     /** The spacing of the ticks; zero picks a tidy one for the line's length. */
     step: Types.number(0, { min: 0 }),
     scaling: listed(["linear", "log"], "linear", { animatable: false }),

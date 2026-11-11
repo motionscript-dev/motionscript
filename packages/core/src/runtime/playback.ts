@@ -2,16 +2,10 @@ import { TimeCallback } from "@/platform/ticker";
 import { PlaybackController } from "./playback-controller";
 
 /**
- * Realtime transport over a `Session`.
- *
- * Reached as `session.playback`, and **`null` when the environment has no
- * clock** — a headless export has no wall clock to sync to. That is deliberately
- * an absence rather than a no-op: a UI wants to ask whether a transport exists
- * (and hide its scrub bar if not) rather than call `play()` into a void.
- *
- * Thin on purpose. Everything here is `PlaybackController`'s; this exists so
- * that "what a session is" and "what is currently playing it" are separable, and
- * so the transport half can simply not exist where it makes no sense.
+ * Realtime transport over a `Session`, reached as `session.playback`. `null` when the environment has no clock
+ * (a headless export has no wall clock to sync to): an absence rather than a no-op, so a UI can ask whether a
+ * transport exists and hide its scrub bar. Thin on purpose: it is all `PlaybackController`'s, kept so "what a
+ * session is" and "what is playing it" are separable.
  */
 export class Playback {
     /** @internal — constructed by `Session`, never directly. */
@@ -21,7 +15,6 @@ export class Playback {
         return this.controller.isPlaying;
     }
 
-    /** The playhead, in frames. */
     get frame(): number {
         return this.controller.currentFrame;
     }
@@ -35,8 +28,8 @@ export class Playback {
     }
 
     /**
-     * Move the playhead while playing, without the await a paused scrub needs.
-     * Use `Session.seekFrame` when paused — it resolves once the frame is drawn.
+     * Without the await a paused scrub needs. Use `Session.seekFrame` when paused: it resolves once the frame is
+     * drawn.
      */
     seekFrame(frame: number): void {
         this.controller.seekWhilePlaying(frame);
@@ -46,7 +39,6 @@ export class Playback {
         this.controller.setMuted(muted);
     }
 
-    /** Fires as the playhead moves, in seconds. */
     onTime(callback: TimeCallback): void {
         this.controller.onTime(callback);
     }

@@ -1,21 +1,6 @@
 import { Alignment } from "@/attributes/layout/alignment";
 
-/**
- * The out-of-plane transform as one bag — the shorthand form of the individual
- * `rotationX` / `rotationY` / `depth` / `perspective` / `backfaceVisible` /
- * `flipHorizontal` / `flipVertical` / `transformOrigin` props on {@link Node2D}.
- *
- * Sugar, and only sugar: {@link expandTransform3D} writes each field onto the
- * prop it names before anything reads either, the same way `size` becomes
- * `width`/`height`. That keeps one storage location per value — so a tween of
- * `transform3D.rotationY` and a tween of `rotationY` are the same tween, and a
- * scene can mix the two forms without either shadowing the other.
- *
- * Named `NodeTransform3D` rather than `Transform3D`, which `render3d` already
- * uses for the placement of an object in a *real* 3D scene. These are two
- * different things and the names had to say so: this one tilts a flat node the
- * way a browser tilts a `<div>`, that one puts a mesh in a world with lights in it.
- */
+/** The out-of-plane transform as one bag, shorthand for the individual `rotationX` / `rotationY` / `depth` / `perspective` / `backfaceVisible` / `flipHorizontal` / `flipVertical` / `transformOrigin` props on {@link Node2D}. Only sugar: {@link expandTransform3D} writes each field onto the prop it names before anything reads either, so a tween of `transform3D.rotationY` and of `rotationY` are the same tween. Named `NodeTransform3D` because `Transform3D` in `render3d` places a mesh in a real 3D scene; this tilts a flat node as a browser tilts a `<div>`. */
 export interface NodeTransform3D {
     /** Tilt about the horizontal axis, degrees. Positive tips the top away. */
     rotationX?: number;
@@ -50,13 +35,7 @@ const TRANSFORM_3D_KEYS: ReadonlyArray<[keyof NodeTransform3D, string]> = [
     ["origin", "transformOrigin"],
 ];
 
-/**
- * Expand the `transform3D` shorthand onto the individual props, in place. An
- * explicitly-named prop in the same object wins over the bag's field, matching
- * `size`-vs-`width` and `padding`-vs-`paddingLeft`; a `transform3D` given as a
- * whole-bag callback is left alone, since there is no per-field value to
- * distribute. No-op when the key is absent, which is nearly always.
- */
+/** Expands the `transform3D` shorthand onto the individual props in place. An explicitly named prop in the same object wins over the bag's field (as `size` vs `width`); a whole-bag callback is left alone, having no per-field value to distribute. */
 /** @internal */
 export function expandTransform3D(props: Record<string, unknown>): void {
     const bag = props.transform3D;

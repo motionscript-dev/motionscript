@@ -2,9 +2,8 @@ import { quaternionFromEuler, resolveVector3, type Euler3, type Quaternion, type
 import type { Transform3D } from "./transform";
 
 /**
- * 4×4 matrix maths, in **column-major order** — the same layout three uses, so a
- * matrix built here and one read off a `THREE.Object3D` are the same sixteen
- * numbers in the same slots.
+ * 4×4 matrix maths in **column-major order**, three's layout, so a matrix built here and one read off a
+ * `THREE.Object3D` are the same sixteen numbers in the same slots.
  *
  * ```
  * | m0 m4 m8  m12 |
@@ -13,19 +12,11 @@ import type { Transform3D } from "./transform";
  * | m3 m7 m11 m15 |
  * ```
  *
- * This exists for one caller — {@link projectNode3D}, the walk that says where a
- * 3D node's pixels landed — and it is deliberately the *whole* of the maths that
- * walk needs rather than a general linear-algebra library. Every function here
- * mirrors a specific three behaviour it has to agree with (`Object3D.lookAt`'s
- * two orientations, `PerspectiveCamera.updateProjectionMatrix`'s zoom, the
- * frustum an `OrthographicCamera` derives from `frustumHeight`); where the two
- * could drift the docblock says which three method is being matched, because a
- * selection box that disagrees with the render by a few pixels is worse than one
- * that isn't drawn.
- *
- * Kept in `render3d` beside the descriptors rather than in a `math` directory
- * for the reason the rest of this folder gives: nothing here imports a renderer,
- * so `three` stays inside `@motionscript/browser`.
+ * Exists for {@link projectNode3D}, the walk that says where a 3D node's pixels landed, and holds only the maths
+ * that walk needs. Each function mirrors a specific three behaviour (`Object3D.lookAt`'s two orientations,
+ * `PerspectiveCamera.updateProjectionMatrix`'s zoom, an `OrthographicCamera`'s frustum from `frustumHeight`), since
+ * a selection box a few pixels off the render is worse than none. Nothing here imports a renderer, so `three`
+ * stays inside `@motionscript/browser`.
  */
 
 /** A 4×4 matrix as sixteen numbers, column-major. See the module note. */
@@ -43,12 +34,7 @@ export function identity4(): Matrix4 {
     return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 }
 
-/**
- * `a · b` — the transform that applies `b` first, then `a`. Composing a parent
- * with a child (`parent.multiply(child)`) yields the child's world transform,
- * the same convention {@link import("@/attributes/layout/matrix2d").multiply}
- * uses one dimension down.
- */
+/** `a · b`: applies `b` first, then `a`. Composing a parent with a child gives the child's world transform, the convention of {@link import("@/attributes/layout/matrix2d").multiply} one dimension down. */
 /** @internal */
 export function multiply4(a: Matrix4, b: Matrix4): Matrix4 {
     const out = new Array<number>(16);
@@ -62,11 +48,7 @@ export function multiply4(a: Matrix4, b: Matrix4): Matrix4 {
     return out;
 }
 
-/**
- * The inverse, or `null` when `m` is singular — which a zero scale on any axis
- * makes it. A camera whose matrix cannot be inverted has no view, so the caller
- * draws no boxes rather than dividing by zero into `NaN`.
- */
+/** The inverse, or `null` when `m` is singular (a zero scale on any axis); a camera with no inverse has no view, so the caller draws no boxes rather than dividing into `NaN`. */
 /** @internal */
 export function invert4(m: Matrix4): Matrix4 | null {
     const [
@@ -135,21 +117,7 @@ export function compose4(position: Vector3, rotation: Quaternion, scale: Vector3
     ];
 }
 
-/**
- * The rotation that aims `eye`'s **−Z** at `target`, as three's
- * `Matrix4.lookAt(eye, target, up)` builds it.
- *
- * Callers reproduce `Object3D.lookAt`'s two cases by choosing which way round
- * they pass the pair: a camera (and a light) aims its −Z, so it passes
- * `(position, target)`; everything else aims its **+Z**, which is the same
- * function called `(target, position)`. That asymmetry is three's, not ours —
- * see `applyTransform` in the renderer, which calls `Object3D.lookAt` and
- * inherits it.
- *
- * A degenerate pair — eye on target, or an up vector parallel to the view — has
- * no defined orientation; three nudges `z` by `1e-4` in that case and so does
- * this, so the two agree rather than one of them producing `NaN`.
- */
+/** The rotation aiming `eye`'s **−Z** at `target`, as three's `Matrix4.lookAt(eye, target, up)`. Callers reproduce `Object3D.lookAt`'s two cases by argument order: a camera or light aims −Z and passes `(position, target)`; everything else aims **+Z**, i.e. `(target, position)` (three's asymmetry; see `applyTransform` in the renderer). A degenerate pair (eye on target, up parallel to the view) has no orientation; three nudges `z` by `1e-4` and so does this, so they agree rather than one producing `NaN`. */
 /** @internal */
 export function lookAtRotation4(eye: Vector3, target: Vector3, up: Vector3 = UP): Matrix4 {
     let zx = eye.x - target.x, zy = eye.y - target.y, zz = eye.z - target.z;
@@ -165,8 +133,7 @@ export function lookAtRotation4(eye: Vector3, target: Vector3, up: Vector3 = UP)
     let xz = up.x * zy - up.y * zx;
     let xLength = Math.hypot(xx, xy, xz);
     if (xLength === 0) {
-        // up is parallel to the view direction — three's own nudge, so the two
-        // pick the same arbitrary roll rather than disagreeing about it.
+        // Up is parallel to the view direction: three's own nudge, so both pick the same arbitrary roll.
         if (Math.abs(up.z) === 1) zx += 1e-4;
         else zz += 1e-4;
         length = Math.hypot(zx, zy, zz);
@@ -188,16 +155,7 @@ export function lookAtRotation4(eye: Vector3, target: Vector3, up: Vector3 = UP)
 /** three's default up vector, which nothing in the descriptors overrides yet. */
 const UP: Vector3 = { x: 0, y: 1, z: 0 };
 
-/**
- * A {@link Transform3D} as a matrix, in the parent's space.
- *
- * The precedence is the renderer's — `lookAt` > `quaternion` > `rotation`, each
- * a complete statement about orientation rather than something to combine — and
- * `lookAt` is resolved against `parentWorld` for the same reason `Object3D.lookAt`
- * is: it names a point in **world** space, so a node inside a rotated group has
- * to undo that rotation to end up pointing at it. Pass `null` for a transform at
- * the scene root, where there is nothing to undo.
- */
+/** A {@link Transform3D} as a matrix in the parent's space. Precedence is the renderer's, `lookAt` > `quaternion` > `rotation` (each a complete orientation statement). `lookAt` names a world-space point, so it is resolved against `parentWorld` (as `Object3D.lookAt`): a node in a rotated group undoes that rotation. Pass `null` at the scene root. */
 /** @internal */
 export function transformMatrix4(transform: Transform3D | undefined, parentWorld: Matrix4 | null): Matrix4 {
     if (!transform) return identity4();
@@ -207,21 +165,18 @@ export function transformMatrix4(transform: Transform3D | undefined, parentWorld
 
     if (transform.lookAt !== undefined) {
         const target = resolveVector3(transform.lookAt);
-        // Where this node sits in world space — `lookAt` is measured from there,
-        // not from its local origin.
+        // `lookAt` is measured from the node's world position, not its local origin.
         const world = parentWorld
             ? applyMatrix4(parentWorld, position)
             : { ...position, w: 1 };
         const origin = { x: world.x, y: world.y, z: world.z };
-        // +Z at the target: the non-camera branch of `Object3D.lookAt`. Cameras
-        // never come through here — see `cameraMatrix4`.
+        // +Z at the target: the non-camera branch of `Object3D.lookAt` (cameras go through `cameraMatrix4`).
         let rotation = lookAtRotation4(target, origin);
         if (parentWorld) {
             const inverseParent = invert4(rotationOf4(parentWorld));
             if (inverseParent) rotation = multiply4(inverseParent, rotation);
         }
-        // T · R · S, the same order {@link compose4} produces — spelled out here
-        // because the rotation arrived as a matrix rather than as a quaternion.
+        // T · R · S, the order {@link compose4} produces; spelled out because the rotation arrived as a matrix.
         return multiply4(multiply4(translation4(position), rotation), scale4(scale));
     }
 
@@ -245,12 +200,7 @@ function scale4(scale: Vector3): Matrix4 {
     return [scale.x, 0, 0, 0, 0, scale.y, 0, 0, 0, 0, scale.z, 0, 0, 0, 0, 1];
 }
 
-/**
- * `m`'s rotation with its translation and scale divided out — three's
- * `Matrix4.extractRotation`. Used to undo a parent's orientation when resolving
- * a `lookAt`; a zero-length basis vector leaves that column as identity rather
- * than dividing by zero.
- */
+/** `m`'s rotation with translation and scale divided out (three's `Matrix4.extractRotation`), used to undo a parent's orientation when resolving a `lookAt`; a zero-length basis vector leaves that column as identity. */
 /** @internal */
 export function rotationOf4(m: Matrix4): Matrix4 {
     const sx = Math.hypot(m[0], m[1], m[2]) || 1;
@@ -264,11 +214,7 @@ export function rotationOf4(m: Matrix4): Matrix4 {
     ];
 }
 
-/**
- * A perspective projection, matching `PerspectiveCamera.updateProjectionMatrix`
- * — including `zoom`, which three applies by *narrowing the frustum* rather than
- * by scaling the result, so it has to be folded in here rather than afterwards.
- */
+/** A perspective projection matching `PerspectiveCamera.updateProjectionMatrix`, including `zoom`, which three applies by narrowing the frustum rather than scaling the result. */
 /** @internal */
 export function perspective4(fov: number, aspect: number, near: number, far: number, zoom: number): Matrix4 {
     const top = near * Math.tan((fov * Math.PI) / 360) / zoom;
@@ -289,11 +235,7 @@ function frustum4(left: number, right: number, top: number, bottom: number, near
     return [x, 0, 0, 0, 0, y, 0, 0, a, b, c, -1, 0, 0, d, 0];
 }
 
-/**
- * An orthographic projection, matching
- * `OrthographicCamera.updateProjectionMatrix` — where `zoom` widens the frustum
- * about its centre rather than scaling the projected result.
- */
+/** An orthographic projection matching `OrthographicCamera.updateProjectionMatrix`: `zoom` widens the frustum about its centre rather than scaling the result. */
 /** @internal */
 export function orthographic4(left: number, right: number, top: number, bottom: number, near: number, far: number, zoom: number): Matrix4 {
     const dx = (right - left) / (2 * zoom);

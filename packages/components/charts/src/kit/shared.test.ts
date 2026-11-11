@@ -7,14 +7,12 @@ import {
   DEFAULT_SERIES_FILLS,
   DEFAULT_SERIES_STROKES,
   SPOTLIGHT_DIM,
-  clampUnit,
   formatMarker,
   formatPercent,
   markerStep,
   markerValues,
   num,
   numericFields,
-  resolvePalettePaint,
   resolveSeriesFill,
   resolveSeriesStroke,
   text,
@@ -180,13 +178,7 @@ describe("formatPercent", () => {
   })
 })
 
-describe("clampUnit and SPOTLIGHT_DIM", () => {
-  it("holds a number inside 0..1", () => {
-    expect(clampUnit(-1)).toBe(0)
-    expect(clampUnit(0.25)).toBe(0.25)
-    expect(clampUnit(2)).toBe(1)
-  })
-
+describe("SPOTLIGHT_DIM", () => {
   it("dims an unspotlit series to a fifth", () => {
     expect(SPOTLIGHT_DIM).toBe(0.2)
   })
@@ -265,30 +257,6 @@ describe("resolveSeriesFill", () => {
   it("is the topmost layer's colour for a stroke of several", () => {
     const stacked = [[{ weight: 8, fill: "#111111" }, { weight: 3, fill: "#222222" }]]
     expect(resolveSeriesFill(stacked as never, { field: "a", label: "A" }, 0)).toEqual(fillOps.resolve("#222222"))
-  })
-})
-
-describe("resolvePalettePaint", () => {
-  const PALETTE = ["#aa0000", "#00bb00", "#0000cc"]
-
-  it("is the override when there is one, whatever the palette", () => {
-    expect(resolvePalettePaint(PALETTE, "#ffffff", 1)).toBe("#ffffff")
-    expect(resolvePalettePaint([], "#ffffff", 1)).toBe("#ffffff")
-  })
-
-  it("is the palette's entry for the index, cycling past the end", () => {
-    expect(resolvePalettePaint(PALETTE, undefined, 0)).toBe("#aa0000")
-    expect(resolvePalettePaint(PALETTE, undefined, 2)).toBe("#0000cc")
-    expect(resolvePalettePaint(PALETTE, undefined, 3)).toBe("#aa0000")
-    expect(resolvePalettePaint(PALETTE, undefined, 7)).toBe("#00bb00")
-  })
-
-  it("is white for an empty palette and no override", () => {
-    expect(resolvePalettePaint([], undefined, 0)).toBe("white")
-  })
-
-  it("treats a null override as none", () => {
-    expect(resolvePalettePaint(PALETTE, null as never, 1)).toBe("#00bb00")
   })
 })
 

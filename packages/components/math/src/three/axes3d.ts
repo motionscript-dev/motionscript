@@ -9,8 +9,6 @@ import {
     Shapes,
     Types,
     View3D,
-    type Canvas3DProps,
-    type Color,
     type NodeOf,
     type Scene3D,
     type Transform3D,
@@ -28,6 +26,8 @@ import {
     type GapSize as _GapSize,
     type Node2D as _Node2D,
     type Node2DProps as _Node2DProps,
+    type Color as _Color,
+
     type NormalizedColor as _NormalizedColor,
     type PostEffect3D as _PostEffect3D,
     type RectCornerRadius as _RectCornerRadius,
@@ -41,37 +41,11 @@ import {
     type Vector2 as _Vector2,
 } from "@motionscript/sdk";
 import type { Interval } from "../kit/coords";
-import { AXIS_COLOR, lerpInterval, readInterval } from "../kit/furniture";
+import { AXIS_COLOR, intervalEntry } from "../kit/furniture";
 import { clamp } from "../kit/geometry";
 import { formatTick, ticksFor } from "../kit/ticks";
 import { drawLabel3D, type LabelStyle3D } from "./label3d";
 import { GRAPH_3D, graphSpace, type Graph3D, type GraphSpace } from "./space";
-
-export interface Axes3dProps extends Canvas3DProps {
-    xRange?: Interval;
-    yRange?: Interval;
-    zRange?: Interval;
-    xLength?: number;
-    yLength?: number;
-    zLength?: number;
-    xStep?: number;
-    yStep?: number;
-    zStep?: number;
-    color?: Color;
-    thickness?: number;
-    tips?: boolean;
-    ticks?: boolean;
-    tickSize?: number;
-    grid?: boolean;
-    gridLineColor?: Color;
-    labels?: boolean;
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-    xLabel?: string;
-    yLabel?: string;
-    zLabel?: string;
-}
 
 /** How many pixels of a 2D axis one scene unit counts as, when an axis picks its own tick spacing. */
 const UNIT_AS_PIXELS = 64;
@@ -84,15 +58,11 @@ const ALONG: Record<AxisName, Vector3Input> = { x: [90, 0, 0], y: [0, 0, -90], z
 /** The graph axis each axis's tick marks lie along. */
 const TICK_ALONG: Record<AxisName, AxisName> = { x: "y", y: "x", z: "y" };
 
-function range(initial: Interval) {
-    return Types.custom<Interval>(initial, { resolve: readInterval, lerp: lerpInterval });
-}
-
 /** The axes' own entries, beside a 3D canvas's. */
 const own = {
-    xRange: range([-3, 3]),
-    yRange: range([-3, 3]),
-    zRange: range([-2, 2]),
+    xRange: intervalEntry([-3, 3]),
+    yRange: intervalEntry([-3, 3]),
+    zRange: intervalEntry([-2, 2]),
     /** How long each axis is drawn, in scene units. */
     xLength: Types.number(6, { min: 0.01, step: 0.1 }),
     yLength: Types.number(6, { min: 0.01, step: 0.1 }),
@@ -125,12 +95,7 @@ const own = {
 
 type AxesValues = Values<typeof own>;
 
-/**
- * A 3D graph: three axes through a box of graph coordinates, z up, seen through
- * a camera of its own, so it stands on a 2D stage as it is, the way `axes2d`
- * does. Its 3D children sit in its graph coordinates: a surface, a space curve,
- * a point, an arrow, or any 3D node. `orbitTo` swings the camera round it.
- */
+/** A 3D graph: three axes through a box of graph coordinates, z up, seen through its own camera. Its 3D children sit in graph coordinates. */
 export const Axes3d = component2d({
     key: "axes3d",
     state: { ...Paint.state, ...Flow.state, ...Shapes.corners, ...View3D.state, ...own },

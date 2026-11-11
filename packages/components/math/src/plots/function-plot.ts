@@ -66,17 +66,12 @@ export const PLOT_COMMANDS = {
 
 export const PLOT_STROKE = { weight: 3, fill: PLOT_COLOR, align: "center", cap: "round", join: "round" } as const;
 
-/** What a plot's curve is drawn from. */
 export interface PlotValues {
     readonly expression: PlotSource;
     readonly params: ExpressionScope;
 }
 
-/**
- * The curve of an equation, drawn in the coordinate system it is a child of.
- * How the equation is written says what it is: see `Equation`. A mark put
- * inside it reads it: the area under it, a tangent, a point that rides it.
- */
+/** The curve of an equation, drawn in the system it is a child of; a mark put inside it reads it. */
 export const FunctionPlot = traced(component2d({
     key: "functionPlot",
     state: PLOT_STATE,

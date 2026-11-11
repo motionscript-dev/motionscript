@@ -16,13 +16,7 @@ export type AssetDecl =
     | { type: "font"; family: string; weight: number }
     | { type: "loader"; key: string; load: LoaderFn; gate: AssetGate };
 
-/**
- * What a node's `declareAssets` states its needs into.
- *
- * A declaration must be a pure function of the props and context it reads — never
- * `layoutBounds`, never `time`, no writes — because the runtime re-runs it only
- * when something it read changes. Declarations dedupe by {@link assetKey}.
- */
+/** What a node's `declareAssets` states its needs into. A declaration must be a pure function of the props and context it reads (never `layoutBounds`, `time` or writes) because the runtime re-runs it only when something it read changes. Deduped by {@link assetKey}. */
 export interface AssetScope {
     readonly catalog: AssetCatalog;
     image(src: string): void;
@@ -37,11 +31,7 @@ export interface AssetScope {
     subtree(node: Node): void;
 }
 
-/**
- * Fonts key by family alone: `loadFont` registers every weight of a family at once
- * and a variable weight renders through `fontVariations`, so a weight in the key
- * would mint an entry per frame of a weight tween.
- */
+/** Fonts key by family alone: `loadFont` registers every weight at once and a variable weight renders through `fontVariations`, so a weight in the key would mint an entry per frame of a weight tween. */
 export function assetKey(decl: AssetDecl): string {
     switch (decl.type) {
         case "image":
@@ -68,12 +58,7 @@ export interface AssetDeclarationOptions {
     onSubtree?: (node: Node, scope: AssetScope) => void;
 }
 
-/**
- * The {@link AssetScope} that collects: one declaration pass, keyed and validated.
- *
- * Unknown images and videos throw here, so a typo surfaces against the node that
- * declared it rather than as a picture that never paints.
- */
+/** The {@link AssetScope} that collects: one declaration pass, keyed and validated. Unknown images and videos throw here, against the node that declared them. */
 export class AssetDeclaration implements AssetScope {
     readonly catalog: AssetCatalog;
 

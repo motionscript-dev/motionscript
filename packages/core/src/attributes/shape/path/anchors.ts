@@ -1,22 +1,12 @@
 /**
- * The editable vector model — subpaths of anchors, each carrying the two bezier
- * handles that govern the segments either side of it — and the unit box it is
- * quoted against. Figma's vector model, and what a person actually drags.
+ * The editable vector model: subpaths of anchors, each with the two bezier handles of the segments either side
+ * (Figma's model). The **second** boundary where geometry is deliberately flattened to one curve type: an arc has
+ * no handles to drag, so it becomes cubics on the way in.
  *
- * The **second** of the two boundaries where geometry is deliberately flattened
- * to one curve type. An arc has no handles to drag, so it becomes cubics on the
- * way in — a conversion, where it used to be a truncation: `A` was missing from
- * the old parser's letter list, so it stopped dead at the first arc and
- * everything after it disappeared. Real-world icons draw their rounded joins
- * with arcs, so pasting one in lost most of the shape.
- *
- * **The coordinate space is the node's own box**: `x` and `y` run -0.5 to +0.5
- * across its width and height, y pointing *down* the way SVG's does. Resizing is
- * then an ordinary width/height drag, because the geometry is a fraction of the
- * box rather than a pixel count inside it — no gizmo code has to know a path
- * from a rect. Points *may* sit outside it: a point dragged past an edge is
- * honest about where it was dropped, and {@link normalize} pulls the
- * box back around the geometry once, on the way out of an edit.
+ * **The coordinate space is the node's own box**: `x`/`y` run -0.5 to +0.5 across its width and height, y pointing
+ * *down* as in SVG. Resizing is then an ordinary width/height drag, since geometry is a fraction of the box. Points
+ * *may* sit outside it (a point dragged past an edge); {@link normalize} pulls the box back around the geometry once,
+ * on the way out of an edit.
  */
 import { Vector2 } from "@/attributes/layout/vector2";
 import { PathCommand, PathData } from "@/render/descriptors/path";
@@ -28,23 +18,12 @@ import type { Cubic, PathAnchor, PathContour, PathNormalization, PathSubpath, Ve
 /** An empty path, as the value an unset `data` field resolves to. */
 export const EMPTY_PATH_DATA = "";
 
-// ── Reading ────────────────────────────────────────────────────────────────
-
 /** Whether two points are the same to within serialization noise. */
 function samePoint(a: Vector2, b: Vector2): boolean {
     return Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
 }
 
-/**
- * Marks a subpath closed, folding a duplicated last anchor into the first.
- *
- * A `d` string that ends `… L 0 0 Z` — which every serializer that closes
- * explicitly produces, ours included when a closing segment carries handles —
- * names the start point twice: once as the last `L`/`C` target and once
- * implicitly by `Z`. Left alone, the round trip would grow an anchor on every
- * load, which is the kind of drift that only shows up after a file has been
- * opened a hundred times.
- */
+/** Marks a subpath closed, folding a duplicated last anchor into the first: a `d` ending `… L 0 0 Z` names the start twice, and left alone the round trip would grow an anchor on every load. */
 function closeSubpath(subpath: PathSubpath): void {
     subpath.closed = true;
     const { anchors } = subpath;
@@ -99,32 +78,14 @@ function contourToSubpath(contour: PathContour): PathSubpath {
     return subpath;
 }
 
-/**
- * Any {@link PathData} as the editable model.
- *
- * Takes `PathData`, not a string. The old entry point took only a string and
- * every caller had to guard — `typeof data === "string" ? data : ""` — which
- * meant a node animating its `data` drew *nothing* for the whole tween, because
- * a morph hands over a `PathCommand[]` at every `t` strictly between 0 and 1.
- */
+/** Any {@link PathData} as the editable model. Takes `PathData`, not a string: a morph hands over a `PathCommand[]` at every `t` strictly between 0 and 1, which string-only callers drew as nothing. */
 export function anchors(d: PathData | null | undefined): VectorPath {
     return contours(d)
         .map(contourToSubpath)
         .filter((subpath) => subpath.anchors.length > 0);
 }
 
-// ── Writing ────────────────────────────────────────────────────────────────
-
-/**
- * How many decimals a stored coordinate keeps.
- *
- * The space is the unit box, so a coordinate is a fraction of the node's size:
- * five decimals is sub-pixel on a 10,000px node and keeps the string short
- * enough that a path is a sane thing to hold in a JSON column. It also makes the
- * round trip *stable* — a drag that lands where it started re-serializes to the
- * identical string, which is what lets an editor tell "nothing changed" from
- * "changed by a rounding error".
- */
+/** Decimals a stored coordinate keeps: sub-pixel on a 10,000px node (a coordinate is a fraction of its size) and stable, so a drag that lands where it started re-serializes identically. */
 const COORD_PRECISION = 5;
 
 function fmt(value: number): string {
@@ -135,23 +96,14 @@ function fmt(value: number): string {
     return String(rounded === 0 ? 0 : rounded);
 }
 
-/**
- * What one segment between two anchors *is* — a line, or a cubic and its
- * controls.
- *
- * The decision lived twice, once per output format: `segmentData` wrote it as a
- * `d` string and `pushSegment` as a `PathCommand`, with the same rule about a
- * missing handle standing in as its own anchor written out both times.
- */
+/** What one segment between two anchors *is*: a line, or a cubic and its controls. Shared by both output formats (`d` string and `PathCommand`). */
 function segmentBetween(from: PathAnchor, to: PathAnchor):
     | { line: true; to: Vector2 }
     | { line: false; c1: Vector2; c2: Vector2; to: Vector2 } {
     if (from.outHandle === null && to.inHandle === null) {
         return { line: true, to: to.point };
     }
-    // A missing handle stands in as its own anchor, which is the degenerate cubic
-    // that draws as a straight pull towards the other end — the same thing every
-    // vector editor means by "one side of this segment is a curve".
+    // A missing handle stands in as its own anchor: the degenerate cubic that draws as a straight pull towards the other end.
     return {
         line: false,
         c1: from.outHandle ?? from.point,
@@ -160,12 +112,7 @@ function segmentBetween(from: PathAnchor, to: PathAnchor):
     };
 }
 
-/**
- * Serializes the model back to a `d` string.
- *
- * Only `M`, `L`, `C` and `Z` are emitted — the four commands the editor can
- * round-trip — so what is stored is always what can be edited.
- */
+/** Serializes the model back to a `d` string. Only `M`, `L`, `C` and `Z` are emitted, so what is stored can always be edited. */
 export function fromAnchors(path: VectorPath): string {
     const parts: string[] = [];
     for (const { anchors, closed } of path) {
@@ -194,13 +141,7 @@ export function fromAnchors(path: VectorPath): string {
 
 const identity = (point: Vector2): Vector2 => point;
 
-/**
- * The model as drawable commands, with a transform folded into the same pass.
- *
- * Every caller needs one — unit box → the node's laid-out pixels, and y-down →
- * the renderer's y-up — and doing it here means one allocation per frame instead
- * of two, on a list rebuilt every time the node repaints.
- */
+/** The model as drawable commands, with a transform (unit box -> laid-out pixels, y-down -> y-up) folded into the same pass: one allocation per repaint instead of two. */
 export function anchorCommands(
     path: VectorPath,
     transform: (point: Vector2) => Vector2 = identity,
@@ -235,16 +176,7 @@ export function anchorCommands(
     return out;
 }
 
-// ── Measuring ──────────────────────────────────────────────────────────────
-
-/**
- * The path's tight bounding box, or `null` when it has no points.
- *
- * Tight, not the handle polygon's hull: a cubic's own extrema are solved for,
- * because the handles can sit a long way outside the curve and a box derived
- * from them would leave a visible gap between a normalized shape and the edge of
- * its node.
- */
+/** The path's tight bounding box (a cubic's own extrema, not the handle hull, which would leave a gap to the node's edge), or `null` when it has no points. */
 export function anchorBounds(path: VectorPath): Extents | null {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let seen = false;
@@ -279,9 +211,6 @@ export function anchorBounds(path: VectorPath): Extents | null {
     return seen ? { minX, minY, maxX, maxY } : null;
 }
 
-// ── Transforming ───────────────────────────────────────────────────────────
-
-/** Applies `fn` to every point and handle, returning a new path. */
 export function map(path: VectorPath, fn: (point: Vector2) => Vector2): VectorPath {
     return path.map((subpath) => ({
         closed: subpath.closed,
@@ -293,11 +222,7 @@ export function map(path: VectorPath, fn: (point: Vector2) => Vector2): VectorPa
     }));
 }
 
-/**
- * The turn-and-scale about `start` that carries `end` onto `to` — how `moveTo`
- * fits a path aimed at another node. Where `start` and `end` coincide there is
- * no chord to turn, so it translates instead.
- */
+/** The turn-and-scale about `start` that carries `end` onto `to` (how `moveTo` fits a path at another node); translates when `start` and `end` coincide. */
 export function endFit(start: Vector2, end: Vector2, to: Vector2): (point: Vector2) => Vector2 {
     const cx = end.x - start.x;
     const cy = end.y - start.y;
@@ -319,27 +244,16 @@ export function endFit(start: Vector2, end: Vector2, to: Vector2): (point: Vecto
     };
 }
 
-/** Whether a path would draw anything at all. */
 export function isEmpty(path: VectorPath): boolean {
     return path.every((subpath) => subpath.anchors.length < 2);
 }
 
-/**
- * The unit box's extent — the node's own layout rect, as a fraction of itself.
- *
- * Exported because two very different callers need the same half: a renderer
- * scales by the extent (1 unit = the node's full width), and an editor projects
- * a screen point into it.
- */
+/** The unit box's extent: the node's layout rect as a fraction of itself. A renderer scales by it; an editor projects a screen point into it. */
 export const PATH_UNIT_EXTENT = 1;
 
-/** Half of {@link PATH_UNIT_EXTENT} — the distance from the centre to an edge. */
 export const PATH_UNIT_HALF = PATH_UNIT_EXTENT / 2;
 
-/**
- * The box a path's coordinates are already quoted against — the node's own
- * frame, as {@link PATH_UNIT_HALF} either side of centre.
- */
+/** The box a path's coordinates are quoted against: the node's own frame, {@link PATH_UNIT_HALF} either side of centre. */
 export const UNIT_PATH_BOX: Extents = {
     minX: -PATH_UNIT_HALF,
     minY: -PATH_UNIT_HALF,
@@ -347,36 +261,14 @@ export const UNIT_PATH_BOX: Extents = {
     maxY: PATH_UNIT_HALF,
 };
 
-/**
- * Pulls the unit box back around the geometry.
- *
- * What an editor runs on the way *out* of a path edit, and the reason a node
- * whose points were dragged all over the canvas still ends up with a selection
- * box that hugs it. The caller pairs it with the node's own size and position:
- * the box grows by `scaleX`/`scaleY` and moves by `centerX`/`centerY` scaled
- * into the node's parent, so the drawing doesn't shift on screen while its frame
- * changes underneath it.
- */
+/** Pulls the unit box back around the geometry, run on the way out of a path edit. The caller pairs it with the node's size and position (grow by `scaleX`/`scaleY`, move by `centerX`/`centerY`) so the drawing doesn't shift on screen. */
 export function normalize(path: VectorPath): PathNormalization {
     const bounds = anchorBounds(path);
     if (!bounds) return { path, scaleX: 1, scaleY: 1, centerX: 0, centerY: 0 };
     return fitToBox(path, bounds);
 }
 
-/**
- * Re-quotes a path against `box` — the general form of
- * {@link normalize}, which is this with the geometry's own bounds.
- *
- * The two callers want the same arithmetic for opposite reasons. A canvas editor
- * fits the box to the drawing on the way out, so a node drawn in a corner of its
- * frame ends up with a frame that hugs it. An appearance dialog lets the frame
- * be **stated** instead — dragged wider than the drawing to leave a margin, or
- * slid so the drawing sits off-centre — and then fits to that.
- *
- * A degenerate axis — every point on one line, which is a perfectly reasonable
- * thing to draw — keeps its scale at 1 rather than dividing by zero, so a flat
- * path stays where it is instead of becoming NaN.
- */
+/** Re-quotes a path against `box`; {@link normalize} is this with the geometry's own bounds. A dialog can instead *state* the frame (margin, off-centre). A degenerate axis (all points on a line) keeps scale 1 instead of dividing by zero. */
 export function fitToBox(path: VectorPath, box: Extents): PathNormalization {
     const width = box.maxX - box.minX;
     const height = box.maxY - box.minY;
@@ -397,18 +289,11 @@ export function fitToBox(path: VectorPath, box: Extents): PathNormalization {
     };
 }
 
-/** Moves every point and handle by the same delta. */
 export function translate(path: VectorPath, delta: Vector2): VectorPath {
     return map(path, (p) => ({ x: p.x + delta.x, y: p.y + delta.y }));
 }
 
-/**
- * A point on the segment between two anchors, at parameter `t`.
- *
- * An editor needs it twice over: to find where on a segment a click landed (so a
- * double-click can insert an anchor there), and to draw the preview of the
- * anchor that insertion would create.
- */
+/** A point on the segment between two anchors at `t`: where a click landed, and the preview of the anchor an insertion would create. */
 export function pointOn(from: PathAnchor, to: PathAnchor, t: number): Vector2 {
     if (from.outHandle === null && to.inHandle === null) {
         return {
@@ -424,15 +309,7 @@ export function pointOn(from: PathAnchor, to: PathAnchor, t: number): Vector2 {
     };
 }
 
-/**
- * Splits the segment between two anchors at `t`, returning the three anchors
- * that replace them — the two ends with their outer handles shortened, and the
- * new anchor in the middle carrying both halves of the split tangent.
- *
- * De Casteljau, which is what makes the insertion *invisible*: the curve through
- * the new point is the same curve, so double-clicking a segment adds somewhere
- * to grab rather than changing the shape under the pointer.
- */
+/** Splits the segment at `t` into the three anchors that replace the pair (ends with shortened outer handles, new anchor carrying both halves of the tangent). De Casteljau keeps the curve identical, so insertion is invisible. */
 export function split(
     from: PathAnchor, to: PathAnchor, t: number,
 ): { from: PathAnchor; middle: PathAnchor; to: PathAnchor } {

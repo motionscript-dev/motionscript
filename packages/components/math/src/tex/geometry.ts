@@ -3,8 +3,6 @@ import { PathCommand } from '@motionscript/sdk';
 
 import { createBoundedCache } from '../kit/cache';
 
-// --- MathJax, on demand ---
-
 type MathJaxRuntime = typeof import('./mathjax');
 
 let runtime: MathJaxRuntime | null = null;
@@ -27,14 +25,13 @@ export function loadMathJax(): Promise<void> {
     return loading;
 }
 
-/** Whether MathJax has loaded, so a formula can be typeset now. */
 export function mathJaxLoaded(): boolean {
     return runtime !== null;
 }
 
 /** What a formula is before MathJax has loaded: nothing to draw, and nothing cached. */
 export function blankLatex(): LatexPathResult {
-    return { tokens: [], parts: [], commands: [], width: 0, height: 0, bounds: [0, 0, 0, 0] };
+    return { tokens: [], parts: [], width: 0, height: 0, bounds: [0, 0, 0, 0] };
 }
 
 /** MathJax is not loaded yet: what typesetting throws before {@link loadMathJax} has resolved. */
@@ -45,23 +42,13 @@ export class LatexNotLoaded extends Error {
     }
 }
 
-// --- Public API ---
-
 /**
- * A formula MathJax could not typeset.
- *
- * MathJax does not throw on malformed TeX. It typesets an error box in place of
- * the formula and tags it `data-mjx-error`, so the failure arrives as a drawing:
- * nothing at all from the browser adaptor and a filled bar from the DOM-free
- * one, which left a host able to tell a bad formula from a blank one only by the
- * token count. {@link buildLatexPath} raises this instead, the same way under
- * both adaptors. `\require` is an error too, since only the packages named above
- * are loaded.
+ * A formula MathJax could not typeset. MathJax does not throw on malformed TeX:
+ * it typesets an error box tagged `data-mjx-error`, so {@link buildLatexPath}
+ * raises this instead, the same under both adaptors. `\require` is an error too.
  */
 export class LatexError extends Error {
-    /** The formula that failed, as it was given. */
     readonly latex: string;
-    /** MathJax's own description of what is wrong with it. */
     readonly reason: string;
 
     constructor(latex: string, reason: string) {
@@ -72,9 +59,8 @@ export class LatexError extends Error {
     }
 }
 
-/** A single rendered glyph or shape with its character key and path commands. */
 export interface LatexToken {
-    /** Character this token represents, or a synthetic key for non-glyph shapes. */
+    /** The character, or a synthetic key (`__rect_N`, `__path_N`) for a rule or bare path. */
     token: string;
     path: PathCommand[];
     /** The source of the top-level term the token belongs to, `a^2` in `a^2 + b^2`; empty for none. */
@@ -86,7 +72,6 @@ export interface LatexToken {
  * `+`. Every group the typesetter makes is one, so parts nest.
  */
 export interface LatexPart {
-    /** The part's own source. */
     latex: string;
     /** The tokens it draws, as a span of the formula's token list: `from` up to, not including, `to`. */
     from: number;
@@ -96,36 +81,19 @@ export interface LatexPart {
 }
 
 export interface LatexPathResult {
-    /** All tokens in render order. */
     tokens: LatexToken[];
     /** Every part of the formula, outermost first, in source order. */
     parts: LatexPart[];
-    /** Flat array of all path commands (for legacy single-path rendering). */
-    commands: PathCommand[];
     width: number;
     height: number;
-    /**
-     * Bounding box over every token, in token coordinate space:
-     * [minX, minY, maxX, maxY]. All tokens share this frame, so passing it as
-     * each path's center frame keeps their relative layout (instead of each
-     * glyph centering on its own bbox).
-     */
+    /** [minX, minY, maxX, maxY] over every token: the one centring frame they all share. */
     bounds: [number, number, number, number];
 }
 
 /**
- * A formula's glyph geometry, before a type size is applied to it.
- *
- * The dividing line this whole module's caching turns on. Getting here is the
- * expensive part — MathJax lays the formula out, then the SVG it produces is
- * parsed, its glyph dictionary resolved and every `<use>` walked through its
- * transform stack — and **none of it depends on `fontSize`**: `mjDoc.convert`
- * is called at a fixed em/ex, and the size arrives at the very end as one
- * uniform scale (see {@link scaleLatexGeometry}).
- *
- * So this is what gets remembered per formula, and the size is applied to it
- * afresh. A formula animating from 24pt to 120pt is one trip through MathJax
- * and one DOM parse, not one per frame.
+ * A formula's glyph geometry before a type size is applied. Getting here is the
+ * expensive part (MathJax, the SVG walk) and none of it depends on `fontSize`,
+ * which arrives at the end as one uniform scale, so this is what gets cached.
  */
 interface LatexGeometry {
     tokens: RawToken[];
@@ -137,29 +105,10 @@ interface LatexGeometry {
 }
 
 /**
- * Formulas already worked out, and formulas already sized.
- *
- * `buildLatexPath` is a pure function of `(text, fontSize)` and used to have no
- * memory, which made every caller pay full price for a question it had already
- * asked. The callers are not occasional about it either: constructing a `Latex`
- * resolves its formula, and so does every `to({ latex })` the moment it starts,
- * so a scene re-resolves every formula in it whenever it is rebuilt *and*
- * whenever the playhead moves backwards, since a backward seek replays the
- * scene's generator from its first frame. An editor that rebuilds on a keystroke
- * and seeks on a click asks for the same handful of formulas hundreds of times.
- *
- * Two memos, each keyed by what its stage actually depends on, and deliberately
- * different sizes:
- *
- * - {@link geometryCache} is everything up to the type size, keyed by the text
- *   alone. This is the expensive one, and it is generously sized because
- *   nothing a scene does can churn it: a deck holds as many distinct formulas
- *   as it holds, and it holds them for as long as it is open.
- * - {@link pathCache} is the finished result, keyed by text *and* size. Small
- *   on purpose: an animated `fontSize` inserts a distinct key every frame, and
- *   the right thing for a stream like that is to churn a little memo rather
- *   than a big one. What a miss costs here is arithmetic over glyphs already
- *   worked out — no MathJax, no parse.
+ * `geometryCache` is keyed by text alone and sized for a whole deck. `pathCache`
+ * is keyed by text and size and kept small: an animated `fontSize` adds a key
+ * every frame, and a miss there is only arithmetic over cached geometry.
+ * Backward seeks and rebuilds re-ask for the same formulas hundreds of times.
  */
 const geometryCache = createBoundedCache<LatexGeometry>(128);
 const pathCache = createBoundedCache<LatexPathResult>(64);
@@ -195,11 +144,7 @@ function buildLatexGeometry(text: string): LatexGeometry {
     return parseLatexSvg(svgEl, parseFloat(heightAttr) || 0);
 }
 
-/**
- * MathJax's description of the error box in a typeset formula, or `null` when
- * there is none. Read through the adaptor, so a real DOM and the DOM-free tree
- * give the same answer.
- */
+/** MathJax's description of the error box in a typeset formula, or `null`; read through the adaptor so a real DOM and the DOM-free tree agree. */
 function mathJaxError(svgEl: unknown): string | null {
     for (const el of adaptor.tags(svgEl, 'g') as unknown[]) {
         const reason = adaptor.getAttribute(el, 'data-mjx-error');
@@ -209,26 +154,14 @@ function mathJaxError(svgEl: unknown): string | null {
 }
 
 /**
- * A cached result, handed out safely.
- *
- * `tokens`, `commands` and the path arrays inside them are shared: they are read
- * by everything downstream and written by none of it — `Latex` maps tokens into
- * its own wrappers, and the morph builds new paths rather than editing the ones
- * it is given — so copying them would be copying the whole formula for nothing.
- *
- * `bounds` is copied, because it is the one field a caller *stores*: `Latex`
- * assigns `result.bounds` straight to `this._bounds` and hands it to the
- * renderer as a shared centring frame. That was one node holding its own array
- * before there was a memo, and would be two nodes drawing the same formula
- * holding one array between them after — four numbers is not a price worth
- * paying to find out whether anything downstream ever writes to it.
+ * Tokens and their paths are shared, since nothing downstream writes to them.
+ * `bounds` is copied: `Latex` stores it and hands it to the renderer as a
+ * centring frame, and two nodes on one formula must not share an array.
  */
 function lend(result: LatexPathResult): LatexPathResult {
     const [minX, minY, maxX, maxY] = result.bounds;
     return { ...result, bounds: [minX, minY, maxX, maxY] };
 }
-
-// --- High-Speed Matrix Math ---
 
 type Matrix = [number, number, number, number, number, number]; // [a, b, c, d, tx, ty]
 const identityMatrix: Matrix = [1, 0, 0, 1, 0, 0];
@@ -272,12 +205,7 @@ function applyMatrix(x: number, y: number, m: Matrix): [number, number] {
     ];
 }
 
-// --- Glyph ID → character decoding ---
-
-/**
- * MathJax SVG glyph IDs look like "MJX-1-TEX-N-78" or "MJX-1-TEX-I-1D465".
- * The last segment is the Unicode codepoint in hex.
- */
+/** A MathJax glyph id ends in the codepoint in hex: `MJX-1-TEX-I-1D465`. */
 function glyphIdToChar(id: string): string {
     const parts = id.split('-');
     const hex = parts[parts.length - 1];
@@ -288,8 +216,6 @@ function glyphIdToChar(id: string): string {
     return id;
 }
 
-// --- Core Fast Traversal Engine ---
-
 type RawToken = { token: string; cmds: Array<{ cmd: string; args: number[] }>; term?: string };
 
 /** The tag name of a node's parent, or "" at the root. */
@@ -299,23 +225,11 @@ function parentKind(node: unknown): string {
 }
 
 /**
- * The size-independent half: MathJax's own SVG tree in, glyph geometry out.
- *
- * Walked through the **adaptor** rather than a `DOMParser`. MathJax already
- * builds this tree, and the adaptor is its own abstraction over "a real DOM" and
- * "the DOM-free `LiteElement` tree" — the two this module already picks between
- * at load. Serialising it to a string and parsing it back needed a `DOMParser`,
- * which Node does not have, so every LaTeX node threw `DOMParser is not defined`
- * and could not render headlessly at all: no export, and nothing the visual
- * suite could check.
- *
- * Reading the tree directly is also one representation instead of three (tree →
- * string → tree), so a browser and a headless host cannot disagree about how the
- * markup re-parsed.
+ * The size-independent half. Walks MathJax's tree through the adaptor, not a
+ * `DOMParser`, which Node lacks: a headless host could not render any formula.
  */
 function parseLatexSvg(svgEl: unknown, heightEx: number): LatexGeometry {
-    // Pre-parse the glyph dictionary. `tags` reaches every <path> in the tree,
-    // including the ones inside <defs> that the `use` elements reference.
+    // `tags` reaches the <path>s inside <defs> that the `use` elements reference.
     const glyphMap = new Map<string, Array<{ cmd: string; args: number[] }>>();
     for (const el of adaptor.tags(svgEl, 'path') as unknown[]) {
         const id = adaptor.getAttribute(el, 'id');
@@ -325,7 +239,6 @@ function parseLatexSvg(svgEl: unknown, heightEx: number): LatexGeometry {
         }
     }
 
-    // Collect raw tokens — each <use> is one token, rects/paths are grouped as synthetic tokens
     const rawTokens: RawToken[] = [];
     const parts: LatexPart[] = [];
     let synthIdx = 0;
@@ -369,7 +282,6 @@ function parseLatexSvg(svgEl: unknown, heightEx: number): LatexGeometry {
                     }
                     cmds.push({ cmd: gc.cmd, args: shiftedArgs });
                 }
-                // Derive character from glyph ID
                 const rawId = href.startsWith('#') ? href.slice(1) : href;
                 pushCmds(glyphIdToChar(rawId), cmds);
             }
@@ -425,20 +337,14 @@ function parseLatexSvg(svgEl: unknown, heightEx: number): LatexGeometry {
         for (let i = part.from; i < part.to; i++) rawTokens[i].term = part.latex;
     }
 
-    // Bounding box across all raw commands, in the SVG's own coordinates.
     const box = svgBBox(rawTokens.flatMap(t => t.cmds));
     return { tokens: rawTokens, parts, box, heightEx };
 }
 
-/**
- * The size-dependent half: glyph geometry in, a laid-out formula out.
- *
- * Everything here is one uniform scale about the geometry's own centre, which
- * is exactly why {@link LatexGeometry} is worth remembering on its own.
- */
+/** The size-dependent half: one uniform scale about the geometry's own centre. */
 function scaleLatexGeometry(geometry: LatexGeometry, fontSize: number): LatexPathResult {
     const { tokens: rawTokens, parts, box, heightEx } = geometry;
-    if (rawTokens.length === 0) return { tokens: [], parts: [], commands: [], width: 0, height: 0, bounds: [0, 0, 0, 0] };
+    if (rawTokens.length === 0) return { tokens: [], parts: [], width: 0, height: 0, bounds: [0, 0, 0, 0] };
 
     const { minX, minY, maxX, maxY } = box;
     const svgW = maxX - minX;
@@ -478,18 +384,12 @@ function scaleLatexGeometry(geometry: LatexGeometry, fontSize: number): LatexPat
         ...(rt.term !== undefined && { term: rt.term }),
     }));
 
-    const commands = tokens.flatMap(t => t.path);
-
-    // Shared center frame for all tokens, in token coordinate space. tx/ty map
-    // the SVG bbox corners; this is the frame every token's path is laid out in.
     const bounds: [number, number, number, number] = [
         tx(minX), ty(minY), tx(maxX), ty(maxY),
     ];
 
-    return { tokens, parts, commands, width: svgW * scale, height: svgH * scale, bounds };
+    return { tokens, parts, width: svgW * scale, height: svgH * scale, bounds };
 }
-
-// --- Parts ---
 
 // Spacing and grouping braces are how a source is written, not what it says:
 // `x^{2}` and `x^2` name one part.
@@ -550,8 +450,6 @@ export function findLatexParts(parts: readonly LatexPart[], selector: string): A
     }
     return [...found.values()].sort((x, y) => x[0] - y[0] || x[1] - y[1]);
 }
-
-// --- SVG Path Utilities ---
 
 type RawCmd = { cmd: string; args: number[] };
 

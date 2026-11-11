@@ -21,7 +21,6 @@ import type { MeasureContext2D } from "@/render/measure-context";
 import type { RenderPass2D } from "@/render/render-context2d";
 import { ContextMap } from "@/util/context";
 
-/** What a clip is built and measured against — the same for every track in a session. */
 export interface RuntimeScope {
     registry: Registry;
     viewport: Size2D;
@@ -31,12 +30,9 @@ export interface RuntimeScope {
 }
 
 /**
- * One track's clip, live: the viewport-sized {@link Canvas2D} it builds into and
- * the timeline compiled over it.
- *
- * Built once, then asked for a time. Nothing resets one — a caller that needs a
- * fresh tree builds a new instance — which is what lets the measuring pass and
- * the evaluator each hold their own instead of taking turns with one.
+ * One track's clip, live: the viewport-sized {@link Canvas2D} it builds into and the timeline compiled over
+ * it. Built once, then asked for a time. Nothing resets one (a caller needing a fresh tree builds a new
+ * instance), so the measuring pass and the evaluator each hold their own instead of taking turns.
  */
 export class ClipInstance {
     readonly canvas: Canvas2D;
@@ -46,10 +42,11 @@ export class ClipInstance {
         this._duration = duration;
         this._doc = lowered(clip);
         const { width, height } = _scope.viewport;
-        // Seeded here because this canvas *is* the document's root row, yet it is
-        // the one node no `Registry.instantiate` makes: `ClipTimeline` applies
-        // that row's props with `set()`, which writes property fields only, so
-        // an unseeded root would report a UUID no document row mentions.
+        /**
+         * Seeded here because this canvas is the document's root row yet the one node no `Registry.instantiate` makes:
+         * `ClipTimeline` applies that row's props with `set()`, which writes property fields only, so an unseeded root
+         * would report a UUID no document row mentions.
+         */
         this.canvas = new Canvas2D({ id: ROOT_NODE_ID, width, height, flow: "freeform" });
         this._timeline = new ClipTimeline(this._doc, _scope.registry, this.canvas);
         this._indexRows();
@@ -59,15 +56,11 @@ export class ClipInstance {
         return this._duration;
     }
 
-    /** The clip document this instance plays, as handed in — before audio lowering. */
     get clip(): ClipDocument {
         return this._clip;
     }
 
-    /**
-     * Build the tree, then fix every command against it laid out — see `ClipTimeline.compile`.
-     * `measurer` stands in for the scope's during the build only.
-     */
+    /** See `ClipTimeline.compile`. `measurer` stands in for the scope's during the build only. */
     build(measurer: MeasureContext2D = this._scope.measurer): void {
         this.attach(0);
         this._timeline.build();
@@ -81,10 +74,8 @@ export class ClipInstance {
     }
 
     /**
-     * Patch the built tree to play `next`, re-instantiating and recompiling only
-     * what the difference touches. `false` means the change needs a fresh instance
-     * (see `planTimelinePatch`); the tree is untouched then. A throw leaves the tree
-     * unusable — the caller disposes it and builds fresh.
+     * `false` means the change needs a fresh instance (see `planTimelinePatch`); the tree is untouched then. A
+     * throw leaves the tree unusable: dispose it and build fresh.
      */
     update(next: ClipDocument, duration: number): boolean {
         if (next === this._clip) {
@@ -97,7 +88,6 @@ export class ClipInstance {
         return true;
     }
 
-    /** {@link update}'s plan, for a caller that has to look at the tree before it changes. */
     planUpdate(next: ClipDocument): TimelinePatch | null {
         return this._timeline.planUpdate(lowered(next));
     }
@@ -121,12 +111,10 @@ export class ClipInstance {
         this._indexRows();
     }
 
-    /** Every command as compiled, with what each writes — see `ClipTimeline.placedCommands`. */
     placedCommands(): readonly PlacedCommandInfo[] {
         return this._timeline.placedCommands();
     }
 
-    /** What the build stepped around instead of failing — see `ClipTimeline.issues`. */
     issues(): TimelineIssue[] {
         return this._timeline.issues();
     }
@@ -135,7 +123,7 @@ export class ClipInstance {
         return this._timeline.commandSounds();
     }
 
-    /** `read`, with the tree's presence as it stands at `seconds`; the presence is put back after. */
+    /** The presence is put back after. */
     atPresence<T>(seconds: number, read: () => T): T {
         const was = this._timeline.presenceTime;
         this._timeline.syncPresence(seconds);
@@ -153,9 +141,10 @@ export class ClipInstance {
 
     attach(seconds: number, editor?: NodeEditorStates): void {
         this.canvas.attach({ assets: this._scope.assets, context: ContextMap.EMPTY, time: seconds });
-        // Before layout, so a node that appeared this frame gets its editor state
-        // on the frame it appears — and a hidden one is out of the flow before it
-        // is measured.
+        /**
+         * Before layout, so a node that appeared this frame gets its editor state on that frame, and a hidden one is
+         * out of the flow before it is measured.
+         */
         applyEditorStates(this.canvas, editor);
     }
 
@@ -176,30 +165,22 @@ export class ClipInstance {
         primeMotionTree(this.canvas, at);
     }
 
-    /** The node a document row built, mounted or not; the canvas for the root. */
     node(rowId: string): Node | undefined {
         return this._timeline.liveNode(rowId);
     }
 
-    /** What a document row holds before any command acts on it — see `ClipTimeline.baselineProps`. */
     baselineProps(rowId: string): Record<string, unknown> | undefined {
         return this._timeline.baselineProps(rowId);
     }
 
-    /** Every document row's effective span, the root's excepted. */
     rowSpans(): NodeSpan[] {
         return [...this._rows.values()].map((row) => row.span);
     }
 
-    /** One row's effective span — `undefined` for the root, which spans the clip, and for an id no row has. */
     rowSpan(id: string): NodeSpan | undefined {
         return this._rows.get(id)?.span;
     }
 
-    /**
-     * `node`'s owner key as {@link forEachOwner} spells it, mounted or not —
-     * `undefined` for a node no row built.
-     */
     ownerKeyOf(node: Node): string | undefined {
         let below = "";
         for (let current: Node = node; ;) {
@@ -215,11 +196,7 @@ export class ClipInstance {
         }
     }
 
-    /**
-     * When `node` is in the tree, in clip seconds: its document row's effective
-     * span, or the nearest row ancestor's for a node a composite built. The canvas
-     * spans the clip. `undefined` for a node outside this tree.
-     */
+    /** A composite-built node takes the nearest row ancestor's span. The canvas spans the clip. */
     spanOf(node: Node): NodeSpan | undefined {
         for (let current: Node | null = node; current; current = current.parent) {
             if (current === this.canvas) return { start: 0, end: this.duration };
@@ -230,10 +207,9 @@ export class ClipInstance {
     }
 
     /**
-     * Visit every mounted node, parents first, with its span, its structural path
-     * and its **owner key** — the nearest row's id, plus the path below that row for
-     * a node a composite built. A UUID changes on every build and a path from the
-     * root changes whenever an earlier sibling enters or leaves; this does neither.
+     * Visit every mounted node, parents first, with its span, structural path and owner key: the nearest row's id
+     * plus the path below that row for a composite-built node. A UUID changes on every build and a root path
+     * whenever an earlier sibling enters or leaves; this does neither.
      */
     forEachOwner(visit: (node: Node, ownerKey: string, span: NodeSpan, path: string) => void): void {
         const walk = (node: Node, row: string, below: string, span: NodeSpan, path: string): void => {
@@ -274,8 +250,7 @@ export class ClipInstance {
     }
 
     /**
-     * `node`'s row span when a document row built it. The parent is checked as well
-     * as the id, because a composite can hand its own id down to a child it builds.
+     * The parent is checked as well as the id, because a composite can hand its own id down to a child it builds.
      */
     private _rowSpan(node: Node): NodeSpan | undefined {
         const row = this._rows.get(node.id);

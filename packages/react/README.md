@@ -84,7 +84,7 @@ it returns in — which is also why nothing in this package imports a platform, 
 it works with `@motionscript/browser`'s engine, a headless one, or a test double.
 
 **Create it once and share it.** It holds the renderer and the exporter, so a
-second engine is a second wasm module and a second GL stack. `engine` is
+second engine is a second wasm module and a second renderer. `engine` is
 nullable precisely because building one is async: the player no-ops until it
 arrives, which keeps the hook out of a conditional.
 

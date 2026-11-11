@@ -14,59 +14,24 @@ import { applyGraphicsTextDefaults } from "./text-defaults";
 import type { NodeRenderState, RasterizedSurface, RenderContext2D, RenderPass2D, SpaceRects, EffectTarget } from "./render-context2d";
 import type { NodeEffect } from "@/attributes/shape/effects/union";
 
-/**
- * The base every {@link RenderContext2D} backend extends.
- *
- * It owns the parts of a render context that are the *same* whatever is being
- * rasterized — the text-default stack, the node scope stack, disposal — plus
- * the host-facing half of the surface (`execute`, `screenshot`, `unmount`),
- * which the {@link RenderContext2D} interface deliberately leaves out because a
- * node has no business driving a render pass from inside one.
- *
- * **`draw` is final by convention.** It resolves the ambient text defaults onto
- * the op list and hands the result to {@link drawGraphics}, which is where a
- * backend does its actual drawing. Owning that step here rather than in each
- * backend is what keeps the real renderer and the precomp asset walk agreeing
- * on which font an under-specified `text` op shapes with: a family that one
- * resolves and the other does not is a font that never loads and glyphs that
- * never paint.
- */
+/** The base every {@link RenderContext2D} backend extends. Owns what is the same whatever is rasterized (text-default stack, node scope stack, disposal) plus the host-facing half (`execute`, `screenshot`, `unmount`) the interface leaves out. **`draw` is final by convention**: it resolves ambient text defaults onto the op list and hands it to {@link drawGraphics}; owning that step here keeps the real renderer and the precomp asset walk agreeing on which font an under-specified `text` op uses. */
 export abstract class CanvasRenderContext2D implements RenderPass2D {
     abstract measureText(text: string, fontSize: number, fontFamily: string, fontWeight?: number, letterSpacing?: number, fontStyle?: FontStyle): Size2D;
 
-    // ---- Inherited text-style defaults ------------------------------------
-    // `<DefaultTextStyle>` reaches a `Text`/`RichText` node through the context
-    // map, applied once when the node binds. A raw `Graphics2D` has no node to
-    // bind, so it inherits the same defaults here instead — pushed around a
-    // subtree's draw scope, and folded into each `text`/`richText` op by
-    // `draw()`. Same vocabulary (`TextStyle`), same precedence, two channels.
+    // Inherited text-style defaults (see RenderContext2D.pushTextStyle).
 
-    /**
-     * Defaults in effect for the current draw scope, innermost last. Each entry
-     * is **already merged** onto the one below it (see {@link pushTextStyle}), so
-     * the top of the stack is the effective style and reading it costs nothing.
-     */
+    /** Defaults for the current draw scope, innermost last. Each entry is already merged onto the one below (see {@link pushTextStyle}), so the top is the effective style. */
     private readonly textStyleStack: TextStyle[] = [];
 
-    /** See {@link RenderContext2D.pushTextStyle}. */
     pushTextStyle(style: TextStyle | null): void {
         this.textStyleStack.push(style === null ? EMPTY_TEXT_STYLE : textOps.mergeStyle(this.defaultTextStyle, style));
     }
 
-    /** Close the innermost scope opened by {@link pushTextStyle}. */
     popTextStyle(): void {
         this.textStyleStack.pop();
     }
 
-    /**
-     * The text-style defaults in effect right now — the innermost
-     * {@link pushTextStyle} scope, or the project's `theme.typography.default`
-     * when no scope is open.
-     *
-     * Carries all ten {@link TEXT_STYLE_KEYS}, but only the shaping ones reach a
-     * `Graphics2D` op; see `TEXT_SHAPING_KEYS` for why `fill`/`stroke`/`shadow`
-     * stay a node-level concern.
-     */
+    /** The defaults in effect: innermost {@link pushTextStyle} scope, else the project's `theme.typography.default`. Carries all ten {@link TEXT_STYLE_KEYS}, but only shaping ones reach a `Graphics2D` op (see `TEXT_SHAPING_KEYS`). */
     get defaultTextStyle(): TextStyle {
         return this.textStyleStack[this.textStyleStack.length - 1] ?? textOps.preset("default");
     }
@@ -80,20 +45,13 @@ export abstract class CanvasRenderContext2D implements RenderPass2D {
      *  ambient defaults. Backends implement this instead of {@link draw}. */
     protected abstract drawGraphics(graphics: Graphics2D): void;
 
-    /**
-     * See {@link RenderContext2D.layoutTextBlock}. Concrete rather than abstract,
-     * and `null` by default, so a backend that has no need to report glyph
-     * positions is unaffected — the only thing it gives up is on-canvas text
-     * editing in a host built on it.
-     */
+    /** `null` by default, so a backend that never reports glyph positions only gives up on-canvas text editing. See {@link RenderContext2D.layoutTextBlock}. */
     layoutTextBlock(state: Partial<TextState>): TextBlockLayout | null {
         return null;
     }
 
-    /** Stack of node ids currently being drawn, innermost last. */
     protected currentNodeStack: string[] = [];
 
-    /** Returns the id of the innermost node currently being drawn. */
     protected currentNodeId(): string {
         if (this.currentNodeStack.length === 0) {
             throw new Error("No current node in context");
@@ -114,19 +72,9 @@ export abstract class CanvasRenderContext2D implements RenderPass2D {
         this._disposed = true;
     }
 
-    /**
-     * Execute `callback`, which issues shape/paint calls, and flush the result
-     * to the underlying render target (canvas, SVG document, etc.). A callback
-     * that throws still throws, and the next pass starts from a clean context.
-     */
+    /** Runs `callback`, which issues shape/paint calls, then flushes to the render target. A throwing callback still throws, and the next pass starts clean. */
     abstract execute(callback: () => void): void;
-    /**
-     * What the frames since the last call drew without failing but not as the
-     * document says (a blend mode the backend lacks, a shader that does not
-     * compile, a lost GPU device), once per kind, feature and node. The
-     * playback controller reports them as render errors; an export hands them
-     * to its `onIssue`. A bare string is a `shader` issue.
-     */
+    /** What the frames since the last call drew without failing but not as the document says (a missing blend mode, a shader that doesn't compile, a lost GPU device), once per kind, feature and node; a bare string is a `shader` issue. Playback reports them as render errors, export hands them to `onIssue`. */
     takeRenderIssues(): Array<RenderIssue | string> {
         return [];
     }
@@ -162,27 +110,18 @@ export abstract class CanvasRenderContext2D implements RenderPass2D {
     abstract beginCamera(viewport: { x: number; y: number; width: number; height: number }, lookAt: Vector2, zoom: number, heading: number): void;
     abstract endCamera(): void;
 
-    /**
-     * Per-node render state for each node on the draw stack, in push order
-     * (innermost last). Kept parallel to `currentNodeStack` so fills with
-     * `space: 'parent'` can resolve their reference rect and so
-     * motion-driven effects can read the current node's velocity.
-     */
+    /** Render state per node on the draw stack, parallel to `currentNodeStack`, so `space: 'parent'` fills can resolve their reference rect and motion effects read the node's velocity. */
     protected renderStateStack: NodeRenderState[] = [];
 
-    /** See {@link RenderContext2D.readsSpaceRects}. */
     readonly readsSpaceRects: boolean = true;
 
-    /** See {@link RenderContext2D.drawsVisibleOnly}. */
     readonly drawsVisibleOnly: boolean = true;
 
-    /** See {@link RenderPass2D.begin}. */
     begin(state: NodeRenderState): void {
         this.currentNodeStack.push(state.id);
         this.renderStateStack.push(state);
     }
 
-    /** Close the innermost node draw scope opened by `begin()`. */
     end(): void {
         this.currentNodeStack.pop();
         this.renderStateStack.pop();
@@ -198,11 +137,7 @@ export abstract class CanvasRenderContext2D implements RenderPass2D {
         return this.renderStateStack[this.renderStateStack.length - 1];
     }
 
-    /**
-     * Close every node and text-style scope still open. A backend calls this
-     * when a pass ends, so a pass that threw cannot leave the next one inside
-     * its scopes.
-     */
+    /** Closes every node and text-style scope still open; a backend calls it when a pass ends so a pass that threw can't leave the next inside its scopes. */
     protected _resetScopes(): void {
         this.textStyleStack.length = 0;
         this.currentNodeStack.length = 0;

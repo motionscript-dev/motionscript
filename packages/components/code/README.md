@@ -55,7 +55,7 @@ export default {
   chainable `CodeRanges` build the ranges those commands take.
 - **Themes**: `github-dark`, `github-light`, `vscode-dark`, `vscode-light`
   and a default, plus `registerCodeTheme` for your own.
-  `initSyntaxHighlighter(themes, langs)` preloads grammars so the first frame
+  `initSyntaxHighlighter(langs)` preloads grammars so the first frame
   renders fully highlighted.
 
 Every token keeps a stable identity across edits, so concurrent animations at
@@ -84,7 +84,7 @@ scene, such as [`@motionscript/browser`](https://github.com/motionscript-dev/mot
   ends of the listing and by lines that occur once on both sides, so an edit
   to a long listing costs in proportion to what changed. Only a run of changed
   lines between two such anchors is compared pairwise, up to
-  `LINE_ALIGN_CELLS` (40,000) line pairs per run and 160,000 per edit; beyond
+  40,000 line pairs per run and 160,000 per edit; beyond
   that its lines leave and enter as whole rows instead of morphing into each
   other.
 - **A command on a node that is not in a tree** runs its duration and writes

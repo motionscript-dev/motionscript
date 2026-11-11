@@ -26,7 +26,6 @@ import {
 
 /** A template, or `custom` for the grid's own `path`. */
 export const PATH_GRID_SHAPES = [...PATH_TEMPLATES, "custom"] as const
-export type PathGridShape = (typeof PATH_GRID_SHAPES)[number]
 
 const own = {
   shape: Types.oneOf(PATH_GRID_SHAPES, { default: "circle" }),
@@ -125,8 +124,6 @@ export const PathGrid = ItemGrid.define(component2d({
 }), arranger)
 
 export type PathGrid = NodeOf<typeof PathGrid>
-/** What a call or a document row may set. */
-export type PathGridProps = NonNullable<Parameters<typeof PathGrid>[0]>
 
 /** The path the items follow, and where its coordinates land in this grid's frame. */
 function pathIn(s: Own, box: Size2D): { path: PathData; placement: PathPlacement } {

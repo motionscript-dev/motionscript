@@ -6,67 +6,32 @@ import type { BoxBounds } from "./bounds";
 import type { SizeConstraints } from "./constraints";
 
 /**
- * How a container arranges the items that take part in its layout:
- *
- * - `'freeform'` — items overlap, each aligned in the padded content box by
- *   `align` and offset from there by its own `x`/`y`.
- * - `'horizontal'` — a run left-to-right.
- * - `'vertical'` — a run top-to-bottom.
- * - `'grid'` — N equal columns, rows sized to their content (or divided equally
- *   when the container's height is bounded). Items place themselves with
- *   `column`/`row` and span with `colSpan`/`rowSpan`; anything unplaced is
- *   auto-flowed left-to-right.
- *
- * A run also answers `wrap` — "and break onto a new line when you run out of
- * room" — which is a property of the run rather than a fourth direction.
+ * How a container arranges items: `'freeform'` (overlap, each aligned in the padded content box by `align` and offset
+ * by its own `x`/`y`), `'horizontal'`/`'vertical'` (a run), or `'grid'` (N equal columns, rows sized to content or
+ * divided equally when the height is bounded; items place with `column`/`row`, span with `colSpan`/`rowSpan`, the rest
+ * auto-flow). A run also answers `wrap`, a property of the run rather than a fourth direction.
  */
 export type FlowMode = "horizontal" | "vertical" | "freeform" | "grid";
 
 /** Spacing between items, or `"auto"` to spread the free space evenly between them. */
 export type GapSize = number | "auto";
 
-/**
- * What a `flow` prop holds: a mode, or — mid-tween between two — both and how far
- * along. The blend lives in the value so that restoring the prop restores it.
- */
+/** What a `flow` prop holds: a mode, or mid-tween both and how far along (the blend lives in the value so restoring the prop restores it). */
 export type FlowResolved = FlowMode | { from: FlowMode; to: FlowMode; t: number };
 
-/** A container's author-facing layout props. */
 export interface FlowProps {
-    /**
-     * Layout mode for children: a run (`horizontal` / `vertical`), overlapping
-     * `freeform`, or a `grid` of N equal columns.
-     */
     flow: FlowMode;
-    /** Spacing between children along the layout's main axis. */
     gap: GapSize;
-    /**
-     * Break a `horizontal`/`vertical` run onto new lines once it runs out of
-     * main-axis room. It needs a bounded main axis to break against, so an axis
-     * set to `'hug'` stays one line.
-     */
+    /** Break a run onto new lines once it runs out of main-axis room; needs a bounded main axis, so an axis set to `'hug'` stays one line. */
     wrap: boolean;
-    /**
-     * Spacing on the **cross** axis: between wrapped lines, and between a grid's
-     * rows. Omitted, it follows `gap` — "wrap this row" almost never means "and
-     * stack the lines flush against each other".
-     */
+    /** Spacing on the **cross** axis (between wrapped lines and grid rows). Omitted, it follows `gap`: "wrap this row" almost never means "stack the lines flush". */
     crossGap: number;
-    /** Number of equal columns when `flow` is `'grid'`. At least 1. */
     columns: number;
-    /**
-     * Where children sit in the content box: a named position (`'center'`,
-     * `'topLeft'`, …) or a per-axis `Vector2` (x: -1 left … +1 right, y: -1
-     * bottom … +1 top).
-     */
+    /** Where children sit in the content box: a named position or a per-axis `Vector2` (x: -1 left … +1 right, y: -1 bottom … +1 top). */
     align: Alignment;
 }
 
-/**
- * What `flowOps` arranges by: the {@link FlowProps} vocabulary, every field
- * optional and defaulting as the prop does. A shape's state or a `Canvas2D` is one
- * as it stands.
- */
+/** What `flowOps` arranges by: {@link FlowProps}, every field optional with the prop's defaults. A shape's state or a `Canvas2D` is one as it stands. */
 export interface FlowSettings {
     readonly flow?: FlowResolved;
     readonly gap?: GapSize;
@@ -78,7 +43,6 @@ export interface FlowSettings {
     readonly padding?: Insets;
 }
 
-/** One thing a flow arranges — a `Node2D` as it stands, or a plain `{ width, height }`. */
 export interface LayoutItem {
     readonly width: SizeInput;
     readonly height: SizeInput;
@@ -91,14 +55,10 @@ export interface LayoutItem {
     readonly row?: number;
     readonly colSpan?: number;
     readonly rowSpan?: number;
-    /**
-     * The item's own size under `constraints`. Without one, a number is the size,
-     * `'fill'` takes what is offered and `'hug'` is 0.
-     */
+    /** The item's own size under `constraints`. Without one, a number is the size, `'fill'` takes what is offered and `'hug'` is 0. */
     measure?(constraints: SizeConstraints, measurer?: MeasureContext2D): Partial<Size2D>;
 }
 
-/** The content box a flow measures in, and which of its axes hug their content. */
 export interface FlowSpace {
     readonly width: number;
     readonly height: number;
@@ -106,7 +66,6 @@ export interface FlowSpace {
     readonly hugHeight?: boolean;
 }
 
-/** One line of a `horizontal`/`vertical` run: items `[start, end)`. */
 export interface FlowLine {
     readonly start: number;
     readonly end: number;
@@ -114,10 +73,7 @@ export interface FlowLine {
     readonly cross: number;
 }
 
-/**
- * One measure pass: what `flowOps.place` needs to position the items, and the
- * extent a hugging container wraps.
- */
+/** One measure pass: what `flowOps.place` needs to position items, and the extent a hugging container wraps. */
 export interface FlowMeasure<I extends LayoutItem = LayoutItem> {
     readonly mode: FlowMode;
     readonly items: readonly I[];

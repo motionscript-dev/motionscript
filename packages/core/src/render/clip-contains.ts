@@ -8,43 +8,23 @@ import { withLineDescriptor } from "./descriptors/line";
 import { cornerRadiusOps } from "@/attributes/shape/corners/corner-radius";
 
 /**
- * Point-in-region tests for {@link Clip}, used by node hit testing so a click
- * follows a shape's silhouette rather than its bounding box.
- *
- * Geometry only — no renderer — because a `Clip` is a declarative
- * record of primitives rather than a built path. That is what lets hit testing
- * live in `core` and share one outline definition with clipping and backdrop
- * effects: a shape declares its outline once, in `clipSelf()`, and both the
- * pixels and the grab region derive from it.
- *
- * Every point and every descriptor coordinate here is in **y-up author space**
- * (the space `Graphics2D`/`Clip` descriptors are written in; the renderer flips to
- * canvas y-down at draw time — see `flipPositionY`). Angles follow from that:
+ * Point-in-region tests for {@link Clip}, so a click follows a shape's silhouette rather than its bounding box.
+ * Geometry only, since a `Clip` is a declarative record of primitives rather than a built path: a shape declares its
+ * outline once in `clipSelf()` and both the pixels and the grab region derive from it. Points and descriptor
+ * coordinates are **y-up author space** (the renderer flips at draw time, see `flipPositionY`), so
  * `startAngle`/`sweep` measure counter-clockwise from +x.
  */
 
-/** Guard against divide-by-zero on collapsed geometry. */
 const EPS = 1e-9;
 
-/**
- * Whether `point` falls inside the region a {@link Clip} describes, within
- * `tolerance` scene units of its edge.
- *
- * Shape ops union; a `cut` subtracts the immediately preceding shape from
- * everything declared before it, mirroring how the renderer replays the op list.
- * `tolerance` widens each shape outward — including a cutter, which therefore
- * takes a slightly larger bite, keeping the test forgiving in both directions
- * rather than making a hole's rim unpickable.
- */
+/** Whether `point` is inside the region a {@link Clip} describes, within `tolerance` scene units of its edge. Shape ops union; a `cut` subtracts the preceding shape from everything before it, as the renderer replays. `tolerance` widens each shape outward, a cutter included (a slightly larger bite), keeping the test forgiving rather than making a hole's rim unpickable. */
 export function containsClip(clip: Clip, point: Vector2, tolerance = 0): boolean {
     return containsOps(clip.ops(), point, tolerance);
 }
 
-/** {@link containsClip} over a raw op list. */
 export function containsOps(ops: readonly ClipOp[], point: Vector2, tolerance = 0): boolean {
     let inside = false;
-    // The shape immediately preceding the current position, held back so a
-    // following `cut` can subtract it instead of unioning it.
+    // Held back so a following `cut` can subtract it instead of unioning it.
     let pending: ClipShapeOp | null = null;
 
     const flush = (): void => {
@@ -54,8 +34,7 @@ export function containsOps(ops: readonly ClipOp[], point: Vector2, tolerance = 
 
     for (const op of ops) {
         if (op.kind === "cut") {
-            // The pending shape is the cutter: it never joins the union, and it
-            // punches whatever was accumulated before it.
+            // The pending shape is the cutter: it never joins the union and punches what came before.
             if (pending && containsShape(pending, point, tolerance)) inside = false;
             pending = null;
             continue;
@@ -67,11 +46,7 @@ export function containsOps(ops: readonly ClipOp[], point: Vector2, tolerance = 
     return inside;
 }
 
-/**
- * Dispatch one shape op to its own containment test, after undoing the shape's
- * local rotation/scale about its pivot — mirroring `BaseShape.applyShapeTransform`,
- * which bakes that same transform into the drawn path.
- */
+/** Dispatches a shape op to its containment test after undoing its local rotation/scale about its pivot, mirroring `BaseShape.applyShapeTransform`. */
 function containsShape(op: ClipShapeOp, point: Vector2, tolerance: number): boolean {
     switch (op.kind) {
         case "rect": {
@@ -98,16 +73,12 @@ function containsShape(op: ClipShapeOp, point: Vector2, tolerance: number): bool
             const s = withLineDescriptor(op.state);
             const p = toShapeLocal(point, s, s.width, s.height);
             if (p === null || s.points.length === 0) return false;
-            // As a clip region a polyline is filled with its contour implicitly
-            // closed, whether or not `closed` was set — so test the enclosed area
-            // first, then fall back to the band around the stroke itself.
+            // As a clip region a polyline is filled with its contour implicitly closed, so test the enclosed area first, then the band around the stroke.
             if (s.points.length >= 3 && containsPolyline(p, s.points, true, tolerance)) return true;
             return nearPolyline(p, s.points, s.closed, tolerance);
         }
         case "path": {
-            // An arbitrary Bézier winding test is not worth carrying, and no
-            // built-in shape emits a `path` clip — only a hand-built `Clip` can.
-            // Fall back to the declared box.
+            // A Bézier winding test isn't worth carrying and no built-in shape emits a `path` clip, only a hand-built `Clip`; fall back to the declared box.
             const s = op.state;
             const local = { x: point.x - (s.x ?? 0), y: point.y - (s.y ?? 0) };
             return containsRect(local, s.width ?? 0, s.height ?? 0, cornerRadiusOps.resolve(0), tolerance);
@@ -115,7 +86,6 @@ function containsShape(op: ClipShapeOp, point: Vector2, tolerance: number): bool
     }
 }
 
-/** The positioning fields every shape descriptor resolves to. */
 interface ShapePlacement {
     x: number;
     y: number;
@@ -124,19 +94,13 @@ interface ShapePlacement {
     pivot: unknown;
 }
 
-/**
- * Map `point` out of the shape's own `x`/`y`/`rotation`/`scale` (about its
- * pivot) and into the shape's un-transformed, centred frame. Returns `null` when
- * the scale is zero — the shape has collapsed and encloses nothing.
- */
+/** Maps `point` out of the shape's `x`/`y`/`rotation`/`scale` (about its pivot) into its un-transformed, centred frame; `null` when scale is zero (collapsed, encloses nothing). */
 function toShapeLocal(point: Vector2, s: ShapePlacement, width: number, height: number): Vector2 | null {
     if (s.scale === 0) return null;
     const pivot = s.pivot as Vector2;
-    // Pivot is normalised [-1, 1] about the shape centre, y-up here (the
-    // renderer negates its y because it works in canvas space).
+    // Pivot is normalised [-1, 1] about the centre, y-up here (the renderer negates y in canvas space).
     const px = pivot.x * (width / 2);
     const py = pivot.y * (height / 2);
-    // Relative to the pivot, in the parent's (unrotated) frame.
     const dx = point.x - (s.x + px);
     const dy = point.y - (s.y + py);
     // Undo the clockwise rotation: in y-up space the forward map is
@@ -146,28 +110,18 @@ function toShapeLocal(point: Vector2, s: ShapePlacement, width: number, height: 
     const sin = Math.sin(rad);
     const rx = (cos * dx - sin * dy) / s.scale;
     const ry = (sin * dx + cos * dy) / s.scale;
-    // Back to centre-relative: the pivot sits (px, py) from the centre.
     return { x: rx + px, y: ry + py };
 }
 
-// ─── Primitives ──────────────────────────────────────────────────────────────
-
 interface Corners4 { topLeft: number; topRight: number; bottomRight: number; bottomLeft: number }
 
-/**
- * Axis-aligned box centred on the origin, with per-corner rounding. A corner is
- * only excluded when the point sits beyond that corner's quarter-circle, so a
- * plain rect (all radii 0) reduces to the box test exactly. `cornerStyle` is not
- * consulted: an `'angled'` chamfer cuts strictly inside the arc, so testing the
- * arc over-estimates by a sliver — the forgiving direction for a grab test.
- */
+/** Box centred on the origin with per-corner rounding; a corner excludes the point only beyond its quarter-circle, so a plain rect reduces to the box test. `cornerStyle` is ignored: an `'angled'` chamfer cuts inside the arc, so the arc over-estimates by a sliver, the forgiving direction for a grab. */
 function containsRect(p: Vector2, width: number, height: number, radius: Corners4, tolerance: number): boolean {
     const halfW = width / 2 + tolerance;
     const halfH = height / 2 + tolerance;
     if (Math.abs(p.x) > halfW || Math.abs(p.y) > halfH) return false;
 
-    // Pick the corner the point is nearest and test its arc. Radii are clamped
-    // the way any rounded-rect rasteriser clamps them: never past half the side.
+    // Test the nearest corner's arc; radii clamp to half the side as any rounded-rect rasteriser clamps them.
     const maxR = Math.min(width, height) / 2;
     const r = Math.min(
         maxR,
@@ -177,8 +131,7 @@ function containsRect(p: Vector2, width: number, height: number, radius: Corners
     );
     if (r <= 0) return true;
 
-    // Centre of that corner's arc, then the usual "outside the quarter-circle"
-    // check — which only bites inside the corner square itself.
+    // Centre of that corner's arc, then the "outside the quarter-circle" check, which only bites inside the corner square.
     const sx = Math.sign(p.x || 1);
     const sy = Math.sign(p.y || 1);
     const dx = p.x - sx * (width / 2 - r);
@@ -188,14 +141,9 @@ function containsRect(p: Vector2, width: number, height: number, radius: Corners
 }
 
 /**
- * Ellipse, honouring the same `ratio`/`sweep`/`startAngle` family the renderer
- * draws (see `EllipseShape.buildSVGPath`), so the grab region is the region that
- * was actually painted:
- *
- * - `ratio` ≤ 0      → solid disk, or a wedge for a partial sweep
- * - 0 < `ratio` < 1  → annulus / annular sector (the hole is not hittable)
- * - `ratio` ≥ 1      → the band has collapsed to the bare outer curve, so only
- *                      points near that curve hit
+ * Ellipse with the `ratio`/`sweep`/`startAngle` family the renderer draws (see `EllipseShape.buildSVGPath`), so the
+ * grab region is what was painted: `ratio` <= 0 is a disk (or wedge for a partial sweep); 0 < `ratio` < 1 an annulus /
+ * annular sector (the hole is not hittable); `ratio` >= 1 collapses to the bare outer curve, hit only near it.
  */
 function containsEllipse(
     p: Vector2, width: number, height: number,
@@ -226,11 +174,7 @@ function norm(p: Vector2, rx: number, ry: number): number {
     return Math.hypot(p.x / rx, p.y / ry);
 }
 
-/**
- * Whether `angleDeg` lies within the arc `[startAngle, startAngle + sweep]`,
- * with `tolerance` converted to angular slack at the point's own radius so
- * grab-slop widens the wedge's straight edges too. Handles negative sweeps.
- */
+/** Whether `angleDeg` is in the arc `[startAngle, startAngle + sweep]` (negative sweeps handled), with `tolerance` converted to angular slack at the point's radius so grab-slop widens the wedge's straight edges too. */
 function withinSweep(
     angleDeg: number, startAngle: number, sweep: number,
     p: Vector2, tolerance: number,
@@ -247,11 +191,7 @@ function withinSweep(
     return delta <= span + slack || delta >= 360 - slack;
 }
 
-/**
- * Vertices of a regular polygon inscribed in `width`×`height`, y-up author
- * space. The renderer starts at the top vertex and steps clockwise in canvas
- * space; in y-up that is `+π/2` stepping negative.
- */
+/** Vertices of a regular polygon inscribed in `width` x `height`, y-up. The renderer starts at the top vertex and steps clockwise in canvas space; in y-up that is `+π/2` stepping negative. */
 export function polygonVertices(width: number, height: number, sides: number): Vector2[] {
     const n = Math.max(3, Math.round(sides));
     const rx = width / 2;
@@ -281,11 +221,7 @@ export function polygramVertices(width: number, height: number, sides: number, r
     return out;
 }
 
-/**
- * Even-odd crossing test against a polygon, widened by `tolerance`: a point just
- * outside an edge still counts. `closed` also closes the last→first segment for
- * the tolerance band.
- */
+/** Even-odd crossing test against a polygon, widened by `tolerance` (a point just outside an edge counts). `closed` also closes the last-to-first segment for the tolerance band. */
 function containsPolyline(p: Vector2, verts: readonly Vector2[], closed: boolean, tolerance: number): boolean {
     if (verts.length >= 3 && pointInPolygon(p, verts)) return true;
     return tolerance > 0 && nearPolyline(p, verts, closed, tolerance);

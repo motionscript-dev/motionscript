@@ -3,41 +3,31 @@ import { observeSlots } from "@/props/observer";
 import type { PropSlot, PropSnapshot } from "@/props/slot";
 import { settles, type Command } from "@/tween/command";
 
-/** What the index reads of a placed command. */
 export interface SettlePlaced {
     readonly start: number;
-    /** When it starts writing, if earlier than `start`: an entrance holds `at(0)` from here. */
+    /** An entrance holds `at(0)` from here. */
     readonly holdFrom?: number;
     readonly duration: number;
     readonly command: Command<Record<string, unknown>>;
     readonly writes: ReadonlySet<PropSlot<unknown>>;
-    /** What it read while built, when it is unmarked: what it may read while it runs. */
+    /** What it may read while it runs. */
     readonly reads?: ReadonlySet<PropSlot<unknown>>;
 }
 
 /**
- * Evaluation that holds finished commands instead of running them.
+ * Evaluation that holds finished commands instead of running them. A command marked {@link settling} leaves
+ * fixed end values, so once finished it is a stored write per slot (only the latest-placed finished writer
+ * counts) and a frame costs a lookup per written slot plus the commands still running; the timeline's length
+ * drops out.
  *
- * A timeline evaluates `t` by restoring baselines and running every command
- * started by `t` in placement order, so the later one wins a slot both write.
- * That costs every command placed so far, finished or not. A command marked
- * {@link settling} leaves fixed end values, so once finished it is a stored
- * write per slot: for each slot, only the latest-placed finished writer counts.
- * A frame then costs a lookup per written slot plus the commands still running,
- * and the length of the timeline drops out.
+ * Unmarked commands, and marked ones still running, run in placement order. After each, a slot it writes whose
+ * held writer was placed later gets that writer's value back, so placement order still decides. This relies on
+ * the timeline's restore: a command writes nothing while running that it did not write while being built.
  *
- * Unmarked commands, and marked ones still running, are run as before, in
- * placement order. After each, a slot it writes whose held writer was placed
- * later gets that writer's value back: placement order still decides. This
- * relies on what the timeline's restore already does, that a command writes
- * nothing while running that it did not write while being built.
- *
- * A held end value is in place before every command runs, so one an earlier
- * unmarked command reads (a `save`) would reach it early: a marked command
- * writing a slot an earlier unmarked one read is run instead, as if unmarked.
+ * A held end value is in place before every command runs, so one an earlier unmarked command reads (a `save`)
+ * would reach it early: a marked command writing a slot an earlier unmarked one read is run as if unmarked.
  */
 export class SettledIndex {
-    /** `null` when nothing is marked: the timeline runs everything, as before. */
     static build(placed: readonly SettlePlaced[]): SettledIndex | null {
         const finish = new Float64Array(placed.length).fill(NaN);
         const writers = new Map<PropSlot<unknown>, Writer[]>();
@@ -55,8 +45,7 @@ export class SettledIndex {
             }
             finish[i] = end;
             if (end > (p.holdFrom ?? p.start)) running.push(i);
-            // Only what `at(1)` writes is an end value; a slot written only while
-            // building is not held.
+            /** Only what `at(1)` writes is an end value; a slot written only while building is not held. */
             const written = new Set<PropSlot<unknown>>();
             observeSlots({ read: () => { }, write: (slot) => written.add(slot) }, () => p.command.at(1));
             for (const slot of written) {
@@ -70,12 +59,10 @@ export class SettledIndex {
         return new SettledIndex(placed, finish, [...writers].map(([slot, list]) => new Track(slot, list)), replayed, running);
     }
 
-    /** Whether the command at `index` is held once finished, rather than run on every evaluation. */
     holds(index: number): boolean {
         return !Number.isNaN(this._finish[index]);
     }
 
-    /** Bring what the placed commands write to `seconds`. Baselines must be restored first. */
     evaluate(placed: readonly SettlePlaced[], seconds: number): void {
         const tracks = this._tracks;
         const held = this._held;
@@ -84,7 +71,6 @@ export class SettledIndex {
             if (w >= 0) tracks[k].slot.restoreFrom(tracks[k].ends[w]);
         }
 
-        // Three lists, each in placement order, merged.
         const replayed = this._replayed;
         const long = this._long;
         const bin = this._binOf(seconds);
@@ -111,7 +97,7 @@ export class SettledIndex {
             }
 
             const p = placed[i];
-            // An unmarked finish is NaN, which no time reaches.
+            /** An unmarked finish is NaN, which no time reaches. */
             if (seconds < (p.holdFrom ?? p.start) || this._finish[i] <= seconds) continue;
             p.command.at(seconds < p.start ? 0 : clamp01(p.duration > 0 ? (seconds - p.start) / p.duration : 1));
             for (let f = this._fixStart[i]; f < this._fixStart[i + 1]; f++) {
@@ -131,8 +117,7 @@ export class SettledIndex {
     ) {
         this._held = new Int32Array(_tracks.length);
 
-        // Marked commands that can be running, by the time bins their run overlaps.
-        // One spanning many bins is checked on every evaluation instead.
+        /** One spanning many bins is checked on every evaluation instead. */
         let from = Infinity;
         let to = -Infinity;
         for (const i of running) {
@@ -156,7 +141,6 @@ export class SettledIndex {
         for (let bin = 0; bin < bins; bin++) this._binStart[bin + 1] = this._binStart[bin] + items[bin].length;
         this._binItems = Int32Array.from(items.flat());
 
-        // For every command, the tracks of the slots it writes.
         const trackOf = new Map<PropSlot<unknown>, number>(_tracks.map((track, k) => [track.slot, k]));
         const fixes: number[] = [];
         this._fixStart = new Int32Array(placed.length + 1);
@@ -202,7 +186,6 @@ interface Writer {
     end: PropSnapshot<unknown>;
 }
 
-/** One written slot: its marked writers by finish time, and the latest-placed one finished by each. */
 class Track {
     readonly finish: Float64Array;
     readonly order: Int32Array;
@@ -222,7 +205,6 @@ class Track {
         }
     }
 
-    /** The writer whose end value the slot holds at `seconds`, or -1 when none has finished. */
     at(seconds: number): number {
         let lo = 0;
         let hi = this.finish.length;
@@ -236,10 +218,9 @@ class Track {
 }
 
 /**
- * The first time a command placed at `start` for `duration` runs at its end, by
- * the timeline's own arithmetic, `(t - start) / duration >= 1`. `start + duration`
- * can miss it by a rounding step either way. NaN when it can't be pinned down,
- * which leaves the command to run every evaluation.
+ * By the timeline's own arithmetic, `(t - start) / duration >= 1`; `start + duration` can miss it by a
+ * rounding step either way. NaN when it cannot be pinned down, which leaves the command running every
+ * evaluation.
  */
 function finishTime(start: number, duration: number): number {
     if (!(duration > 0)) return start;
@@ -261,7 +242,6 @@ function finishTime(start: number, duration: number): number {
 const BITS = new Float64Array(1);
 const INTS = new BigInt64Array(BITS.buffer);
 
-/** The adjacent double above or below `x`. */
 function step(x: number, up: boolean): number {
     if (x === 0) return up ? Number.MIN_VALUE : -Number.MIN_VALUE;
     BITS[0] = x;

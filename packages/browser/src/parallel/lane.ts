@@ -4,11 +4,7 @@ import type { ResolvedVideoEncoding } from "../exporter";
 import type { VideoFormat } from "../formats";
 import type { ExportChunk } from "./plan";
 
-/**
- * Everything a lane needs to render chunks of one export. Plain data, so it
- * crosses a `MessagePort` intact; the encoding is pinned here because segments
- * encoded differently cannot be joined.
- */
+/** Everything a lane needs to render chunks of one export: plain data (it crosses a `MessagePort`), with the encoding pinned since differently encoded segments cannot be joined. */
 export interface SegmentSpec {
     /** Its fps and viewport resolved. */
     project: ProjectDocument;

@@ -1,41 +1,17 @@
 import type { ModedEffect, EffectData } from "../effect-data";
 import { defineEffect, effectDataOf, param, type EffectFields } from "../spec";
 
-/**
- * The screen pattern each halftone cell is drawn with.
- *
- * - `"dot"` — the classic circular dot that grows with tone.
- * - `"line"` — a line screen: parallel rules that thicken with tone.
- * - `"cross"` — crossed rules, a coarse engraving / crosshatch.
- */
+/** The screen pattern each cell is drawn with: `"dot"` (grows with tone), `"line"` (rules thicken with tone), `"cross"` (crossed rules, coarse engraving). */
 export type HalftoneShape = "dot" | "line" | "cross";
 
-/**
- * How many plates the screen is separated into.
- *
- * - `"mono"` — one black screen over luminance. The newsprint look.
- * - `"cmyk"` — four plates at the classic process angles (C 15°, M 75°, Y 0°,
- *   K 45°). Pulling the shared darkness onto a K plate is what keeps neutrals
- *   neutral, so this is the one that reads as *printed*.
- * - `"rgb"` — one screen per RGB channel. Cheaper and occasionally the look you
- *   want, but with no K plate every grey prints three overlapping mid-dots, so
- *   anything neutral turns to colour noise. Prefer `"cmyk"` for print looks.
- */
+/** How many plates the screen separates into: `"mono"` (one black screen over luminance, newsprint), `"cmyk"` (four plates at the process angles C 15°, M 75°, Y 0°, K 45°; the shared darkness on a K plate keeps neutrals neutral, so it reads as *printed*), `"rgb"` (one per channel: cheaper, but with no K plate every grey prints three mid-dots and neutrals turn to colour noise). */
 export type HalftoneSeparation = "mono" | "rgb" | "cmyk";
 
-/**
- * Halftone screen — the newsprint / comic-book look. The image is divided into a
- * rotated grid of cells and each cell's tone becomes the size of a mark, so
- * continuous shading is reproduced by varying dot area rather than intensity.
- *
- * `separation` picks how many plates the image is split across — see
- * {@link HalftoneSeparation}.
- */
+/** Halftone screen (newsprint, comic-book): a rotated grid of cells whose tone becomes mark size, reproducing shading by dot area rather than intensity. `separation` picks the plates, see {@link HalftoneSeparation}. */
 export interface HalftoneEffect extends ModedEffect, EffectFields<typeof halftoneSpec.params> {
     type: "halftone";
 }
 
-/** The {@link HalftoneEffect} spec: its parameters, defaults and ranges. */
 export const halftoneSpec = defineEffect({
     type: "halftone",
     group: "stylize",

@@ -3,12 +3,12 @@ import {
     fillOps,
     Graphics2D,
     Types,
-    type Color,
     type Fill,
     type FillResolved,
     type NodeOf,
+    type Color as _Color,
+
     type NormalizedColor,
-    type PaintProps,
     type RenderContext,
     type ShadowResolved,
     type Size2D,
@@ -26,18 +26,6 @@ import { omit, PAINT, PAINT_COMMANDS, painted } from "../kit/component";
 import { drawLabels, loadFormulas, type Label } from "../kit/furniture";
 import { lerpFillScale, readFillScale } from "../kit/scale";
 import { formatTick } from "../kit/ticks";
-
-export interface SampleSpaceProps extends PaintProps {
-    columnShares?: number[];
-    rowShares?: number[];
-    columnFills?: Fill[];
-    columnLabels?: string[];
-    rowLabels?: string[];
-    values?: boolean;
-    labelSize?: number;
-    labelColor?: Color;
-    fontFamily?: string;
-}
 
 /** The parts' paints until told otherwise, a column each, round again past the last. */
 const PALETTE = ["#58a6ff", "#f59e0b", "#4ade80", "#f472b6", "#a78bfa", "#2dd4bf"];
@@ -74,7 +62,6 @@ const state = {
     fontFamily: Types.text("", { animatable: false }),
 };
 
-/** What a sample space is drawn from: its own entries, as its fields and its node both read them. */
 export type SampleSpaceValues = Values<typeof state>;
 
 /** One part of a sample space: its box in pixels from the node's centre, y up, and its probability. */
@@ -89,11 +76,9 @@ export interface SamplePart {
 }
 
 /**
- * A probability's whole, as a box cut into columns by `columnShares` (shares of
- * the whole, P(A) and P(not A)) and each column cut again by its `rowShares` entry
- * (P(B | A) above, the rest below): each part's area is its probability.
- * Braces name the columns below and the rows on the left; `divideTo` moves the
- * cuts.
+ * A probability's whole as a box cut into columns by `columnShares`, each cut
+ * again by its `rowShares` entry (P(B | A) above, the rest below): each part's
+ * area is its probability.
  */
 export const SampleSpace = component2d({
     key: "sampleSpace",

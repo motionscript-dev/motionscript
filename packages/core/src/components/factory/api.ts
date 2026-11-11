@@ -37,10 +37,6 @@ import type { EnvironmentData3D, FogData3D } from "@/render3d/scene-settings";
 import type { Shadow3D, Transform3D } from "@/render3d/transform";
 import type { Euler3, EulerOrder, Quaternion, Vector3, Vector3Input } from "@/render3d/vector3";
 
-// =============================================================
-// State entries
-// =============================================================
-
 declare const typeBrand: unique symbol;
 
 /** A state entry's whole definition: what it accepts, what it resolves to, whether it is private. */
@@ -78,10 +74,6 @@ export type Writes<S> = {
     [K in keyof S as IsReadOnly<S[K]> extends true ? never : K]?: InOf<S[K]>;
 };
 
-// =============================================================
-// Built-in 2D placement
-// =============================================================
-
 export interface Box2DState {
     readonly x: Type<number>;
     readonly y: Type<number>;
@@ -115,10 +107,6 @@ export interface BoxAudioState {
 type BuiltIn2DCommand = "moveTo" | "fadeTo" | "rotateTo" | "scaleTo" | "layoutTo" | "effectTo" | "pulse" | "wiggle" | "to" | "set";
 
 type Merge<P, S> = Omit<P, keyof S> & S;
-
-// =============================================================
-// Elements, components and child views
-// =============================================================
 
 declare const elementBrand: unique symbol;
 
@@ -220,10 +208,6 @@ export interface ChildView<out E extends Element = Element> {
     to(targets: Writes<StateOfElement<E>>): Piece;
     run(name: CommandsOfElement<E>, args?: object): Piece;
 }
-
-// =============================================================
-// What the engine hands each field
-// =============================================================
 
 export interface Max {
     readonly width?: number;
@@ -362,10 +346,6 @@ export interface Handle<V> {
     value?(at: Vector2, state: V, size: Size2D): Vector2;
 }
 
-// =============================================================
-// Commands
-// =============================================================
-
 declare const pieceBrand: unique symbol;
 /** A timed piece of a command. */
 export interface Piece {
@@ -434,10 +414,6 @@ export type CommandEntry<A, S, V, K> =
 
 export type CommandsSpec<C, S, V, K> = { [N in keyof C]: CommandEntry<C[N], S, V, K> };
 
-// =============================================================
-// The 2D factory's fields
-// =============================================================
-
 export type FieldState<All, A> = Values<All> & { readonly children: readonly ChildView<ElementOf<A>>[] };
 export type BuilderState<All, A> = Values<All> & { readonly children: readonly ElementOf<A>[] };
 type OwnKids<A, B> = readonly ChildView<[B] extends [never] ? ElementOf<A> : Extract<B, Element>>[];
@@ -501,10 +477,6 @@ export interface SpecAudio<K extends string, All, S, C, A, B> {
     readonly load?: (loader: Loader, state: FieldState<All, A>) => void;
     readonly provide?: (state: FieldState<All, A>, inherited: <T>(context: Context<T>) => T) => readonly Provided[];
 }
-
-// =============================================================
-// The 3D tree
-// =============================================================
 
 /** What every 3D component has: its place, turn and scale, and how the scene shows it. */
 export interface Transform3DState {

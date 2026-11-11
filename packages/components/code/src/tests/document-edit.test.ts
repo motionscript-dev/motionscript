@@ -20,7 +20,7 @@ import { ensureHighlighter } from '../highlight';
 const STAGE = { width: 800, height: 600 };
 
 beforeAll(async () => {
-    await ensureHighlighter(undefined, ['typescript']);
+    await ensureHighlighter(['typescript']);
 });
 
 const edit = (id: string, type: string, at: number, duration: number, args: Record<string, unknown>): CommandSpec =>

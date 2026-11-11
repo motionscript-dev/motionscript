@@ -5,34 +5,18 @@ import { driveCommand, type Command } from "@/tween/command";
 import { TweenStepper } from "@/tween/stepper";
 import { PropOptions } from "@/attributes/properties/decorator";
 
-/**
- * Companion implementation of {@link Node2D}'s property machinery and its
- * save/restore state stack. The bodies live here as free functions over a
- * narrow {@link ReactiveHost} so `node.ts` keeps only thin delegators (and the
- * hot-path `set`/`_writeProp`, which stay inline on the class). Mirrors the
- * existing `getPropSlot(host, name)` pattern in `props/host.ts`.
- */
+/** Companion implementation of {@link Node2D}'s property machinery and save/restore stack: free functions over a narrow {@link ReactiveHost}, so `node.ts` keeps thin delegators (and the hot-path `set`/`_writeProp` inline). */
 
-/**
- * The slice of a {@link Node2D} these helpers touch: the {@link PropHost} maps
- * plus the internal write/tween seams. `_writeProp` and `_prepareStep` remain
- * methods on `Node2D`; the helpers call back through them so subclass behaviour
- * and the inline hot path are preserved.
- */
+/** The slice of a {@link Node2D} these helpers touch: the {@link PropHost} maps plus the write/tween seams. `_writeProp` and `_prepareStep` stay methods on `Node2D` and are called through, preserving subclass behaviour and the inline hot path. */
 /** @internal */
 export interface ReactiveHost extends PropHost {
     readonly id: string;
     _writeProp(field: string, value: unknown): void;
     _prepareStep(to: Record<string, unknown>, duration: number, easing?: EasingFunction): TweenStepper;
-    /** LIFO stack of save() snapshot layers; owned as an instance field on Node2D. */
     _stateStack: Map<string, PropSnapshot<any>>[];
 }
 
-/**
- * Create the {@link PropSlot} for a freshly-declared prop, place it in its class's
- * `PropLayout` (whose prototype accessor routes writes through
- * `host._writeProp`) and register its tween/mapper metadata.
- */
+/** Creates the {@link PropSlot} for a freshly declared prop, places it in its class's `PropLayout` (whose prototype accessor routes writes through `host._writeProp`) and registers its tween/mapper metadata. */
 /** @internal */
 export function registerProp<Int>(host: ReactiveHost, field: string, options?: PropOptions<any, Int>): void {
     const slot = new PropSlot<Int>(undefined as unknown as Int, host, field);
@@ -45,7 +29,7 @@ export function registerProp<Int>(host: ReactiveHost, field: string, options?: P
     if (options?.mapper) {
         (cells.mappers ??= new Map()).set(field, options.mapper as (ext: any, prev?: any) => any);
     }
-    // Something of the instance's own, or its class's, already answers to the name: shadow it as before.
+    // Something of the instance's own, or its class's, already answers to the name: shadow it.
     if (!cells.layout.serves(host, field)) {
         Object.defineProperty(host, field, {
             get: () => slot.get(),
@@ -56,13 +40,7 @@ export function registerProp<Int>(host: ReactiveHost, field: string, options?: P
     }
 }
 
-/**
- * Apply (or re-apply) a prop's initial value plus optional tween/mapper. A first
- * call creates the cell via {@link registerProp}; a subsequent call for the same
- * field reuses the cell and only refines its tween/mapper (so a subclass can
- * override a parent default without losing the cell or its bindings), then
- * writes the value. Extracted from `Node2D.applyProp`.
- */
+/** Applies (or re-applies) a prop's initial value plus optional tween/mapper. A repeat call for a field reuses the cell and only refines tween/mapper, so a subclass can override a parent default without losing the cell or its bindings. */
 /** @internal */
 export function applyProp<Ext, Int = Ext>(
     host: ReactiveHost,
@@ -74,7 +52,6 @@ export function applyProp<Ext, Int = Ext>(
     if (!existing) {
         registerProp<Int>(host, field, options);
     } else if (options) {
-        // Allow subclasses to refine tween/mapper on an inherited field.
         if (options.tween) {
             (ensureCells(host).tweens ??= new Map()).set(field, options.tween as TweenFn<any>);
         }
@@ -97,16 +74,7 @@ export function collectProperties(host: ReactiveHost): Record<string, any> {
     return result;
 }
 
-// ---- State stack (save / restore) -----------------------------------------
-
-/**
- * Every declared prop of a node, captured as the value **or binding** its slot
- * holds — see {@link Node2D.captureProps}, which is the public way to make one.
- *
- * Keyed by prop name. Opaque on purpose: what a slot holds is the *mapped*,
- * internal form, and reading it out to write back through `set` is exactly the
- * round-trip a layer exists to avoid.
- */
+/** Every declared prop of a node as the value **or binding** its slot holds (see {@link Node2D.captureProps}), keyed by name. Opaque on purpose: a slot holds the *mapped* internal form, and reading it out to write back through `set` is the round-trip a layer avoids. */
 export type PropLayer = Map<string, PropSnapshot<any>>;
 
 /** Snapshot every prop slot (value or binding) into a fresh layer. */
@@ -121,7 +89,6 @@ export function captureLayer(host: ReactiveHost): PropLayer {
     return layer;
 }
 
-/** Push a snapshot of every prop slot (value or binding) onto the stack. */
 /** @internal */
 export function saveState(host: ReactiveHost): void {
     if (!host.__cells) return;
@@ -144,24 +111,7 @@ export function applySnapshotLayer(host: ReactiveHost, layer: PropLayer): void {
     }
 }
 
-/**
- * Animated restore: tween the numeric / custom-tweenable props toward their
- * saved resolved values, then reapply the full snapshot so bindings are
- * restored (not frozen at the tween's landing value) and non-tweened props snap.
- *
- * A {@link Command} rather than a generator: `_prepareStep`'s stepper already
- * drives the tween as a pure function of elapsed time, so `driveCommand` wraps
- * it directly and fires the snapshot reapply exactly at `t === 1` — the same
- * "commit at the end, restore what came before below it" shape
- * `packages/components/code`'s `runTransition` uses.
- *
- * `_prepareStep` is called **lazily, on the command's first evaluation**, not
- * when this function runs — it snapshots each prop's `from` off the *live*
- * node, and a generator's body (what this replaces) never ran a line until the
- * caller's first `.next()` either. Building it eagerly would snapshot whatever
- * the node happened to hold at `restore()`-call time instead of at first-drive
- * time, which can differ if the caller does more to the node in between.
- */
+/** Animated restore: tweens numeric / custom-tweenable props toward their saved resolved values, then reapplies the full snapshot so bindings are restored (not frozen at the landing value) and non-tweened props snap. A {@link Command}: the `_prepareStep` stepper is a pure function of elapsed time, and the snapshot reapply fires at `t === 1` (the shape `packages/components/code`'s `runTransition` uses). `_prepareStep` runs **lazily on first evaluation**, since it snapshots each `from` off the live node; building eagerly would capture the node as of the `restore()` call, which can differ if the caller does more to it in between. */
 /** @internal */
 export function restoreAnimated(
     host: ReactiveHost,
