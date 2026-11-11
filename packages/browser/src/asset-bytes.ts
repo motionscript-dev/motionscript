@@ -39,7 +39,13 @@ export async function fetchAssetBytes(url: string): Promise<Blob> {
     return response.blob();
 }
 
-/** The bytes for `src`: the host's local store first, then the network. */
-export async function loadAssetBytes(src: string): Promise<Blob> {
-    return (await localAssetBytes(src)) ?? fetchAssetBytes(src);
+const loading = new Map<string, Promise<Blob>>();
+
+/** The bytes for `src`: the host's local store first, then the network. A second ask while the first is out joins it, page-wide. */
+export function loadAssetBytes(src: string): Promise<Blob> {
+    const running = loading.get(src);
+    if (running) return running;
+    const job = (async () => (await localAssetBytes(src)) ?? fetchAssetBytes(src))().finally(() => loading.delete(src));
+    loading.set(src, job);
+    return job;
 }

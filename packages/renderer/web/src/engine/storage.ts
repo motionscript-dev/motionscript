@@ -29,10 +29,38 @@ export interface FontFile {
 
 const timeKey = (time: number) => time.toFixed(4);
 
+/** Joins the call already running for `key` instead of starting a second one. */
+function once<T>(running: Map<string, Promise<T>>, key: string, start: () => Promise<T>): Promise<T> {
+    const existing = running.get(key);
+    if (existing) return existing;
+    const job = start().finally(() => running.delete(key));
+    running.set(key, job);
+    return job;
+}
+
 async function fetchBytes(src: string): Promise<Blob> {
     const res = await fetch(src);
     if (!res.ok) throw new Error(`${src}: HTTP ${res.status}`);
     return res.blob();
+}
+
+type LoadBytes = (src: string) => Promise<Blob>;
+
+const sharedLoaders = new WeakMap<LoadBytes, LoadBytes>();
+
+/**
+ * `load`, joined page-wide while a request for the same source is out: every
+ * adapter (each session, still and export has its own) asking for one file
+ * while it is still arriving shares the one download.
+ */
+export function sharedLoader(load: LoadBytes): LoadBytes {
+    let shared = sharedLoaders.get(load);
+    if (!shared) {
+        const running = new Map<string, Promise<Blob>>();
+        shared = (src) => once(running, src, () => load(src));
+        sharedLoaders.set(load, shared);
+    }
+    return shared;
 }
 
 export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
@@ -50,9 +78,16 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
     /** Other work a settled frame waits for (a surface's shader compiles): a promise while there is some. */
     private settlers = new Set<() => Promise<void> | null>();
     private audioData = new Map<string, Promise<ArrayBuffer>>();
+    /** Loads in flight, so a second ask joins the first (font weights share a family's files). */
+    private imageLoads = new Map<string, Promise<void>>();
+    private videoLoads = new Map<string, Promise<void>>();
+    private fontLoads = new Map<string, Promise<boolean>>();
+    private frameDecodes = new Map<string, Promise<void>>();
+    private readonly loadBytes: LoadBytes;
 
-    constructor(catalog: AssetCatalog, viewport: Size2D, readonly fps: number, private readonly loadBytes: (src: string) => Promise<Blob> = fetchBytes) {
+    constructor(catalog: AssetCatalog, viewport: Size2D, readonly fps: number, loadBytes: LoadBytes = fetchBytes) {
         super(catalog, viewport);
+        this.loadBytes = sharedLoader(loadBytes);
     }
 
     /** The session's viewport, in scene units. */
@@ -72,9 +107,13 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
         return () => this.fontListeners.delete(listener);
     }
 
-    async loadImage(src: string): Promise<void> {
+    loadImage(src: string): Promise<void> {
         const key = assetKey(src);
-        if (this.images.has(key)) return;
+        if (this.images.has(key)) return Promise.resolve();
+        return once(this.imageLoads, key, () => this.decodeImage(src, key));
+    }
+
+    private async decodeImage(src: string, key: string): Promise<void> {
         const url = this.url(src, (c) => c.getImageMeta(src));
         const blob = await this.loadBytes(url);
         let bitmap: ImageBitmap;
@@ -102,9 +141,13 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
         this.images.set(key, { bitmap, bytes: new Uint8Array(0), width: bitmap.width, height: bitmap.height });
     }
 
-    async loadVideo(src: string): Promise<void> {
+    loadVideo(src: string): Promise<void> {
         const key = assetKey(src);
-        if (this.videos.has(key)) return;
+        if (this.videos.has(key)) return Promise.resolve();
+        return once(this.videoLoads, key, () => this.openVideo(src, key));
+    }
+
+    private async openVideo(src: string, key: string): Promise<void> {
         const url = this.url(src, (c) => c.getVideoMeta(src));
         const input = new Input({ source: new BlobSource(await this.loadBytes(url)), formats: ALL_FORMATS });
         const track = await input.getPrimaryVideoTrack();
@@ -177,13 +220,13 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
         if (this.pending.size === 0 && other.length === 0) return false;
         const jobs = [...this.pending.values()];
         this.pending.clear();
-        await Promise.all([...jobs.map(({ src, time }) => this.decodeFrame(src, time)), ...other]);
+        await Promise.all([...jobs.map(({ src, time }) => once(this.frameDecodes, `${src}@${timeKey(time)}`, () => this.decodeFrame(src, time))), ...other]);
         return true;
     }
 
     private async decodeFrame(src: string, time: number): Promise<void> {
         const video = this.videos.get(src);
-        if (!video) return;
+        if (!video || video.frames.has(timeKey(time))) return;
         const sample = await video.sink.getSample(time);
         if (!sample) return;
         const frame = sample.toVideoFrame();
@@ -224,8 +267,13 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
         return data.then((b) => b.slice(0));
     }
 
-    async loadFont(key: string, fontFamily: string): Promise<boolean> {
-        if (this.registeredFamilies.has(fontFamily)) return true;
+    /** Registers every face of the family once: each weight asks under its own key. */
+    loadFont(key: string, fontFamily: string): Promise<boolean> {
+        if (this.registeredFamilies.has(fontFamily)) return Promise.resolve(true);
+        return once(this.fontLoads, fontFamily, () => this.registerFamily(key, fontFamily));
+    }
+
+    private async registerFamily(key: string, fontFamily: string): Promise<boolean> {
         const metas = this.catalog.getFontFamilyMetas(fontFamily);
         if (metas.length === 0) {
             if (this.getDecodePolicy() === "interactive") console.warn(`[WgpuStorageAdapter] No font manifest entry for "${key}".`);
@@ -255,6 +303,10 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
         this.vectors.clear();
         this.upgrades.clear();
         this.fontListeners.clear();
+        this.imageLoads.clear();
+        this.videoLoads.clear();
+        this.fontLoads.clear();
+        this.frameDecodes.clear();
         super.dispose();
     }
 

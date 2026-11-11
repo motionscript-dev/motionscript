@@ -71,7 +71,10 @@ defaults to beside the module.
 - `WgpuStorageAdapter` decodes images to `ImageBitmap`s, video frames with
   mediabunny, and hands font bytes to ms-text. Bytes come through
   `loadBytes` (a plain `fetch` by default), which a platform points at its own
-  asset store.
+  asset store. A load in flight is joined, never repeated: per adapter by asset
+  (a font by family, since every weight registers the family's files) and
+  page-wide by source, so the sessions, stills and exports asking for one file
+  while it arrives share one download (`sharedLoader`).
 - `WgpuSurfaceContext` is the adapter's render context mounted on a canvas,
   with the preview knobs a host sets (`pixelRatio`, `view`, `frame`,
   `clipToFrame`, `frameBackground`). Mounting is asynchronous (WebGPU device

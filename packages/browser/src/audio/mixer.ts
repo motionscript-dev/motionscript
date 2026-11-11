@@ -1,6 +1,6 @@
 import type { AssetCatalog } from "@motionscript/core";
 import type { AudioMixer, ScheduledAudioRequest } from "../frame-loop";
-import { fetchAssetBytes, localAssetBytes } from "../asset-bytes";
+import { loadAssetBytes } from "../asset-bytes";
 import { AudioBusGraph } from "./bus-graph";
 import { applyLoop } from "./loop-region";
 import { applySpeedToPlaybackRate, buildAudioEffectGraph, buildLevel, playbackOf, sourceOffsetOf } from "./effect-graph";
@@ -29,7 +29,7 @@ function audioUrl(src: string, catalog: AssetCatalog | undefined): string {
 
 /** Reads and decodes an audio source against a scratch `OfflineAudioContext`. The host's byte source is asked first, as for every asset read: a mix that went to the network would fail where the preview played (offline, or bytes not yet uploaded). */
 async function fetchAudioBuffer(src: string, ctx: OfflineAudioContext): Promise<AudioBuffer> {
-    const blob = (await localAssetBytes(src)) ?? (await fetchAssetBytes(src));
+    const blob = await loadAssetBytes(src);
     return ctx.decodeAudioData(await blob.arrayBuffer());
 }
 
