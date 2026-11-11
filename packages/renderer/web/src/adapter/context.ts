@@ -4,17 +4,17 @@
 // otherwise a world alpha multiplied into every paint.
 
 import {
-    alignmentOps, forEachTexture3D, isStrokeMarker, isSurfaceTexture3D, resolveSurfaceSource, resolveVideoTimestamp, withRichTextDescriptor,
-    type Alignment, type BooleanOperation, CanvasRenderContext2D, type Clip, fillOps, type FontStyle, type Graphics2D,
-    type MaskOptions, type NodeRenderState, type RenderContext2D, type RenderIssue, type ShadowResolved, shadowOps, type Size2D, strokeOps,
-    type TransformState, type Vector2,
+    alignmentOps, AUTOFIT_PROBE_SIZE, forEachTexture3D, isStrokeMarker, isSurfaceTexture3D, resolveSurfaceSource, resolveVideoTimestamp, withRichTextDescriptor,
+    type Alignment, type BooleanOperation, CanvasRenderContext2D, type Clip, type FillResolved, fillOps, type FontStyle, type Graphics2D,
+    type MaskOptions, type NodeRenderState, type RenderContext2D, type RenderIssue, type ShadowResolved, shadowOps, type Size2D, type StrokeResolved, strokeOps,
+    type TextSegment, type TransformState, type Vector2,
 } from "@motionscript/core";
 import { BLEND_MODES, type BlendMode, Doc, type ImageAsset, isProjective, type Mat, type Member, type MemberOp, mulX, type Node, type Paint, PathBuilder, type PathData, pathBounds, type Shadow, type TextRunSpec, type TextSpec, transformPath, type Xform } from "../doc";
 import { assetKey } from "./driver";
 import { fillPaint, shadowOf } from "./paint";
 import { shaderParamIssues } from "./shader-params";
 import { isClosed, reversePath, signedArea } from "./path-measure";
-import { type NativeShape, shapeOf, type ShapeOut, textOf } from "./shapes";
+import { type NativeShape, shapeOf, type ShapeOut, textOf, type TextOut } from "./shapes";
 import { resolveMotionBlur, SAMPLE_THRESHOLD } from "./geometry/motion-blur";
 import { endBox, endDisc, markerInset, markerPath, type PathEnd, strokePlan, type StrokePlan } from "./stroke-ends";
 
@@ -78,6 +78,13 @@ function offsetBox(box: NativeShape, d: number): NativeShape | null {
 type Geom = { path: PathData } | { members: Member[] };
 
 const BLACK: Paint = { kind: "solid", color: [0, 0, 0, 1] };
+const CLEAR: Paint = { kind: "solid", color: [0, 0, 0, 0] };
+
+/** A text block's box, centred on its node's origin: the space its paints resolve in. */
+const textBox = (t: TextOut): Bounds => [-t.size[0] / 2, -t.size[1] / 2, t.size[0] / 2, t.size[1] / 2];
+
+/** Strokes that draw as one text node: the k-th of their pieces, alike in everything but paint. */
+const strokeKey = (k: number, st: StrokeResolved) => `${k}|${st.weight}|${st.align}|${st.join}|${st.cap}|${st.miterLimit}|${st.dash}|${st.dashOffset}`;
 const BOOLEAN_OP: Record<BooleanOperation, MemberOp> = { union: "union", subtract: "cut", intersect: "intersect", exclude: "exclude" };
 
 /** A compound's result bounds, as its members fold: unions grow, intersections shrink, cuts keep. */
@@ -380,7 +387,10 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
                         const m = this.measureText(r.text, r.size, r.family, r.weight, r.letterSpacing, r.italic ? "italic" : "normal");
                         return [m.width, m.height];
                     });
-                    if (text) {
+                    const segments: TextSegment[] | undefined = op.state.segments;
+                    if (text && segments?.length && !text.spec.path) {
+                        this.paintSegments(text, segments);
+                    } else if (text) {
                         const [w, h] = text.size, x = text.transform[4], y = text.transform[5];
                         this.shapes.push({ fill: null, stroke: null, interior: null, bounds: [x - w / 2, y - h / 2, x + w / 2, y + h / 2], text });
                     } else this.missing.add("text:path");
@@ -726,61 +736,135 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
         for (const shape of this.shapes) {
             const t = shape.text;
             if (!t) continue;
-            const b = shape.bounds!;
-            // The text block is centred on its node's origin.
-            const local: [number, number, number, number] = [b[0] - t.transform[4], b[1] - t.transform[5], b[2] - t.transform[4], b[3] - t.transform[5]];
             for (const f of layers) {
-                const paint = fillPaint(f, local, this.missing, this.assets);
-                if (!paint) continue;
-                const opacity = this.worldAlpha * ((f as any).opacity ?? 1);
-                if (stroke) {
-                    const st = (width: number) => ({ paint, width, join: stroke.join as never, cap: stroke.cap as never, miter: stroke.miterLimit, dash: stroke.dash, dashPhase: stroke.dashOffset });
-                    const al = Math.max(-1, Math.min(1, stroke.align ?? 0));
-                    if (al === 0) {
-                        this.doc.textNode(this.cur, { transform: t.transform, text: t.spec, opacity, stroke: st(stroke.weight) });
-                        continue;
-                    }
-                    // drawTextUnionStroke: glyphs have no single path, so the band
-                    // is one stroke under a mask made of the filled glyphs and a
-                    // ring stroked along them.
-                    const glyphs = (parent: Node) => this.doc.textNode(parent, { transform: t.transform, text: t.spec, fill: BLACK });
-                    const ring = (parent: Node, width: number) =>
-                        this.doc.textNode(parent, { transform: t.transform, text: t.spec, stroke: { paint: BLACK, width, join: stroke.join as never, miter: stroke.miterLimit } });
-                    // Erase what lies inside (a > 0) or outside (a < 0) the
-                    // glyphs, less a ring `keep` wide either side of the outline.
-                    const masked = (keep: number) => {
-                        if (al > 0) {
-                            const g = this.doc.group(this.cur, { mask: "invertAlpha" });
-                            const m = this.doc.group(g, { mask: "invertAlpha" });
-                            ring(m, keep);
-                            glyphs(m);
-                            return g;
-                        }
-                        const g = this.doc.group(this.cur, { mask: "alpha" });
-                        const m = this.doc.group(g);
-                        glyphs(m);
-                        ring(m, keep);
-                        return g;
-                    };
-                    if (Math.abs(al) >= 1) {
-                        // A band on one side only: twice as wide, its mask moved one
-                        // device px past the outline (applyTextAlignMask's seam
-                        // bridge, an erode or dilate, which a ring along every
-                        // glyph's outline is not), so band and fill overlap.
-                        const g = this.doc.group(this.cur, { mask: al > 0 ? "invertAlphaEroded" : "alphaDilated" });
-                        glyphs(g);
-                        this.doc.textNode(g, { transform: t.transform, text: t.spec, opacity, stroke: st(2 * stroke.weight) });
-                    } else {
-                        // drawTextPartiallyAlignedStroke: the band reaches (1 + a)·w/2
-                        // outside and (1 − a)·w/2 inside; stroked as wide as the
-                        // longer reach, the surplus erased past the shorter one.
-                        const out = ((1 + al) * stroke.weight) / 2, inside = ((1 - al) * stroke.weight) / 2;
-                        this.doc.textNode(masked(2 * (al > 0 ? inside : out)), { transform: t.transform, text: t.spec, opacity, stroke: st(2 * Math.max(out, inside)) });
-                    }
-                } else {
-                    this.doc.textNode(this.cur, { transform: t.transform, text: t.spec, opacity, fill: paint });
-                }
+                const paint = fillPaint(f, textBox(t), this.missing, this.assets);
+                if (paint) this.textLayer(t, t.spec, t.spec, paint, this.worldAlpha * ((f as any).opacity ?? 1), stroke);
             }
+        }
+    }
+
+    /**
+     * A text whose `segments` paint themselves (styled runs, a Write On reveal):
+     * core sends no fill or stroke op after it. One block shaped as runs, so a
+     * hidden piece keeps its place: a text node per fill layer and per stroke,
+     * each run painted with its piece's k-th layer, clear where it has none.
+     */
+    private paintSegments(t: TextOut, segments: TextSegment[]) {
+        const spec = this.segmentSpec(t, segments);
+        const box = textBox(t);
+        const runPaint = (seg: TextSegment, f: FillResolved | undefined): Paint => {
+            if (!f || !(seg.opacity > 0)) return CLEAR;
+            const p = fillPaint(f, box, this.missing, this.assets);
+            return p ? this.fadePaint(p, seg.opacity * ((f as any).opacity ?? 1)) : CLEAR;
+        };
+        const withPaints = (paint: (seg: TextSegment) => Paint): TextSpec => ({ ...spec, runs: spec.runs.map((r, j) => ({ ...r, paint: paint(segments[j]) })) });
+        // An aligned stroke's mask: the shown runs only, in the mask's own paint.
+        const mask: TextSpec = { ...spec, runs: spec.runs.map((r, j) => (segments[j].opacity > 0 ? r : { ...r, paint: CLEAR })) };
+        const fills = Math.max(0, ...segments.map((s) => s.fill?.length ?? 0));
+        for (let k = 0; k < fills; k++) {
+            this.textLayer(t, withPaints((seg) => runPaint(seg, seg.fill?.[k])), mask, CLEAR, this.worldAlpha, null);
+        }
+        const strokes = new Map<string, { k: number; st: StrokeResolved }>();
+        segments.forEach((seg) => seg.stroke?.forEach((st, k) => {
+            const key = strokeKey(k, st);
+            if (!strokes.has(key)) strokes.set(key, { k, st });
+        }));
+        for (const [key, { k, st }] of [...strokes].sort((a, b) => a[1].k - b[1].k)) {
+            const layers = Math.max(...segments.map((seg) => seg.stroke?.[k]?.fill.length ?? 0));
+            for (let m = 0; m < layers; m++) {
+                const paint = (seg: TextSegment) => {
+                    const own = seg.stroke?.[k];
+                    return own && strokeKey(k, own) === key ? runPaint(seg, own.fill[m]) : CLEAR;
+                };
+                this.textLayer(t, withPaints(paint), mask, CLEAR, this.worldAlpha, st);
+            }
+        }
+    }
+
+    /** The block's runs, one per segment; `'autofit'` resolved here, as the renderer fits a single run only. */
+    private segmentSpec(t: TextOut, segments: TextSegment[]): TextSpec {
+        const base = t.spec.runs[0];
+        let scale = 1, wrap = t.spec.wrap;
+        const { width = 0, height = 0, minFontSize = 0 } = t.spec;
+        if (t.spec.fontSize === "autofit" && width > 0 && height > 0) {
+            // resolve_shaping: a probe at AUTOFIT_PROBE_SIZE scaled to the box, or wrapped at the minimum size.
+            const probe = this.measureText(base.text, AUTOFIT_PROBE_SIZE, base.family, base.weight, base.letterSpacing, base.italic ? "italic" : "normal");
+            const fit = AUTOFIT_PROBE_SIZE * Math.min(probe.width > 0 ? width / probe.width : 1, probe.height > 0 ? height / probe.height : 1);
+            if (wrap && fit < minFontSize) scale = minFontSize / AUTOFIT_PROBE_SIZE;
+            else {
+                scale = fit / AUTOFIT_PROBE_SIZE;
+                wrap = false;
+            }
+        }
+        const runs: TextRunSpec[] = segments.map((s) => ({
+            text: s.text,
+            family: s.fontFamily ?? base.family,
+            size: (s.fontSize ?? base.size) * scale,
+            weight: s.fontWeight,
+            italic: s.fontStyle === undefined ? base.italic : s.fontStyle === "italic" || s.fontStyle === "oblique",
+            letterSpacing: s.letterSpacing,
+            decoration: s.textDecoration === undefined ? base.decoration : s.textDecoration === "underline" ? "underline" : s.textDecoration === "line-through" ? "lineThrough" : undefined,
+        }));
+        return { ...t.spec, runs, wrap, fontSize: undefined };
+    }
+
+    /** A paint at `k` of its alpha; one that has no colour to fade (an image, a shader) draws at full. */
+    private fadePaint(p: Paint, k: number): Paint {
+        if (k >= 1) return p;
+        if (p.kind === "solid") return { ...p, color: [p.color[0], p.color[1], p.color[2], p.color[3] * k] };
+        if ("stops" in p) return { ...p, stops: p.stops.map((s) => ({ ...s, color: [s.color[0], s.color[1], s.color[2], s.color[3] * k] })) } as Paint;
+        this.missing.add("text:run-opacity");
+        return p;
+    }
+
+    /** One fill (`stroke` null) or stroke of a text block; a run's own paint wins over `paint`, and `mask`'s runs shape an aligned stroke's band. */
+    private textLayer(t: TextOut, spec: TextSpec, mask: TextSpec, paint: Paint, opacity: number, stroke: ReturnType<typeof strokeOps.resolve>[number] | null) {
+        if (!stroke) {
+            this.doc.textNode(this.cur, { transform: t.transform, text: spec, opacity, fill: paint });
+            return;
+        }
+        const st = (width: number) => ({ paint, width, join: stroke.join as never, cap: stroke.cap as never, miter: stroke.miterLimit, dash: stroke.dash, dashPhase: stroke.dashOffset });
+        const al = Math.max(-1, Math.min(1, stroke.align ?? 0));
+        if (al === 0) {
+            this.doc.textNode(this.cur, { transform: t.transform, text: spec, opacity, stroke: st(stroke.weight) });
+            return;
+        }
+        // drawTextUnionStroke: glyphs have no single path, so the band
+        // is one stroke under a mask made of the filled glyphs and a
+        // ring stroked along them.
+        const glyphs = (parent: Node) => this.doc.textNode(parent, { transform: t.transform, text: mask, fill: BLACK });
+        const ring = (parent: Node, width: number) =>
+            this.doc.textNode(parent, { transform: t.transform, text: mask, stroke: { paint: BLACK, width, join: stroke.join as never, miter: stroke.miterLimit } });
+        // Erase what lies inside (a > 0) or outside (a < 0) the
+        // glyphs, less a ring `keep` wide either side of the outline.
+        const masked = (keep: number) => {
+            if (al > 0) {
+                const g = this.doc.group(this.cur, { mask: "invertAlpha" });
+                const m = this.doc.group(g, { mask: "invertAlpha" });
+                ring(m, keep);
+                glyphs(m);
+                return g;
+            }
+            const g = this.doc.group(this.cur, { mask: "alpha" });
+            const m = this.doc.group(g);
+            glyphs(m);
+            ring(m, keep);
+            return g;
+        };
+        if (Math.abs(al) >= 1) {
+            // A band on one side only: twice as wide, its mask moved one
+            // device px past the outline (applyTextAlignMask's seam
+            // bridge, an erode or dilate, which a ring along every
+            // glyph's outline is not), so band and fill overlap.
+            const g = this.doc.group(this.cur, { mask: al > 0 ? "invertAlphaEroded" : "alphaDilated" });
+            glyphs(g);
+            this.doc.textNode(g, { transform: t.transform, text: spec, opacity, stroke: st(2 * stroke.weight) });
+        } else {
+            // drawTextPartiallyAlignedStroke: the band reaches (1 + a)·w/2
+            // outside and (1 − a)·w/2 inside; stroked as wide as the
+            // longer reach, the surplus erased past the shorter one.
+            const out = ((1 + al) * stroke.weight) / 2, inside = ((1 - al) * stroke.weight) / 2;
+            this.doc.textNode(masked(2 * (al > 0 ? inside : out)), { transform: t.transform, text: spec, opacity, stroke: st(2 * Math.max(out, inside)) });
         }
     }
 

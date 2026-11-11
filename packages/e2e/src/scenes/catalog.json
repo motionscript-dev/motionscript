@@ -234,6 +234,12 @@
     "description": "Text with `\"autofit\"` size scaling to bounds"
   },
   {
+    "id": "text-write-on",
+    "name": "TextWriteOn",
+    "section": "Text",
+    "description": "Write On: `end` animated 0 to 1 reveals the text character by character"
+  },
+  {
     "id": "text-on-path",
     "name": "TextOnPath",
     "section": "Text",

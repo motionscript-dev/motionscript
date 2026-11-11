@@ -394,7 +394,12 @@ fontStyle = 'normal') → { width, height }`** (`MeasureContext2D`).
 Not shaping inputs: fill, stroke, opacity, the segment transform,
 `textDecoration` (the renderer draws the rect from the face's
 underline/strikeout metrics, which ms-text exposes), `variant` and the
-reveal window (core resolves both into segments).
+reveal window (core resolves both into segments). A segmented `Text` paints
+itself: core sends no fill or stroke op after it, so the adapter draws one
+text node per fill layer and per stroke with each run in its segment's paint,
+clear where the segment is hidden (a reveal) or has no such layer. A
+segmented `'autofit'` block is fitted in the adapter, since ms-text fits a
+single run only.
 
 **Line layout rules** (`crates/text/src/layout.rs`):
 - Shaping with HarfBuzz at a 16.16 font scale. Adjacent runs with the same

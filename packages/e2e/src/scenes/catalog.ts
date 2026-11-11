@@ -56,6 +56,7 @@ export const catalog: SceneEntry[] = [
     { id: "text-letter-spacing", name: "TextLetterSpacing", section: "Text", description: "Positive and negative letterSpacing", load: () => import('./text-letter-spacing') },
     { id: "text-line-height", name: "TextLineHeight", section: "Text", description: "Multiline text with custom lineHeight", load: () => import('./text-line-height') },
     { id: "text-autofit", name: "TextAutofit", section: "Text", description: "Text with `\"autofit\"` size scaling to bounds", load: () => import('./text-autofit') },
+    { id: "text-write-on", name: "TextWriteOn", section: "Text", description: "Write On: `end` animated 0 to 1 reveals the text character by character", load: () => import('./text-write-on') },
     { id: "text-on-path", name: "TextOnPath", section: "Text", description: "Text laid along a circular/curved SVG path", load: () => import('./text-on-path') },
     { id: "text-fill-gradient", name: "TextFillGradient", section: "Text", description: "Text with a gradient fill instead of solid color", load: () => import('./text-fill-gradient') },
     { id: "text-stroke-align-inside", name: "TextStrokeAlignInside", section: "Text", description: "Text stroke aligned inside the glyph silhouette", load: () => import('./text-stroke-align-inside') },
