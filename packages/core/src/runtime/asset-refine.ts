@@ -2,7 +2,7 @@ import type { AssetSegment } from "@/assets/asset-index";
 import type { AssetCatalog } from "@/assets/catalog";
 import { AssetDeclaration, type AssetDecl } from "@/assets/scope";
 import type { NodeSpan } from "@/document/types";
-import type { Node } from "@/components/trees/node/node";
+import { Node as NodeClass, type Node } from "@/components/trees/node/node";
 import { bindDetached, declareNode } from "@/components/trees/node/node-walk";
 import {
     LAYOUT_SLOT,
@@ -13,6 +13,7 @@ import {
     unobserved,
     type SlotObserver,
 } from "@/props/observer";
+import { getPropSlot, type PropHost } from "@/props/host";
 import type { PropSlot } from "@/props/slot";
 import type { ClipInstance } from "./clip-instance";
 import { frameTime, spanFrames } from "./placement";
@@ -33,6 +34,40 @@ export interface RefineOptions {
     bindSubtree?: (node: Node) => void;
     onArrive?: (node: Node, ownerKey: string, span: NodeSpan, frame: number) => void;
     onPhase?: (phase: "evaluate" | "declare") => void;
+    /** Declarations of earlier sweeps over the same catalog, taken back where what they read is unchanged. */
+    memo?: DeclarationMemo;
+}
+
+interface Remembered {
+    ctor: unknown;
+    /** Each slot read, as the owner key of its node and its prop name: what a rebuilt tree reproduces. */
+    reads: readonly (readonly [host: string, name: string])[];
+    values: readonly unknown[];
+    decls: ReadonlyMap<string, AssetDecl>;
+}
+
+/**
+ * What each owner declared on each frame a sweep ran it, so a later sweep (after an edit that rebuilt a node or
+ * its commands but left what the declaration reads as it was) takes the result back instead of running the
+ * declaration again: a declaration is a pure function of the slots it reads, and a 3D component's runs its whole
+ * `render`. Valid for one catalog, since a declaration consults it.
+ */
+export class DeclarationMemo {
+    recall(ownerKey: string, frame: number): Remembered | undefined {
+        return this._byOwner.get(ownerKey)?.get(frame);
+    }
+
+    remember(ownerKey: string, frame: number, entry: Remembered): void {
+        let frames = this._byOwner.get(ownerKey);
+        if (!frames) this._byOwner.set(ownerKey, (frames = new Map()));
+        frames.set(frame, entry);
+    }
+
+    forget(ownerKey: string): void {
+        this._byOwner.delete(ownerKey);
+    }
+
+    private readonly _byOwner = new Map<string, Map<number, Remembered>>();
 }
 
 export interface OwnerResult {
@@ -331,15 +366,20 @@ class Sweep {
 
     private _declare(owner: OwnerState, frame: number): void {
         this._options.onPhase?.("declare");
+        if (this._recall(owner, frame)) return;
         const node = owner.node;
         const reads = new Set<PropSlot<unknown>>();
         const writes: PropSlot<unknown>[] = [];
         let lastRead: PropSlot<unknown> | undefined;
         let readLayout = false;
         let readClock = false;
+        let bound = false;
         const bind = this._options.bindSubtree ?? ((sub: Node) => bindDetached(node, sub));
         const declaration = new AssetDeclaration(this._options.catalog, {
-            bindSubtree: (sub) => unobserved(() => bind(sub)),
+            bindSubtree: (sub) => {
+                bound = true;
+                unobserved(() => bind(sub));
+            },
         });
 
         try {
@@ -378,10 +418,64 @@ class Sweep {
             }
         }
 
+        const deps = [...reads];
+        const values = deps.map((slot) => slot.get());
+        const memo = this._options.memo;
+        if (memo && !bound && !readLayout && !readClock && writes.length === 0) {
+            const named = this._named(owner, deps);
+            if (named) {
+                memo.remember(owner.key, frame, {
+                    ctor: node.constructor, reads: named, values, decls: declaration.declarations,
+                });
+            }
+        }
+        this._settle(owner, frame, deps, values, declaration.declarations);
+    }
+
+    /** A declaration this owner made on `frame` in an earlier sweep, when every slot it read holds what it held. */
+    private _recall(owner: OwnerState, frame: number): boolean {
+        const entry = this._options.memo?.recall(owner.key, frame);
+        if (!entry || entry.ctor !== owner.node.constructor) return false;
+        const deps: PropSlot<unknown>[] = [];
+        const values: unknown[] = [];
+        for (let i = 0; i < entry.reads.length; i++) {
+            const [host, name] = entry.reads[i];
+            const node = host === owner.key ? owner.node : this._owners.get(host)?.node;
+            const slot = node && getPropSlot(node as unknown as PropHost, name);
+            if (!slot) return false;
+            const value = unobserved(() => slot.get());
+            if (!sameValue(value, entry.values[i])) return false;
+            deps.push(slot);
+            values.push(value);
+        }
+        this._settle(owner, frame, deps, values, entry.decls);
+        return true;
+    }
+
+    /** `null` when a read cannot be named again in a rebuilt tree: a slot of no owner, presence or structure. */
+    private _named(owner: OwnerState, deps: readonly PropSlot<unknown>[]): [string, string][] | null {
+        const out: [string, string][] = [];
+        for (const slot of deps) {
+            const host = slot._host;
+            if (!(host instanceof NodeClass) || isPseudo(slot)) return null;
+            const key = host === owner.node ? owner.key : this._instance.ownerKeyOf(host);
+            if (key === undefined) return null;
+            out.push([key, slot._name]);
+        }
+        return out;
+    }
+
+    private _settle(
+        owner: OwnerState,
+        frame: number,
+        deps: PropSlot<unknown>[],
+        values: unknown[],
+        decls: ReadonlyMap<string, AssetDecl>,
+    ): void {
         owner.stale = false;
-        owner.deps = [...reads];
-        owner.values = owner.deps.map((slot) => slot.get());
-        for (const slot of reads) {
+        owner.deps = deps;
+        owner.values = values;
+        for (const slot of deps) {
             if (owner.allDeps.has(slot)) continue;
             owner.allDeps.add(slot);
             let set = this._readers.get(slot);
@@ -389,7 +483,6 @@ class Sweep {
             set.add(owner);
         }
 
-        const decls = declaration.declarations;
         const previous = owner.history[owner.history.length - 1];
         if (!previous || previous.frame < owner.arrivedAt || !sameDecls(previous.decls, decls)) {
             owner.history.push({ frame, decls });
@@ -514,6 +607,27 @@ function unchanged(owner: OwnerState): boolean {
         if (!Object.is(deps[i].get(), owner.values[i])) return false;
     }
     return true;
+}
+
+/** Equal values, looking into plain arrays and records: a rebuilt node maps a stated colour to a new array. */
+function sameValue(a: unknown, b: unknown): boolean {
+    if (Object.is(a, b)) return true;
+    if (Array.isArray(a)) {
+        if (!Array.isArray(b) || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) if (!sameValue(a[i], b[i])) return false;
+        return true;
+    }
+    if (!isPlain(a) || !isPlain(b)) return false;
+    const keys = Object.keys(a);
+    if (keys.length !== Object.keys(b).length) return false;
+    for (const key of keys) if (!Object.hasOwn(b, key) || !sameValue(a[key], b[key])) return false;
+    return true;
+}
+
+function isPlain(value: unknown): value is Record<string, unknown> {
+    if (typeof value !== "object" || value === null) return false;
+    const proto = Object.getPrototypeOf(value) as unknown;
+    return proto === Object.prototype || proto === null;
 }
 
 function sameDecls(a: ReadonlyMap<string, AssetDecl>, b: ReadonlyMap<string, AssetDecl>): boolean {

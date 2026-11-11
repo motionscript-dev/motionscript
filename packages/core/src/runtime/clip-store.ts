@@ -6,13 +6,13 @@ import { isContextProvider } from "@/document/command-traits";
 import { diffClip, jsonEqual } from "@/document/diff";
 import type { ProjectDocument, Track } from "@/document/project";
 import type { TimelinePatch } from "@/document/timeline-patch";
-import type { NodeSpan } from "@/document/types";
+import type { ClipDocument, NodeSpan } from "@/document/types";
 import type { Node } from "@/components/trees/node/node";
 import type { PropHost } from "@/props/host";
 import type { PropSlot } from "@/props/slot";
 import type { MeasureContext2D } from "@/render/measure-context";
 import { now, yieldToScheduler } from "@/util/scheduler";
-import { refineAssets, type OwnerResult, type RefineResult } from "./asset-refine";
+import { DeclarationMemo, refineAssets, type OwnerResult, type RefineResult } from "./asset-refine";
 import { dirtyOwners, OwnerDependencies, SlotNamer, type DirtyOwners, type PlacedWrites, type SlotId } from "./asset-update";
 import { AudioIndex } from "./audio-index";
 import { requestOf } from "@/attributes/audio/schedule";
@@ -86,6 +86,8 @@ interface Entry {
     writes: WeakMap<ReadonlySet<PropSlot<unknown>>, PlacedWrites>;
     /** Gate keys compile measured, or refinement found, before they were resident. */
     unready: Set<string>;
+    /** Outlives a rebuild of the track; a catalog or theme change starts a new one. */
+    memo: DeclarationMemo;
 }
 
 /**
@@ -340,7 +342,7 @@ export class ClipStore {
     private _version = 0;
     private _disposed = false;
 
-    private _fresh(track: Track): Entry {
+    private _fresh(track: Track, memo = new DeclarationMemo()): Entry {
         const frameCount = trackFrameCount(track.duration, this._scope.fps);
         return {
             track,
@@ -367,17 +369,20 @@ export class ClipStore {
             generation: 0,
             writes: new WeakMap(),
             unready: new Set(),
+            memo,
         };
     }
 
     private _reconcile(entry: Entry, track: Track, update: StoreUpdate): Entry {
         const frameCount = trackFrameCount(track.duration, this._scope.fps);
+        // A declaration may read the theme outside any slot.
+        const memo = jsonEqual(themeOf(entry.track.clip), themeOf(track.clip)) ? entry.memo : undefined;
         if (entry.track.clip === track.clip) return this._resize(entry, track, frameCount);
-        if (entry.steps || entry.failure) return this._fresh(track);
+        if (entry.steps || entry.failure) return this._fresh(track, memo);
         if (!entry.instance) {
             return entry.discovered && diffClip(entry.track.clip, track.clip).identical
                 ? this._resize(entry, track, frameCount)
-                : this._fresh(track);
+                : this._fresh(track, memo);
         }
 
         const instance = entry.instance;
@@ -387,7 +392,7 @@ export class ClipStore {
         } catch {
             patch = null;
         }
-        if (!patch) return this._fresh(track);
+        if (!patch) return this._fresh(track, memo);
         /** Nothing to apply; the tree keeps the document it was built from, which diffs the same. */
         if (patch.diff.identical) return this._resize(entry, track, frameCount);
 
@@ -396,7 +401,7 @@ export class ClipStore {
         try {
             this._compile(entry, (measurer) => instance.applyUpdate(patch, track.clip, track.duration, measurer));
         } catch {
-            return this._fresh(track);
+            return this._fresh(track, memo);
         }
         entry.issues = issuesOf(track.id, instance);
         entry.generation++;
@@ -441,7 +446,7 @@ export class ClipStore {
         const duration = entry.track.duration;
         entry.track = track;
         if (track.duration === duration) return entry;
-        if (entry.steps) return this._fresh(track);
+        if (entry.steps) return this._fresh(track, entry.memo);
         entry.instance?.update(entry.instance.clip, track.duration);
         if (this._refine === "none" || !entry.discovered) {
             entry.frameCount = frameCount;
@@ -555,6 +560,7 @@ export class ClipStore {
                 frameCount,
                 catalog,
                 declare: this._refine === "assets",
+                memo: entry.memo,
                 onPhase: (phase) => profile?.enter(phase),
                 onArrive: (_node, ownerKey) => {
                     profile?.enter("audio");
@@ -625,6 +631,7 @@ export class ClipStore {
             owners: dirty.owners,
             below: dirty.below,
             declare: this._refine === "assets",
+            memo: entry.memo,
             onArrive: (_node, ownerKey, span, frame) => {
                 seen.add(ownerKey);
                 // Audio is declared as an owner arrives, which a sweep starting later never sees.
@@ -694,6 +701,7 @@ export class ClipStore {
         entry.ownerErrors.delete(key);
         entry.audioErrors.delete(key);
         entry.deps.remove(key);
+        entry.memo.forget(key);
     }
 
     private _link(entry: Entry, key: string): void {
@@ -945,4 +953,8 @@ function sameValue(a: unknown, b: unknown): boolean {
         if (!sameValue((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) return false;
     }
     return true;
+}
+
+function themeOf(clip: ClipDocument): unknown {
+    return "theme" in clip ? clip.theme : undefined;
 }

@@ -151,8 +151,9 @@ describe("AssetTimeline over a project", () => {
         expect(log.declares).toBe(prepared);
 
         expect(precomp.setProject(project([track("a", clip, { duration: 2 })])).complete).toBe(false);
-        precomp.run();
-        expect(log.declares).toBeGreaterThan(prepared);
+        expect(precomp.run().complete).toBe(true);
+        // Swept again, but every declaration reads what it read before, so none runs again.
+        expect(log.declares).toBe(prepared);
     });
 
     it("drops a pass whose track changed while it was parked, and discovers the new clip", async () => {

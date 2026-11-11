@@ -361,7 +361,9 @@ describe("ClipStore – an edit re-declares only what it reached", () => {
         ], [], 3);
         const { store, scope } = discovered(project([track("a", mirrored(2))]));
         const { declared } = edit(store, scope, project([track("a", mirrored(1))]));
-        expect(new Set(declared)).toEqual(new Set(["card", "m"]));
+        // The card's own declaration reads what it read before, so it comes back from the memo; its window still
+        // closes sooner (`edit` compares every window with a fresh build).
+        expect(new Set(declared)).toEqual(new Set(["m"]));
         store.dispose();
     });
 
