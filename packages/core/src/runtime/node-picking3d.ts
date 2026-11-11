@@ -107,6 +107,12 @@ export interface Node3DFrame {
      * orientation (a rotation ring).
      */
     localPoints: (Vector2 | null)[];
+    /**
+     * What the node and its children draw, as a box in the node's own frame (the one `localPoints` are in), so a
+     * selection box projected through `localPoints` hugs the mesh at any orientation. `null` when nothing it draws
+     * has an extent (a light, a model before its file arrives) or it is hidden.
+     */
+    bounds: Box3 | null;
 }
 
 const ORIGIN_3D: Vector3 = { x: 0, y: 0, z: 0 };
@@ -124,11 +130,11 @@ export function projectNode3D(
     parentPoints: readonly Vector3[],
     localPoints: readonly Vector3[],
 ): Node3DFrame | null {
-    const projection = canvas3DProjection(canvas);
-    if (!projection) return null;
-
     const entry = nodes3DOf(canvas, canvasPath).find((e) => e.path === targetPath);
     if (!entry) return null;
+
+    const projection = canvas3DProjection(canvas, entry.node.id);
+    if (!projection) return null;
 
     const own = projection.matrices.get(entry.node.id);
     const parent = projection.parentMatrices.get(entry.node.id);
@@ -145,6 +151,7 @@ export function projectNode3D(
         origin: projectPoint3(own, ORIGIN_3D, projection, frame),
         parentPoints: project(parent, placed),
         localPoints: project(own, localPoints),
+        bounds: projection.localBounds,
     };
 }
 
@@ -244,15 +251,17 @@ interface Canvas3DProjection {
     height: number;
     centerX: number;
     centerY: number;
+    /** The `boundsKey` node's extent in its own frame, when one was asked for. */
+    localBounds: Box3 | null;
 }
 
-function canvas3DProjection(canvas: Viewport3D): Canvas3DProjection | null {
+function canvas3DProjection(canvas: Viewport3D, boundsKey?: string): Canvas3DProjection | null {
     const bounds = canvas._localBounds();
     if (!(bounds.width > 0) || !(bounds.height > 0)) return null;
 
     const scene = canvas._scene3D();
     if (!scene) return null;
-    const walked = walkScene3D(scene);
+    const walked = walkScene3D(scene, boundsKey);
     if (walked.boxes.size === 0) return null;
 
     const view = invert4(walked.camera);
@@ -269,6 +278,7 @@ function canvas3DProjection(canvas: Viewport3D): Canvas3DProjection | null {
         height: bounds.height,
         centerX: bounds.x,
         centerY: bounds.y,
+        localBounds: walked.localBounds,
     };
 }
 
@@ -286,6 +296,7 @@ interface WalkedScene3D {
     parentMatrices: Map<string, Matrix4>;
     camera: Matrix4;
     descriptor: CameraData3D | null;
+    localBounds: Box3 | null;
 }
 
 /**
@@ -294,7 +305,7 @@ interface WalkedScene3D {
  * the renderer, and letting it inflate its parent's box would put that box round empty space. The 2D walk
  * skips `opacity: 0` on the same grounds.
  */
-function walkScene3D(scene: Scene3D): WalkedScene3D {
+function walkScene3D(scene: Scene3D, boundsKey?: string): WalkedScene3D {
     const boxes = new Map<string, Box3>();
     const matrices = new Map<string, Matrix4>();
     const parentMatrices = new Map<string, Matrix4>();
@@ -302,6 +313,9 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
     const stack: Scope3D[] = [root];
     let camera: Matrix4 | null = null;
     let descriptor: CameraData3D | null = null;
+    /** Where the `boundsKey` scope sits on the stack while it is open, and the way back into its own frame. */
+    let target: { depth: number; inverse: Matrix4 } | null = null;
+    let localBounds: Box3 | null = null;
 
     const top = (): Scope3D => stack[stack.length - 1];
 
@@ -313,6 +327,10 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
                 if (op.transform?.key !== undefined) {
                     matrices.set(op.transform.key, matrix);
                     parentMatrices.set(op.transform.key, scope.matrix);
+                    if (op.transform.key === boundsKey) {
+                        const inverse = invert4(matrix);
+                        if (inverse) target = { depth: stack.length, inverse };
+                    }
                 }
                 stack.push({
                     key: op.transform?.key,
@@ -328,6 +346,7 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
                  * catches a hand-built scene that does not. Guarding keeps a malformed op list from reading past the stack.
                  */
                 if (stack.length === 1) break;
+                if (target?.depth === stack.length - 1) target = null;
                 const closed = stack.pop() as Scope3D;
                 if (!closed.visible || !closed.box) break;
                 if (closed.key !== undefined) boxes.set(closed.key, closed.box);
@@ -347,6 +366,7 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
                 if (!scope.visible) break;
                 const drawn = drawableBox3(op, scope.matrix);
                 if (drawn) scope.box = unionBox3(scope.box, drawn);
+                if (target) localBounds = unionBox3(localBounds, drawableBox3(op, scope.matrix, target.inverse));
                 break;
             }
         }
@@ -358,6 +378,7 @@ function walkScene3D(scene: Scene3D): WalkedScene3D {
         parentMatrices,
         camera: camera ?? DEFAULT_CAMERA_MATRIX,
         descriptor,
+        localBounds,
     };
 }
 
@@ -365,11 +386,13 @@ function scopeMatrix(parent: Matrix4, transform: Transform3D | undefined): Matri
     return multiply4(parent, transformMatrix4(transform, parent));
 }
 
-function drawableBox3(op: Scene3DOp, parent: Matrix4): Box3 | null {
+/** In world space, or in the frame `into` maps world space to. */
+function drawableBox3(op: Scene3DOp, parent: Matrix4, into?: Matrix4): Box3 | null {
     if (op.kind === "model") return null; // its extent arrives with the file
     if (!("transform" in op)) return null;
 
-    const matrix = scopeMatrix(parent, op.transform);
+    const world = scopeMatrix(parent, op.transform);
+    const matrix = into ? multiply4(into, world) : world;
 
     if (op.kind === "sprite") {
         /**

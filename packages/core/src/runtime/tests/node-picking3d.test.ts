@@ -384,6 +384,50 @@ describe('projectNode3DAt', () => {
 
         expect(projectNode3DAt(canvas, '1.7', [], [])).toBeNull();
     });
+
+    it("reports bounds in the node's own frame, turned and scaled as it is", () => {
+        // World-aligned, the turned box would measure 3 deep; in its own frame
+        // it is still 3 × 1 × 1, before the scale its own matrix applies.
+        const canvas = viewport([
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Box3D({ width: 3, position: [2, 0, 0], rotation: [0, 90, 0], scale: 2 }),
+        ]);
+
+        const bounds = projectNode3DAt(canvas, '1', [], [])?.bounds;
+        expect(bounds?.min.x).toBeCloseTo(-1.5, 6);
+        expect(bounds?.max.x).toBeCloseTo(1.5, 6);
+        expect(bounds?.min.z).toBeCloseTo(-0.5, 6);
+        expect(bounds?.max.z).toBeCloseTo(0.5, 6);
+    });
+
+    it('takes its children into the bounds, placed where they sit', () => {
+        const canvas = viewport([
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Group3D({
+                children: [
+                    new Box3D({ width: 1 }),
+                    new Sphere3D({ radius: 0.5, position: [0, 2, 0] }),
+                ],
+            } as any),
+            new Box3D({ width: 1, position: [-3, 0, 0] }),
+        ]);
+
+        const bounds = projectNode3DAt(canvas, '1', [], [])?.bounds;
+        expect(bounds?.min.y).toBeCloseTo(-0.5, 6);
+        expect(bounds?.max.y).toBeCloseTo(2.5, 6);
+        // The sibling outside the group stays out of it.
+        expect(bounds?.min.x).toBeCloseTo(-0.5, 6);
+    });
+
+    it('has no bounds for a node that draws nothing', () => {
+        const canvas = viewport([
+            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new Group3D({ children: [] } as any),
+            new Box3D({ width: 1 }),
+        ]);
+
+        expect(projectNode3DAt(canvas, '1', [], [])?.bounds).toBeNull();
+    });
 });
 
 describe('collectBoxes – 3D: the other camera and drawable cases', () => {
