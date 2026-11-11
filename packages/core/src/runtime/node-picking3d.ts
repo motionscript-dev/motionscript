@@ -110,7 +110,7 @@ export interface Node3DFrame {
     /**
      * What the node and its children draw, as a box in the node's own frame (the one `localPoints` are in), so a
      * selection box projected through `localPoints` hugs the mesh at any orientation. `null` when nothing it draws
-     * has an extent (a light, a model before its file arrives) or it is hidden.
+     * has an extent core can measure (a light; a model, whose file core never reads) or it is hidden.
      */
     bounds: Box3 | null;
 }
