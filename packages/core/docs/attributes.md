@@ -15,13 +15,14 @@ An ops value is an `AttributeOps<Input, Resolved>` (`attributes/shared/operators
 | corners | `cornerRadiusOps`, `cornerStyleOps` | four-corner objects | `Types.cornerRadius`, `Types.cornerStyle` |
 | path data | `pathOps` (`path/ops.ts`) | `PathData` as written | `Types.path` (no mapper; `lerp` is the morph) |
 | palette | `fillOps` per entry | `FillResolved[][]`, cycled by index | `Types.palette` (tweened pairwise, the longer side's tail held) |
+| typography | `textOps.resolveStyle` over the default | a `TextStyle` with its paints resolved | `Types.typography` (a partial keeps the rest; tweened key by key, face and style stepping) |
 | style | each field's own pair | a flat object of resolved fields | `Types.style` (see below) |
 
 `@motionscript/core/sdk` (and so `@motionscript/sdk`) re-exports the ops values and resolvers (`resolveFill`, `resolveStroke`, `resolveShadow`, `resolveCorners`, `parseColor`) and the `Fills`, `Effects`, `Adjustments` builders, but not `effectsOps`.
 
 ### Styles
 
-`Types.style(family, groups, { presets })` (`components/factory/style.ts`) is a component's whole look as one entry: fields written in groups (`{ colors: { palette, foreground }, text: { fontSize } }`), read flat (`state.style.palette`), so field keys are unique across groups. A set lays a partial over the previous value and drops keys no field declares, which lets one preset or one saved style dress every component of the `family` (a pie's `innerRadius` is ignored by a line chart). A tween goes field by field: the field's own lerp, numbers lerp, anything else (a font, an enum, an `animatable: false` field) steps at the midpoint. `describe()` reports the entry as `kind: "style"` with its `family`, `presets` and `properties`, each field's editor plus its `group` and `default`, so a host can draw a style editor and save looks without knowing the component.
+`Types.style(family, groups, { presets })` (`components/factory/style.ts`) is a component's whole look as one entry: fields written in groups (`{ series: { seriesFills }, text: { legendText } }`), read flat (`state.style.seriesFills`), so field keys are unique across groups. A set lays a partial over the previous value and drops keys no field declares, which lets one preset or one saved style dress every component of the `family` (a pie's `innerRadius` is ignored by a line chart). A tween goes field by field: the field's own lerp, numbers lerp, anything else (a font, an enum, an `animatable: false` field) steps at the midpoint. `describe()` reports the entry as `kind: "style"` with its `family`, `presets` and `properties`, each field's editor plus its `group` and `default`, so a host can draw a style editor and save looks without knowing the component.
 
 ### Units and spaces
 

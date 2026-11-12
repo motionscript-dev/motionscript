@@ -16,11 +16,12 @@ import { pathOps } from "@/attributes/shape/path/ops";
 import { shadowOps, type Shadow, type ShadowResolved } from "@/attributes/shape/shadow/shadow";
 import { strokeOps, type Stroke, type StrokeResolved } from "@/attributes/shape/stroke/stroke";
 import { textOps } from "@/attributes/text/ops";
+import type { TextStyle } from "@/attributes/text/types";
 import type { TweenFn } from "@/props/host";
 import type { PathData } from "@/render/descriptors/path";
 import type { AnyType, InOf, Inputs, NodeView, OutOf, StateSpec, Type, Values } from "@/components/factory/api";
 import { defOf, type Inherit, type TypeDef } from "@/components/factory/type-def";
-import { paletteDef, styleDef, type StyleGroups, type StyleInput, type StyleOptions, type StyleShape, type StyleValues } from "@/components/factory/style";
+import { paletteDef, styleDef, typographyDef, type StyleGroups, type StyleInput, type StyleOptions, type StyleShape, type StyleValues } from "@/components/factory/style";
 
 export interface EntryOptions {
     /** Not in documents or calls; only commands write it. A seek restores it like any entry. */
@@ -136,6 +137,8 @@ export const Types = {
     },
     /** A colour per series or item, cycled by index. */
     palette: (initial: readonly Fill[] = []): Type<Fill[], FillResolved[][]> => make(paletteDef(initial)),
+    /** A text style (face, size, weight, spacing, paint) for text a component draws; a partial one is laid over `initial`. */
+    typography: (initial: TextStyle = {}): Type<TextStyle, TextStyle> => make(typographyDef(initial)),
     /**
      * A component's look as one entry: fields written in groups (`colors`, `text`, …), read flat
      * (`style.palette`). A host edits it field by field, saves it, and lays a saved one onto any

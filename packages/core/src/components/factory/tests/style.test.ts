@@ -99,3 +99,30 @@ describe("a style entry", () => {
         expect(badge().style.ink).toBeDefined();
     });
 });
+
+const Caption = component2d({
+    key: "typographyCaption",
+    state: { look: Types.typography({ fontSize: 24, fontWeight: 500, fill: "white" }) },
+});
+type Caption = NodeOf<typeof Caption>;
+const caption = (props: Record<string, unknown> = {}) => new Caption.node(props as never) as unknown as Caption;
+
+describe("a typography entry", () => {
+    it("lays a partial text style over its default, resolving the paint", () => {
+        const node = caption({ look: { fontWeight: 700 } });
+        expect(node.look).toMatchObject({ fontSize: 24, fontWeight: 700 });
+        expect(node.look.fill).toEqual([{ type: "solid", color: [1, 1, 1, 1], opacity: 1 }].map((layer) => expect.objectContaining({ type: layer.type })));
+    });
+
+    it("keeps what a later partial leaves out", () => {
+        const node = caption();
+        node.set({ look: { fontFamily: "Inter" } });
+        node.set({ look: { fontSize: 40 } });
+        expect(node.look).toMatchObject({ fontFamily: "Inter", fontSize: 40, fontWeight: 500 });
+    });
+
+    it("describes itself with its default for a host's text controls", () => {
+        const described = new Registry({ nodes: [Caption] }).describe("typographyCaption")!;
+        expect(described.properties!.look).toMatchObject({ kind: "typography", default: { fontSize: 24, fontWeight: 500, fill: "white" } });
+    });
+});

@@ -2,6 +2,8 @@ import type { PropertyEditor } from "@/attributes/properties/decorator";
 import type { Fill } from "@/attributes/shape/fill/chain";
 import { fillOps } from "@/attributes/shape/fill/registry";
 import type { FillResolved } from "@/attributes/shape/fill/union";
+import { textOps } from "@/attributes/text/ops";
+import type { TextStyle } from "@/attributes/text/types";
 import type { InOf, OutOf, StateSpec } from "@/components/factory/api";
 import { defOf, type TypeDef } from "@/components/factory/type-def";
 
@@ -127,6 +129,23 @@ export function paletteDef(initial: readonly Fill[]): TypeDef {
             return out;
         },
         editor: { kind: "palette" },
+        private: false,
+    };
+}
+
+/**
+ * One run of text's look, as a text node takes it: face, size, weight, style,
+ * spacing and paint. Written partly, it is laid over `initial` (or the value
+ * it replaces), so `{ fill }` recolours and keeps the rest; tweened key by
+ * key, the face and style stepping at the midpoint.
+ */
+export function typographyDef(initial: TextStyle): TypeDef {
+    const base = textOps.resolveStyle(initial, {});
+    return {
+        default: initial,
+        mapper: (value: TextStyle | null | undefined, previous?: TextStyle) => textOps.resolveStyle(value ?? {}, previous ?? base),
+        tween: (from: TextStyle, to: TextStyle, t: number) => textOps.lerpStyle(from, to, t),
+        editor: { kind: "typography" },
         private: false,
     };
 }
