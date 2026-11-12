@@ -298,6 +298,7 @@ export const catalog: SceneEntry[] = [
     { id: "view3d-fill-shape", name: "View3dFillShape", section: "3D", description: "3D painted as a fill through an Ellipse path, not a rect", load: () => import('./view3d-fill-shape') },
     { id: "view3d-fill-stroke-shadow", name: "View3dFillStrokeShadow", section: "3D", description: "A Scene3D filling a stroke and a drop shadow", load: () => import('./view3d-fill-stroke-shadow') },
     { id: "view3d-tex-surface", name: "View3dTexSurface", section: "3D", description: "Tex.surface: 2D Graphics rasterized and bound to a material map", load: () => import('./view3d-tex-surface') },
+    { id: "view3d-thin-stack", name: "View3dThinStack", section: "3D", description: "Thin plates, grid bars and beams a hair apart, seen from about 20 units: depth precision", load: () => import('./view3d-thin-stack') },
     { id: "view3d-translucent", name: "View3dTranslucent", section: "3D", description: "Translucent 3D composited over a 2D fill, in a colour that separates correct blending from additive", load: () => import('./view3d-translucent') },
     { id: "texture3d-zoom", name: "Texture3dZoom", section: "3D", description: "An image-mapped 3D surface the camera narrows in on; the map re-uploads at a higher level", load: () => import('./texture3d-zoom') },
     { id: "space3d-parallax", name: "Space3dParallax", section: "2.5D Space", description: "layers at depths in the stage's 3D space; a pan and a dolly give parallax, authored near-first", load: () => import('./space3d-parallax') },

@@ -692,8 +692,9 @@ fn fs_main(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     let shadows_on = frame.tone.z > 0.5 && has(F_RECEIVE_SHADOW);
 
     if (kind == 7u) {
-        // meshdepth.glsl (BasicDepthPacking): 1 - gl_FragCoord.z, raw.
-        return vec4<f32>(vec3<f32>(1.0 - in.clip.z), diffuse.a);
+        // meshdepth.glsl (BasicDepthPacking): 1 - gl_FragCoord.z, raw; our
+        // depth is reversed, so that is the fragment's own z.
+        return vec4<f32>(vec3<f32>(in.clip.z), diffuse.a);
     }
 
     if (kind == 1u || kind == 5u || kind == 6u) {

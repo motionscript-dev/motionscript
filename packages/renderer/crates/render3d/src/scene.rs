@@ -8,7 +8,7 @@ use crate::geometry::Segments;
 use glam::{Mat3, Mat4, Quat, Vec3, Vec4};
 
 pub const MAGIC: u32 = 0x5233_4431; // "R3D1"
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 // ─── Descriptors ─────────────────────────────────────────────────────────────
 
@@ -146,6 +146,8 @@ pub struct MaterialDesc {
     pub dash: Option<[f32; 3]>,
     /// Toon: `gradientMap` (sampled at `(dotNL * 0.5 + 0.5, 0)`, red channel).
     pub gradient_map: Option<MapDesc>,
+    /// `polygonOffset`: (factor, units), GL's sense (positive pushes away).
+    pub polygon_offset: Option<(f32, f32)>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -618,6 +620,7 @@ fn read_material(r: &mut Reader) -> Result<MaterialDesc, String> {
     let attenuation_color = r.color()?.map(linear_rgb).unwrap_or(Vec3::ONE);
     let dash = [or(r.f()?, 3.0), or(r.f()?, 1.0), or(r.f()?, 1.0)];
     let gradient_map = read_map(r)?;
+    let polygon_offset = (or(r.f()?, 0.0), or(r.f()?, 0.0));
 
     let kind = match ty {
         0 => MaterialKind::Basic,
@@ -695,6 +698,7 @@ fn read_material(r: &mut Reader) -> Result<MaterialDesc, String> {
         attenuation_color,
         dash: (ty == 8).then_some(dash),
         gradient_map: if ty == 11 { gradient_map } else { None },
+        polygon_offset: (flags & 2048 != 0).then_some(polygon_offset),
     })
 }
 
@@ -710,8 +714,8 @@ pub fn decode(words: &[u32]) -> Result<Scene, String> {
         return Err("not a scene stream (bad magic)".into());
     }
     let version = r.u()?;
-    if !(2..=VERSION).contains(&version) {
-        return Err(format!("scene stream version {version}, expected 2..={VERSION}"));
+    if version != VERSION {
+        return Err(format!("scene stream version {version}, expected {VERSION}"));
     }
     let mut scene = Scene::default();
     let s = &mut scene.settings;
@@ -896,12 +900,10 @@ pub fn decode(words: &[u32]) -> Result<Scene, String> {
             other => return Err(format!("unknown scene op {other}")),
         }
     }
-    if version >= 3 {
-        let n = r.u()?;
-        for _ in 0..n {
-            let id = r.u()?;
-            scene.geometry_defs.push((id, read_geometry(&mut r)?));
-        }
+    let n = r.u()?;
+    for _ in 0..n {
+        let id = r.u()?;
+        scene.geometry_defs.push((id, read_geometry(&mut r)?));
     }
     scene.geometry_refs = r.refs;
     Ok(scene)

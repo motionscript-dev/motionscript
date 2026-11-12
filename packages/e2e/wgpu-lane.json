@@ -33,6 +33,7 @@
     "morph-triangle-to-star": {},
     "view3d-basic": {},
     "space3d-flip": {},
+    "view3d-thin-stack": {},
     "math-axes-plot": {},
     "latex-basic": {},
     "wgsl-fill-custom": {},

@@ -129,3 +129,24 @@ The wgpu renderer (`packages/renderer`) became the primary backend with CanvasKi
 - 3D that only three.js drew is skipped and reported as `missing` until the renderer implements it: glTF models and their clips, `extrude` geometry, `matcap` and GLSL `shader` materials, texture maps other than `map` and a toon `gradientMap`, and a physical material's sheen, iridescence, anisotropy and dispersion.
 - The image decode-resolution ladder and the CanvasKit-specific tests went with `skia-render`; the renderer decodes at its own texture limit.
 - Every package is Apache-2.0; the BSD-3 split is gone. The two npm packages stay published at their last version and are deprecated there.
+
+## 3D depth is reversed Z, with an infinite derived far plane
+
+Status: accepted (2026-11-12).
+
+### Context
+
+Thin parts a hair apart (a plate lifted 0.002, lettering 0.004 above a token, beams just inside a slab) striped through each other in the templates. The 3D pass used `Depth32Float` with standard Z: float depth is densest near 0, standard Z puts the near plane there, and a bounds-derived near of `reach/1000` left steps of about `distance² × 6e-8 / near`, roughly 1e-3 units at 20 units away. `polygonOffset`, the documented way to separate coplanar surfaces, was dropped by the encoder.
+
+### Decision
+
+- The camera projection is reversed (near at 1, far at 0, `GreaterEqual`, depth cleared to 0). A perspective camera whose `far` is derived from the scene bounds gets an infinite far plane, since a finite one costs another ~10x of precision at `reach·10`; an authored `far` still clips.
+- `polygonOffset` reaches the pipeline as depth bias, negated for reversed Z.
+- Shadow maps keep standard Z; they have their own bias rules (three's).
+- Not taken: a logarithmic depth buffer (writes `frag_depth`, losing early depth rejection) or a tighter derived near (it only helps standard Z and clips close cameras).
+
+### Consequences
+
+- At 20 units, surfaces 0.001 apart resolve; truly coplanar overlaps still fight and are an authoring error (`core/docs/3d.md`).
+- `Mat.depth()` reads the fragment's own z, which equals three's `1 - gl_FragCoord.z`.
+- The scene stream is version 4; the decoder reads no older stream.

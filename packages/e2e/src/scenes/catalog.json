@@ -1686,6 +1686,12 @@
     "description": "Tex.surface: 2D Graphics rasterized and bound to a material map"
   },
   {
+    "id": "view3d-thin-stack",
+    "name": "View3dThinStack",
+    "section": "3D",
+    "description": "Thin plates, grid bars and beams a hair apart, seen from about 20 units: depth precision"
+  },
+  {
     "id": "view3d-translucent",
     "name": "View3dTranslucent",
     "section": "3D",

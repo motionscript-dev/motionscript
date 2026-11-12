@@ -18,7 +18,7 @@ export interface CameraCommon3D extends Transform3D, Passthrough3D {
     elevation?: number;
     distance?: number;
 
-    /** Near and far clip planes, derived from the scene's bounds when omitted (right far more often than any constant: too near a `far` clips the scene's back, too far a `near` wrecks depth precision). */
+    /** Near and far clip planes, derived from the scene's bounds when omitted (right far more often than any constant: too near a `far` clips the scene's back, too far a `near` clips its front; a tiny `near` costs depth precision only on standard-Z renderers). */
     near?: number;
     far?: number;
     /** Zoom factor applied on top of the projection. */

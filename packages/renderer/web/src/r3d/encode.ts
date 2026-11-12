@@ -17,7 +17,7 @@ import {
 } from "@motionscript/core";
 
 export const MAGIC = 0x52334431;
-export const VERSION = 3;
+export const VERSION = 4;
 
 type Vec = { x: number; y: number; z: number };
 type VecIn = Vec | readonly number[] | number | undefined;
@@ -473,6 +473,7 @@ function writeMaterial(w: Writer, m: Material3D, report: EncodeReport, textures?
     if (bag.depthTest === false) flags |= 128;
     if (bag.depthWrite !== undefined) flags |= 256 | (bag.depthWrite ? 512 : 0);
     if (bag.sizeAttenuation === false) flags |= 1024;
+    if (bag.polygonOffset === true) flags |= 2048;
     w.u(flags);
     w.u(FACES[(bag.faces as string) ?? "front"] ?? 0);
     w.u(BLEND[(bag.blend as string) ?? "normal"] ?? 0);
@@ -493,6 +494,9 @@ function writeMaterial(w: Writer, m: Material3D, report: EncodeReport, textures?
     w.f(bag.gapSize as number | undefined);
     w.f(bag.scale as number | undefined);
     writeMap(w, m.type === "toon" ? bag.gradientMap as Texture3D | undefined : undefined, textures, report);
+    // v4
+    w.f(bag.polygonOffsetFactor as number | undefined);
+    w.f(bag.polygonOffsetUnits as number | undefined);
 }
 
 function writeLight(w: Writer, l: LightData3D, t: Transform3D | undefined): void {

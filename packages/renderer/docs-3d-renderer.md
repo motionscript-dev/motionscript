@@ -32,6 +32,12 @@ core Scene3D ──encode.ts──▶ u32 word stream ──scene::decode──�
    0.1..1000) when the scene has none; clip planes from the bounds unless both
    `near` and `far` are given (`reach = max(span, distance ?? 2·max(span,1), 1)`,
    `near = max(0.01, reach/1000)`, `far = reach·10`); `zoom` as three applies it.
+   Depth is reversed Z (`perspective_reversed`: near at 1, far at 0,
+   `GreaterEqual`, cleared to 0), and a perspective camera whose `far` is
+   derived gets an infinite far plane: float depth is densest near 0, so thin
+   parts a few thousandths apart stay apart at 20 units, where standard Z
+   (clip planes as above) fought below about a hundredth. Shadow maps keep
+   standard Z.
 3. Lights from `handlers/light.ts`: shadow frustum `extent = shadow.extent ??
    max(1, span·0.75)` (10 without bounds), `near = max(0.05, extent·0.05)`,
    `far = max(near+1, extent·8)`, `bias = -(far-near)/(mapSize·512)`,
@@ -51,7 +57,10 @@ core Scene3D ──encode.ts──▶ u32 word stream ──scene::decode──�
    (0.5, 0.5, 0.5, 0.5) (three's white at half alpha, premultiplied), with no
    tone mapping and no sRGB encode (the target is in the working space),
    resolved, then a mip chain (bilinear 2x2, as `generateMipmap`).
-7. One MSAA pass cleared to transparent and resolved into the target.
+7. One MSAA pass cleared to transparent (depth to 0) and resolved into the
+   target. A material's `polygonOffset` is the pipeline's depth bias
+   (`constant = -units`, `slopeScale = -factor`, negated for reversed Z), on
+   triangles only: WebGPU allows none on lines and points.
 
 ### Shading, matched to three r185
 
@@ -107,7 +116,7 @@ slot is `u has, f r, g, b, a` with core's gamma-encoded values. A segments slot
 is `u kind (0 unset, 1 scalar, 2 tuple), f, f, f`.
 
 ```
-header      u MAGIC 0x52334431 ("R3D1"), u VERSION 3
+header      u MAGIC 0x52334431 ("R3D1"), u VERSION 4
 settings    u tone (0 none 1 linear 2 reinhard 3 cineon 4 aces 5 agx 6 neutral), f exposure
             u shadows on, u quality (0 low 1 medium 2 high)
             u fog (0 none 1 linear 2 exp2), colour fog, f near, f far, f density
@@ -147,12 +156,12 @@ material    u type (0 basic 1 standard 2 physical 3 lambert 4 phong 5 normal 6 p
             f opacity, f roughness, f metalness, colour emission, f emissionStrength,
             f envMapIntensity, u flags (1 transparent 4 wireframe 8 vertexColors 16 flat
             32 !toneMapped 64 !visible 128 !depthTest 256 depthWrite set 512 its value
-            1024 !sizeAttenuation), u faces (0 front 1 back 2 both),
+            1024 !sizeAttenuation 2048 polygonOffset), u faces (0 front 1 back 2 both),
             u blend (0 normal 1 additive 2 subtractive 3 multiply 4 none), f alphaTest, f size,
             colour specular, f shininess, map,
             f clearcoat, f clearcoatRoughness, f transmission, f thickness, f ior,
             f attenuationDistance, colour attenuationColor, f dashSize, f gapSize, f scale,
-            map gradientMap (toon only)
+            map gradientMap (toon only), f polygonOffsetFactor, f polygonOffsetUnits
 map         u has, u texture id, f uv matrix rows (a b c, d e f), u flags (wrap s 0-1, wrap t 2-3,
             16 flipY, 32 mag nearest, 64 min nearest)
 ```
@@ -165,7 +174,8 @@ defs        u count, then per def: u id, geometry      (v3)
 
 Version 2 added the light's width/height, geometry types 10-15 and the
 material fields after `map`. Version 3 added geometry defs and references;
-the decoder still reads version 2 streams (no defs section).
+version 4 the `polygonOffset` flag and fields. Encoder and decoder ship
+together, so the decoder reads only the current version.
 
 ### Retained geometry (v3)
 
@@ -331,7 +341,7 @@ them):
   (three does it when `WEBGL_multisampled_render_to_texture` is missing);
   matcap (drawn as standard); custom shaders (`Mat.shader`, WGSL only);
 - the area light's specular lobe (LTC tables; zero in three as the engine
-  sets it up), `polygonOffset`, `params` passthrough, `post` (core does not
+  sets it up), `params` passthrough, `post` (core does not
   apply it either).
 
 ## Integration seam (for the main session)

@@ -23,6 +23,8 @@ use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex, Weak};
 
 pub const SAMPLE_COUNT: u32 = 4;
+/// Camera depth is reversed-Z ([`perspective_reversed`]): cleared to 0,
+/// nearer is greater. Shadow maps keep standard Z.
 const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const MAX_LIGHTS: usize = 16;
 const MAX_SHADOWS: usize = 4;
@@ -41,6 +43,25 @@ const CUBE_FACES: [(Vec3, Vec3); 6] = [
     (Vec3::NEG_Z, Vec3::Y),
 ];
 const UNIFORM_STRIDE: u64 = 256;
+
+/// A camera projection with reversed Z: `near` lands on depth 1, `far` (which
+/// may be infinite) on 0. Float depth is densest near 0, so this puts its
+/// precision at the far end, where standard Z leaves steps of about
+/// `distance² × 6e-8 / near` (1e-3 at 20 units with a 0.02 near plane) and
+/// thin parts a hair apart stripe through each other. Mathematically
+/// `z = 1 - z_standard`.
+pub fn perspective_reversed(fov_y: f32, aspect: f32, near: f32, far: f32) -> Mat4 {
+    if far.is_infinite() {
+        Mat4::perspective_infinite_reverse_rh(fov_y, aspect, near)
+    } else {
+        Mat4::perspective_rh(fov_y, aspect, far, near)
+    }
+}
+
+/// [`perspective_reversed`]'s orthographic twin.
+pub fn orthographic_reversed(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> Mat4 {
+    Mat4::orthographic_rh(left, right, bottom, top, far, near)
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable, Default)]
@@ -173,6 +194,9 @@ struct PipeKey {
     background: bool,
     /// Drawn into the transmission target (half float) instead of the output format.
     hdr: bool,
+    /// `polygonOffset` as depth bias: (constant, slope scale's bits), signs
+    /// flipped for reversed Z; (0, 0) when unset.
+    bias: (i32, u32),
 }
 
 struct Item {
@@ -1273,7 +1297,7 @@ impl Renderer3D {
             None => {
                 let eye = Vec3::new(0.0, 0.0, 5.0);
                 let world = Mat4::from_rotation_translation(look_rotation(eye, Vec3::ZERO, Vec3::Y), eye);
-                (world, Mat4::perspective_rh(50f32.to_radians(), aspect, 0.1, 1000.0), false)
+                (world, perspective_reversed(50f32.to_radians(), aspect, 0.1, 1000.0), false)
             }
             Some(c) => {
                 let (near, far) = if !c.near.is_nan() && !c.far.is_nan() {
@@ -1290,12 +1314,15 @@ impl Renderer3D {
                 match c.kind {
                     CameraKind::Perspective => {
                         let fov = 2.0 * ((c.fov.to_radians() * 0.5).tan() / c.zoom).atan();
-                        (c.world, Mat4::perspective_rh(fov, aspect, near, far), false)
+                        // A derived far plane only guards against clipping, and
+                        // any finite one costs depth precision (~10x at reach·10).
+                        let far = if c.far.is_nan() { f32::INFINITY } else { far };
+                        (c.world, perspective_reversed(fov, aspect, near, far), false)
                     }
                     CameraKind::Orthographic => {
                         let hh = c.frustum_height / 2.0 / c.zoom;
                         let hw = c.frustum_height / 2.0 * aspect / c.zoom;
-                        (c.world, Mat4::orthographic_rh(-hw, hw, -hh, hh, near, far), true)
+                        (c.world, orthographic_reversed(-hw, hw, -hh, hh, near, far), true)
                     }
                 }
             }
@@ -1444,7 +1471,17 @@ impl Renderer3D {
             opaque.push(Item {
                 maps: (WHITE, WHITE),
                 geom: 0,
-                pipe: PipeKey { lines: false, cull: 0, cw: false, blend: 0, depth_write: false, depth_test: false, background: true, hdr: false },
+                pipe: PipeKey {
+                    lines: false,
+                    cull: 0,
+                    cw: false,
+                    blend: 0,
+                    depth_write: false,
+                    depth_test: false,
+                    background: true,
+                    hdr: false,
+                    bias: (0, 0),
+                },
                 uniform: 0,
                 first_instance: 0,
                 instances: 0,
@@ -1473,7 +1510,8 @@ impl Renderer3D {
             stats.instances += n_inst;
             let center = d.world.transform_point3(g.sphere.0);
             let clip = view_proj * center.extend(1.0);
-            let z = if clip.w != 0.0 { clip.z / clip.w } else { 0.0 };
+            // Standard-Z NDC depth (reversed flipped back), the key three sorts by.
+            let z = if clip.w != 0.0 { 1.0 - clip.z / clip.w } else { 0.0 };
             let cw = Mat3::from_mat4(d.world).determinant() < 0.0;
             let lines = matches!(d.kind, DrawKind::Line(_)) || d.materials.first().is_some_and(|m| m.wireframe);
 
@@ -1614,6 +1652,11 @@ impl Renderer3D {
                             depth_test: m.depth_test,
                             background: false,
                             hdr: false,
+                            // WebGPU refuses depth bias on line topology.
+                            bias: match m.polygon_offset {
+                                Some((factor, units)) if !lines => (-(units.round() as i32), (-factor).to_bits()),
+                                _ => (0, 0),
+                            },
                         },
                         uniform,
                         first_instance: first,
@@ -1777,7 +1820,7 @@ impl Renderer3D {
                     })],
                     depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                         view: depth,
-                        depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Discard }),
+                        depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(0.0), store: wgpu::StoreOp::Discard }),
                         stencil_ops: None,
                     }),
                     timestamp_writes: None,
@@ -1820,7 +1863,7 @@ impl Renderer3D {
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: depth,
-                    depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Discard }),
+                    depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(0.0), store: wgpu::StoreOp::Discard }),
                     stencil_ops: None,
                 }),
                 timestamp_writes: None,
@@ -1889,9 +1932,11 @@ impl Shared3D {
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: DEPTH_FORMAT,
                 depth_write_enabled: Some(key.depth_write),
-                depth_compare: Some(if key.depth_test { wgpu::CompareFunction::LessEqual } else { wgpu::CompareFunction::Always }),
+                // Reversed Z; equal passes, so a depth-only copy of a mesh
+                // followed by the mesh itself still draws.
+                depth_compare: Some(if key.depth_test { wgpu::CompareFunction::GreaterEqual } else { wgpu::CompareFunction::Always }),
                 stencil: Default::default(),
-                bias: Default::default(),
+                bias: wgpu::DepthBiasState { constant: key.bias.0, slope_scale: f32::from_bits(key.bias.1), clamp: 0.0 },
             }),
             multisample: wgpu::MultisampleState { count: SAMPLE_COUNT, mask: !0, alpha_to_coverage_enabled: false },
             fragment: Some(wgpu::FragmentState {

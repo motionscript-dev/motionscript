@@ -1,8 +1,9 @@
 //! Native checks: three's tessellation counts, Euler orders, `lookAt`, and a
 //! hand-written scene stream through the decoder.
 
-use glam::{Quat, Vec3};
+use glam::{Mat4, Quat, Vec3, Vec4};
 use ms_render3d::geometry::{self, Segments};
+use ms_render3d::renderer;
 use ms_render3d::scene::{self, DrawKind, GeometryDesc, LightKind, MaterialKind};
 
 #[test]
@@ -50,14 +51,19 @@ impl W {
         self
     }
     fn material(&mut self, ty: u32, color: [f32; 4]) -> &mut Self {
+        self.material_with(ty, color, 0, [f32::NAN; 2])
+    }
+    fn material_with(&mut self, ty: u32, color: [f32; 4], flags: u32, offset: [f32; 2]) -> &mut Self {
         self.u(ty).color(Some(color)).f(f32::NAN).f(0.4).f(f32::NAN).color(None).f(f32::NAN).f(f32::NAN)
-            .u(0).u(0).u(0).f(f32::NAN).f(f32::NAN).color(None).f(f32::NAN)
+            .u(flags).u(0).u(0).f(f32::NAN).f(f32::NAN).color(None).f(f32::NAN)
             .u(0).u(0).f(1.0).f(0.0).f(0.0).f(0.0).f(1.0).f(0.0).u(0)
             // v2: clearcoat, roughness, transmission, thickness, ior, attenuation distance + colour,
             // dash, gap, scale, gradient map slot
             .f(f32::NAN).f(f32::NAN).f(f32::NAN).f(f32::NAN).f(f32::NAN).f(f32::NAN).color(None)
             .f(f32::NAN).f(f32::NAN).f(f32::NAN)
             .u(0).u(0).f(1.0).f(0.0).f(0.0).f(0.0).f(1.0).f(0.0).u(0)
+            // v4: polygonOffset factor, units
+            .f(offset[0]).f(offset[1])
     }
 }
 
@@ -113,6 +119,52 @@ fn geometry_defs_and_refs() {
     assert_eq!(s.geometry_refs, vec![7, 9]);
     assert_eq!(s.geometry_defs.len(), 1);
     assert!(matches!(s.geometry_defs[0], (7, GeometryDesc::Sphere { radius, .. }) if radius == 2.0));
+}
+
+#[test]
+fn decodes_polygon_offset() {
+    let mut w = W(Vec::new());
+    w.u(scene::MAGIC).u(scene::VERSION);
+    w.u(4).f(f32::NAN).u(0).u(1).u(0).color(None).f(f32::NAN).f(f32::NAN).f(f32::NAN).u(0).f(f32::NAN).u(0).f(f32::NAN);
+    w.u(2);
+    w.u(5).u(0).f(1.0).f(1.0).f(1.0).u(0).f(f32::NAN).f(f32::NAN).f(f32::NAN);
+    w.u(1).material_with(0, [1.0; 4], 2048, [1.0, 2.0]).u(0);
+    w.u(5).u(0).f(1.0).f(1.0).f(1.0).u(0).f(f32::NAN).f(f32::NAN).f(f32::NAN);
+    w.u(1).material_with(0, [1.0; 4], 0, [1.0, 2.0]).u(0);
+    w.u(0);
+    let s = scene::decode(&w.0).expect("decodes");
+    assert_eq!(s.draws[0].materials[0].polygon_offset, Some((1.0, 2.0)));
+    assert_eq!(s.draws[1].materials[0].polygon_offset, None);
+}
+
+#[test]
+fn rejects_other_stream_versions() {
+    assert!(scene::decode(&[scene::MAGIC, scene::VERSION - 1]).is_err());
+}
+
+/// A plate 0.002 above a face, 21.5 units away, behind the derived near plane
+/// (reach / 1000): standard Z cannot tell them apart; reversed Z can, by far
+/// more steps with the infinite far plane used when `far` is derived.
+#[test]
+fn reversed_depth_separates_thin_gaps() {
+    let (near, far, d) = (0.0215, 215.0, 21.5);
+    let depth = |proj: Mat4, d: f32| {
+        let c = proj * Vec4::new(0.0, 0.0, -d, 1.0);
+        c.z / c.w
+    };
+    let steps = |p: Mat4| (depth(p, d).to_bits() as i64 - depth(p, d + 0.002).to_bits() as i64).abs();
+
+    let reversed = renderer::perspective_reversed(0.6, 1.5, near, far);
+    assert!((depth(reversed, near) - 1.0).abs() < 1e-5 && depth(reversed, far).abs() < 1e-6);
+    assert!(steps(reversed) > 50, "reversed: {} steps", steps(reversed));
+    let infinite = renderer::perspective_reversed(0.6, 1.5, near, f32::INFINITY);
+    assert!((depth(infinite, near) - 1.0).abs() < 1e-5);
+    assert!(steps(infinite) > 500, "infinite: {} steps", steps(infinite));
+    let standard = Mat4::perspective_rh(0.6, 1.5, near, far);
+    assert!(steps(standard) < 4, "standard: {} steps", steps(standard));
+
+    let ortho = renderer::orthographic_reversed(-1.0, 1.0, -1.0, 1.0, near, far);
+    assert!((depth(ortho, near) - 1.0).abs() < 1e-6 && depth(ortho, far).abs() < 1e-6);
 }
 
 #[test]
