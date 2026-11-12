@@ -21,7 +21,10 @@
     "@motionscript/sdk": "0.1.0"
   },
   "changesets": [
+    "charts-rehaul",
+    "component-styles",
     "declarations-recalled",
+    "depth-reversed",
     "mesh-bounds-reported",
     "prewarm-pipelines",
     "remove-deprecated-shims",

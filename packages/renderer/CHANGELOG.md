@@ -1,5 +1,26 @@
 # @motionscript/renderer
 
+## 0.1.1-alpha.1
+
+### Patch Changes
+
+- 1810e8a: **Breaking:** the charts are rebuilt around one `style` entry, and the kit gains a radar and a radial chart.
+
+  - **One look entry.** Every chart's `theme` (and its `DEFAULT_*_THEME`, `resolve*Theme`, `lerp*Theme`) is gone, along with `showLegend` and the bar chart's `showValues`. Each chart has `style: Types.style("chart", …)` instead, with fields grouped as colours (`palette`, `foreground`, `muted`, `background`), text (`fontFamily`, `fontSize`, `fontWeight`), grid (`horizontalGrid`, `verticalGrid` and `axisStroke` on a line or bar chart, `gridStroke` and `spokeStroke` on a radar, all strokes, so weight, colour, dash and caps come with them and an empty one draws nothing), marks, labels and legend (`legend`: bottom, top, right or none; `swatch`: square, circle or line). A chart takes only the fields it draws, and one style dresses any chart. `CHART_STYLE_PRESETS` (midnight, paper, ember, neon, ocean, sunset, pastel, mono) are partial looks to spread in; `to({ style })` tweens a restyle.
+  - **Line and area are one chart.** `lineChart` draws curves `smooth` (monotone, never overshooting), `linear` or `step`, optional dots, and `style.area` of `none`, `solid` or `gradient` under each line. `stack` is `none`, `stacked` or `percent`. Up to twelve categorical or dated samples each get a tick.
+  - **Bars.** `barChart` takes `orientation` (`vertical` or `horizontal`) and `stack` (`none`, `stacked` or `percent`; replaces `stacked`). Negative values grow from zero, only a stack's outer end is rounded, and `style.values` puts figures at the `end` of a bar or `inside` it.
+  - **Pie.** `style.innerRadius` makes a donut; `sliceGap`, `sliceRadius` and `labelPlacement` (`inside`, `outside`, `none`) are style fields.
+  - **New: `radarChart`.** One spoke per row, one polygon per series, a `polygon` or `circle` grid, with `enter` and the series commands.
+  - **A line is a stroke, an area is a fill.** A radial's `track` is a fill (empty for none). There is no grid width, dash, axis-line, spoke or track switch, and no `gridColor`. A series' `label` is optional: the legend shows `label || field`.
+  - **New: `radialChart`.** One ring per row, swept by `value / max` over `style.sweep` degrees from `style.startAngle`, with tracks, round caps, ring labels, a centre summary, `enter`, `selectRing`, `clearSelection` and `revealCenter`.
+  - **The kit** draws no plot border by default, puts each legend swatch before its caption, and moves `HorizontalAxis`, the polar helpers (`kit/polar`) and `PieLegend` behind the kit barrel, so a copied chart reaches only the kit. Removed from `./kit`: `ChartBorder`, `CHART_PALETTE`, `DEFAULT_PLOT_AREA`, `PlotAreaConfig`, `DEFAULT_SERIES_COLORS` (use `CHART_PALETTE_DEFAULT`), `DEFAULT_SERIES_STROKES`, `DEFAULT_SERIES_FILLS`, `LegendTheme`, and the theme helpers `resolveAxisConfig`, `lerpAxisConfig`, `resolvePlotArea`, `lerpPlotArea`, `resolveLegendConfig`, `lerpLegendConfig`, `resolveSeriesStrokes`, `lerpSeriesStrokes`, `resolveSeriesFills`, `lerpSeriesFills`, `resolveSeriesStroke` and `resolveSeriesFill` (a chart's colours come from `seriesFill`/`paletteFill` over its style).
+
+  The renderer's path and paint cache keys no longer collide for shapes mirrored through the origin, which drew two symmetric grid rules as one.
+
+  Migration: nothing converts a stored chart. A document row's `theme`, `showLegend`, `showValues` and `stacked` are dropped on open and the chart draws in the default style; a host with stored charts rewrites them: `theme` → a `style` partial (series colours to `palette`, text colours to `foreground`/`muted`), `showLegend: false` → `style.legend: "none"`, `showValues: true` → `style.values: "end"`, `stacked: true` → `stack: "stacked"`, `gridColor`/`gridWidth`/`gridDashed` → `horizontalGrid`/`verticalGrid` (or `gridStroke` on a radar), `grid: "vertical"` → `verticalGrid` on and `horizontalGrid: []`, `axisLine` → `axisStroke`, `spokes: false` → `spokeStroke: []`, a radial's `track: false` → `track: []`, and a pie's `labelPlacement` → `style.labelPlacement` (`leader` is now `outside`).
+
+- 9024e08: 3D depth is reversed Z, and a perspective camera whose `far` is derived gets an infinite far plane, so thin parts a few thousandths apart (a plate on a face, lettering on a token, beams inside a slab) no longer stripe through each other at a distance. A material's `polygonOffset` now applies (it was dropped). The 3D scene stream is version 4.
+
 ## 0.1.1-alpha.0
 
 ### Patch Changes
