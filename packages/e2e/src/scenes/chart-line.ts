@@ -23,7 +23,7 @@ export default scene((stage) => {
                 data: DATA,
                 xField: 'month',
                 series: [{ field: 'desktop', label: 'Desktop' }, { field: 'mobile', label: 'Mobile' }],
-                style: { fontFamily: 'Inter', dots: true },
+                style: { fontFamily: 'Inter', dots: true, horizontalGrid: { weight: 2, fill: 'white/25', dash: [10, 10], cap: 'round' } },
             }),
         ] }),
     );

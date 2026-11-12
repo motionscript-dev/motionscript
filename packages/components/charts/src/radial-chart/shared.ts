@@ -48,7 +48,7 @@ export interface RadialStyle extends ChartStyleBase {
   readonly ringGap: number
   readonly sweep: number
   readonly startAngle: number
-  readonly track: boolean
+  readonly track: _FillResolved[]
   readonly roundCaps: boolean
   readonly ringLabels: boolean
 }
@@ -65,8 +65,8 @@ export const RADIAL_STYLE_GROUPS = {
     sweep: Types.number(360, { min: 30, max: 360, step: 5, unit: "deg" }),
     /** Degrees clockwise from 12 o'clock where every ring begins. */
     startAngle: Types.number(0, { min: -360, max: 360, step: 5, unit: "deg" }),
-    /** Draw the full ring under each arc, in the grid colour. */
-    track: Types.boolean(true),
+    /** The full ring under each arc; empty draws none. */
+    track: Types.fill("white/10"),
     /** Round the ends of the arcs and tracks. */
     roundCaps: Types.boolean(true),
   },
@@ -83,7 +83,7 @@ export function marksOf(style: RadialStyle): RadialMarks {
     ringGap: style.ringGap,
     sweep: style.sweep,
     startAngle: style.startAngle,
-    track: style.track,
+    track: style.track.length > 0,
     roundCaps: style.roundCaps,
   }
 }

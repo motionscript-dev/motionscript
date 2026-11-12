@@ -3,6 +3,7 @@ import type { Command, Text } from "@motionscript/sdk"
 
 import { Recorder, attachAt, draw, layOut, scrub } from "../tests/harness"
 import { partOf, partsOf as partsIn, plotOf } from "../kit/tests/parts"
+import { ChartCanvas } from "../kit/chart-canvas"
 import { ChartLegend } from "../kit/chart-legend"
 import { SPOTLIGHT_DIM } from "../kit/shared"
 import { HorizontalAxis } from "../kit/horizontal-axis"
@@ -545,7 +546,30 @@ describe("BarChart: stack modes", () => {
 describe("BarChart: style", () => {
   it("declares one style entry in the chart family, with the bar marks and labels", () => {
     const style = new BarChart({}).style
-    expect(style).toMatchObject({ barRadius: 10, barWidth: 0.7, barGap: 6, values: "none", grid: "horizontal", legend: "bottom" })
+    expect(style).toMatchObject({ barRadius: 10, barWidth: 0.7, barGap: 6, values: "none", legend: "bottom" })
+  })
+
+  it("rules the value ticks by default, as strokes: horizontal on, vertical and axis off", () => {
+    const style = new BarChart({}).style
+    expect(style.horizontalGrid).toMatchObject([{ weight: 2 }])
+    expect(style.verticalGrid).toEqual([])
+    expect(style.axisStroke).toEqual([])
+    expect(style).not.toHaveProperty("gridColor")
+  })
+
+  it("draws the canvas's grid from the strokes as given, dash included", () => {
+    const node = chart({ style: { horizontalGrid: { weight: 3, fill: "#ff0000", dash: [6, 4] }, verticalGrid: { weight: 1, fill: "#00ff00" }, axisStroke: { weight: 5, fill: "#0000ff" } } })
+    const canvas = partOf(node, ChartCanvas)!
+    expect(canvas.yGridStroke[0]).toMatchObject({ weight: 3, dash: [6, 4] })
+    expect(canvas.xGridStroke[0]).toMatchObject({ weight: 1 })
+    expect(canvas.axisStroke[0]).toMatchObject({ weight: 5 })
+  })
+
+  it("rules a horizontal chart literally: vertical rules follow the value ticks", () => {
+    const node = chart({ orientation: "horizontal", style: { horizontalGrid: [], verticalGrid: { weight: 2, fill: "#ffffff" } } })
+    const canvas = partOf(node, ChartCanvas)!
+    expect(canvas.yGridStroke).toEqual([])
+    expect(canvas.xGridStroke).toHaveLength(1)
   })
 
   it("tweens the bars' rounding and width with to({ style })", () => {

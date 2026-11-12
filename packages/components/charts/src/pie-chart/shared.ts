@@ -146,18 +146,16 @@ export interface LabelConfig {
 }
 
 /** What a pie's `style` resolves to. */
-export interface PieStyle extends Omit<ChartStyleBase, "gridColor"> {
+export interface PieStyle extends ChartStyleBase {
   readonly innerRadius: number
   readonly sliceGap: number
   readonly sliceRadius: number
   readonly labelPlacement: PieLabelPlacement
 }
 
-const { gridColor: _grid, ...PIE_COLORS } = CHART_COLORS
-
-/** The groups of a pie's `style`: no grid colour, as nothing is ruled. */
+/** The groups of a pie's `style`: no grid, as nothing is ruled. */
 export const PIE_STYLE_GROUPS = {
-  colors: PIE_COLORS,
+  colors: CHART_COLORS,
   text: CHART_TEXT,
   marks: {
     /** Hole radius as a fraction of the outer radius: 0 is a pie, about 0.6 a donut. */

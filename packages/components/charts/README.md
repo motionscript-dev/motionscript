@@ -69,12 +69,17 @@ flat (`state.style.fontSize`):
 
 | Group | Fields | On |
 |---|---|---|
-| colors | `palette`, `foreground`, `muted`, `gridColor`, `background` | every chart (`gridColor` is the radial's track colour; a pie has none) |
+| colors | `palette`, `foreground`, `muted`, `background` | every chart |
 | text | `fontFamily`, `fontSize`, `fontWeight` | every chart |
-| grid | `grid`, `gridWidth`, `gridDashed`, `axisLine`, `showXAxis`, `showYAxis` | line, bar |
-| grid | `gridShape`, `gridLevels`, `gridWidth`, `spokes`, `spokeLabels` | radar |
+| grid | `horizontalGrid` (a 2px `white/15` stroke), `verticalGrid` (none), `axisStroke` (none), `showXAxis`, `showYAxis` | line, bar |
+| grid | `gridShape`, `gridLevels`, `gridStroke` (rings), `spokeStroke` (spokes), `spokeLabels` | radar |
 | marks | the chart's own: `strokeWidth`, `curve`, `dots`, `area`, `barRadius`, `innerRadius`, `sweep`, ... | every chart |
 | labels | `values` (line, bar), `labelPlacement` (pie), `ringLabels` (radial) | |
+
+A line is a stroke and an area is a fill: `horizontalGrid`, `verticalGrid`, `axisStroke`, `gridStroke`
+and `spokeStroke` are `Types.stroke` entries (weight, colour, dash and caps; empty draws
+nothing), and a radial's `track` is a `Types.fill` (empty draws no track). A series' `label`
+is optional; the legend shows `label || field`.
 | legend | `legend` (`bottom`, `top`, `right`, `none`), `swatch` (`square`, `circle`, `line`) | every chart |
 
 A chart takes only the fields it draws. A style is a partial laid over the chart's
@@ -130,8 +135,9 @@ steps rather than tweens, and a document edit rebuilds the node.
   and `pops` are live.
 - **Non-finite cells plot as 0.** `num()` returns a cell only when it is a finite
   number, so a numeric string, `NaN`, `Infinity` and a missing cell all read 0.
-- **`grid` is literal.** It names the lines drawn, not an axis: a horizontal bar
-  chart that wants rules along its value axis sets `grid: 'vertical'`.
+- **`horizontalGrid` and `verticalGrid` are literal.** They name the lines drawn, not an axis: a
+  horizontal bar chart that wants rules along its value axis sets `verticalGrid` and
+  `horizontalGrid: []`.
 - **x units on the line chart.** `xAxis.range`, `xAxis.ticks` and a region's `x`
   are in the x scale's own units: the number (numeric column), UTC epoch
   milliseconds (time column) or the row index (ordinal column), chosen from the

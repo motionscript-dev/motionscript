@@ -124,7 +124,7 @@ export const RadialChart = component2d({
         marks: () => marksOf(style()),
         label: () => ringLabelOf(style()),
         centerStyle: () => centerOf(style()),
-        trackFill: () => style().gridColor,
+        trackFill: () => style().track,
         ringLabels: () => style().ringLabels,
         pops: () => state.pops,
         dimOpacity: RING_DIM,

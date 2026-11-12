@@ -82,6 +82,12 @@ describe("ChartLegend: the entries", () => {
     expect(second.x).toBeGreaterThan(first.x)
   })
 
+  it("captions a series with its field when it has no label", () => {
+    const node = legend([{ field: "revenue" }, { field: "cost", label: "" }, { field: "c", label: "Gamma" }])
+    const caption = (i: number) => (node.children[i].children[1] as unknown as { text: string }).text
+    expect([0, 1, 2].map(caption)).toEqual(["revenue", "cost", "Gamma"])
+  })
+
   it("hugs its entries", () => {
     const node = legend()
     expect(node.width).toBe("hug")

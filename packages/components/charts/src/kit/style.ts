@@ -8,7 +8,8 @@
 import {
   Types,
   type Fill,
-  type Stroke,
+  type StrokeResolved,
+  type Stroke as _Stroke,
   type StyleInput,
   type TextStyle,
   // Named so the emitted style types reach these through the sdk, not core.
@@ -31,8 +32,6 @@ export const CHART_COLORS = {
   foreground: Types.fill("#f4f4f5"),
   /** Axis markers and captions, spoke labels. */
   muted: Types.fill("#a1a1aa"),
-  /** Grid lines, axis lines, a radial's empty track. */
-  gridColor: Types.fill("white/15"),
   /** Behind the plot; none by default, so the chart reads against the stage. */
   background: Types.fill([]),
 }
@@ -45,15 +44,13 @@ export const CHART_TEXT = {
   fontWeight: Types.number(500, { min: 100, max: 900, step: 100 }),
 }
 
-/** Which grid lines a cartesian chart rules: `horizontal` follows the value ticks of a column chart. */
-export type GridLines = "horizontal" | "vertical" | "both" | "none"
-
 export const CARTESIAN_GRID = {
-  grid: Types.oneOf(["horizontal", "vertical", "both", "none"] as const),
-  gridWidth: Types.number(2, { min: 0, max: 16, step: 1, unit: "px" }),
-  gridDashed: Types.boolean(false),
-  /** The baseline and value-axis rule, in `gridColor`. */
-  axisLine: Types.boolean(false),
+  /** The lines along the value ticks of a column chart (one per tick); empty draws none. */
+  horizontalGrid: Types.stroke({ weight: 2, fill: "white/15" }),
+  /** The lines under the category markers; empty draws none. */
+  verticalGrid: Types.stroke([]),
+  /** The baseline and the value-axis rule; empty draws none. */
+  axisStroke: Types.stroke([]),
   /** Read as the chart is built: whether the category (x) axis row is drawn. */
   showXAxis: Types.boolean(true, { animatable: false }),
   /** Read as the chart is built: whether the value (y) axis column is drawn. */
@@ -78,7 +75,7 @@ export interface ChartTextStyle {
   readonly fontWeight: number
 }
 
-/** The fields every chart's style resolves, whichever groups it spreads. A chart without a grid leaves out `gridColor`. */
+/** The fields every chart's style resolves, whichever groups it spreads. */
 export interface ChartStyleBase extends ChartTextStyle {
   readonly palette: readonly Fill[]
   readonly background: Fill
@@ -88,17 +85,23 @@ export interface ChartStyleBase extends ChartTextStyle {
 
 /** The cartesian grid fields, for the line and bar charts. */
 export interface CartesianStyle extends ChartStyleBase {
-  readonly gridColor: Fill
-  readonly grid: GridLines
-  readonly gridWidth: number
-  readonly gridDashed: boolean
-  readonly axisLine: boolean
+  readonly horizontalGrid: StrokeResolved[]
+  readonly verticalGrid: StrokeResolved[]
+  readonly axisStroke: StrokeResolved[]
   readonly showXAxis: boolean
   readonly showYAxis: boolean
 }
 
+/** The rule and track fields a preset restates so its rules read on its background (a chart keeps those it draws). */
+const _PRESET_RULES = {
+  horizontalGrid: CARTESIAN_GRID.horizontalGrid,
+  gridStroke: Types.stroke([]),
+  spokeStroke: Types.stroke([]),
+  track: Types.fill([]),
+}
+
 /** A preset's fields: any chart's, so one preset dresses every chart. */
-export type ChartStylePreset = StyleInput<typeof CHART_COLORS & typeof CHART_TEXT>
+export type ChartStylePreset = StyleInput<typeof CHART_COLORS & typeof CHART_TEXT & typeof _PRESET_RULES>
 
 /** Ready-made looks, each stating every colour so applying one replaces the last. */
 export const CHART_STYLE_PRESETS = {
@@ -106,56 +109,80 @@ export const CHART_STYLE_PRESETS = {
     palette: [...CHART_PALETTE_DEFAULT],
     foreground: "#f4f4f5",
     muted: "#a1a1aa",
-    gridColor: "white/15",
+    horizontalGrid: { weight: 2, fill: "white/15" },
+    gridStroke: { weight: 2, fill: "white/15" },
+    spokeStroke: { weight: 2, fill: "white/15" },
+    track: "white/15",
     background: [],
   },
   paper: {
     palette: ["#2563eb", "#059669", "#d97706", "#db2777", "#7c3aed"],
     foreground: "#1c1917",
     muted: "#57534e",
-    gridColor: "#1c1917/12",
+    horizontalGrid: { weight: 2, fill: "#1c1917/12" },
+    gridStroke: { weight: 2, fill: "#1c1917/12" },
+    spokeStroke: { weight: 2, fill: "#1c1917/12" },
+    track: "#1c1917/12",
     background: "#fafaf9",
   },
   ember: {
     palette: ["#d9603b", "#8194ad", "#e0a93b", "#5e9d6b", "#9ec85a"],
     foreground: "#e9e1d4",
     muted: "#8a7f70",
-    gridColor: "#2c2820",
+    horizontalGrid: { weight: 2, fill: "#2c2820" },
+    gridStroke: { weight: 2, fill: "#2c2820" },
+    spokeStroke: { weight: 2, fill: "#2c2820" },
+    track: "#2c2820",
     background: "#15130e",
   },
   neon: {
     palette: ["#22d3ee", "#a3e635", "#f472b6", "#facc15", "#818cf8"],
     foreground: "#ffffff",
     muted: "#94a3b8",
-    gridColor: "white/10",
+    horizontalGrid: { weight: 2, fill: "white/10" },
+    gridStroke: { weight: 2, fill: "white/10" },
+    spokeStroke: { weight: 2, fill: "white/10" },
+    track: "white/10",
     background: [],
   },
   ocean: {
     palette: ["#0ea5e9", "#14b8a6", "#6366f1", "#38bdf8", "#2dd4bf"],
     foreground: "#e0f2fe",
     muted: "#7dd3fc",
-    gridColor: "#7dd3fc/20",
+    horizontalGrid: { weight: 2, fill: "#7dd3fc/20" },
+    gridStroke: { weight: 2, fill: "#7dd3fc/20" },
+    spokeStroke: { weight: 2, fill: "#7dd3fc/20" },
+    track: "#7dd3fc/20",
     background: "#082f49",
   },
   sunset: {
     palette: ["#f97316", "#ef4444", "#ec4899", "#f59e0b", "#a855f7"],
     foreground: "#fff7ed",
     muted: "#fdba74",
-    gridColor: "#fdba74/20",
+    horizontalGrid: { weight: 2, fill: "#fdba74/20" },
+    gridStroke: { weight: 2, fill: "#fdba74/20" },
+    spokeStroke: { weight: 2, fill: "#fdba74/20" },
+    track: "#fdba74/20",
     background: [],
   },
   pastel: {
     palette: ["#a5b4fc", "#f9a8d4", "#86efac", "#fde68a", "#7dd3fc"],
     foreground: "#f8fafc",
     muted: "#cbd5e1",
-    gridColor: "white/12",
+    horizontalGrid: { weight: 2, fill: "white/12" },
+    gridStroke: { weight: 2, fill: "white/12" },
+    spokeStroke: { weight: 2, fill: "white/12" },
+    track: "white/12",
     background: [],
   },
   mono: {
     palette: ["#fafafa", "#a3a3a3", "#737373", "#d4d4d4", "#525252"],
     foreground: "#fafafa",
     muted: "#a3a3a3",
-    gridColor: "white/12",
+    horizontalGrid: { weight: 2, fill: "white/12" },
+    gridStroke: { weight: 2, fill: "white/12" },
+    spokeStroke: { weight: 2, fill: "white/12" },
+    track: "white/12",
     background: [],
   },
 } satisfies Record<string, ChartStylePreset>
@@ -197,27 +224,16 @@ export function valueText(style: ChartTextStyle, textAlign: TextStyle["textAlign
   return { ...face(style), fontSize: style.fontSize, fontWeight: Math.min(900, style.fontWeight + 100), textAlign, fill: style.foreground }
 }
 
-/** A grid or axis rule, or none at width 0. */
-export function gridStroke(style: Pick<CartesianStyle, "gridWidth" | "gridColor">): Stroke {
-  return style.gridWidth > 0 ? { weight: style.gridWidth, fill: style.gridColor } : []
-}
-
-/** Whether `grid` rules the lines that run along `direction`. */
-export function rules(grid: GridLines, direction: "horizontal" | "vertical"): boolean {
-  return grid === "both" || grid === direction
-}
-
 /**
  * The kit axis parts' config from a style. `x` is the axis under the plot;
  * its grid lines are vertical (one per x marker), the `y` axis's horizontal.
  */
-export function axisConfigOf(style: CartesianStyle, axis: "x" | "y"): AxisConfig {
-  const lines = rules(style.grid, axis === "x" ? "vertical" : "horizontal")
+export function axisConfigOf(style: Pick<CartesianStyle, "verticalGrid" | "horizontalGrid"> & ChartTextStyle, axis: "x" | "y"): AxisConfig {
   const gap = Math.round(style.fontSize * 0.6)
   return {
     labelStyle: markerText(style, axis === "x" ? "center" : "right"),
     titleStyle: titleText(style),
-    lineStyle: lines ? gridStroke(style) : [],
+    lineStyle: axis === "x" ? style.verticalGrid : style.horizontalGrid,
     tickPadding: axis === "x" ? { top: gap } : { right: gap },
     titlePadding: axis === "x" ? { top: Math.round(gap / 2) } : { right: gap },
   }

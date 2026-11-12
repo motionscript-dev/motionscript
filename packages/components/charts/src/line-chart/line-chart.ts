@@ -14,6 +14,8 @@ import {
   type Node2DProps as _Node2DProps,
   type Fill as _Fill,
   type FillResolved as _FillResolved,
+  type Stroke as _Stroke,
+  type StrokeResolved as _StrokeResolved,
   type Size2D,
   type StyleInput as _StyleInput,
   type StyleValues as _StyleValues,
@@ -21,7 +23,7 @@ import {
 } from "@motionscript/sdk"
 import { formatNumber } from "@motionscript/sdk/component"
 
-import { axisRule, boundText, cartesianFrame, chartViews, columnGhost, fade, frameGap, gridRule, headroom, laidOutSize, overhang } from "../kit/cartesian"
+import { boundText, cartesianFrame, chartViews, columnGhost, fade, frameGap, headroom, laidOutSize, overhang } from "../kit/cartesian"
 import { ChartCanvas } from "../kit/chart-canvas"
 import { ChartLegend } from "../kit/chart-legend"
 import { SERIES_ARG, asParts, fresh } from "../kit/entries"
@@ -51,7 +53,6 @@ import {
   CHART_TEXT,
   axisConfigOf,
   legendConfigOf,
-  rules,
   seriesFill,
   valueText,
 } from "../kit/style"
@@ -492,20 +493,20 @@ export const LineChart = component2d({
       children: [
         new ChartCanvas({
           fill: () => style().background,
-          xGridStroke: () => (rules(style().grid, "vertical") ? gridRule(style()) : []),
-          yGridStroke: () => (rules(style().grid, "horizontal") ? gridRule(style()) : []),
+          xGridStroke: () => style().verticalGrid,
+          yGridStroke: () => style().horizontalGrid,
           xMarkers: () => domains().x.ticks,
           yMarkers: () => domains().y.ticks,
           xExtent: () => domains().x.range,
           yExtent: () => domains().y.range,
-          axisStroke: () => axisRule(style()),
+          axisStroke: () => style().axisStroke,
           xAxisAt: () => baselineValue(domains()),
           yAxisAt: () => domains().x.range[0],
         }),
         // Under the marks, so the highlight does not tint the stretch it picks out.
         new ChartRegion({
           box: spotlight,
-          stroke: () => ({ weight: Math.max(2, style().gridWidth), fill: fade(style().foreground, 0.7), dash: [14, 12], cap: "butt", align: "center" }),
+          stroke: () => ({ weight: 2, fill: fade(style().foreground, 0.7), dash: [14, 12], cap: "butt", align: "center" }),
           fill: () => fade(style().foreground, 0.06),
           reveal: () => state.regionReveal,
         }),

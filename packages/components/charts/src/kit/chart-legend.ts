@@ -121,7 +121,7 @@ export const ChartLegend = component2d({
             stroke: () => marker().stroke,
             shadow: () => marker().shadow,
           }),
-          Text({ ...boundText(() => state.legend.textStyle), text: series.label }),
+          Text({ ...boundText(() => state.legend.textStyle), text: series.label || series.field }),
         ],
       })
     )

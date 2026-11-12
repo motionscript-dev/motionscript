@@ -1,4 +1,4 @@
-import { Types, type DataRecord, type Size2D, type Vector2 } from "@motionscript/sdk"
+import { Types, type DataRecord, type Size2D, type StrokeResolved, type Stroke as _Stroke, type Vector2 } from "@motionscript/sdk"
 
 import { num, text, type ChartSeries } from "../kit/shared"
 
@@ -10,10 +10,10 @@ export const RADAR_GRID = {
   gridShape: Types.oneOf(["polygon", "circle"] as const),
   /** How many rings, outermost at the scale's maximum. */
   gridLevels: Types.number(4, { min: 1, max: 10, step: 1 }),
-  /** Ring and spoke line weight; 0 hides the web's lines. */
-  gridWidth: Types.number(2, { min: 0, max: 16, step: 1, unit: "px" }),
-  /** Whether a line runs from the centre out to each category. */
-  spokes: Types.boolean(true),
+  /** The rings; empty draws none. */
+  gridStroke: Types.stroke({ weight: 2, fill: "white/15" }),
+  /** The line from the centre out to each category; empty draws none. */
+  spokeStroke: Types.stroke({ weight: 2, fill: "white/15" }),
   /** Read as the chart is built: whether the category names stand around the rim. */
   spokeLabels: Types.boolean(true, { animatable: false }),
 }
@@ -32,8 +32,8 @@ export const RADAR_MARKS = {
 export interface RadarStyle {
   readonly gridShape: GridShape
   readonly gridLevels: number
-  readonly gridWidth: number
-  readonly spokes: boolean
+  readonly gridStroke: StrokeResolved[]
+  readonly spokeStroke: StrokeResolved[]
   readonly spokeLabels: boolean
   readonly strokeWidth: number
   readonly areaOpacity: number

@@ -13,13 +13,15 @@ import {
   type Node2DProps as _Node2DProps,
   type Fill as _Fill,
   type FillResolved as _FillResolved,
+  type Stroke as _Stroke,
+  type StrokeResolved as _StrokeResolved,
   type Size2D,
   type StyleInput as _StyleInput,
   type StyleValues as _StyleValues,
 } from "@motionscript/sdk"
 import { formatNumber } from "@motionscript/sdk/component"
 
-import { axisRule, cartesianFrame, chartViews, columnGhost, frameGap, gridRule, headroom, laidOutSize, overhang } from "../kit/cartesian"
+import { cartesianFrame, chartViews, columnGhost, frameGap, headroom, laidOutSize, overhang } from "../kit/cartesian"
 import { ChartCanvas } from "../kit/chart-canvas"
 import { ChartLegend } from "../kit/chart-legend"
 import { SERIES_ARG, asParts, fresh } from "../kit/entries"
@@ -49,7 +51,6 @@ import {
   CHART_TEXT,
   axisConfigOf,
   legendConfigOf,
-  rules,
   seriesFill,
   valueText,
 } from "../kit/style"
@@ -381,20 +382,17 @@ export const BarChart = component2d({
     // Category lines fall between the slots, never through a bar.
     const boundaries = () => Array.from({ length: Math.max(0, n - 1) }, (_, i) => i + 1)
     const slots = (): Range => [0, Math.max(1, n)]
-    const valueLines = () => (rules(style().grid, horizontal ? "vertical" : "horizontal") ? gridRule(style()) : [])
-    const categoryLines = () => (rules(style().grid, horizontal ? "horizontal" : "vertical") ? gridRule(style()) : [])
-
     plot = new Rect({
       children: [
         new ChartCanvas({
           fill: () => style().background,
-          xGridStroke: horizontal ? valueLines : categoryLines,
-          yGridStroke: horizontal ? categoryLines : valueLines,
+          xGridStroke: () => style().verticalGrid,
+          yGridStroke: () => style().horizontalGrid,
           xMarkers: horizontal ? () => domain().ticks : boundaries,
           yMarkers: horizontal ? boundaries : () => domain().ticks,
           xExtent: horizontal ? () => domain().range : slots,
           yExtent: horizontal ? slots : () => domain().range,
-          axisStroke: () => axisRule(style()),
+          axisStroke: () => style().axisStroke,
           xAxisAt: () => (horizontal ? 0 : baselineValue(domain())),
           yAxisAt: () => (horizontal ? baselineValue(domain()) : 0),
         }),

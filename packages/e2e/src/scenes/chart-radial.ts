@@ -24,7 +24,7 @@ export default scene((stage) => {
                 valueField: 'visitors',
                 centerLabel: '925',
                 centerCaption: 'Visitors',
-                style: { fontFamily: 'Inter', sweep: 270, ringLabels: true, track: true },
+                style: { fontFamily: 'Inter', sweep: 270, ringLabels: true, track: 'white/10' },
             }),
         ] }),
     );

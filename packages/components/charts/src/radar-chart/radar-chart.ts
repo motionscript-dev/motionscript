@@ -13,6 +13,8 @@ import {
   type Node2DProps as _Node2DProps,
   type Fill as _Fill,
   type FillResolved as _FillResolved,
+  type Stroke as _Stroke,
+  type StrokeResolved as _StrokeResolved,
   type Size2D,
   type Vector2,
 } from "@motionscript/sdk"
@@ -148,8 +150,8 @@ export const RadarChart = component2d({
       radius,
       levels: () => style().gridLevels,
       shape: () => style().gridShape,
-      stroke: () => (style().gridWidth > 0 ? { weight: style().gridWidth, fill: style().gridColor, align: "center" } : []),
-      spokes: () => style().spokes,
+      stroke: () => style().gridStroke,
+      spokeStroke: () => style().spokeStroke,
     }) as unknown as Node2D
 
     const series = state.series.map(

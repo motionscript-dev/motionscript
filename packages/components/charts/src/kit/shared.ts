@@ -25,7 +25,8 @@ import { niceStep } from "@motionscript/sdk/component"
 export interface ChartSeries {
   /** Key into each data row for this series' value. */
   field: string
-  label: string
+  /** The legend caption; empty or absent shows `field`. */
+  label?: string
   /** Overrides the theme palette's entry for this series' index, for its mark and legend swatch. */
   fill?: Fill
   /** Defaults to `true`. */

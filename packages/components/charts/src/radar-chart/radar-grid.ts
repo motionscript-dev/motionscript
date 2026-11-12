@@ -30,22 +30,23 @@ export const RadarGrid = component2d({
     levels: 4,
     shape: Types.custom<GridShape>("polygon"),
     stroke: Types.custom<Stroke, StrokeResolved[]>([], { resolve: strokeOps.resolve, lerp: strokeOps.lerp }),
-    spokes: true,
+    /** The line out to each category; empty draws none. */
+    spokeStroke: Types.custom<Stroke, StrokeResolved[]>([], { resolve: strokeOps.resolve, lerp: strokeOps.lerp }),
     /** How far the web has grown out, `0`-`1`. Rests at 1 so a paused canvas paints it. */
     reveal: 1,
   },
   defaults: { width: "fill", height: "fill" },
-  load: (loader, state) => loadPaints(loader, { strokes: [state.stroke] }),
+  load: (loader, state) => loadPaints(loader, { strokes: [state.stroke, state.spokeStroke] }),
   render: (ctx, state) => {
     const grow = clamp(state.reveal, 0, 1)
     const rim = state.radius * grow
-    if (rim <= 0 || grow <= 0 || state.stroke.length === 0) return
+    if (rim <= 0 || grow <= 0) return
     const count = Math.max(0, Math.round(state.count))
     const levels = Math.max(1, Math.round(state.levels))
     const round = state.shape === "circle" || count < 3
 
     // One draw per ring: rings chained into one surface would stroke only their union's outline.
-    for (let level = 1; level <= levels; level++) {
+    for (let level = 1; state.stroke.length > 0 && level <= levels; level++) {
       const r = (rim * level) / levels
       const ring = new Graphics2D()
       if (round) {
@@ -61,13 +62,13 @@ export const RadarGrid = component2d({
       ctx.draw(ring.stroke(state.stroke).opacity(grow))
     }
 
-    if (!state.spokes) return
+    if (state.spokeStroke.length === 0) return
     for (let i = 0; i < count; i++) {
       const d = spokeDirection(i, count)
       ctx.draw(
         new Graphics2D()
           .line({ points: [{ x: 0, y: 0 }, { x: d.x * rim, y: d.y * rim }] })
-          .stroke(state.stroke)
+          .stroke(state.spokeStroke)
           .opacity(grow)
       )
     }

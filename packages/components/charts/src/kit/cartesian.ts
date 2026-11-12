@@ -9,7 +9,6 @@ import {
   type Insets,
   type Node2D,
   type Size2D,
-  type Stroke,
   type TextStyle,
 } from "@motionscript/sdk"
 
@@ -136,18 +135,6 @@ export function columnGhost(spec: GhostSpec): Node2D {
   }
   children.push(new Rect({ flow: "vertical", width: "hug", height: "hug", padding: () => ({ right: spec.tickPad() }), children: captions }) as unknown as Node2D)
   return new Rect({ opacity: 0, flow: "horizontal", gap: spec.titlePad, width: "hug", height: 0, children }) as unknown as Node2D
-}
-
-/** The grid's rule: `gridWidth` in `gridColor`, dashed when `gridDashed`; none at width 0. */
-export function gridRule(style: Pick<CartesianStyle, "gridWidth" | "gridColor" | "gridDashed">): Stroke {
-  if (style.gridWidth <= 0) return []
-  const dash = Math.max(4, style.gridWidth * 3)
-  return { weight: style.gridWidth, fill: style.gridColor, align: "center", ...(style.gridDashed && { dash: [dash, dash] }) }
-}
-
-/** The baseline and value-axis rule: solid, in the grid's colour and width, or none. */
-export function axisRule(style: Pick<CartesianStyle, "gridWidth" | "gridColor" | "axisLine">): Stroke {
-  return style.axisLine && style.gridWidth > 0 ? { weight: style.gridWidth, fill: style.gridColor, align: "center" } : []
 }
 
 /** `fill` with every layer's opacity scaled by `k`. */

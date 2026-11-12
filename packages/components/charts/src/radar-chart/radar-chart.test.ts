@@ -144,10 +144,10 @@ describe("RadarChart: parts", () => {
   })
 
   it("passes the grid style to the web", () => {
-    const { grid } = partsOf(chart({ style: { gridShape: "circle", gridLevels: 6, spokes: false, gridWidth: 0 } }))
+    const { grid } = partsOf(chart({ style: { gridShape: "circle", gridLevels: 6, spokeStroke: [], gridStroke: [] } }))
     expect(grid.shape).toBe("circle")
     expect(grid.levels).toBe(6)
-    expect(grid.spokes).toBe(false)
+    expect(grid.spokeStroke).toEqual([])
     expect(grid.stroke).toEqual([])
   })
 
@@ -343,9 +343,9 @@ describe("radarChart in the registry", () => {
     const style = (described.properties as Record<string, { kind: string; family: string; properties: Record<string, { group: string; animatable?: boolean }> }>).style
     expect(style).toMatchObject({ kind: "style", family: "chart" })
     const groups = (keys: string[]) => keys.map((k) => style.properties[k]?.group)
-    expect(groups(["palette", "foreground", "muted", "gridColor", "background"])).toEqual(Array(5).fill("colors"))
+    expect(groups(["palette", "foreground", "muted", "background"])).toEqual(Array(4).fill("colors"))
     expect(groups(["fontFamily", "fontSize", "fontWeight"])).toEqual(Array(3).fill("text"))
-    expect(groups(["gridShape", "gridLevels", "gridWidth", "spokes", "spokeLabels"])).toEqual(Array(5).fill("grid"))
+    expect(groups(["gridShape", "gridLevels", "gridStroke", "spokeStroke", "spokeLabels"])).toEqual(Array(5).fill("grid"))
     expect(groups(["strokeWidth", "areaOpacity", "dots", "dotSize"])).toEqual(Array(4).fill("marks"))
     expect(groups(["legend", "swatch"])).toEqual(["legend", "legend"])
     expect(style.properties.legend.animatable).toBe(false)
@@ -353,7 +353,9 @@ describe("radarChart in the registry", () => {
     expect(style.properties.gridShape).toMatchObject({ kind: "enum", default: "polygon" })
     expect(style.properties.areaOpacity).toMatchObject({ default: 0.25, min: 0, max: 1 })
     expect(style.properties.cartesianGrid).toBeUndefined()
-    expect(style.properties.axisLine).toBeUndefined()
+    expect(style.properties.gridColor).toBeUndefined()
+    expect(style.properties.gridStroke).toMatchObject({ kind: "strokes" })
+    expect(style.properties.spokeStroke).toMatchObject({ kind: "strokes" })
   })
 
   it("offers the per-series commands a series argument, and enter as an entrance", () => {

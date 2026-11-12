@@ -24,7 +24,7 @@ export default scene((stage) => {
                 orientation: 'horizontal',
                 stack: 'stacked',
                 series: [{ field: 'organic', label: 'Organic' }, { field: 'paid', label: 'Paid' }],
-                style: { fontFamily: 'Inter', grid: 'vertical', values: 'inside' },
+                style: { fontFamily: 'Inter', horizontalGrid: [], verticalGrid: { weight: 2, fill: 'white/15' }, values: 'inside' },
             }),
         ] }),
     );

@@ -217,13 +217,13 @@ describe("RadialChart: parts and style", () => {
   })
 
   it("hands the marks to the rings", () => {
-    const part = partsOf(chart({ style: { sweep: 270, startAngle: 45, ringGap: 3, roundCaps: false, track: false, innerRadius: 0.5 } })).rings
+    const part = partsOf(chart({ style: { sweep: 270, startAngle: 45, ringGap: 3, roundCaps: false, track: [], innerRadius: 0.5 } })).rings
     expect(part.marks).toEqual({ innerRadius: 0.5, ringGap: 3, sweep: 270, startAngle: 45, track: false, roundCaps: false })
   })
 
   it("follows a style change after build, since the parts read it live", () => {
     const node = chart()
-    node.set({ style: { sweep: 180, ringLabels: true, gridColor: "#123456" } } as never)
+    node.set({ style: { sweep: 180, ringLabels: true, track: "#123456" } } as never)
     const part = partsOf(node).rings
     expect(part.marks.sweep).toBe(180)
     expect(part.ringLabels).toBe(true)
