@@ -608,6 +608,9 @@ importers:
 
   packages/e2e:
     dependencies:
+      '@motionscript/charts':
+        specifier: workspace:^
+        version: link:../components/charts
       '@motionscript/code':
         specifier: workspace:^
         version: link:../components/code

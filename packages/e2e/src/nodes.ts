@@ -6,6 +6,7 @@ import { ThemedRect } from '@/components/themed-rect';
 // The kits' own nodes, not local re-implementations: nothing here needs to
 // differ from what the packages ship.
 import { Code } from '@motionscript/code';
+import { BarChart, LineChart, PieChart, RadarChart, RadialChart } from '@motionscript/charts';
 import { DotGridPattern, GridPattern, LineGridPattern } from '@motionscript/patterns';
 import {
     AngleMark, Axes2d, Axes3d, CurlyBrace, CurveArea, CurvePlot3d, DropLines, EmphasisMark, FunctionPlot, Latex, NumberLine,
@@ -22,6 +23,11 @@ import { GaugeV2, RadialMenuV2, RectV2 } from '@/components/component-syntax';
  */
 export const NODES: Record<string, unknown> = {
     code: Code,
+    lineChart: LineChart,
+    barChart: BarChart,
+    pieChart: PieChart,
+    radarChart: RadarChart,
+    radialChart: RadialChart,
     latex: Latex,
     pivotRect: PivotRect,
     pivotEllipse: PivotEllipse,

@@ -329,4 +329,11 @@ export const catalog: SceneEntry[] = [
     { id: "component2d-styled-class", name: "Component2dStyledClass", section: "Experimental: Component Syntax", description: "The class-based twin of component2d-styled", load: () => import('./component2d-styled-class') },
     { id: "component2d-gauge", name: "Component2dGauge", section: "Experimental: Component Syntax", description: "A component2d with its own entry and command (fillUp), run from the document", load: () => import('./component2d-gauge') },
     { id: "component2d-radial-menu", name: "Component2dRadialMenu", section: "Experimental: Component Syntax", description: "A component2d custom layout: six items on a circle, turned and faded by their slot, spread by open", load: () => import('./component2d-radial-menu') },
+    { id: "chart-line", name: "ChartLine", section: "Charts", description: "A line chart: smooth curves, dots, entrance", load: () => import('./chart-line') },
+    { id: "chart-area", name: "ChartArea", section: "Charts", description: "A stacked area chart with gradient fills", load: () => import('./chart-area') },
+    { id: "chart-bar", name: "ChartBar", section: "Charts", description: "Grouped bar chart, vertical", load: () => import('./chart-bar') },
+    { id: "chart-bar-horizontal", name: "ChartBarHorizontal", section: "Charts", description: "Stacked horizontal bar chart with value labels", load: () => import('./chart-bar-horizontal') },
+    { id: "chart-pie", name: "ChartPie", section: "Charts", description: "Donut chart with labels and a centre summary", load: () => import('./chart-pie') },
+    { id: "chart-radar", name: "ChartRadar", section: "Charts", description: "Radar chart, two series over six spokes", load: () => import('./chart-radar') },
+    { id: "chart-radial", name: "ChartRadial", section: "Charts", description: "Radial bar chart with tracks", load: () => import('./chart-radial') },
 ];

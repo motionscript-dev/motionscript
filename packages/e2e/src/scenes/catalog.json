@@ -1870,5 +1870,47 @@
     "name": "Component2dRadialMenu",
     "section": "Experimental: Component Syntax",
     "description": "A component2d custom layout: six items on a circle, turned and faded by their slot, spread by open"
+  },
+  {
+    "id": "chart-line",
+    "name": "ChartLine",
+    "section": "Charts",
+    "description": "A line chart: smooth curves, dots, entrance"
+  },
+  {
+    "id": "chart-area",
+    "name": "ChartArea",
+    "section": "Charts",
+    "description": "A stacked area chart with gradient fills"
+  },
+  {
+    "id": "chart-bar",
+    "name": "ChartBar",
+    "section": "Charts",
+    "description": "Grouped bar chart, vertical"
+  },
+  {
+    "id": "chart-bar-horizontal",
+    "name": "ChartBarHorizontal",
+    "section": "Charts",
+    "description": "Stacked horizontal bar chart with value labels"
+  },
+  {
+    "id": "chart-pie",
+    "name": "ChartPie",
+    "section": "Charts",
+    "description": "Donut chart with labels and a centre summary"
+  },
+  {
+    "id": "chart-radar",
+    "name": "ChartRadar",
+    "section": "Charts",
+    "description": "Radar chart, two series over six spokes"
+  },
+  {
+    "id": "chart-radial",
+    "name": "ChartRadial",
+    "section": "Charts",
+    "description": "Radial bar chart with tracks"
   }
 ]
