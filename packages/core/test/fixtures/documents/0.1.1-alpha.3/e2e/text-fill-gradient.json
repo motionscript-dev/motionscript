@@ -1,0 +1,78 @@
+{
+  "kind": "project",
+  "name": "text-fill-gradient",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "text-fill-gradient",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "text0",
+            "type": "text",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "text": "Gradient Text",
+              "fontFamily": "Inter",
+              "fontWeight": 800,
+              "fontSize": 72,
+              "fill": [
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#6990dd",
+                    "#e8617c"
+                  ]
+                }
+              ],
+              "rotation": 0
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "text0",
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "rotation": 360
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}

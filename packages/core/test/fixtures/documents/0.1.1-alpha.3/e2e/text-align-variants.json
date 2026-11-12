@@ -1,0 +1,183 @@
+{
+  "kind": "project",
+  "name": "text-align-variants",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "text-align-variants",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 680,
+              "height": 400,
+              "cornerRadius": 20,
+              "fill": "card",
+              "flow": "vertical",
+              "gap": 20,
+              "padding": 40
+            }
+          },
+          {
+            "id": "text0",
+            "type": "text",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "text": "start",
+              "fontFamily": "Inter",
+              "fontSize": 28,
+              "fontWeight": 700,
+              "fill": "primary",
+              "width": "fill",
+              "textAlign": "start"
+            }
+          },
+          {
+            "id": "text1",
+            "type": "text",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "text": "Each line of this wrapped paragraph sits inside the box according to the current textAlign mode.",
+              "fontFamily": "Inter",
+              "fontSize": 36,
+              "fontWeight": 500,
+              "fill": "#f4f6ff",
+              "width": "fill",
+              "wrap": true,
+              "textAlign": "start"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "set",
+            "targetId": "text0",
+            "at": 0,
+            "duration": 0.4,
+            "args": {
+              "text": "start"
+            }
+          },
+          {
+            "id": "step1",
+            "type": "set",
+            "targetId": "text1",
+            "at": 0,
+            "duration": 0.4,
+            "args": {
+              "textAlign": "start"
+            }
+          },
+          {
+            "id": "step2",
+            "type": "set",
+            "targetId": "text0",
+            "at": 0.4,
+            "duration": 0.4,
+            "args": {
+              "text": "center"
+            }
+          },
+          {
+            "id": "step3",
+            "type": "set",
+            "targetId": "text1",
+            "at": 0.4,
+            "duration": 0.4,
+            "args": {
+              "textAlign": "center"
+            }
+          },
+          {
+            "id": "step4",
+            "type": "set",
+            "targetId": "text0",
+            "at": 0.8,
+            "duration": 0.4,
+            "args": {
+              "text": "end"
+            }
+          },
+          {
+            "id": "step5",
+            "type": "set",
+            "targetId": "text1",
+            "at": 0.8,
+            "duration": 0.4,
+            "args": {
+              "textAlign": "end"
+            }
+          },
+          {
+            "id": "step6",
+            "type": "set",
+            "targetId": "text0",
+            "at": 1.2000000000000002,
+            "duration": 0.4,
+            "args": {
+              "text": "justify"
+            }
+          },
+          {
+            "id": "step7",
+            "type": "set",
+            "targetId": "text1",
+            "at": 1.2000000000000002,
+            "duration": 0.4,
+            "args": {
+              "textAlign": "justify"
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}

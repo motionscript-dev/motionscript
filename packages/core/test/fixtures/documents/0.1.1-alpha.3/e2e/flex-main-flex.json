@@ -1,0 +1,104 @@
+{
+  "kind": "project",
+  "name": "flex-main-flex",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "flex-main-flex",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "flow": "horizontal",
+              "width": 760,
+              "height": 200,
+              "gap": 16
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "flex": 1,
+              "height": "fill",
+              "fill": "primary",
+              "cornerRadius": 12
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 1,
+            "props": {
+              "flex": 1,
+              "height": "fill",
+              "fill": "accent",
+              "cornerRadius": 12
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 2,
+            "props": {
+              "flex": 1,
+              "height": "fill",
+              "fill": "primary",
+              "cornerRadius": 12
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect2",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "flex": 4
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}

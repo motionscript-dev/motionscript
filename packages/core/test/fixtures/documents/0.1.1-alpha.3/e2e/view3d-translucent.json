@@ -1,0 +1,132 @@
+{
+  "kind": "project",
+  "name": "view3d-translucent",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "view3d-translucent",
+      "clip": {
+        "kind": "composition",
+        "duration": 1,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "canvas3d0",
+            "type": "canvas3d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 480,
+              "height": 320,
+              "fill": "#1a1a1a"
+            }
+          },
+          {
+            "id": "camera3d0",
+            "type": "camera3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 0,
+            "props": {
+              "position": [
+                0,
+                0,
+                7
+              ],
+              "target": 0,
+              "fov": 45
+            }
+          },
+          {
+            "id": "ambient-light3d0",
+            "type": "ambient-light3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 1,
+            "props": {
+              "intensity": 1
+            }
+          },
+          {
+            "id": "plane3d0",
+            "type": "plane3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 2,
+            "props": {
+              "width": 1.6,
+              "height": 2.4,
+              "position": [
+                -2.2,
+                0,
+                0
+              ],
+              "material": {
+                "type": "basic",
+                "color": "#88ccff",
+                "opacity": 0.3
+              }
+            }
+          },
+          {
+            "id": "plane3d1",
+            "type": "plane3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 3,
+            "props": {
+              "width": 1.6,
+              "height": 2.4,
+              "unlit": true,
+              "fill": "#88ccff",
+              "opacity": 0.3
+            }
+          },
+          {
+            "id": "box3d0",
+            "type": "box3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 4,
+            "props": {
+              "width": 1.6,
+              "height": 2.4,
+              "depth": 1.6,
+              "position": [
+                2.2,
+                0,
+                0
+              ],
+              "material": {
+                "type": "basic",
+                "color": "#88ccff",
+                "opacity": 0.3,
+                "faces": "back",
+                "depthWrite": false
+              }
+            }
+          }
+        ],
+        "commands": []
+      },
+      "duration": 1
+    }
+  ],
+  "formatVersion": 3
+}
