@@ -40,7 +40,7 @@ is out.
 
 The style kit exports `CHART_STYLE_FAMILY` (`"chart"`), `CHART_STYLE_PRESETS`,
 `CHART_PALETTE_DEFAULT`, the shared field groups (`CHART_SERIES`,
-`CHART_BACKGROUND`, `GRID_BACKGROUND`, `CARTESIAN_TEXT`, `LEGEND_TEXT`,
+`CHART_BACKGROUND`, `GRID_BACKGROUND`, `CARTESIAN_AXES`, `VALUE_TEXT`,
 `CARTESIAN_GRID`, `CHART_LEGEND`) and `migrateChartStyle`, each chart's
 `migrate` hook for styles written before 0.1.1-alpha.2.
 
@@ -73,15 +73,13 @@ flat (`state.style.xLabelText`):
 |---|---|---|
 | series | `seriesFills`: a fill per series (per row on a pie or radial), cycled; each may stack paints | every chart |
 | background | `background` (the whole chart), `gridBackground` (the plot, under the grid) | every chart; `gridBackground` on line, bar, radar |
-| text | `xLabelText`, `xTitleText`, `yLabelText`, `yTitleText`, `valueText`, `legendText` | line, bar |
-| text | `labelText`, `valueText`, `centerText`, `legendText` | pie |
-| text | `spokeText`, `legendText` (radar); `labelText`, `centerText`, `legendText` (radial) | radar, radial |
-| grid | `horizontalGrid` (a 2px `white/15` stroke), `verticalGrid` (none), `axisStroke` (none), `showXAxis`, `showYAxis` | line, bar |
-| grid | `gridShape`, `gridLevels`, `gridStroke` (rings), `spokeStroke` (spokes), `spokeLabels` | radar |
+| grid | `horizontalGrid` (a 2px `white/15` stroke), `verticalGrid` (none) | line, bar |
+| axes | `axisStroke` (none), `showXAxis`, `xLabelText`, `xTitleText`, `showYAxis`, `yLabelText`, `yTitleText` | line, bar |
+| grid | `gridShape`, `gridLevels`, `gridStroke` (rings), `spokeStroke` (spokes), `spokeLabels`, `spokeText` | radar |
 | marks | the chart's own: `strokeWidth`, `curve`, `dots`, `area`, `barCornerRadius`, `barCornerStyle`, `innerRadius`, `sweep`, ... | every chart |
-| labels | `values` (line, bar), `labelPlacement` (pie), `ringLabels` (radial) | |
+| labels | `values` and `valueText` (line, bar); `labelPlacement`, `labelText`, `valueText`, `centerText` (pie); `ringLabels`, `labelText`, `centerText` (radial) | |
 
-Every run of text is a `Types.typography` field (face, size, weight, style,
+Every run of text is a `Types.typography` field in the group of the part it labels (face, size, weight, style,
 spacing, paint), so each is set like a text node; a partial (`{ fill }`) keeps the
 rest of the field's default. The chart places and aligns the text itself.
 `barCornerRadius` and `barCornerStyle` read as for a bar standing up: the top
@@ -91,7 +89,7 @@ A line is a stroke and an area is a fill: `horizontalGrid`, `verticalGrid`, `axi
 and `spokeStroke` are `Types.stroke` entries (weight, colour, dash and caps; empty draws
 nothing), and a radial's `track` is a `Types.fill` (empty draws no track). A series' `label`
 is optional; the legend shows `label || field`.
-| legend | `legend` (`bottom`, `top`, `right`, `none`), `swatch` (`square`, `circle`, `line`) | every chart |
+| legend | `legend` (`bottom`, `top`, `right`, `none`), `swatch` (`square`, `circle`, `line`), `legendText` | every chart |
 
 A chart takes only the fields it draws. A style is a partial laid over the chart's
 previous style, and a key the chart does not have is dropped, so one style dresses

@@ -3,8 +3,9 @@
  * below, so a look saved off one chart lays onto any other (a field the other
  * chart does not draw is dropped). A chart spreads the shared groups and adds a
  * `marks` group of its own. Every run of text a chart draws is its own
- * `Types.typography` field, so axis labels, titles, values and the legend are
- * each set the way a text node is.
+ * `Types.typography` field, set the way a text node is, in the group of the
+ * part it labels: axis text with its axis, values with the labels, the
+ * legend's captions with the legend.
  */
 
 import {
@@ -49,23 +50,9 @@ export const GRID_BACKGROUND = {
   gridBackground: Types.fill([]),
 }
 
-/** The legend's captions, which every chart with a legend draws. */
-export const LEGEND_TEXT = {
-  legendText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_FOREGROUND }),
-}
-
-export const CARTESIAN_TEXT = {
-  /** The markers under the plot: categories on a column chart, values on a horizontal bar chart. */
-  xLabelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
-  /** The caption under the plot. */
-  xTitleText: Types.typography({ fontSize: 31, fontWeight: 600, fill: CHART_MUTED }),
-  /** The markers beside the plot. */
-  yLabelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
-  /** The caption beside the plot, turned on its side. */
-  yTitleText: Types.typography({ fontSize: 31, fontWeight: 600, fill: CHART_MUTED }),
-  /** The figures printed by the marks. */
+/** The figures printed by the marks, for a chart's `labels` group. */
+export const VALUE_TEXT = {
   valueText: Types.typography({ fontSize: 24, fontWeight: 600, fill: CHART_FOREGROUND }),
-  ...LEGEND_TEXT,
 }
 
 export const CARTESIAN_GRID = {
@@ -73,12 +60,23 @@ export const CARTESIAN_GRID = {
   horizontalGrid: Types.stroke({ weight: 2, fill: "white/15" }),
   /** The lines under the category markers; empty draws none. */
   verticalGrid: Types.stroke([]),
+}
+
+export const CARTESIAN_AXES = {
   /** The baseline and the value-axis rule; empty draws none. */
   axisStroke: Types.stroke([]),
   /** Read as the chart is built: whether the category (x) axis row is drawn. */
   showXAxis: Types.boolean(true, { animatable: false }),
+  /** The markers under the plot: categories on a column chart, values on a horizontal bar chart. */
+  xLabelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
+  /** The caption under the plot. */
+  xTitleText: Types.typography({ fontSize: 31, fontWeight: 600, fill: CHART_MUTED }),
   /** Read as the chart is built: whether the value (y) axis column is drawn. */
   showYAxis: Types.boolean(true, { animatable: false }),
+  /** The markers beside the plot. */
+  yLabelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
+  /** The caption beside the plot, turned on its side. */
+  yTitleText: Types.typography({ fontSize: 31, fontWeight: 600, fill: CHART_MUTED }),
 }
 
 export type LegendPosition = "bottom" | "top" | "right" | "none"
@@ -88,6 +86,8 @@ export const CHART_LEGEND = {
   /** Read as the chart is built: where the legend sits, or `none`. */
   legend: Types.oneOf(["bottom", "top", "right", "none"] as const, { animatable: false }),
   swatch: Types.oneOf(["square", "circle", "line"] as const),
+  /** The legend's captions. */
+  legendText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_FOREGROUND }),
 }
 
 /** The fields every chart's style resolves, whichever groups it spreads. */
@@ -118,7 +118,9 @@ export interface CartesianStyle extends ChartStyleBase {
 const _PRESET_FIELDS = {
   ...CHART_SERIES,
   ...GRID_BACKGROUND,
-  ...CARTESIAN_TEXT,
+  ...CARTESIAN_AXES,
+  ...VALUE_TEXT,
+  legendText: CHART_LEGEND.legendText,
   labelText: Types.typography(),
   centerText: Types.typography(),
   spokeText: Types.typography(),

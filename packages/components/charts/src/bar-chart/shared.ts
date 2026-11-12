@@ -8,9 +8,11 @@ import {
   type CornerStyleResolved as _CornerStyleResolved,
   type RectCornerRadius as _RectCornerRadius,
   type RectCornerStyle as _RectCornerStyle,
+  type TextStyle as _TextStyle,
 } from "@motionscript/sdk"
 
 import { niceRange, num, text, type ChartSeries, type Range } from "../kit/shared"
+import { VALUE_TEXT } from "../kit/style"
 
 /** One bar per row, beside its siblings in the category slot or stacked on them: {@link ChartSeries} under the name for what it draws here. */
 export type BarSeries = ChartSeries
@@ -138,4 +140,5 @@ export const BAR_MARKS = {
 export const BAR_LABELS = {
   /** Read as the chart is built: each bar's value past its end, inside it, or none. */
   values: Types.oneOf(["none", "end", "inside"] as const, { animatable: false }),
+  ...VALUE_TEXT,
 }

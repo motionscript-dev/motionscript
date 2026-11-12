@@ -6,7 +6,6 @@ import {
   CHART_LEGEND,
   CHART_MUTED,
   CHART_SERIES,
-  LEGEND_TEXT,
   legendConfigOf,
   paletteFill,
   placedText,
@@ -70,13 +69,6 @@ export interface RadialStyle extends ChartStyleBase {
 export const RADIAL_STYLE_GROUPS = {
   series: CHART_SERIES,
   background: CHART_BACKGROUND,
-  text: {
-    /** The category at each ring's start, and the caption under the centre. */
-    labelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
-    /** The summary in the middle. */
-    centerText: Types.typography({ fontSize: 50, fontWeight: 800, fill: CHART_FOREGROUND }),
-    ...LEGEND_TEXT,
-  },
   marks: {
     /** Where the innermost ring starts, as a fraction of the outer radius. */
     innerRadius: Types.number(0.3, { min: 0, max: 0.9, step: 0.05 }),
@@ -94,6 +86,10 @@ export const RADIAL_STYLE_GROUPS = {
   labels: {
     /** The category written at each ring's start, set in the label text. */
     ringLabels: Types.boolean(false),
+    /** The category at each ring's start, and the caption under the centre. */
+    labelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
+    /** The summary in the middle. */
+    centerText: Types.typography({ fontSize: 50, fontWeight: 800, fill: CHART_FOREGROUND }),
   },
   legend: CHART_LEGEND,
 }

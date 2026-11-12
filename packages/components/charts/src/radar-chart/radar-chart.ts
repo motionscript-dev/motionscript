@@ -40,7 +40,6 @@ import { RadarGrid } from "./radar-grid"
 import { RadarSeries } from "./radar-series"
 import {
   RADAR_GRID,
-  RADAR_TEXT,
   RADAR_MARKS,
   categoriesOf,
   fitRadius,
@@ -130,7 +129,6 @@ export const RadarChart = component2d({
       {
         series: CHART_SERIES,
         background: GRID_BACKGROUND,
-        text: RADAR_TEXT,
         grid: RADAR_GRID,
         marks: RADAR_MARKS,
         legend: CHART_LEGEND,

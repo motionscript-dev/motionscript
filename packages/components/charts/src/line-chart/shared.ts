@@ -1,6 +1,7 @@
-import { Types, type DataRecord, type Vector2 } from "@motionscript/sdk"
+import { Types, type DataRecord, type Vector2, type TextStyle as _TextStyle } from "@motionscript/sdk"
 
 import { niceRange, num, type ChartSeries, type Range } from "../kit/shared"
+import { VALUE_TEXT } from "../kit/style"
 import type { XScale } from "./x-scale"
 
 /** One polyline of a {@link LineChart}: {@link ChartSeries} under the name for what it draws here. */
@@ -395,4 +396,5 @@ export const LINE_MARKS = {
 export const LINE_LABELS = {
   /** Read as the chart is built: each point's value printed above or below it, or none. */
   values: Types.oneOf(["none", "above", "below"] as const, { animatable: false }),
+  ...VALUE_TEXT,
 }

@@ -272,7 +272,9 @@ describe("every chart, as a host offers it", () => {
         }
         for (const field of ["seriesFills", "background", "legendText", "legend"]) expect(style.properties[field], field).toBeDefined();
         expect(style.properties.seriesFills).toMatchObject({ kind: "palette", group: "series" });
-        expect(style.properties.legendText).toMatchObject({ kind: "typography", group: "text", default: { fontSize: 28 } });
+        expect(style.properties.legendText).toMatchObject({ kind: "typography", group: "legend", default: { fontSize: 28 } });
+        // Text sits with the part it labels: no section of text alone.
+        expect(fields.some(([, field]) => field.group === "text")).toBe(false);
         expect(style.properties.background).toMatchObject({ kind: "fills", group: "background" });
         expect(new Set(fields.map(([, field]) => field.group)).size).toBeGreaterThanOrEqual(4);
         // The look is the style's alone: nothing beside it is a theme or a legend flag.

@@ -49,7 +49,7 @@ import {
 } from "../kit/shared"
 import {
   CARTESIAN_GRID,
-  CARTESIAN_TEXT,
+  CARTESIAN_AXES,
   CHART_LEGEND,
   CHART_SERIES,
   CHART_STYLE_FAMILY,
@@ -77,7 +77,7 @@ import {
 
 const BAR_STYLE = Types.style(
   CHART_STYLE_FAMILY,
-  { series: CHART_SERIES, background: GRID_BACKGROUND, text: CARTESIAN_TEXT, grid: CARTESIAN_GRID, marks: BAR_MARKS, labels: BAR_LABELS, legend: CHART_LEGEND },
+  { series: CHART_SERIES, background: GRID_BACKGROUND, grid: CARTESIAN_GRID, axes: CARTESIAN_AXES, marks: BAR_MARKS, labels: BAR_LABELS, legend: CHART_LEGEND },
   { presets: CHART_STYLE_PRESETS }
 )
 

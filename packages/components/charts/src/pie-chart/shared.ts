@@ -6,7 +6,6 @@ import {
   CHART_LEGEND,
   CHART_MUTED,
   CHART_SERIES,
-  LEGEND_TEXT,
   legendConfigOf,
   placedText,
   sizeOf,
@@ -165,15 +164,6 @@ export interface PieStyle extends ChartStyleBase {
 export const PIE_STYLE_GROUPS = {
   series: CHART_SERIES,
   background: CHART_BACKGROUND,
-  text: {
-    /** Each slice's name. */
-    labelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
-    /** Each slice's share or value, beside its name; inside a wedge both are set larger, inked for contrast. */
-    valueText: Types.typography({ fontSize: 28, fontWeight: 700, fill: CHART_FOREGROUND }),
-    /** The summary in the hole; its caption is set smaller, in the slice names' ink. */
-    centerText: Types.typography({ fontSize: 50, fontWeight: 800, fill: CHART_FOREGROUND }),
-    ...LEGEND_TEXT,
-  },
   marks: {
     /** Hole radius as a fraction of the outer radius: 0 is a pie, about 0.6 a donut. */
     innerRadius: Types.number(0, { min: 0, max: 0.9, step: 0.05 }),
@@ -185,6 +175,12 @@ export const PIE_STYLE_GROUPS = {
   labels: {
     /** Read as the chart is built: inside the wedge, outside on a leader, or none. */
     labelPlacement: Types.oneOf(["inside", "outside", "none"] as const, { animatable: false }),
+    /** Each slice's name. */
+    labelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
+    /** Each slice's share or value, beside its name; inside a wedge both are set larger, inked for contrast. */
+    valueText: Types.typography({ fontSize: 28, fontWeight: 700, fill: CHART_FOREGROUND }),
+    /** The summary in the hole; its caption is set smaller, in the slice names' ink. */
+    centerText: Types.typography({ fontSize: 50, fontWeight: 800, fill: CHART_FOREGROUND }),
   },
   legend: CHART_LEGEND,
 }
