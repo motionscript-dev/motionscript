@@ -1,5 +1,7 @@
 # @motionscript/renderer
 
+## 0.1.1-alpha.3
+
 ## 0.1.1-alpha.2
 
 ## 0.1.1-alpha.1
