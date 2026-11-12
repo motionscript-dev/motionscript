@@ -1,4 +1,4 @@
-//! The native half of `Gpu` (feature `native`, the export sidecar): images
+//! The native half of `Gpu` (feature `native`): images
 //! arrive as pixels, since there is no browser image source to copy from.
 
 use super::Gpu;
@@ -20,4 +20,18 @@ impl Gpu {
         );
         self.build_mips(id);
     }
+}
+
+impl Gpu {
+    /// The shared device's adapter (its PCI vendor picks the export's encoder).
+    pub fn adapter(&self) -> Option<wgpu::AdapterInfo> {
+        super::SHARED.with(|s| s.borrow().as_ref().map(|d| d.adapter.get_info()))
+    }
+}
+
+/// The adapter `WGPU_ADAPTER_NAME` names (a case-insensitive part of its
+/// name), for picking a GPU on a machine with several; None when unset.
+pub(super) async fn adapter_named(instance: &wgpu::Instance, backends: wgpu::Backends) -> Option<wgpu::Adapter> {
+    let want = std::env::var("WGPU_ADAPTER_NAME").ok()?.to_lowercase();
+    instance.enumerate_adapters(backends).await.into_iter().find(|a| a.get_info().name.to_lowercase().contains(&want))
 }

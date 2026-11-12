@@ -17,6 +17,8 @@ mod gpu;
 pub mod native;
 mod paths;
 mod protocol;
+#[cfg(feature = "native")]
+pub mod replay;
 mod scene;
 pub mod user_shader;
 

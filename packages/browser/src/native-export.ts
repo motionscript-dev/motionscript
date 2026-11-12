@@ -6,18 +6,18 @@ import { loadRenderer } from "./renderer";
 import { WebAudioMixer } from "./audio/mixer";
 
 /**
- * Where a native export's stream goes: in a desktop host, a pipe into the
- * `ms-export` sidecar (`packages/renderer/crates/export`), which renders on
- * the native GPU and encodes with NVENC (or libx264). Experimental.
+ * Where a native export's stream goes: a host process that replays it with
+ * the renderer's `replay` module (Rust, feature `native`) on the native GPU
+ * and encodes the frames itself. Experimental.
  */
 export interface NativeExportTransport {
-    /** The sidecar's built-in effect names, in its index order (`ms-export info`). */
+    /** The host renderer's built-in effect names, in its index order (`NativeRenderer::effect_names`). */
     readonly effects: readonly string[];
     /** The next bytes of the stream, in order. Resolves when the transport can take more. */
     write(bytes: Uint8Array): Promise<void>;
-    /** The stream is complete; resolves with the file's bytes, or nothing when the sidecar wrote it where the host asked. */
+    /** The stream is complete; resolves with the file's bytes, or nothing when the host wrote it elsewhere. */
     finish(): Promise<Uint8Array | void>;
-    /** The export failed or was cancelled: stop the sidecar, keep no file. */
+    /** The export failed or was cancelled: stop the host process, keep no file. */
     abort?(reason: unknown): void;
 }
 
@@ -76,11 +76,11 @@ class NativeSink implements VideoFrameSink<AudioBuffer> {
 const EMPTY_MANIFEST: AssetManifest = { image: {}, video: {}, audio: {}, font: {} };
 
 /**
- * Experimental: {@link exportVideo} through the native sidecar. The frame
+ * Experimental: {@link exportVideo} through a native host process. The frame
  * loop, adapter, text and assets run here exactly as for a canvas export;
- * what would be drawn is streamed to `transport` instead, and the sidecar
- * draws it with the same renderer on the native GPU and encodes it. MP4
- * only; `video.codec` picks avc (default), hevc or av1.
+ * what would be drawn is streamed to `transport` instead, and the host draws
+ * it with the same renderer on the native GPU and encodes it. `video.codec`
+ * (avc by default, hevc or av1) and the bitrate are passed on in the stream.
  */
 export async function exportVideoNative(params: NativeExportParams): Promise<Uint8Array | void> {
     const {

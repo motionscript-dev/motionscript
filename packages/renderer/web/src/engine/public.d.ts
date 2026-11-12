@@ -152,7 +152,7 @@ export declare class ShaderPreview {
     destroy(): void;
 }
 
-/** Experimental: the bytes of an export stream for the native sidecar, as recorded so far. */
+/** Experimental: the bytes of an export stream for a native host process, as recorded so far. */
 export interface NativeExportStream {
     /** Bytes waiting to be taken. */
     readonly size: number;
@@ -161,16 +161,16 @@ export interface NativeExportStream {
     take(): Uint8Array;
 }
 
-/** Experimental: a render context whose frames go to the native export sidecar (`crates/export/DESIGN.md`). */
+/** Experimental: a render context whose frames go to a native host process (`crates/renderer/src/replay.rs`). */
 export type NativeExportContext = EngineRenderContext & {
     readonly out: NativeExportStream;
     /** The scene as last drawn is the next video frame. */
     frameDone(): void;
-    /** Images handed to the sidecar, and the ms spent reading their pixels. */
+    /** Images handed to the host, and the ms spent reading their pixels. */
     readonly recorder: { imageUploads: number; imageMs: number };
 };
 
-/** The export stream's record kinds (`crates/export/src/stream.rs`). */
+/** The export stream's record kinds (`crates/renderer/src/replay.rs`). */
 export declare const NATIVE_RECORD: {
     readonly BEGIN: 1; readonly APPLY: 2; readonly FONT: 3; readonly IMAGE: 4; readonly SURFACE: 5; readonly SCENE3D: 6;
     readonly SCENE3D_BIND: 7; readonly SCENE3D_PIXELS: 8; readonly FREE_IMAGE: 9; readonly SHADER_ADD: 10; readonly SHADER_BUILD: 11;

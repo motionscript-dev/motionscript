@@ -1,11 +1,10 @@
 //! The renderer without a browser (feature `native`): the same scene,
 //! protocol, frame builder and GPU executor as the WASM `Renderer`, on a
-//! native wgpu device, drawing into texture views it is handed. The export
-//! sidecar (`crates/export`) replays a host's recorded renderer calls into it.
+//! native wgpu device, drawing into texture views it is handed. `replay.rs`
+//! applies a page's recorded export stream to it.
 //!
 //! Its body mirrors `lib.rs`'s `api::Renderer` minus the JS glue; the two
-//! should become one platform-neutral core before this ships
-//! (`crates/export/DESIGN.md`, "Left to ship").
+//! should become one platform-neutral core.
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -65,6 +64,11 @@ impl NativeRenderer {
 
     pub fn adapter_info(&self) -> &str {
         &self.gpu.adapter_info
+    }
+
+    /// The adapter's PCI vendor id (0x10DE NVIDIA, 0x1002 AMD, 0x8086 Intel, 0x106B Apple).
+    pub fn adapter_vendor(&self) -> u32 {
+        self.gpu.adapter().map_or(0, |i| i.vendor)
     }
 
     pub fn size(&self) -> (u32, u32) {

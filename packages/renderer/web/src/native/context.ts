@@ -1,7 +1,7 @@
-// A render context whose frames go to the native export sidecar instead of a
+// A render context whose frames go to a native host process instead of a
 // canvas: the same adapter and backend as WgpuSurfaceContext, over a
 // RecordingRenderer. The export's sink marks each finished frame
-// (`frameDone`); the sidecar renders and encodes it.
+// (`frameDone`); the host replays, renders and encodes it.
 
 import { renderIssueKey, type RenderIssue, type Size2D, type TextBlockLayout, type TextState } from "@motionscript/core";
 import { WgpuRenderContext } from "../adapter/context";
@@ -24,8 +24,8 @@ export class NativeExportContext extends WgpuRenderContext {
 
     /**
      * `size` is the render target in pixels (the output times its
-     * supersampling); `effects` the sidecar's built-in effect names in its
-     * index order (`ms-export info`).
+     * supersampling); `effects` the host renderer's built-in effect names in
+     * its index order (`NativeRenderer::effect_names`).
      */
     constructor(private readonly store: WgpuStorageAdapter, viewport: Size2D, readonly out: StreamWriter, effects: readonly string[], private readonly size: { width: number; height: number }) {
         const shaper = shaperFor(store);

@@ -329,6 +329,11 @@ jobs:
         working-directory: packages/renderer
         run: cargo test --locked --workspace
 
+      - name: Native replay (feature native; no GPU)
+        if: steps.passed.outputs.cache-hit != 'true' || inputs.full
+        working-directory: packages/renderer
+        run: cargo test --locked -p ms-renderer --features native --lib replay
+
       - name: THIRD_PARTY_NOTICES.txt is current
         if: steps.passed.outputs.cache-hit != 'true' || inputs.full
         run: pnpm --filter @motionscript/renderer notices:check

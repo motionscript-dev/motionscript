@@ -10,10 +10,11 @@ license = "Apache-2.0"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# The offscreen native renderer (`src/native.rs`) for the export sidecar
-# (`crates/export`), which also picks wgpu's native backends. The WASM build
-# never enables it.
-native = []
+# The offscreen native renderer (`src/native.rs`) and the export stream's
+# replay (`src/replay.rs`), for a host process that draws a page's recorded
+# export on the native GPU. That host picks wgpu's native backends. The WASM
+# build never enables it.
+native = ["dep:pollster"]
 
 [dependencies]
 wgpu = { version = "30", default-features = false, features = ["std", "webgpu", "wgsl"] }
@@ -29,3 +30,4 @@ wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = ["HtmlCanvasElement", "OffscreenCanvas", "console", "ImageBitmap", "VideoFrame", "HtmlImageElement", "HtmlVideoElement"] }
 console_error_panic_hook = "0.1"
+pollster = { version = "0.4", optional = true }

@@ -66,10 +66,10 @@ export async function createWgpuRenderer(options: WgpuRendererOptions = {}): Pro
 }
 
 /**
- * Experimental: a render context that records the export stream for the
- * native sidecar (`crates/export`) instead of drawing. `size` is the render
- * target in pixels; `effects` the sidecar's built-in effect names in its
- * index order (`ms-export info`).
+ * Experimental: a render context that records the export stream for a native
+ * host process (`ms-renderer`'s `replay`, feature `native`) instead of
+ * drawing. `size` is the render target in pixels; `effects` the host
+ * renderer's built-in effect names in its index order.
  */
 export function createNativeExportContext(storage: WgpuStorageAdapter, options: { viewport: Size2D; effects: readonly string[]; size: { width: number; height: number } }): NativeExportContext {
     return new NativeExportContext(storage, options.viewport, new StreamWriter(), options.effects, options.size);

@@ -1,7 +1,7 @@
-// The renderer's calls, recorded as an export stream for the native sidecar
-// (crates/export: replays them on a native GPU and encodes with NVENC). The
-// backend drives a RecordingRenderer exactly as it drives the WASM Renderer;
-// crates/export/src/stream.rs is the reader and owns the format.
+// The renderer's calls, recorded as an export stream for a native host process
+// to replay on the GPU and encode. The backend drives a RecordingRenderer
+// exactly as it drives the WASM Renderer; crates/renderer/src/replay.rs reads
+// the stream, and its tests hold REC and STREAM_VERSION to its own.
 
 import { validate_shader } from "../../pkg/ms_renderer.js";
 
@@ -139,7 +139,7 @@ export class RecordingRenderer {
     }
 
     adapter_info(): string {
-        return "native export sidecar";
+        return "native export host";
     }
 
     gpu_device(): null {
@@ -195,7 +195,7 @@ export class RecordingRenderer {
         this.out.record(REC.FREE_IMAGE, [id]);
     }
 
-    /** Validated here (the same naga build the sidecar runs), recorded for the sidecar to compile. */
+    /** Validated here (the same naga build the host runs), recorded for the host to compile. */
     shader_add(id: number, kind: number, source: string): string {
         const report = validate_shader(kind, source);
         if (JSON.parse(report).ok) this.out.record(REC.SHADER_ADD, [id, kind], utf8.encode(source));

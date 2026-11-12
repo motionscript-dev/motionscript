@@ -379,18 +379,29 @@ async fn shared_device() -> Result<SharedDevice, String> {
         return Ok(d);
     }
     let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
-    // Native (the export sidecar, feature `native`): DX12/Vulkan/Metal.
+    // Native (feature `native`): whichever backends the host enabled.
     desc.backends = if cfg!(target_arch = "wasm32") { wgpu::Backends::BROWSER_WEBGPU } else { wgpu::Backends::from_env().unwrap_or(wgpu::Backends::PRIMARY) };
+    let backends = desc.backends;
     let instance = wgpu::Instance::new(desc);
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .await
-        .map_err(|e| format!("adapter: {e}"))?;
+    #[cfg(feature = "native")]
+    let named = native::adapter_named(&instance, backends).await;
+    #[cfg(not(feature = "native"))]
+    let named: Option<wgpu::Adapter> = {
+        let _ = backends;
+        None
+    };
+    let adapter = match named {
+        Some(a) => a,
+        None => instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: None,
+                force_fallback_adapter: false,
+                apply_limit_buckets: false,
+            })
+            .await
+            .map_err(|e| format!("adapter: {e}"))?,
+    };
     let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("ms-renderer"),
