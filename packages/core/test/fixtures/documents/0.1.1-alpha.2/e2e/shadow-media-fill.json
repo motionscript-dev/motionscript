@@ -1,0 +1,133 @@
+{
+  "kind": "project",
+  "name": "shadow-media-fill",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "shadow-media-fill",
+      "clip": {
+        "kind": "composition",
+        "duration": 1,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "horizontal",
+              "gap": 28
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 190,
+              "height": 190,
+              "cornerRadius": 18,
+              "fill": "#f4f6ff",
+              "shadow": {
+                "blur": 12,
+                "offset": {
+                  "x": 0,
+                  "y": -46
+                },
+                "fill": [
+                  {
+                    "type": "image",
+                    "src": "cat.jpg",
+                    "fit": "fill"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 1,
+            "props": {
+              "width": 190,
+              "height": 190,
+              "cornerRadius": 18,
+              "fill": "#f4f6ff",
+              "shadow": {
+                "blur": 12,
+                "offset": {
+                  "x": 0,
+                  "y": -46
+                },
+                "fill": [
+                  {
+                    "type": "shader",
+                    "source": "\nfn fill(in: FillIn) -> vec4f {\n    let p = vec2f((in.uv.x - 0.5) * in.size.x / in.size.y, in.uv.y - 0.5);\n    let a = 0.5 + 0.5 * sin(length(p) * 60.0);\n    let c = mix(vec3f(0.41, 0.56, 0.87), vec3f(0.91, 0.38, 0.49), a);\n    return vec4f(c * a, a);\n}",
+                    "language": "wgsl"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 2,
+            "props": {
+              "width": 190,
+              "height": 190,
+              "cornerRadius": 18,
+              "fill": "#f4f6ff",
+              "shadow": {
+                "blur": 12,
+                "offset": {
+                  "x": 0,
+                  "y": -46
+                },
+                "fill": [
+                  {
+                    "type": "stripe",
+                    "gap": 34,
+                    "strokeWidth": 22,
+                    "angle": 45,
+                    "color": "#6990dd"
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "commands": []
+      },
+      "duration": 1
+    }
+  ],
+  "formatVersion": 3
+}

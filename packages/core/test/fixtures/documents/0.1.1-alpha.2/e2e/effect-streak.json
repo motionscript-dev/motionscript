@@ -1,0 +1,119 @@
+{
+  "kind": "project",
+  "name": "effect-streak",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "effect-streak",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 520,
+              "height": 300,
+              "cornerRadius": 20,
+              "fill": "#05070d",
+              "clip": true,
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              },
+              "effects": [
+                {
+                  "type": "streak",
+                  "intensity": 0,
+                  "threshold": 0.4,
+                  "length": 220,
+                  "angle": 0
+                }
+              ]
+            }
+          },
+          {
+            "id": "text0",
+            "type": "text",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "text": "GLARE",
+              "fontFamily": "Inter",
+              "fontWeight": 800,
+              "fontSize": 64,
+              "fill": "#fff3d0"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "streak",
+                  "intensity": 2.4,
+                  "threshold": 0.4,
+                  "length": 220,
+                  "angle": 0
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}
