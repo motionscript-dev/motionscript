@@ -1,41 +1,6 @@
-import {
-  Fills,
-  fillOps,
-  lerpNumber,
-  strokeOps,
-  type DataRecord,
-  type Fill,
-  type FillResolved,
-  type Stroke,
-  type StrokeResolved,
-  type Vector2,
-} from "@motionscript/sdk"
-import { niceStep } from "@motionscript/sdk/component"
+import { Types, type DataRecord, type Vector2 } from "@motionscript/sdk"
 
-import {
-  CHART_PALETTE,
-  DEFAULT_LEGEND,
-  DEFAULT_PLOT_AREA,
-  DEFAULT_SERIES_STROKES,
-  DEFAULT_X_AXIS,
-  DEFAULT_Y_AXIS,
-  SPOTLIGHT_DIM,
-  lerpAxisConfig,
-  lerpLegendConfig,
-  lerpPlotArea,
-  lerpSeriesStrokes,
-  num,
-  resolveAxisConfig,
-  resolveLegendConfig,
-  resolvePlotArea,
-  resolveSeriesStrokes,
-  type AxisConfig,
-  type ChartSeries,
-  type LegendConfig,
-  type LegendTheme,
-  type PlotAreaConfig,
-  type Range,
-} from "../kit/shared"
+import { niceRange, num, type ChartSeries, type Range } from "../kit/shared"
 import type { XScale } from "./x-scale"
 
 /** One polyline of a {@link LineChart}: {@link ChartSeries} under the name for what it draws here. */
@@ -198,129 +163,6 @@ function clipSegment(
   ]
 }
 
-/** How a spotlit {@link PlotRegion} is drawn: rules on its bounded edges, a wash, and how far series fade outside it. */
-export interface RegionConfig {
-  /** Marks each bounded edge. */
-  stroke: Stroke
-  /** Drawn under the series lines. */
-  fill: Fill
-  /** Opacity the stretch of every series outside the region fades to. */
-  dimOpacity: number
-}
-
-/** A {@link LineChart}'s full, resolved visual theme. */
-export interface ChartConfig {
-  /** Cycled by series index; a series' own `fill` overrides just the colour. */
-  seriesStyles: Stroke[]
-  xAxis: AxisConfig
-  yAxis: AxisConfig
-  plotArea: PlotAreaConfig
-  legend: LegendConfig
-  region: RegionConfig
-}
-
-/** The author's partial theme, deep-merged onto {@link DEFAULT_CHART_THEME}. */
-export type ChartTheme = {
-  seriesStyles?: Stroke[]
-  xAxis?: Partial<AxisConfig>
-  yAxis?: Partial<AxisConfig>
-  plotArea?: Partial<PlotAreaConfig>
-  legend?: LegendTheme
-  region?: Partial<RegionConfig>
-}
-
-/** The shared legend with a small square swatch: a line's swatch stands for a colour, where a bar's or wedge's stands for an area of paint. */
-const LINE_CHART_LEGEND: LegendConfig = {
-  ...DEFAULT_LEGEND,
-  markerStyle: {
-    ...DEFAULT_LEGEND.markerStyle,
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-  },
-}
-
-export const DEFAULT_CHART_THEME: ChartConfig = {
-  seriesStyles: DEFAULT_SERIES_STROKES,
-  xAxis: DEFAULT_X_AXIS,
-  yAxis: DEFAULT_Y_AXIS,
-  plotArea: DEFAULT_PLOT_AREA,
-  legend: LINE_CHART_LEGEND,
-  region: {
-    // Brighter and dashed so it reads as a call-out, not an axis line; `butt` caps keep dash lengths exact.
-    stroke: {
-      weight: 3,
-      fill: CHART_PALETTE.regionColor,
-      dash: [14, 12],
-      cap: "butt",
-    },
-    fill: Fills.color(CHART_PALETTE.regionColor, { opacity: 0.08 }),
-    dimOpacity: SPOTLIGHT_DIM,
-  },
-}
-
-function resolveRegionConfig(
-  region: Partial<RegionConfig> | undefined,
-  previous: RegionConfig
-): RegionConfig {
-  return {
-    stroke: strokeOps.resolve(region?.stroke ?? previous.stroke),
-    fill: fillOps.resolve(region?.fill ?? previous.fill),
-    dimOpacity: region?.dimOpacity ?? previous.dimOpacity,
-  }
-}
-
-function lerpRegionConfig(
-  from: RegionConfig,
-  to: RegionConfig,
-  t: number
-): RegionConfig {
-  return {
-    stroke: strokeOps.lerp(
-      from.stroke as StrokeResolved[],
-      to.stroke as StrokeResolved[],
-      t
-    ),
-    fill: fillOps.lerp(
-      from.fill as FillResolved[],
-      to.fill as FillResolved[],
-      t
-    ),
-    dimOpacity: lerpNumber(from.dimOpacity, to.dimOpacity, t),
-  }
-}
-
-/** The `theme` entry's resolve: merges a partial {@link ChartTheme} onto `previous` (first resolution: the default). */
-export function resolveChartTheme(
-  theme: ChartTheme | undefined,
-  previous?: ChartConfig
-): ChartConfig {
-  const base = previous ?? DEFAULT_CHART_THEME
-  return {
-    seriesStyles: resolveSeriesStrokes(theme?.seriesStyles, base.seriesStyles),
-    xAxis: resolveAxisConfig(theme?.xAxis, base.xAxis),
-    yAxis: resolveAxisConfig(theme?.yAxis, base.yAxis),
-    plotArea: resolvePlotArea(theme?.plotArea, base.plotArea),
-    legend: resolveLegendConfig(theme?.legend, base.legend),
-    region: resolveRegionConfig(theme?.region, base.region),
-  }
-}
-
-export function lerpChartTheme(
-  from: ChartConfig,
-  to: ChartConfig,
-  t: number
-): ChartConfig {
-  return {
-    seriesStyles: lerpSeriesStrokes(from.seriesStyles, to.seriesStyles, t),
-    xAxis: lerpAxisConfig(from.xAxis, to.xAxis, t),
-    yAxis: lerpAxisConfig(from.yAxis, to.yAxis, t),
-    plotArea: lerpPlotArea(from.plotArea, to.plotArea, t),
-    legend: lerpLegendConfig(from.legend, to.legend, t),
-    region: lerpRegionConfig(from.region, to.region, t),
-  }
-}
-
 /**
  * One series' `[x, y]` points, sorted along x so the polyline traces left to
  * right. A row missing its y contributes 0 rather than a gap, since dropping it
@@ -359,21 +201,198 @@ export function resolveYScale(
   range: Range | undefined,
   divisions: number
 ): Range {
-  if (range) return range
-  const [lo, hi] = yExtent(data, series)
-  const segments = Math.max(1, Math.round(divisions))
-  if (hi === lo) return constantScale(lo, segments)
-  const step = niceStep((hi - lo) / segments)
-  return [Math.floor(lo / step) * step, Math.ceil(hi / step) * step]
+  return range ?? niceRange(yExtent(data, series), divisions)
+}
+
+/** How the series sit on one another: apart, each on the sum of those before it, or as shares of the row's total. */
+export type LineStack = "none" | "stacked" | "percent"
+
+/** One series as drawn: its `[x, y]` points along x, and the line its area fills down to (`null`: the baseline). */
+export interface StackedSeries {
+  readonly points: [x: number, y: number][]
+  readonly base: [x: number, y: number][] | null
 }
 
 /**
- * The scale for constant data. A zero-width scale would put every tick on one
- * value and the line on the floor, so it widens by a step sized to the
- * magnitude (`5` gets `[3, 7]`), or `[0, 1]` for zero.
+ * Every series' points under `stack`, rows in x order. A series contributes its
+ * values times its weight (`1` when missing), so a series sinking out of a stack
+ * lowers the ones above it. `percent` reads each row as shares of its total
+ * magnitude, so the top of a full stack is 100.
  */
-function constantScale(value: number, segments: number): Range {
-  if (value === 0) return [0, 1]
-  const step = niceStep(Math.abs(value) / segments)
-  return [value - step, value + step]
+export function stackSeries(
+  data: DataRecord[],
+  x: XScale,
+  series: readonly LineSeries[],
+  stack: LineStack,
+  weights: readonly number[] = []
+): StackedSeries[] {
+  const order = data.map((_, i) => i).sort((a, b) => x.at(a) - x.at(b))
+  if (stack !== "stacked" && stack !== "percent") {
+    return series.map((s) => ({ points: order.map((r): [number, number] => [x.at(r), num(data[r], s.field)]), base: null }))
+  }
+  const weight = (i: number) => Math.max(0, weights[i] ?? 1)
+  const totals = order.map((r) => series.reduce((sum, s, i) => sum + Math.abs(num(data[r], s.field) * weight(i)), 0))
+  const running = order.map(() => 0)
+  return series.map((s, i) => {
+    const base = order.map((r, k): [number, number] => [x.at(r), running[k]])
+    const points = order.map((r, k): [number, number] => {
+      const value = num(data[r], s.field) * weight(i)
+      running[k] += stack === "percent" ? (totals[k] > 0 ? (value / totals[k]) * 100 : 0) : value
+      return [x.at(r), running[k]]
+    })
+    return { points, base }
+  })
+}
+
+/** The lowest and highest y anything in `stacks` reaches, its bases included. */
+export function stackExtent(stacks: readonly StackedSeries[]): Range {
+  let lo = Infinity
+  let hi = -Infinity
+  for (const { points, base } of stacks)
+    for (const [, y] of [...points, ...(base ?? [])]) {
+      if (y < lo) lo = y
+      if (y > hi) hi = y
+    }
+  return lo <= hi ? [lo, hi] : [0, 1]
+}
+
+/** How a series' line runs between its points. */
+export type LineCurve = "smooth" | "linear" | "step"
+
+/** Points along a cubic Bezier segment, its start left out. */
+const SAMPLES = 16
+
+/**
+ * The drawn path through `points` (ordered along x) as a polyline: the points
+ * themselves for `linear`; for `step`, level runs that change at the midpoint
+ * between neighbours; for `smooth`, a monotone cubic (Fritsch-Carlson, as d3's
+ * `curveMonotoneX`), which never overshoots the data between two points.
+ */
+export function curvePoints(points: readonly Vector2[], curve: LineCurve): Vector2[] {
+  if (curve === "step") {
+    const out: Vector2[] = points.length > 0 ? [points[0]] : []
+    for (let i = 1; i < points.length; i++) {
+      const mid = (points[i - 1].x + points[i].x) / 2
+      out.push({ x: mid, y: points[i - 1].y }, { x: mid, y: points[i].y }, points[i])
+    }
+    return out
+  }
+  if (curve !== "smooth" || points.length < 3) return [...points]
+  const tangents = monotoneTangents(points)
+  const out: Vector2[] = [points[0]]
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]
+    const b = points[i]
+    const dx = (b.x - a.x) / 3
+    const c1 = { x: a.x + dx, y: a.y + dx * tangents[i - 1] }
+    const c2 = { x: b.x - dx, y: b.y - dx * tangents[i] }
+    for (let k = 1; k <= SAMPLES; k++) {
+      const t = k / SAMPLES
+      const u = 1 - t
+      out.push({
+        x: u * u * u * a.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * b.x,
+        y: u * u * u * a.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * b.y,
+      })
+    }
+  }
+  return out
+}
+
+function monotoneTangents(points: readonly Vector2[]): number[] {
+  const n = points.length
+  const slope = (i: number) => {
+    const h = points[i + 1].x - points[i].x
+    return h === 0 ? 0 : (points[i + 1].y - points[i].y) / h
+  }
+  const m = new Array<number>(n).fill(0)
+  for (let i = 1; i < n - 1; i++) {
+    const h0 = points[i].x - points[i - 1].x
+    const h1 = points[i + 1].x - points[i].x
+    const s0 = slope(i - 1)
+    const s1 = slope(i)
+    const p = h0 + h1 === 0 ? 0 : (s0 * h1 + s1 * h0) / (h0 + h1)
+    m[i] = (Math.sign(s0) + Math.sign(s1)) * Math.min(Math.abs(s0), Math.abs(s1), 0.5 * Math.abs(p)) || 0
+  }
+  m[0] = endTangent(slope(0), m[1])
+  m[n - 1] = endTangent(slope(n - 2), m[n - 2])
+  return m
+}
+
+/** d3's one-sided end tangent, held to the end segment's own direction and to three times its slope, past which it would overshoot. */
+function endTangent(secant: number, inner: number): number {
+  const t = (3 * secant - inner) / 2
+  if (secant === 0 || Math.sign(t) !== Math.sign(secant)) return 0
+  return Math.abs(t) > 3 * Math.abs(secant) ? 3 * secant : t
+}
+
+/** The part of `points` (ordered along x) left of `x`, ending on the point where it crosses `x`. */
+export function cutAt(points: readonly Vector2[], x: number): Vector2[] {
+  if (points.length === 0 || x < points[0].x) return []
+  const out: Vector2[] = []
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i]
+    if (p.x <= x) {
+      out.push(p)
+      continue
+    }
+    const a = points[i - 1]
+    if (a && p.x > a.x) out.push({ x, y: a.y + ((p.y - a.y) * (x - a.x)) / (p.x - a.x) })
+    break
+  }
+  return out
+}
+
+/**
+ * `polygon` clipped to `box` (Sutherland-Hodgman against each edge in turn).
+ * The box is convex, so the result is the part inside, possibly with seams of
+ * no width where a concave outline leaves and re-enters, which fill as nothing.
+ */
+export function clipPolygonToBox(polygon: readonly Vector2[], box: RegionBox): Vector2[] {
+  if (polygon.length < 3 || !hasRegion(box)) return []
+  const edges: ((p: Vector2) => number)[] = [
+    (p) => p.x - box.left,
+    (p) => box.right - p.x,
+    (p) => p.y - box.bottom,
+    (p) => box.top - p.y,
+  ]
+  let out: Vector2[] = [...polygon]
+  for (const inside of edges) {
+    const input = out
+    out = []
+    for (let i = 0; i < input.length; i++) {
+      const cur = input[i]
+      const prev = input[(i + input.length - 1) % input.length]
+      const dc = inside(cur)
+      const dp = inside(prev)
+      if (dc >= 0) {
+        if (dp < 0) out.push(crossing(prev, cur, dp, dc))
+        out.push(cur)
+      } else if (dp >= 0) out.push(crossing(prev, cur, dp, dc))
+    }
+    if (out.length === 0) return []
+  }
+  return out
+}
+
+function crossing(a: Vector2, b: Vector2, da: number, db: number): Vector2 {
+  const t = da / (da - db)
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+}
+
+/** A line chart's own look: how each series is stroked, dotted and filled. */
+export const LINE_MARKS = {
+  strokeWidth: Types.number(4, { min: 0, max: 24, step: 0.5, unit: "px" }),
+  curve: Types.oneOf(["smooth", "linear", "step"] as const),
+  dots: Types.boolean(false),
+  /** Each dot's diameter. */
+  dotSize: Types.number(12, { min: 0, max: 48, step: 1, unit: "px" }),
+  /** Fill under each line: none, the series colour, or the colour fading to nothing at the baseline. */
+  area: Types.oneOf(["none", "solid", "gradient"] as const),
+  /** The fill's opacity at the line. */
+  areaOpacity: Types.number(0.4, { min: 0, max: 1, step: 0.05 }),
+}
+
+export const LINE_LABELS = {
+  /** Read as the chart is built: each point's value printed above or below it, or none. */
+  values: Types.oneOf(["none", "above", "below"] as const, { animatable: false }),
 }

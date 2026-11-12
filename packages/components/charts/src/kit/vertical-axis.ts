@@ -5,7 +5,6 @@ import {
   Types,
   component2d,
   insetsOps,
-  textOps,
   type NodeOf,
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
@@ -13,6 +12,7 @@ import {
 } from "@motionscript/sdk"
 import { enterBudget } from "@motionscript/sdk/component"
 
+import { boundText } from "./cartesian"
 import { asParts, fresh } from "./entries"
 import { armed, arrival, arrivalOf, arrivalsEntry, beats, frameEase, type Arrival } from "./motion"
 import {
@@ -30,11 +30,65 @@ export function markerCaption(s: { readonly markers: readonly number[]; readonly
   return (index >= 0 ? s.captions[index] : undefined) ?? formatMarker(value)
 }
 
+/** The gap between an axis's markers and the plot, and between the markers and the caption, read off its config. */
+export function axisPads(axis: AxisConfig, side: "top" | "right"): { tick: number; title: number } {
+  return { tick: insetsOps.resolve(axis.tickPadding)[side], title: insetsOps.resolve(axis.titlePadding)[side] }
+}
+
+/**
+ * A column of right-aligned captions beside the plot: `place(i)` is caption
+ * `i`'s centre height in the column (y-up), whose height it is handed. The
+ * value axis and a horizontal bar chart's category axis are both this column.
+ */
+export function captionColumn(spec: {
+  readonly count: number
+  readonly axis: () => AxisConfig
+  readonly text: (i: number) => string
+  readonly place: (i: number, height: number) => number
+  readonly arrivals: () => Readonly<Record<string, Arrival>>
+  readonly opacity?: (i: number) => number
+  readonly label: string
+}): Node2D {
+  const pads = () => axisPads(spec.axis(), "right")
+  const markers = Array.from({ length: spec.count }, (_, i) => {
+    const column = () => (marker.parent as Node2D | null)?.layoutBounds ?? { width: 0, height: 0 }
+    const marker: Node2D = new Text({
+      ...boundText(() => spec.axis().labelStyle),
+      text: () => spec.text(i),
+      // Right-aligned against the tick padding: freeform children sit on the content box's centre.
+      x: () => (column().width - pads().tick) / 2 - marker.layoutBounds.width / 2 + arrivalOf(spec.arrivals(), i).shift,
+      y: () => spec.place(i, column().height),
+      opacity: () => arrivalOf(spec.arrivals(), i).opacity * (spec.opacity?.(i) ?? 1),
+    })
+    return marker
+  })
+  const children: Node2D[] = []
+  if (spec.label !== "") {
+    // Node2D space is y-up and rotation is clockwise, so -90° reads bottom-to-top.
+    children.push(
+      new RotatedBox({
+        angle: -90,
+        width: "hug",
+        height: "hug",
+        children: new Text({
+          ...boundText(() => spec.axis().titleStyle),
+          text: spec.label,
+          opacity: () => arrivalOf(spec.arrivals(), "label").opacity,
+          x: () => arrivalOf(spec.arrivals(), "label").shift,
+        }),
+      }) as unknown as Node2D
+    )
+  }
+  children.push(new Rect({ height: "fill", width: "hug", padding: () => ({ right: pads().tick }), children: markers }) as unknown as Node2D)
+  return new Rect({ flow: "horizontal", gap: () => pads().title, height: "fill", children }) as unknown as Node2D
+}
+
 /**
  * The numeric vertical axis the cartesian charts share: a column of {@link Text}
  * markers, highest at the top, each centred on its value's fraction across
- * `range`. Caption and position are bound, so a rescale tweens live; only the
- * marker count is fixed at construction. The resting state is landed.
+ * `range` and right-aligned against the plot. Caption and position are bound, so
+ * a rescale tweens live; only the marker count is fixed at construction. The
+ * resting state is landed.
  */
 export const VerticalAxis = component2d({
   key: "verticalAxis",
@@ -52,61 +106,26 @@ export const VerticalAxis = component2d({
   // A node made of markers would otherwise hug them.
   defaults: { width: "fill", height: "fill" },
   children: (state) => {
-    const tickPad = insetsOps.resolve(state.axis.tickPadding).right
-    const titlePad = insetsOps.resolve(state.axis.titlePadding).right
-
-    const row: Node2D[] = []
-    // The row's parent is the axis, whose box the markers are placed in.
-    const box = () => (row[0]?.parent as Node2D | null | undefined)?.layoutBounds ?? { width: 0, height: 0 }
     const sorted = () => [...state.markers].sort((a, b) => b - a)
     const fracAt = (value: number | undefined) => {
       if (value === undefined) return 0
       const [min, max] = state.range
       return max <= min ? 0 : (value - min) / (max - min)
     }
-
     // A slot with no value (the live list is shorter than the column built) renders empty, not its neighbour.
-    const markers = state.markers.map((_, i) => {
-      const marker: Node2D = new Text({
-        ...textOps.styleProps(state.axis.labelStyle),
-        text: () => {
+    return asParts([
+      captionColumn({
+        count: state.markers.length,
+        axis: () => state.axis,
+        text: (i) => {
           const value = sorted()[i]
           return value === undefined ? "" : markerCaption(state, value)
         },
-        y: () => {
-          // Node2D space is y-up, so the fraction runs from the bottom.
-          const height = box().height
-          const centred = (fracAt(sorted()[i]) - 0.5) * height
-          // Held inside the top edge for a theme whose markers are taller than the headroom; only the top, since the chart's own axis and legend lie below.
-          const limit = height / 2 - marker.layoutBounds.height / 2
-          return Math.min(centred, limit)
-        },
-        opacity: () => arrivalOf(state.arrivals, i).opacity,
-        x: () => arrivalOf(state.arrivals, i).shift,
-      })
-      return marker
-    })
-
-    const children: Node2D[] = []
-    if (state.label !== "") {
-      // Node2D space is y-up and rotation is clockwise, so -90° reads bottom-to-top.
-      children.push(
-        new RotatedBox({
-          angle: -90,
-          width: "hug",
-          height: "hug",
-          children: new Text({
-            ...textOps.styleProps(state.axis.titleStyle),
-            text: state.label,
-            opacity: () => arrivalOf(state.arrivals, "label").opacity,
-            x: () => arrivalOf(state.arrivals, "label").shift,
-          }),
-        })
-      )
-    }
-    children.push(new Rect({ height: "fill", width: "hug", padding: { right: tickPad }, children: markers }))
-    row.push(new Rect({ flow: "horizontal", gap: titlePad, children }))
-    return asParts(row)
+        place: (i, height) => (fracAt(sorted()[i]) - 0.5) * height,
+        arrivals: () => state.arrivals,
+        label: state.label,
+      }),
+    ])
   },
   commands: {
     /**

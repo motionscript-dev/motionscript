@@ -1,32 +1,19 @@
 import { describe, expect, it } from "vitest"
 
-import { fillOps } from "@motionscript/sdk"
-
 import {
   barSpans,
   barValueExtent,
-  resolveBarFill,
+  inkOn,
   resolveBarScale,
-  stackCapIndex,
   type BarSeries,
 } from "./shared"
 
 /**
- * The bar chart's arithmetic, which is all the parts of it a test can reach: the
- * geometry above this reads `layoutRect`, and the paint below it is the shared
- * theme resolver the line chart already exercises.
- *
- * Three things are worth pinning down, and each of them is a decision rather
- * than an implementation detail:
- *
- * - A bar is a **span**, not a height, so one walk covers grouped, stacked and
- *   negative without a special case anywhere.
- * - **Zero is always on the scale.** A bar chart's baseline is zero, and a scale
- *   that starts at 40 draws a column three times its neighbour for a 10%
- *   difference — the classic way to lie with one.
- * - The stack's **cap** is the last *non-zero* series, not the last one listed,
- *   so a series that happens to be 0 in one row doesn't take the rounded end and
- *   leave the segment below it square.
+ * The bar chart's arithmetic. A bar is a span, not a height, so one walk covers
+ * grouped, stacked and negative; zero is always on the scale; and a stack keeps
+ * a running sum on each side of zero, so a loss stacks downward instead of
+ * eating into the gains. The rounded end goes to the last non-zero segment on
+ * its side, so a zero in one row does not leave the segment below it square.
  */
 
 const SERIES: BarSeries[] = [
@@ -36,131 +23,96 @@ const SERIES: BarSeries[] = [
 ]
 
 describe("barSpans", () => {
-  it("runs every grouped bar from zero to its own value", () => {
-    const spans = barSpans({ a: 4, b: 7, c: 2 }, SERIES, false)
-
-    expect(spans).toEqual([
-      { from: 0, to: 4, value: 4 },
-      { from: 0, to: 7, value: 7 },
-      { from: 0, to: 2, value: 2 },
+  it("runs every grouped bar from zero to its own value, each rounded", () => {
+    expect(barSpans({ a: 4, b: 7, c: 2 }, SERIES, "none")).toEqual([
+      { from: 0, to: 4, value: 4, outer: true },
+      { from: 0, to: 7, value: 7, outer: true },
+      { from: 0, to: 2, value: 2, outer: true },
     ])
   })
 
-  it("rides each stacked segment on the running total below it", () => {
-    const spans = barSpans({ a: 4, b: 7, c: 2 }, SERIES, true)
-
-    expect(spans).toEqual([
-      { from: 0, to: 4, value: 4 },
-      { from: 4, to: 11, value: 7 },
-      { from: 11, to: 13, value: 2 },
+  it("rides each stacked segment on the running total below it, rounding only the last", () => {
+    expect(barSpans({ a: 4, b: 7, c: 2 }, SERIES, "stacked")).toEqual([
+      { from: 0, to: 4, value: 4, outer: false },
+      { from: 4, to: 11, value: 7, outer: false },
+      { from: 11, to: 13, value: 2, outer: true },
     ])
   })
 
-  it("lets a negative value run the span the other way", () => {
-    const grouped = barSpans({ a: -6 }, [SERIES[0]], false)
-    expect(grouped).toEqual([{ from: 0, to: -6, value: -6 }])
-
-    // Signed stacking: the segment eats into what is below it rather than
-    // being dropped or flipped.
-    const stacked = barSpans({ a: 10, b: -4, c: 3 }, SERIES, true)
-    expect(stacked).toEqual([
-      { from: 0, to: 10, value: 10 },
-      { from: 10, to: 6, value: -4 },
-      { from: 6, to: 9, value: 3 },
+  it("stacks a loss downward from zero, apart from the gains", () => {
+    expect(barSpans({ a: -6 }, [SERIES[0]], "none")).toEqual([{ from: 0, to: -6, value: -6, outer: true }])
+    expect(barSpans({ a: 10, b: -4, c: 3 }, SERIES, "stacked")).toEqual([
+      { from: 0, to: 10, value: 10, outer: false },
+      { from: 0, to: -4, value: -4, outer: true },
+      { from: 10, to: 13, value: 3, outer: true },
     ])
   })
 
-  it("keeps a zero-valued series in place, index-aligned with the list", () => {
-    const spans = barSpans({ a: 4, c: 2 }, SERIES, true)
-
+  it("keeps a zero-valued series in place, index-aligned with the list, and rounds the last that draws", () => {
+    const spans = barSpans({ a: 4, b: 7, c: 0 }, SERIES, "stacked")
     expect(spans).toHaveLength(3)
-    expect(spans[1]).toEqual({ from: 4, to: 4, value: 0 })
-  })
-})
-
-describe("stackCapIndex", () => {
-  it("caps the last series that actually draws", () => {
-    expect(stackCapIndex({ a: 4, b: 7, c: 2 }, SERIES)).toBe(2)
-    expect(stackCapIndex({ a: 4, b: 7, c: 0 }, SERIES)).toBe(1)
-    expect(stackCapIndex({ a: 4, c: 3 }, SERIES)).toBe(2)
+    expect(spans.map((span) => span.outer)).toEqual([false, true, false])
+    expect(spans[2]).toMatchObject({ from: 11, to: 11, value: 0 })
   })
 
-  it("caps nothing when the row is empty", () => {
-    expect(stackCapIndex({ a: 0, b: 0, c: 0 }, SERIES)).toBe(-1)
+  it("reads each value as its share of the row in a percent stack", () => {
+    const spans = barSpans({ a: 1, b: 3, c: 0 }, SERIES, "percent")
+    expect(spans.map((span) => [span.from, span.to])).toEqual([[0, 25], [25, 100], [100, 100]])
+  })
+
+  it("scales each series' contribution by its weight, so a fading series lowers the ones beyond it", () => {
+    const spans = barSpans({ a: 4, b: 7 }, SERIES.slice(0, 2), "stacked", [0.5, 1])
+    expect(spans.map((span) => [span.from, span.to])).toEqual([[0, 2], [2, 9]])
+    // Apart, a weight narrows a bar rather than shortening it.
+    expect(barSpans({ a: 4 }, [SERIES[0]], "none", [0.5])[0].to).toBe(4)
   })
 })
 
 describe("barValueExtent", () => {
   it("always includes zero, however far the data sits from it", () => {
-    const data = [{ a: 40, b: 45, c: 50 }]
-
-    expect(barValueExtent(data, SERIES, false)).toEqual([0, 50])
+    expect(barValueExtent([{ a: 40, b: 45, c: 50 }], SERIES, "none")).toEqual([0, 50])
   })
 
   it("measures a stack by its running total, not its tallest segment", () => {
     const data = [{ a: 4, b: 7, c: 2 }]
-
-    expect(barValueExtent(data, SERIES, true)).toEqual([0, 13])
-    expect(barValueExtent(data, SERIES, false)).toEqual([0, 7])
+    expect(barValueExtent(data, SERIES, "stacked")).toEqual([0, 13])
+    expect(barValueExtent(data, SERIES, "none")).toEqual([0, 7])
   })
 
   it("reaches below zero for a loss", () => {
-    const data = [{ a: 8 }, { a: -3 }]
-
-    expect(barValueExtent(data, [SERIES[0]], false)).toEqual([-3, 8])
+    expect(barValueExtent([{ a: 8 }, { a: -3 }], [SERIES[0]], "none")).toEqual([-3, 8])
   })
 })
 
 describe("resolveBarScale", () => {
   it("takes an explicit range as given, cropped axis and all", () => {
-    const data = [{ a: 40 }, { a: 50 }]
-
-    expect(resolveBarScale(data, [SERIES[0]], false, [40, 50], 4)).toEqual([
-      40, 50,
-    ])
+    expect(resolveBarScale([{ a: 40 }, { a: 50 }], [SERIES[0]], "none", [40, 50], 4)).toEqual([40, 50])
   })
 
   it("rounds an auto range out to tidy step bounds", () => {
-    const data = [{ a: 37 }]
-
     // Four divisions over a 0–37 extent steps at ~9.25, rounded up to 10.
-    expect(resolveBarScale(data, [SERIES[0]], false, undefined, 4)).toEqual([
-      0, 40,
-    ])
+    expect(resolveBarScale([{ a: 37 }], [SERIES[0]], "none", undefined, 4)).toEqual([0, 40])
   })
 
   it("brackets a negative extent on both sides", () => {
-    const data = [{ a: 8 }, { a: -3 }]
-
-    const [min, max] = resolveBarScale(data, [SERIES[0]], false, undefined, 4)
+    const [min, max] = resolveBarScale([{ a: 8 }, { a: -3 }], [SERIES[0]], "none", undefined, 4)
     expect(min).toBeLessThanOrEqual(-3)
     expect(max).toBeGreaterThanOrEqual(8)
   })
-})
 
-describe("resolveBarFill", () => {
-  const PALETTE = ["#aa0000", "#00bb00", "#0000cc"]
-
-  it("takes the palette's entry for the series' index", () => {
-    expect(resolveBarFill(PALETTE, { field: "a", label: "A" }, 0)).toBe("#aa0000")
-    expect(resolveBarFill(PALETTE, { field: "a", label: "A" }, 2)).toBe("#0000cc")
-  })
-
-  it("cycles the palette past its end", () => {
-    expect(resolveBarFill(PALETTE, { field: "a", label: "A" }, 3)).toBe("#aa0000")
-    expect(resolveBarFill(PALETTE, { field: "a", label: "A" }, 4)).toBe("#00bb00")
-  })
-
-  it("lets a series' own fill replace its entry outright, resolved", () => {
-    expect(resolveBarFill(PALETTE, { field: "a", label: "A", fill: "#ffffff" }, 1)).toEqual(fillOps.resolve("#ffffff"))
-  })
-
-  it("is white for an empty palette, when the series has no fill of its own", () => {
-    expect(resolveBarFill([], { field: "a", label: "A" }, 0)).toBe("white")
-  })
-
-  it("still honours a series' fill over an empty palette", () => {
-    expect(resolveBarFill([], { field: "a", label: "A", fill: "#123456" }, 0)).toEqual(fillOps.resolve("#123456"))
+  it("reads a percent stack to 100, and to -100 when it has losses", () => {
+    expect(resolveBarScale([{ a: 3, b: 1 }], SERIES, "percent", undefined, 4)).toEqual([0, 100])
+    expect(resolveBarScale([{ a: 3, b: -1 }], SERIES, "percent", undefined, 4)).toEqual([-100, 100])
   })
 })
 
+describe("inkOn", () => {
+  it("prints white on a dark bar and near-black on a light one", () => {
+    expect(inkOn("#1d4ed8")).toBe("white")
+    expect(inkOn("#fde68a")).toBe("#0a0a0a")
+  })
+
+  it("prints white on a paint it cannot read a colour off", () => {
+    expect(inkOn([])).toBe("white")
+  })
+})

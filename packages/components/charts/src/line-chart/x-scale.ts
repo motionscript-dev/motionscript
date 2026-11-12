@@ -185,6 +185,9 @@ function extentOf(values: number[]): Range {
   return lo <= hi ? [lo, hi] : [0, 1]
 }
 
+/** Up to this many samples in view, every one is a tick. */
+export const EVERY_SAMPLE = 12
+
 /**
  * Ticks spanning `range`, each a sample, nearest to where an evenly spaced tick
  * would go. They must be samples (a caption between two has nothing to say) and
@@ -201,6 +204,8 @@ function sampledTicks(
   const inside = positions.filter((v) => v >= min && v <= max)
   const unique = [...new Set(inside)].sort((a, b) => a - b)
   if (unique.length === 0) return markerValues([min, max], divisions)
+  // Few and even enough to caption every one: a month left out reads as missing data.
+  if (unique.length <= EVERY_SAMPLE && evenlySpaced(unique)) return unique
 
   const nearest = (target: number) =>
     unique.reduce((best, v) =>
@@ -213,6 +218,14 @@ function sampledTicks(
     if (out[out.length - 1] !== tick) out.push(tick)
   }
   return out
+}
+
+/** Whether no two neighbouring samples sit much closer than the average gap: months do, a burst of days between weeks of nothing does not. */
+function evenlySpaced(sorted: readonly number[]): boolean {
+  if (sorted.length < 3) return true
+  const mean = (sorted[sorted.length - 1] - sorted[0]) / (sorted.length - 1)
+  for (let i = 1; i < sorted.length; i++) if (sorted[i] - sorted[i - 1] < mean * 0.75) return false
+  return true
 }
 
 /** The cell of the row a tick came from, or `fallback` when it is not a sample. */

@@ -1,23 +1,38 @@
 {
-  "kit": { "barrel": "src/engine.ts", "specifier": "@motionscript/charts" },
+  "kit": {
+    "barrel": "src/engine.ts",
+    "specifier": "@motionscript/charts"
+  },
   "items": [
     {
       "name": "line-chart",
-      "description": "A cartesian line chart with a traced polyline, spotlit regions and a staggered entrance.",
+      "description": "A line or area chart with a traced polyline, spotlit regions and a staggered entrance.",
       "root": "src/line-chart",
-      "files": ["index.ts", "line-chart.ts", "chart-line.ts", "chart-region.ts", "horizontal-axis.ts", "shared.ts", "x-scale.ts"]
+      "files": ["index.ts", "chart-line.ts", "chart-region.ts", "line-chart.ts", "shared.ts", "x-scale.ts"]
     },
     {
       "name": "bar-chart",
-      "description": "A bar chart with grouped or stacked columns off a category axis.",
+      "description": "A bar chart with grouped or stacked columns or bars off a category axis.",
       "root": "src/bar-chart",
-      "files": ["index.ts", "bar-chart.ts", "chart-bars.ts", "category-axis.ts", "shared.ts"]
+      "files": ["index.ts", "bar-chart.ts", "category-axis.ts", "chart-bars.ts", "shared.ts"]
     },
     {
       "name": "pie-chart",
       "description": "A pie or donut chart with relaxed labels and a revealable centre.",
       "root": "src/pie-chart",
-      "files": ["index.ts", "pie-chart.ts", "pie-ring.ts", "pie-legend.ts", "shared.ts"]
+      "files": ["index.ts", "pie-chart.ts", "pie-ring.ts", "shared.ts"]
+    },
+    {
+      "name": "radar-chart",
+      "description": "A radar chart: one polygon per series over a spoked grid.",
+      "root": "src/radar-chart",
+      "files": ["index.ts", "radar-chart.ts", "radar-grid.ts", "radar-series.ts", "shared.ts"]
+    },
+    {
+      "name": "radial-chart",
+      "description": "A radial bar chart: one concentric ring per row, with a revealable centre.",
+      "root": "src/radial-chart",
+      "files": ["index.ts", "radial-chart.ts", "radial-rings.ts", "shared.ts"]
     }
   ]
 }

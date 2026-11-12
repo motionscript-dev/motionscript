@@ -1,23 +1,20 @@
 export { BarChart, barChartDomain } from "./bar-chart"
-export type { BarChartDomain, BarChartValues } from "./bar-chart"
+export type { BarChartDomain, BarChartStyle, BarChartValues } from "./bar-chart"
 export { ChartBars } from "./chart-bars"
 export type { BarGeometry } from "./chart-bars"
-export { CategoryAxis } from "./category-axis"
+export { CategoryAxis, slotCentre } from "./category-axis"
 export {
-  DEFAULT_BAR_CHART_THEME,
+  BAR_LABELS,
+  BAR_MARKS,
   barCategories,
   barSpans,
   barValueExtent,
-  lerpBarChartTheme,
-  resolveBarChartTheme,
-  resolveBarFill,
+  inkOn,
   resolveBarScale,
-  stackCapIndex,
 } from "./shared"
 export type {
-  BarChartConfig,
-  BarChartTheme,
+  BarOrientation,
   BarSeries,
   BarSpan,
-  BarStyleConfig,
+  BarStack,
 } from "./shared"

@@ -4,7 +4,7 @@ import type { Node2D } from "@motionscript/sdk"
 import { attachAt, layOut, scrub } from "../tests/harness"
 import { PIE_SPOTLIGHT_DIM as SPOTLIGHT_DIM } from "./shared"
 import { PieChart, isSliceSelected } from "./pie-chart"
-import { PieLegend } from "./pie-legend"
+import { PieLegend } from "../kit/pie-legend"
 import { PieRing } from "./pie-ring"
 
 /**
@@ -59,7 +59,7 @@ describe("PieChart: parts", () => {
 
   it("draws a legend unless it is told not to", () => {
     expect(partsOf(chart()).legend).not.toBeNull()
-    expect(partsOf(chart({ showLegend: false })).legend).toBeNull()
+    expect(partsOf(chart({ style: { legend: "none" } })).legend).toBeNull()
   })
 
   it("hands the ring and the legend its pops and its dimming, so the three cannot drift", () => {
@@ -130,20 +130,10 @@ describe("PieChart: sliceDims", () => {
     expect(dims(node)).toEqual([1, 1, 1])
   })
 
-  it("dims by the theme's own opacity", () => {
-    const node = chart({ theme: { spotlight: { dimOpacity: 0.5 } } })
-    node.set({ pops: [1, 0, 0] } as never)
-    expectClose(dims(node), [1, 0.5, 0.5])
-  })
-
-  it("clamps the pops it reads and the opacity it dims to", () => {
-    const node = chart({ theme: { spotlight: { dimOpacity: 3 } } })
+  it("clamps the pops it reads", () => {
+    const node = chart()
     node.set({ pops: [4, 0, -2] } as never)
-    // A dim above 1 reads as 1: nothing falls. A pop above 1 reads as 1, below 0 as 0.
-    expect(dims(node)).toEqual([1, 1, 1])
-    const other = chart()
-    other.set({ pops: [4, 0, -2] } as never)
-    expectClose(dims(other), [1, SPOTLIGHT_DIM, SPOTLIGHT_DIM])
+    expectClose(dims(node), [1, SPOTLIGHT_DIM, SPOTLIGHT_DIM])
   })
 
   it("has an entry for each row, whatever the pops have", () => {
@@ -371,7 +361,7 @@ describe("PieChart.enter's first frame", () => {
   })
 
   it("needs no legend", () => {
-    const node = chart({ showLegend: false })
+    const node = chart({ style: { legend: "none" } })
     expect(() => armed(node)).not.toThrow()
     expect(ring(node).growth).toBe(0)
   })
@@ -380,7 +370,7 @@ describe("PieChart.enter's first frame", () => {
 describe("PieChart.enter", () => {
   it("takes exactly the duration it is given, with or without a legend", () => {
     expect(chart().enter({ duration: 2 }).duration).toBe(2)
-    expect(chart({ showLegend: false }).enter({ duration: 2 }).duration).toBe(2)
+    expect(chart({ style: { legend: "none" } }).enter({ duration: 2 }).duration).toBe(2)
   })
 
   // The ring's beats are component commands, which run to their end as they are
@@ -394,7 +384,7 @@ describe("PieChart.enter", () => {
 
   it("lands every part at the end, legend or no legend", () => {
     for (const showLegend of [true, false]) {
-      const node = chart({ showLegend })
+      const node = chart({ style: { legend: showLegend ? "right" : "none" } })
       scrub(node.enter({ duration: 2, easing: linear }))(2)
       expect(ring(node).growth).toBe(1)
       expect(ring(node).labelReveal).toBe(1)

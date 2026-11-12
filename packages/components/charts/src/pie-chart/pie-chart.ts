@@ -10,30 +10,34 @@ import {
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
   type Node2DProps as _Node2DProps,
+  type Fill as _Fill,
+  type FillResolved as _FillResolved,
 } from "@motionscript/sdk"
 
 import { asParts, fresh } from "../kit/entries"
 import { beats, type AnyTimeline, type Beat } from "../kit/motion"
-import { PieLegend } from "./pie-legend"
+import { PieLegend } from "../kit/pie-legend"
 import { PieRing } from "./pie-ring"
+import { CHART_STYLE_FAMILY, CHART_STYLE_PRESETS, paletteFill } from "../kit/style"
 import {
-  DEFAULT_PIE_CHART_THEME,
-  lerpPieChartTheme,
-  resolvePieChartTheme,
+  PIE_SPOTLIGHT_DIM,
+  PIE_STYLE_GROUPS,
+  centerConfigOf,
+  labelConfigOf,
+  legendOf,
   resolvePieSlices,
+  ringConfigOf,
   selectionFade,
-  type PieChartConfig,
-  type PieChartTheme,
   type PieLabelMode,
-  type PieLabelPlacement,
   type PieSlice,
+  type PieStyle,
 } from "./shared"
 
 export interface PieChartValues {
   readonly data: DataRecord[]
   readonly categoryField: string
   readonly valueField: string
-  readonly theme: PieChartConfig
+  readonly style: PieStyle
   readonly pops: number[]
 }
 
@@ -44,7 +48,12 @@ const LABEL_SHARE = 0.35
 const SLICE_ARG = Types.number(0, { min: 0, step: 1 })
 
 function slicesOf(s: PieChartValues): PieSlice[] {
-  return resolvePieSlices(s.data, s.categoryField, s.valueField, s.theme.sliceFills)
+  return resolvePieSlices(
+    s.data,
+    s.categoryField,
+    s.valueField,
+    s.data.map((_, i) => paletteFill(s.style, i))
+  )
 }
 
 function popAt(s: PieChartValues, index: number): number {
@@ -60,8 +69,7 @@ export function isSliceSelected(s: PieChartValues, index: number): boolean {
 function sliceDims(s: PieChartValues): number[] {
   let focus = 0
   for (let i = 0; i < s.data.length; i++) focus = Math.max(focus, popAt(s, i))
-  const dim = s.theme.spotlight.dimOpacity
-  return s.data.map((_, i) => selectionFade(focus, dim, popAt(s, i)))
+  return s.data.map((_, i) => selectionFade(focus, PIE_SPOTLIGHT_DIM, popAt(s, i)))
 }
 
 /** Every slice's pop eased to what `pop` asks for. A move that changes nothing still takes its slot. */
@@ -94,16 +102,14 @@ function partsOf(children: readonly ChildView[]) {
 export const PieChart = component2d({
   key: "pieChart",
   state: {
-    data: fresh<DataRecord[]>(() => []),
+    data: fresh<DataRecord[]>(() => [], { kind: "dataset" }),
     /** Slice caption, used on the labels and the legend. */
     categoryField: "",
     /** Slice magnitude: the wedge's share of the ring. */
     valueField: "",
-    theme: Types.custom<PieChartTheme, PieChartConfig>(DEFAULT_PIE_CHART_THEME, { resolve: resolvePieChartTheme, lerp: lerpPieChartTheme }),
+    style: Types.style(CHART_STYLE_FAMILY, PIE_STYLE_GROUPS, { presets: CHART_STYLE_PRESETS }),
     /** What the ring's labels say. */
     labelMode: Types.custom<PieLabelMode>("percent"),
-    /** Where they sit: inside their wedge, outside on a leader, or nowhere. */
-    labelPlacement: Types.custom<PieLabelPlacement>("leader"),
     /** Gap between the ring and the legend, in px. */
     gap: 40,
     /** Text set in the ring's hole. */
@@ -112,8 +118,6 @@ export const PieChart = component2d({
     centerCaption: "",
     /** How far each slice is pushed out, `0`-`1` per index. Here, not on the ring, because the wedges and the legend both read it. */
     pops: fresh<number[]>(() => []),
-    /** Read as the chart is built: the legend is a part the chart builds or doesn't. */
-    showLegend: Types.boolean(true, { animatable: false }),
     /** Read as the chart is built: whether the hole's summary is drawn at rest. A scene that wants it to land later sets `false` and runs `revealCenter`. */
     showCenter: Types.boolean(true, { animatable: false }),
   },
@@ -126,38 +130,51 @@ export const PieChart = component2d({
   allowedChildren: [],
   // The structure (a label and legend row per row) is read once; slices, paint and selection are bound, so a theme tween re-paints and a `set` of `data` re-cuts.
   children: (state) => {
-    const theme = () => state.theme
+    const style = () => state.style
     const slices = () => slicesOf(state)
     const parts: Node2D[] = [
       new PieRing({
         width: "fill",
         height: "fill",
         slices,
-        ring: () => theme().ring,
-        label: () => theme().label,
-        centerStyle: () => theme().center,
+        ring: () => ringConfigOf(style()),
+        label: () => labelConfigOf(style()),
+        centerStyle: () => centerConfigOf(style()),
         labelMode: state.labelMode,
-        labelPlacement: state.labelPlacement,
+        labelPlacement: state.style.labelPlacement,
         pops: () => state.pops,
-        dimOpacity: () => theme().spotlight.dimOpacity,
+        dimOpacity: PIE_SPOTLIGHT_DIM,
         centerLabel: state.centerLabel,
         centerCaption: state.centerCaption,
         centerReveal: state.showCenter === false ? 0 : 1,
       }) as unknown as Node2D,
     ]
-    if (state.showLegend !== false) {
-      parts.push(
-        new PieLegend({
-          slices,
-          legend: () => theme().legend,
-          dims: () => sliceDims(state),
-          // Spacing is fixed as built.
-          gap: state.theme.legend.itemGap / 3,
-          padding: state.theme.legend.padding,
-        }) as unknown as Node2D
-      )
+    const position = state.style.legend
+    if (position !== "none") {
+      const side = position === "right"
+      const legend = new PieLegend({
+        slices,
+        legend: () => legendOf(style()),
+        dims: () => sliceDims(state),
+        flow: side ? "vertical" : "horizontal",
+        align: "center",
+        // Spacing is fixed as built.
+        gap: side ? legendOf(state.style).itemGap / 3 : legendOf(state.style).itemGap,
+        padding: 0,
+      }) as unknown as Node2D
+      if (position === "top") parts.unshift(legend)
+      else parts.push(legend)
     }
-    const row = new Rect({ flow: "horizontal", width: "fill", height: "fill", gap: state.gap, align: "center", children: parts })
+    const row = new Rect({
+      flow: position === "right" || position === "none" ? "horizontal" : "vertical",
+      width: "fill",
+      height: "fill",
+      gap: state.gap,
+      padding: 24,
+      align: "center",
+      fill: () => state.style.background,
+      children: parts,
+    })
     return asParts([row as unknown as Node2D])
   },
   commands: {

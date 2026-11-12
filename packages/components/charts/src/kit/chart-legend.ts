@@ -6,7 +6,6 @@ import {
   Text,
   Types,
   component2d,
-  textOps,
   type Fill,
   type NodeOf,
   // Named so the row's emitted type reaches the Rect surface it spreads through the sdk, not core.
@@ -28,6 +27,7 @@ import {
   type Vector2 as _Vector2,
 } from "@motionscript/sdk"
 
+import { boundText } from "./cartesian"
 import { fresh } from "./entries"
 import { frameEase } from "./motion"
 import {
@@ -40,18 +40,19 @@ import {
 const row = { ...Paint.state, ...Flow.state, ...Shapes.corners }
 
 /**
- * One legend entry, hugging its caption and swatch; `shown` scales that width
- * from nothing. The width is measured from the content at any reveal, so a frame
- * never depends on the entry once having been fully shown (`"hug"` is not a
- * number to scale until something measures it).
+ * One legend entry, hugging its swatch and caption; `shown` scales its length
+ * along the legend (`along`) from nothing. The length is measured from the
+ * content at any reveal, so a frame never depends on the entry once having been
+ * fully shown.
  */
 const LegendEntry = component2d({
   key: "legendEntry",
-  state: { ...row, shown: Types.number(1) },
+  state: { ...row, shown: Types.number(1), along: Types.oneOf(["horizontal", "vertical"] as const) },
   commands: { ...Paint.commands },
   measure: (measurer, state, children) => {
     const size = Flow.measure(measurer, state, children, Paint.inset(state))
-    return state.shown >= 1 ? size : { ...size, width: state.shown * size.width }
+    if (state.shown >= 1) return size
+    return state.along === "vertical" ? { ...size, height: state.shown * size.height } : { ...size, width: state.shown * size.width }
   },
   layout: (box, state, children) => Flow.layout(box, state, children, Paint.inset(state)),
   render: (ctx, state) => Paint.draw(ctx, state, Shapes.rect(ctx.size, state)),
@@ -65,7 +66,11 @@ function revealOf(value: readonly number[] | Readonly<Record<number, number>>, p
   return next
 }
 
-/** A chart's legend: a horizontal row with one entry per series, each a caption and a colour swatch. This node is the row, so the parent places it. */
+/**
+ * A chart's legend: one entry per series, a colour swatch then its caption, in
+ * a row (`flow: "horizontal"`) or a column (`"vertical"`, for a legend beside
+ * the plot). This node is the row, so the parent places it.
+ */
 export const ChartLegend = component2d({
   key: "chartLegend",
   state: {
@@ -75,7 +80,7 @@ export const ChartLegend = component2d({
     swatches: fresh<Fill[]>(() => []),
     legend: Types.custom<LegendConfig>(DEFAULT_LEGEND),
     /**
-     * How far each entry is shown, `0`-`1`, driving its width, opacity and gap
+     * How far each entry is shown, `0`-`1`, driving its length, opacity and gap
      * together. Entries are never added or removed: "is this node a child" is not
      * a function of time, while collapsed-but-present is.
      */
@@ -86,34 +91,37 @@ export const ChartLegend = component2d({
     flow: "horizontal",
     width: "hug",
     height: "hug",
-    gap: (state) => state.legend.itemGap,
+    gap: (state) => (state.flow === "vertical" ? Math.round(state.legend.itemGap * 0.4) : state.legend.itemGap),
     padding: (state) => state.legend.padding,
+    align: (state) => (state.flow === "vertical" ? "centerLeft" : "center"),
     reveal: (state) => state.series.map((s) => ((s.enabled ?? true) ? 1 : 0)),
   },
   // Every entry stays a child, so one always comes back where it belongs.
   children: (state) => {
-    const marker = state.legend.markerStyle
+    const marker = () => state.legend.markerStyle
+    const along = state.flow === "vertical" ? "vertical" : "horizontal"
     return state.series.map((series, index) =>
       LegendEntry({
         flow: "horizontal",
-        gap: 12,
+        gap: () => Math.round(((state.legend.textStyle.fontSize as number | undefined) ?? 24) * 0.45),
         align: "center",
         width: "hug",
         height: "hug",
-        // The width follows the reveal in `measure`, and the flanking gap closes with the entry.
+        along,
+        // The length follows the reveal in `measure`, and the flanking gap closes with the entry.
         opacity: () => state.reveal[index] ?? 0,
         gapScale: () => state.reveal[index] ?? 0,
         shown: () => state.reveal[index] ?? 0,
         children: [
-          Text({ ...textOps.styleProps(state.legend.textStyle), text: series.label }),
           Rect({
-            width: marker.width,
-            height: marker.height,
-            cornerRadius: marker.borderRadius,
-            fill: state.swatches[index] ?? "white",
-            stroke: marker.stroke,
-            shadow: marker.shadow,
+            width: () => marker().width,
+            height: () => marker().height,
+            cornerRadius: () => marker().borderRadius,
+            fill: () => state.swatches[index] ?? "white",
+            stroke: () => marker().stroke,
+            shadow: () => marker().shadow,
           }),
+          Text({ ...boundText(() => state.legend.textStyle), text: series.label }),
         ],
       })
     )

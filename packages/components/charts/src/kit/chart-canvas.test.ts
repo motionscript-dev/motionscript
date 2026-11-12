@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest"
 
-import { fillOps } from "@motionscript/sdk"
+import { fillOps, type GraphicsOp } from "@motionscript/sdk"
 
 import { draw, fillOf, rectsOf } from "../tests/harness"
-import { ChartBorder } from "./chart-border"
 import { ChartCanvas } from "./chart-canvas"
-import { DEFAULT_PLOT_AREA } from "./shared"
 
 /**
- * The plot's backdrop and its frame, drawn into a recording context. The frame
- * is a separate node so it can sit over the marks while the panel sits under
- * them.
+ * The plot's backdrop: the panel, the grid and the axis rules, drawn into a
+ * recording context. Every rule is its own draw, so a dashed one keeps its own
+ * phase.
  */
 
 const BOX = { width: 400, height: 200 }
@@ -20,14 +18,26 @@ function canvas(props: Record<string, unknown> = {}) {
     width: 400,
     height: 200,
     fill: "#111111",
-    xGridStroke: { weight: 2, fill: "#ff0000" },
-    yGridStroke: { weight: 3, fill: "#0000ff" },
+    xGridStroke: { weight: 2, fill: "#ff0000", align: "center" },
+    yGridStroke: { weight: 4, fill: "#0000ff", align: "center" },
     xMarkers: [0, 25, 50, 75, 100],
     xExtent: [0, 100],
     yMarkers: [0, 5, 10],
     yExtent: [0, 10],
     ...props,
   } as never)
+}
+
+/** A rule's two ends, rounded off the renderer's sixty-fourth nudge. */
+function ruleOf(ops: readonly GraphicsOp[]) {
+  const line = ops.find((op) => op.kind === "line")
+  if (line?.kind !== "line") return null
+  return line.state.points!.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }))
+}
+
+const strokeWeight = (ops: readonly GraphicsOp[]) => {
+  const stroke = ops.find((op) => op.kind === "stroke")
+  return stroke?.kind === "stroke" ? (stroke.strokes as { weight: number }[])[0].weight : undefined
 }
 
 describe("ChartCanvas", () => {
@@ -37,67 +47,53 @@ describe("ChartCanvas", () => {
     expect(fillOf(panel)).toEqual(fillOps.resolve("#111111"))
   })
 
-  it("then the vertical grid, one rule under every interior marker, at the weight of the stroke", () => {
-    const [, vertical] = draw(canvas(), BOX).ops()
-    // Markers 0 and 100 are the panel's own edges and fall under the border: skipped.
-    expect(rectsOf(vertical)).toEqual([
-      { x: -100, y: 0, width: 2, height: 200 },
-      { x: 0, y: 0, width: 2, height: 200 },
-      { x: 100, y: 0, width: 2, height: 200 },
-    ])
-    expect(fillOf(vertical)).toEqual(fillOps.resolve("#ff0000"))
+  it("draws no panel when it has no fill", () => {
+    const ops = draw(canvas({ fill: [] }), BOX).ops()
+    expect(ops.every((op) => ruleOf(op) !== null)).toBe(true)
   })
 
-  it("then the horizontal grid, across the full width", () => {
-    const [, , horizontal] = draw(canvas(), BOX).ops()
-    // Only 5 is interior to 0..10; it sits halfway up.
-    expect(rectsOf(horizontal)).toEqual([{ x: 0, y: 0, width: 400, height: 3 }])
-    expect(fillOf(horizontal)).toEqual(fillOps.resolve("#0000ff"))
+  it("rules a vertical line at every x marker, edges held just inside the box", () => {
+    const rules = draw(canvas({ yMarkers: [] }), BOX).ops().slice(1)
+    expect(rules.map((ops) => ruleOf(ops)![0].x)).toEqual([-199, -100, 0, 100, 199])
+    expect(rules.every((ops) => strokeWeight(ops) === 2)).toBe(true)
+    expect(ruleOf(rules[2])).toEqual([{ x: 0, y: -100 }, { x: 0, y: 100 }])
+  })
+
+  it("rules a horizontal line at every y marker, across the full width", () => {
+    const rules = draw(canvas({ xMarkers: [] }), BOX).ops().slice(1)
+    expect(rules.map((ops) => ruleOf(ops)![0].y)).toEqual([-98, 0, 98])
+    expect(ruleOf(rules[1])).toEqual([{ x: -200, y: 0 }, { x: 200, y: 0 }])
   })
 
   it("places a rule by its marker's fraction of the extent, evenly spaced or not", () => {
-    const [, vertical, horizontal] = draw(
-      canvas({ xMarkers: [10, 30, 90], yMarkers: [1, 9] }),
-      BOX
-    ).ops()
-    expect(rectsOf(vertical).map((r) => r.x)).toEqual([-160, -80, 160])
-    expect(rectsOf(horizontal).map((r) => r.y)).toEqual([-80, 80])
+    const rules = draw(canvas({ xMarkers: [10, 30], yMarkers: [] }), BOX).ops().slice(1)
+    expect(rules.map((ops) => ruleOf(ops)![0].x)).toEqual([-160, -80])
   })
 
-  it("skips a marker on, past or outside an edge: it would sit under the border", () => {
-    const [, vertical] = draw(canvas({ xMarkers: [-5, 0, 0.0000001, 99.9999999, 100, 150, 50] }), BOX).ops()
-    expect(rectsOf(vertical).map((r) => r.x)).toEqual([0])
+  it("skips a marker outside the extent", () => {
+    const rules = draw(canvas({ xMarkers: [-10, 50, 120], yMarkers: [] }), BOX).ops().slice(1)
+    expect(rules).toHaveLength(1)
   })
 
-  it("draws no rule for a chart whose horizontal axis has no numeric positions", () => {
-    const [, vertical] = draw(canvas({ xMarkers: [] }), BOX).ops()
-    expect(rectsOf(vertical)).toEqual([])
+  it("draws no grid for a stroke of no layers", () => {
+    expect(draw(canvas({ xGridStroke: [], yGridStroke: [] }), BOX).drawn).toHaveLength(1)
   })
 
-  it("draws no rule for an extent with no width", () => {
-    const [, vertical, horizontal] = draw(canvas({ xExtent: [5, 5], yExtent: [3, 1] }), BOX).ops()
-    expect(rectsOf(vertical)).toEqual([])
-    expect(rectsOf(horizontal)).toEqual([])
+  it("rules the axis lines where it is told, in their own stroke", () => {
+    const ops = draw(canvas({ xMarkers: [], yMarkers: [], axisStroke: { weight: 3, fill: "#00ff00", align: "center" }, xAxisAt: 0, yAxisAt: 50 }), BOX).ops().slice(1)
+    expect(ops.map(ruleOf)).toEqual([
+      [{ x: -200, y: -98 }, { x: 200, y: -98 }],
+      [{ x: 0, y: -100 }, { x: 0, y: 100 }],
+    ])
+    expect(ops.map(strokeWeight)).toEqual([3, 3])
   })
 
-  it("uses the stroke's weight for the width of a rule", () => {
-    const [, vertical, horizontal] = draw(
-      canvas({ xGridStroke: { weight: 9, fill: "red" }, yGridStroke: { weight: 1, fill: "blue" } }),
-      BOX
-    ).ops()
-    expect(rectsOf(vertical)[0].width).toBe(9)
-    expect(rectsOf(horizontal)[0].height).toBe(1)
+  it("draws no axis lines by default", () => {
+    expect(draw(canvas({ xMarkers: [], yMarkers: [], axisStroke: { weight: 3, fill: "#00ff00" } }), BOX).drawn).toHaveLength(1)
   })
 
-  it("draws no rule for a stroke with no layers", () => {
-    const ctx = draw(canvas({ xGridStroke: [], yGridStroke: [] }), BOX)
-    // The panel is all there is.
-    expect(ctx.ops()).toHaveLength(1)
-  })
-
-  it("draws nothing for a box with no width or no height", () => {
+  it("draws nothing for an empty box", () => {
     expect(draw(canvas({ width: 0 }), { width: 0, height: 200 }).drawn).toEqual([])
-    expect(draw(canvas({ height: 0 }), { width: 400, height: 0 }).drawn).toEqual([])
   })
 
   it("takes its size from the box it is laid out in, not from its props", () => {
@@ -105,40 +101,11 @@ describe("ChartCanvas", () => {
     expect(rectsOf(panel)).toEqual([{ x: 0, y: 0, width: 300, height: 150 }])
   })
 
-  it("defaults to the unpainted panel and the shared grid strokes", () => {
+  it("defaults to the unpainted panel and no grid", () => {
     const node = new ChartCanvas({ width: 100, height: 100 } as never)
     expect(node.fill).toEqual([])
     expect(node.xMarkers).toEqual([])
     expect(node.xExtent).toEqual([0, 1])
-    expect(node.fill).toEqual(DEFAULT_PLOT_AREA.fill)
-  })
-})
-
-describe("ChartBorder", () => {
-  it("draws one rect of the whole box with the stroke and no fill, so the interior stays clear", () => {
-    const border = new ChartBorder({ width: 400, height: 200, stroke: { weight: 6, fill: "#00ff00" } } as never)
-    const ctx = draw(border, BOX)
-    expect(ctx.ops()).toHaveLength(1)
-    const [ops] = ctx.ops()
-    expect(rectsOf(ops)).toEqual([{ x: 0, y: 0, width: 400, height: 200 }])
-    expect(ops.map((op) => op.kind)).toEqual(["rect", "stroke"])
-    expect(ops[1]).toMatchObject({ kind: "stroke", strokes: [{ weight: 6 }] })
-  })
-
-  it("draws nothing for an empty box", () => {
-    const border = new ChartBorder({ width: 0, height: 100 } as never)
-    expect(draw(border, { width: 0, height: 100 }).drawn).toEqual([])
-    expect(draw(new ChartBorder({} as never), { width: 100, height: 0 }).drawn).toEqual([])
-  })
-
-  it("takes the plot area's frame by default", () => {
-    const border = new ChartBorder({ width: 10, height: 10 } as never)
-    expect(draw(border, { width: 10, height: 10 }).ops()[0][1]).toMatchObject({ strokes: [{ weight: 6 }] })
-  })
-
-  it("follows its stroke when it changes", () => {
-    const border = new ChartBorder({ width: 10, height: 10 } as never)
-    border.set({ stroke: { weight: 2, fill: "red" } } as never)
-    expect(draw(border, { width: 10, height: 10 }).ops()[0][1]).toMatchObject({ strokes: [{ weight: 2 }] })
+    expect(node.xGridStroke).toEqual([])
   })
 })

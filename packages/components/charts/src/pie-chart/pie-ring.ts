@@ -6,12 +6,9 @@ import {
   Types,
   clamp,
   component2d,
-  fillOps,
-  shadowOps,
   strokeOps,
   textOps,
   type Fill,
-  type FillResolved,
   type NodeOf,
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
@@ -23,9 +20,11 @@ import {
 import { asParts, fresh } from "../kit/entries"
 import { frameEase } from "../kit/motion"
 import { loadPaints } from "../kit/paints"
+import { resolvedFill, ringFills } from "../kit/polar"
 import { formatPercent } from "../kit/shared"
+
 import {
-  DEFAULT_PIE_CHART_THEME,
+  PIE_SPOTLIGHT_DIM,
   pieArcs,
   relaxLabels,
   ringPoint,
@@ -38,6 +37,27 @@ import {
   type PieSlice,
   type RingConfig,
 } from "./shared"
+
+const DEFAULT_RING: RingConfig = { gap: 3, holeRadius: 0, startAngle: 0, selectedGrow: 1.08, cornerRadius: 4 }
+const DEFAULT_LABEL: LabelConfig = {
+  textStyle: { fontSize: 28, fontWeight: 500, textAlign: "center", fill: "#a1a1aa" },
+  percentStyle: { fontSize: 28, fontWeight: 700, textAlign: "center", fill: "#f4f4f5" },
+  insideStyle: { fontSize: 52, fontWeight: 700, textAlign: "center", fill: "#111113" },
+  leaderStroke: { weight: 2, fill: "#a1a1aa" },
+}
+const DEFAULT_CENTER: CenterConfig = {
+  labelStyle: { fontSize: 50, fontWeight: 800, textAlign: "center", fill: "#f4f4f5" },
+  captionStyle: { fontSize: 22, fontWeight: 500, textAlign: "center", fill: "#a1a1aa" },
+}
+
+/** Black or white, whichever reads better on a solid `fill`; black for any other paint. */
+export function onFill(fill: Fill): string {
+  const layers = resolvedFill(fill)
+  const solid = layers.find((layer) => layer.type === "solid") as { color: [number, number, number, number] } | undefined
+  if (!solid) return "#111113"
+  const [r, g, b] = solid.color
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 ? "#111113" : "#ffffff"
+}
 
 const LABEL_GAP = 12
 const LABEL_PAD = 14
@@ -79,57 +99,72 @@ interface LabelPlacement {
 
 /**
  * A wedge over `a0`..`a1` (radians clockwise from 12 o'clock) from `rInner` to
- * `rOuter`, centred on `cx`; with `rInner <= 0` it closes through the centre.
- * `halfGap` is half the px gap to the neighbour, converted to an angle per
- * radius (wider near the hole) so the channel keeps one width across the band.
- * The inset is capped at the wedge's half-span so a sliver narrows to nothing
- * rather than turning inside out.
+ * `rOuter`, centred on `cx`; with `rInner <= 0` it closes at an apex pulled
+ * off the centre by the gap. `halfGap` is half the px gap to the neighbour,
+ * converted to an angle per radius so the channel keeps one width across the
+ * band; the inset is capped at the wedge's half-span so a sliver narrows to
+ * nothing rather than turning inside out. Corners are rounded by `corner` px
+ * (clamped to what the wedge can hold), except a pie's apex.
  */
-function wedgePath(
-  a0: number,
-  a1: number,
-  rInner: number,
-  rOuter: number,
-  halfGap: number,
-  cx: number
-): PathBuilder {
+export function wedgePath(a0: number, a1: number, rInner: number, rOuter: number, halfGap: number, corner: number, cx: number): PathBuilder {
   const path = new PathBuilder()
   const span = a1 - a0
-  const steps = Math.max(
-    2,
-    Math.ceil((Math.abs(span) / (Math.PI * 2)) * ARC_STEPS)
-  )
-  const insetAt = (r: number): number =>
-    r <= 0 ? 0 : Math.min(halfGap / r, span / 2.2)
-  const arcTo = (r: number, i: number): Vector2 => {
-    const inset = insetAt(r)
-    const from = a0 + inset
-    const to = a1 - inset
-    const point = ringPoint(r, from + ((to - from) * i) / steps)
-    return { x: point.x + cx, y: point.y }
+  const steps = Math.max(2, Math.ceil((Math.abs(span) / (Math.PI * 2)) * ARC_STEPS))
+  const insetAt = (r: number): number => (r <= 0 ? 0 : Math.min(halfGap / r, span / 2.2))
+  const at = (r: number, a: number): Vector2 => {
+    const p = ringPoint(r, a)
+    return { x: p.x + cx, y: p.y }
   }
+  const hasHole = rInner > 0
+  const oa0 = a0 + insetAt(rOuter)
+  const oa1 = a1 - insetAt(rOuter)
+  const ia0 = a0 + insetAt(rInner)
+  const ia1 = a1 - insetAt(rInner)
+  const O0 = at(rOuter, oa0)
+  const O1 = at(rOuter, oa1)
+  const half = Math.max(1e-3, Math.min(span / 2, Math.PI / 2))
+  const apex = at(halfGap > 0 ? Math.min(halfGap / Math.sin(half), rOuter * 0.8) : 0, (a0 + a1) / 2)
+  const I0 = hasHole ? at(rInner, ia0) : apex
+  const I1 = hasHole ? at(rInner, ia1) : apex
 
-  if (rInner <= 0) {
-    // The sides converge on the centre, so only the rim carries the gap.
-    path.moveTo(cx, 0)
+  const band = hasHole ? rOuter - rInner : rOuter
+  const rho = Math.max(0, Math.min(corner, band / 2.2, ((oa1 - oa0) * rOuter) / 2.2, hasHole ? ((ia1 - ia0) * rInner) / 2.2 : Infinity))
+  const rounded = rho >= 0.5
+  const toward = (from: Vector2, to: Vector2, d: number): Vector2 => {
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1
+    const k = Math.min(0.5, d / len)
+    return { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k }
+  }
+  const dOuter = rounded ? rho / Math.max(1, rOuter) : 0
+  const dInner = rounded && hasHole ? rho / rInner : 0
+
+  const arc = (r: number, from: number, to: number) => {
     for (let i = 0; i <= steps; i++) {
-      const p = arcTo(rOuter, i)
+      const p = at(r, from + ((to - from) * i) / steps)
       path.lineTo(p.x, p.y)
     }
-    path.close()
-    return path
+  }
+  const round = (corner: Vector2, next: Vector2) => {
+    if (rounded) path.quadraticCurveTo(corner.x, corner.y, next.x, next.y)
+    else path.lineTo(corner.x, corner.y)
   }
 
-  for (let i = 0; i <= steps; i++) {
-    const p = arcTo(rOuter, i)
-    if (i === 0) path.moveTo(p.x, p.y)
-    else path.lineTo(p.x, p.y)
+  const first = at(rOuter, oa0 + dOuter)
+  path.moveTo(first.x, first.y)
+  arc(rOuter, oa0 + dOuter, oa1 - dOuter)
+  round(O1, toward(O1, I1, rho))
+  if (hasHole) {
+    const beforeI1 = toward(I1, O1, rho)
+    path.lineTo(beforeI1.x, beforeI1.y)
+    round(I1, at(rInner, ia1 - dInner))
+    arc(rInner, ia1 - dInner, ia0 + dInner)
+    round(I0, toward(I0, O0, rho))
+  } else {
+    path.lineTo(apex.x, apex.y)
   }
-  // The inner arc's own wider inset makes each side edge a chord `halfGap` px off the divide at both ends.
-  for (let i = steps; i >= 0; i--) {
-    const p = arcTo(rInner, i)
-    path.lineTo(p.x, p.y)
-  }
+  const beforeO0 = toward(O0, I0, rounded ? rho : 0)
+  path.lineTo(beforeO0.x, beforeO0.y)
+  round(O0, first)
   path.close()
   return path
 }
@@ -161,7 +196,7 @@ export class RingGeometry {
 
   /** Leader labels are the only thing that costs a gutter. */
   get hasLeaderLabels(): boolean {
-    return this.s.labelPlacement === "leader" && this.s.labelMode !== "none" && this.arcs.length > 0
+    return this.s.labelPlacement === "outside" && this.s.labelMode !== "none" && this.arcs.length > 0
   }
 
   /**
@@ -382,19 +417,6 @@ function sideOf(mid: number): 1 | -1 {
 const NO_BOX = { width: 0, height: 0 }
 
 /** Fills resolved once per paint, not per frame: a theme tween hands over new paint, but a frame that moves nothing must not re-resolve. Keyed by the paint, so it needs no node. */
-const resolvedFills = new WeakMap<object, FillResolved[]>()
-
-function resolvedFill(fill: Fill): FillResolved[] {
-  if (typeof fill !== "object" || fill === null) return fillOps.resolve(fill)
-  let resolved = resolvedFills.get(fill)
-  if (resolved === undefined) resolvedFills.set(fill, resolved = fillOps.resolve(fill))
-  return resolved
-}
-
-export function ringFills(slices: readonly PieSlice[]): FillResolved[][] {
-  return slices.map((slice) => resolvedFill(slice.fill))
-}
-
 /** One label per drawn slice (a zero-valued slice has no wedge), then the hole's summary. Only the choice of form is settled here; the pinned points stay reactive. */
 function ringLabels(s: RingState & { readonly labelReveal: number; readonly centerReveal: number }) {
   const blocks: Node2D[] = []
@@ -413,6 +435,7 @@ function ringLabels(s: RingState & { readonly labelReveal: number; readonly cent
         inside.push(new Text({
           ...textOps.styleProps(s.label.insideStyle),
           text: () => geometry().percentText(arc.index),
+          fill: () => onFill(s.slices[arc.index]?.fill ?? "white"),
           fontSize: () => geometry().insideFont,
         }))
       }
@@ -420,6 +443,7 @@ function ringLabels(s: RingState & { readonly labelReveal: number; readonly cent
         inside.push(new Text({
           ...textOps.styleProps(s.label.insideStyle),
           text: () => s.slices[arc.index]?.category ?? "",
+          fill: () => onFill(s.slices[arc.index]?.fill ?? "white"),
           fontSize: () => (s.labelMode === "category" ? geometry().insideFont : geometry().insideFont * INSIDE_CAPTION_RATIO),
         }))
       }
@@ -493,7 +517,7 @@ function ringLabels(s: RingState & { readonly labelReveal: number; readonly cent
       height: "hug",
       gap: 2,
       align: "center",
-      opacity: () => clamp(s.centerReveal, 0, 1),
+      opacity: () => clamp(s.centerReveal, 0, 1) * clamp(geometry().holeRadius / 20, 0, 1),
       center: () => ({ x: geometry().centerX, y: 0 }),
       children,
     }))
@@ -513,12 +537,12 @@ export const PieRing = component2d({
   key: "pieRing",
   state: {
     slices: fresh<PieSlice[]>(() => []),
-    ring: Types.custom<RingConfig>(DEFAULT_PIE_CHART_THEME.ring),
-    label: Types.custom<LabelConfig>(DEFAULT_PIE_CHART_THEME.label),
+    ring: Types.custom<RingConfig>(DEFAULT_RING),
+    label: Types.custom<LabelConfig>(DEFAULT_LABEL),
     // Not `center`: every node already has one, the anchor its position is measured from.
-    centerStyle: Types.custom<CenterConfig>(DEFAULT_PIE_CHART_THEME.center),
+    centerStyle: Types.custom<CenterConfig>(DEFAULT_CENTER),
     labelMode: Types.custom<PieLabelMode>("percent"),
-    labelPlacement: Types.custom<PieLabelPlacement>("leader"),
+    labelPlacement: Types.custom<PieLabelPlacement>("outside"),
     /** Sweep `[0, 1]`: the wedges grow clockwise from `startAngle` as it rises. */
     growth: 1,
     /** Fade of leaders and labels, separate from `growth` so they arrive after the sweep. */
@@ -526,7 +550,7 @@ export const PieRing = component2d({
     /** Per-slice pop `[0, 1]`, owned by the chart so the ring and legend read one signal. */
     pops: fresh<number[]>(() => []),
     /** Opacity everything unselected falls back to while any slice is selected. */
-    dimOpacity: DEFAULT_PIE_CHART_THEME.spotlight.dimOpacity,
+    dimOpacity: PIE_SPOTLIGHT_DIM,
     /** Empty leaves the hole clear; ignored when there is no hole. */
     centerLabel: "",
     centerCaption: "",
@@ -540,8 +564,7 @@ export const PieRing = component2d({
   load: (loader, state) =>
     loadPaints(loader, {
       fills: ringFills(state.slices),
-      shadows: [shadowOps.resolve(state.ring.shadow)],
-      strokes: [strokeOps.resolve(state.ring.stroke), strokeOps.resolve(state.label.leaderStroke)],
+      strokes: [strokeOps.resolve(state.label.leaderStroke)],
     }),
   commands: {
     /** Wipe the wedges in around the ring (`growth` 0 to 1). */
@@ -591,11 +614,9 @@ export const PieRing = component2d({
         const a1 = Math.min(arc.a1, revealEnd)
         if (a1 <= arc.a0) continue
 
-        const path = wedgePath(arc.a0, a1, hole, g.anchorRadius(arc.index), halfGap, cx)
+        const path = wedgePath(arc.a0, a1, hole, g.anchorRadius(arc.index), halfGap, Math.max(0, state.ring.cornerRadius), cx)
         const wedge = new Graphics2D().path(path.toPathState({ centerBounds, width: span, height: span }))
-        wedge.shadow(state.ring.shadow)
         wedge.fill(fills[arc.index] ?? [])
-        wedge.stroke(state.ring.stroke)
         ctx.draw(wedge.opacity(g.sliceOpacity(arc.index)))
       }
 

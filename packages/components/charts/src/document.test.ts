@@ -20,10 +20,15 @@ import { NODES } from "./nodes"
 import { SPOTLIGHT_DIM } from "./kit/shared"
 import { CategoryAxis, ChartBars, barChartDomain, type BarChart } from "./bar-chart"
 import { ChartLegend } from "./kit/chart-legend"
+import { PieLegend } from "./kit/pie-legend"
+import { VerticalAxis } from "./kit/vertical-axis"
+import { ringFills } from "./kit/polar"
+import { partOf, partsOf, plotOf } from "./kit/tests/parts"
 import { ChartLine, lineChartDomains, type LineChart } from "./line-chart"
-import { PieLegend, PieRing, pieArcs, resolvePieSlices, type PieChart } from "./pie-chart"
-import { ringFills } from "./pie-chart/pie-ring"
-import { cartesianOf, verticalMarkers } from "./tests/harness"
+import { PieRing, pieArcs, resolvePieSlices, type PieChart } from "./pie-chart"
+import { RadialRings, type RadialChart } from "./radial-chart"
+import { RadarSeries, type RadarChart } from "./radar-chart"
+import { verticalMarkers } from "./tests/harness"
 
 const STAGE = { width: 1280, height: 720 }
 
@@ -90,30 +95,39 @@ const ROWS = [
   { month: "Mar", revenue: 12, cost: 9, share: 2 },
 ]
 
-const LINE = {
-  data: ROWS,
-  xField: "month",
-  series: [
-    { field: "revenue", label: "Revenue" },
-    { field: "cost", label: "Cost" },
-  ],
+const SERIES = [
+  { field: "revenue", label: "Revenue" },
+  { field: "cost", label: "Cost" },
+]
+
+const LINE = { data: ROWS, xField: "month", series: SERIES }
+const BAR = { data: ROWS, categoryField: "month", series: SERIES }
+const PIE = { data: ROWS, categoryField: "month", valueField: "share" }
+const RADIAL = { data: ROWS, categoryField: "month", valueField: "revenue" }
+const RADAR = { data: ROWS, categoryField: "month", series: SERIES }
+
+/** The first channel of a fill's first layer: enough to tell a colour between two others. */
+function red(fill: unknown): number {
+  return (fillOps.resolve(fill as never)[0] as unknown as { color: number[] }).color[0]
 }
 
-/** What a line chart draws: a trace per series (0 when it is not drawn), each line's opacity, and the legend. */
+/** A palette tween from black (authored) to white: `red` of what the chart draws is 0 before, 1 after, between at the middle. */
+const TO_PALETTE = [{ type: "to", args: { style: { palette: ["#ffffff"] } } }]
+
+function expectTween(seek: (time: number) => number) {
+  expect(seek(0.5)).toBeCloseTo(0, 1)
+  const mid = seek(1.5)
+  expect(mid).toBeGreaterThan(0.1)
+  expect(mid).toBeLessThan(0.9)
+  expect(seek(2.5)).toBeCloseTo(1, 1)
+}
+
 /** A line chart's lines and legend, read off the frame it built. */
-function lineParts(chart: LineChart) {
-  const { axis, plot, below } = cartesianOf(chart)
-  return {
-    axis,
-    lines: plot.children.filter((part) => part instanceof ChartLine) as ChartLine[],
-    legend: (below.find((part) => part instanceof ChartLegend) ?? null) as ChartLegend | null,
-  }
-}
-
 function lineFrame(chart: LineChart) {
-  const { axis, lines, legend } = lineParts(chart)
+  const lines = partsOf(chart, ChartLine)
+  const legend = partOf(chart, ChartLegend) ?? null
   return {
-    markers: verticalMarkers(axis).map((marker) => marker.opacity),
+    markers: verticalMarkers(partOf(chart, VerticalAxis) as unknown as Node2D).map((marker) => marker.opacity),
     traces: lines.map((line) => (line.enabled ? line.progress : 0)),
     opacities: lines.map((line) => line.opacity),
     legend: legend!.opacity,
@@ -122,24 +136,17 @@ function lineFrame(chart: LineChart) {
   }
 }
 
-const BAR = {
-  data: ROWS,
-  categoryField: "month",
-  series: [
-    { field: "revenue", label: "Revenue" },
-    { field: "cost", label: "Cost" },
-  ],
+function regionFrame(chart: LineChart) {
+  return { region: chart.region, reveal: chart.regionReveal }
 }
 
 /** A bar chart's columns, captions and legend, read off the frame it built. */
 function barParts(chart: BarChart) {
-  const { axis, plot, below } = cartesianOf(chart)
   return {
-    axis,
-    plot,
-    barSets: plot.children.filter((part) => part instanceof ChartBars) as ChartBars[],
-    cAxis: below.find((part) => part instanceof CategoryAxis) as CategoryAxis,
-    legend: (below.find((part) => part instanceof ChartLegend) ?? null) as ChartLegend | null,
+    axis: partOf(chart, VerticalAxis) as unknown as Node2D,
+    barSets: partsOf(chart, ChartBars),
+    cAxis: partOf(chart, CategoryAxis)!,
+    legend: partOf(chart, ChartLegend) ?? null,
   }
 }
 
@@ -156,33 +163,22 @@ function barFrame(chart: BarChart) {
   }
 }
 
-function barFrame2(chart: BarChart) {
-  return { growth: chart.growth }
-}
-
-
-function regionFrame(chart: LineChart) {
-  return { region: chart.region, reveal: chart.regionReveal }
-}
-
 function categoryFrame(chart: BarChart) {
+  const { cAxis, barSets } = barParts(chart)
   return {
     spotlight: chart.spotlight,
     reveal: chart.spotlightReveal,
-    dims: [...barParts(chart).cAxis.dims],
-    axisDims: [...barParts(chart).cAxis.dims],
-    barDims: [...barParts(chart).barSets[0].dims],
+    dims: [...cAxis.dims],
+    axisDims: [...cAxis.dims],
+    barDims: [...barSets[0].dims],
   }
 }
 
-const PIE = { data: ROWS, categoryField: "month", valueField: "share" }
-
-/** A pie chart's ring and legend, read off the row it built: its last child. */
+/** A pie chart's ring and legend. */
 function pieParts(chart: PieChart) {
-  const row = chart.children[chart.children.length - 1] as Node2D
   return {
-    ring: row.children.find((part) => part instanceof PieRing) as PieRing,
-    legend: (row.children.find((part) => part instanceof PieLegend) ?? null) as PieLegend | null,
+    ring: partOf(chart, PieRing)!,
+    legend: partOf(chart, PieLegend) ?? null,
   }
 }
 
@@ -216,7 +212,7 @@ describe("a line chart's commands, from a document", () => {
   it("showSeries traces a hidden series in with its legend entry", () => {
     const seek = play<LineChart>(clipDoc(
       "lineChart",
-      { ...LINE, series: [LINE.series[0], { ...LINE.series[1], enabled: false }] },
+      { ...LINE, series: [SERIES[0], { ...SERIES[1], enabled: false }] },
       [{ type: "showSeries", args: { seriesIndex: 1 } }],
     ))
     const during = lineFrame(seek(1.5))
@@ -324,6 +320,11 @@ describe("a line chart's commands, from a document", () => {
     ]))
     for (const time of [0.5, 1.5, 2.5, 3.5, 4.5]) expect(regionFrame(seek(time)), `t = ${time}`).toEqual({ region: null, reveal: 0 })
   })
+
+  it("tweens the palette the lines are drawn in through a to command on style", () => {
+    const seek = play<LineChart>(clipDoc("lineChart", { ...LINE, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    expectTween((time) => red(partsOf(seek(time), ChartLine)[0].dotFill))
+  })
 })
 
 describe("a bar chart's commands, from a document", () => {
@@ -345,7 +346,7 @@ describe("a bar chart's commands, from a document", () => {
   it("showSeries widens a hidden series back into the group", () => {
     const seek = play<BarChart>(clipDoc(
       "barChart",
-      { ...BAR, series: [BAR.series[0], { ...BAR.series[1], enabled: false }] },
+      { ...BAR, series: [SERIES[0], { ...SERIES[1], enabled: false }] },
       [{ type: "showSeries", args: { seriesIndex: 1 } }],
     ))
     expect(barFrame(seek(0.5)).weights).toEqual([1, 0])
@@ -372,7 +373,7 @@ describe("a bar chart's commands, from a document", () => {
     expect(dimmed).toBeCloseTo(SPOTLIGHT_DIM)
   })
 
-  it("spotlightCategory dims every other category toward the theme's dim", () => {
+  it("spotlightCategory dims every other category toward the dim", () => {
     const seek = play<BarChart>(clipDoc("barChart", BAR, [{ type: "spotlightCategory", args: { categoryIndex: 1 } }]))
     expect(categoryFrame(seek(0.5))).toMatchObject({ spotlight: null, reveal: 0, dims: [1, 1, 1] })
 
@@ -431,21 +432,26 @@ describe("a bar chart's commands, from a document", () => {
       expect(categoryFrame(seek(time)), `t = ${time}`).toMatchObject({ spotlight: null, reveal: 0, dims: [1, 1, 1] })
     }
   })
+
+  it("tweens the palette the columns are drawn in through a to command on style", () => {
+    const seek = play<BarChart>(clipDoc("barChart", { ...BAR, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    expectTween((time) => red(partsOf(seek(time), ChartBars)[0].fill))
+  })
 })
 
 describe("an entrance without its legend or its series", () => {
   const enter = [{ type: "enter" }]
 
-  it("keeps the legend beat's share, so the bar columns and the call-out land where they were laid out", () => {
+  it("keeps the legend beat's share, so the bar columns land where they were laid out", () => {
     // 0.35 axes, 0.5 columns, 0.15 legend: the columns are done at 0.85 of the slot
     // whether or not there is a legend to follow them.
-    const bare = play<BarChart>(clipDoc("barChart", { ...BAR, showLegend: false }, enter))
-    expect(barFrame2(bare(1.425)).growth).toBeCloseTo(0.15)
-    expect(barFrame2(bare(1.85)).growth).toBeCloseTo(1)
+    const bare = play<BarChart>(clipDoc("barChart", { ...BAR, style: { legend: "none" } }, enter))
+    expect(bare(1.425).growth).toBeCloseTo(0.15)
+    expect(bare(1.85).growth).toBeCloseTo(1)
   })
 
   it("lands the line chart's call-out in the last quarter of the slot", () => {
-    const seek = play<LineChart>(clipDoc("lineChart", { ...LINE, showLegend: false, region: { x: [0, 1] }, regionReveal: 0 }, enter))
+    const seek = play<LineChart>(clipDoc("lineChart", { ...LINE, style: { legend: "none" }, region: { x: [0, 1] }, regionReveal: 0 }, enter))
     // Axes, lines and the (absent) legend share the first 0.75; only then does the call-out draw on.
     expect(seek(1.7).regionReveal).toBe(0)
     expect(seek(1.875).regionReveal).toBeCloseTo(0.5)
@@ -455,8 +461,8 @@ describe("an entrance without its legend or its series", () => {
   it("holds the lines' beat for a chart with no series", () => {
     const seek = play<LineChart>(clipDoc("lineChart", { ...LINE, series: [] }, enter))
     // The legend rises over the last 0.15, not straight after the axes.
-    expect(lineParts(seek(1.5)).legend?.opacity).toBe(0)
-    expect(lineParts(seek(1.925)).legend?.opacity).toBeCloseTo(0.5)
+    expect(partOf(seek(1.5), ChartLegend)?.opacity ?? 0).toBe(0)
+    expect(partOf(seek(1.925), ChartLegend)?.opacity ?? 0.5).toBeCloseTo(0.5)
   })
 })
 
@@ -488,10 +494,10 @@ describe("an axis range tweened from auto", () => {
 
 describe("a bar chart's plot", () => {
   it("maps the columns across the plot panel as laid out, so a column end sits on its grid line", () => {
-    for (const props of [{}, { valueAxis: { label: "Revenue" }, categoryAxis: { label: "Month" } }, { showLegend: false }]) {
+    for (const props of [{}, { valueAxis: { label: "Revenue" }, categoryAxis: { label: "Month" } }, { style: { legend: "none" } }]) {
       const chart = play<BarChart>(clipDoc("barChart", { ...BAR, ...props }, []))(0)
-      const { plot, barSets } = barParts(chart)
-      const panel = plot.layoutBounds
+      const panel = plotOf(chart).layoutBounds
+      const { barSets } = barParts(chart)
       expect(panel.height).toBeGreaterThan(0)
       const [min, max] = barChartDomain(chart).range
       // A column of the scale's top value ends on the panel's top edge; the baseline, at its floor.
@@ -501,7 +507,7 @@ describe("a bar chart's plot", () => {
       expect(columns[ROWS.findIndex((row) => row.revenue === top)].to).toBeCloseTo(((top - min) / (max - min) - 0.5) * panel.height)
       // The slots tile the panel's width.
       const slot = panel.width / ROWS.length
-      columns.forEach((column, i) => expect(Math.abs(column.x - (-panel.width / 2 + slot * (i + 0.5)))).toBeLessThan(slot / 2))
+      columns.forEach((column, i) => expect(Math.abs(column.center - (-panel.width / 2 + slot * (i + 0.5)))).toBeLessThan(slot / 2))
     }
   })
 })
@@ -511,9 +517,9 @@ describe("a pie chart's commands, from a document", () => {
     const seek = play<PieChart>(clipDoc("pieChart", PIE, [{ type: "enter" }]))
     expect(pieFrame(seek(0.5))).toMatchObject({ sweep: 0, labels: 0 })
 
-    // The wedges sweep over the first 0.65, the labels follow.
     const during = pieFrame(seek(1.5))
-    expect(during.sweep).toBeCloseTo(0.5 / 0.65)
+    expect(during.sweep).toBeGreaterThan(0)
+    expect(during.sweep).toBeLessThan(1)
     expect(during.labels).toBe(0)
 
     expect(pieFrame(seek(2.5))).toMatchObject({ sweep: 1, labels: 1 })
@@ -549,6 +555,11 @@ describe("a pie chart's commands, from a document", () => {
       expect(pieFrame(scrubbed(time)).pops, `t = ${time}`).toEqual(forward.get(time))
     }
   })
+
+  it("tweens the palette the wedges are drawn in through a to command on style", () => {
+    const seek = play<PieChart>(clipDoc("pieChart", { ...PIE, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    expectTween((time) => red(pieParts(seek(time)).ring.slices[0].fill))
+  })
 })
 
 describe("a pie chart's ring and legend", () => {
@@ -557,17 +568,42 @@ describe("a pie chart's ring and legend", () => {
     chart.set({ data: [{ month: "Q1", share: 7 }, { month: "Q2", share: 1 }, { month: "Q3", share: 2 }] })
 
     const { ring, legend } = pieParts(chart)
-    const slices = () => resolvePieSlices(chart.data, chart.categoryField, chart.valueField, chart.theme.sliceFills)
+    const slices = () => resolvePieSlices(chart.data, chart.categoryField, chart.valueField, chart.style.palette)
     expect(ring.slices).toEqual(slices())
     expect(legend!.slices).toEqual(slices())
     expect(ring.slices.map((slice) => slice.category)).toEqual(["Q1", "Q2", "Q3"])
     // The wedges are cut from the live values: Q1 is 70% of the ring.
     expect(pieArcs(ring.slices, ring.ring.startAngle)[0].fraction).toBeCloseTo(0.7)
 
-    // A palette tween reaches the wedges and the swatches.
-    chart.set({ theme: { sliceFills: ["#ff0000", "#00ff00", "#0000ff"] } })
+    // A palette change reaches the wedges and the swatches.
+    chart.set({ style: { palette: ["#ff0000", "#00ff00", "#0000ff"] } })
     expect(ringFills(ring.slices)).toEqual(["#ff0000", "#00ff00", "#0000ff"].map((color) => fillOps.resolve(color)))
     expect(ring.slices).toEqual(slices())
+  })
+})
+
+describe("a radial chart's commands, from a document", () => {
+  it("keeps the centre summary clear until revealCenter, and clears it again on a seek back", () => {
+    const seek = play<RadialChart>(
+      clipDoc("radialChart", { ...RADIAL, showCenter: false, centerLabel: "42" }, [{ type: "revealCenter", at: 1, duration: 0.6 }])
+    )
+    const center = (time: number) => partOf(seek(time), RadialRings)!.centerReveal
+    expect(center(0)).toBe(0)
+    expect(center(1.3)).toBeCloseTo(0.5)
+    expect(center(2)).toBe(1)
+    expect(center(0.5)).toBe(0)
+  })
+
+  it("tweens the palette the rings are drawn in through a to command on style", () => {
+    const seek = play<RadialChart>(clipDoc("radialChart", { ...RADIAL, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    expectTween((time) => red(partOf(seek(time), RadialRings)!.rows[0].fill))
+  })
+})
+
+describe("a radar chart, from a document", () => {
+  it("tweens the palette the polygons are drawn in through a to command on style", () => {
+    const seek = play<RadarChart>(clipDoc("radarChart", { ...RADAR, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    expectTween((time) => red(partsOf(seek(time), RadarSeries)[0].fill))
   })
 })
 

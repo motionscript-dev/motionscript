@@ -1,6 +1,5 @@
 import {
   ContextMap,
-  Fills,
   fillOps,
   type Command,
   type FillResolved,
@@ -77,7 +76,7 @@ export function layOut(node: Node2D, box: { width: number; height: number }, tim
 }
 
 /** Anything a command returns that can be asked for a frame at a time: a command or a seekable. */
-export type Playable = Pick<Command<unknown>, "_stepper">
+type Playable = Pick<Command<unknown>, "_stepper">
 
 /** The command's frame at `seconds` into it, from the start every time. */
 export function at(playable: Playable, seconds: number): void {
@@ -107,17 +106,4 @@ export function verticalMarkers(axis: Node2D): Text[] {
 /** A horizontal axis's marker text, left → right: the row that starts the column it is made of. */
 export function horizontalMarkers(axis: Node2D): Text[] {
   return axis.children[0].children[0].children as Text[]
-}
-
-export { Fills }
-
-/**
- * A cartesian chart's parts, read off the frame it built (its last child): the
- * value axis, the plot panel, and what sits below the plot (the other axis, then
- * the legend).
- */
-export function cartesianOf(chart: Node2D): { axis: Node2D; plot: Node2D; below: Node2D[] } {
-  const frame = chart.children[chart.children.length - 1] as Node2D
-  const [top, bottom] = frame.children as Node2D[]
-  return { axis: top.children[0] as Node2D, plot: top.children[1] as Node2D, below: [...(bottom.children[1] as Node2D).children] as Node2D[] }
 }

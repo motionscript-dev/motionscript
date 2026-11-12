@@ -5,168 +5,149 @@ import {
   clamp,
   component2d,
   fillOps,
-  shadowOps,
-  strokeOps,
-  textOps,
   type Fill,
   type FillResolved,
   type NodeOf,
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
-  type Node2D as _Node2D,
+  type Node2D,
   type Node2DProps as _Node2DProps,
-  type Shadow,
-  type ShadowResolved,
-  type Stroke,
-  type StrokeResolved,
   type TextStyle,
 } from "@motionscript/sdk"
 
-import { fresh } from "../kit/entries"
+import { boundText } from "../kit/cartesian"
+import { asParts, fresh } from "../kit/entries"
 import { frameEase } from "../kit/motion"
 import { loadPaints } from "../kit/paints"
 import { formatMarker } from "../kit/shared"
-import { DEFAULT_BAR_CHART_THEME } from "./shared"
+import { inkOn } from "./shared"
 
 /**
- * One drawn column in the plot's centred pixel space (origin at the centre,
- * y-up), mapped by the parent {@link BarChart}. `from`/`to` are the two ends
- * rather than a base and a height, like {@link BarSpan}: one shape fits grouped,
- * stacked and negative.
+ * One drawn bar in the plot's centred pixel space (origin at the centre, y-up),
+ * mapped by the parent {@link BarChart}: `center` and `thickness` across the
+ * category slot, `from` and `to` along the value axis (y for a column, x for a
+ * horizontal bar). Two ends rather than a base and a length, like `BarSpan`:
+ * one shape fits grouped, stacked and negative.
  */
 export interface BarGeometry {
-  /** Centre x. */
-  x: number
-  width: number
-  /** Pixel y of the base: the baseline when grouped, the running stack top when stacked. */
+  center: number
+  thickness: number
+  /** The base: the baseline when grouped, the running stack end when stacked. */
   from: number
-  /** Pixel y of the far end at full growth. */
+  /** The far end at full growth. */
   to: number
-  /** Whether the far end takes the corner radius (the stack's cap). */
+  /** Whether the far end takes the corner radius (the stack's last segment on its side). */
   round: boolean
-  /** The value plotted, for the printed figure. */
-  value: number
-  /** The printed figure, written as the value axis writes its ticks; absent, the bare marker reading of `value`. */
-  caption?: string
+  /** The figure printed by the bar; empty for none. */
+  caption: string
 }
 
-/** Gap between a grouped column's end and the figure printed over it, in px. */
-const VALUE_GAP = 10
-/** A segment shorter than this many multiples of the type size prints no figure. */
-const VALUE_FIT = 1.6
-/** Fallback type size when the theme's value style leaves it unset or autofit. */
-const VALUE_SIZE = 24
+/** A figure inside a bar needs this much room around it, in multiples of the type size. */
+const INSIDE_ROOM = 0.6
 
-interface Columns {
+interface Bars {
   readonly bars: readonly BarGeometry[]
   readonly baseline: number
+  readonly horizontal: boolean
   readonly growth: number
   readonly dims: readonly number[]
   readonly enabled: boolean
+  readonly values: "none" | "end" | "inside"
   readonly valueStyle: TextStyle
 }
 
-/**
- * Column `i`'s dimming: the category spotlight, then the series switch. Captions
- * read this because they are child nodes, which a `render` guard would leave on
- * screen over a series that is not there.
- */
-function dimAt(s: Columns, index: number): number {
+/** Bar `i`'s dimming: the category spotlight, then the series switch. */
+function dimAt(s: Bars, index: number): number {
   if (!s.enabled) return 0
   return clamp(s.dims[index] ?? 1, 0, 1)
 }
 
-function endsAt(s: Columns, index: number): { base: number; end: number } | null {
+/** Bar `i`'s two ends as grown so far, along the value axis. */
+function endsAt(s: Bars, index: number): { base: number; end: number } | null {
   const bar = s.bars[index]
   if (!bar) return null
   const g = clamp(s.growth, 0, 1)
   return { base: s.baseline + (bar.from - s.baseline) * g, end: s.baseline + (bar.to - s.baseline) * g }
 }
 
-function valueSize(s: Columns): number {
-  const size = s.valueStyle.fontSize
-  return typeof size === "number" ? size : VALUE_SIZE
+function sizeOf(style: TextStyle): number {
+  return typeof style.fontSize === "number" ? style.fontSize : 24
 }
 
-function insideAt(s: Columns, index: number): boolean {
-  const bar = s.bars[index]
-  return bar !== undefined && Math.abs(bar.from - s.baseline) > 0.5
-}
-
-/** Column `i`'s figure, or `""` where there is no room. Blanking rather than dropping the node keeps captions index-aligned, so a rescale into more room prints again. */
-function captionAt(s: Columns, index: number): string {
-  const bar = s.bars[index]
-  if (!bar || bar.value === 0) return ""
-  // An interior segment prints inside itself and must hold a line of type; a grouped column prints past its end.
-  if (insideAt(s, index)) {
-    const ends = endsAt(s, index)
-    if (!ends) return ""
-    if (Math.abs(ends.end - ends.base) < valueSize(s) * VALUE_FIT) return ""
-  }
-  return bar.caption ?? formatMarker(bar.value)
-}
-
-function captionY(s: Columns, index: number): number {
+/** Where bar `i`'s figure sits along the value axis: past its end, or in its middle. */
+function captionAlong(s: Bars, index: number, extent: number): number {
   const ends = endsAt(s, index)
   if (!ends) return 0
-  if (insideAt(s, index)) return (ends.base + ends.end) / 2
-  // Text is centred on `y`: clear the end by the gap plus half a line, on the side the column reached.
+  if (s.values === "inside") return (ends.base + ends.end) / 2
   const direction = ends.end >= ends.base ? 1 : -1
-  return ends.end + direction * (VALUE_GAP + valueSize(s) / 2)
+  return ends.end + direction * (sizeOf(s.valueStyle) * 0.4 + extent / 2)
+}
+
+/** Whether bar `i` has room for a figure `extent` long inside it. */
+function fitsInside(s: Bars, index: number, extent: number, across: number): boolean {
+  const bar = s.bars[index]
+  const ends = endsAt(s, index)
+  if (!bar || !ends) return false
+  const room = sizeOf(s.valueStyle) * INSIDE_ROOM
+  return Math.abs(ends.end - ends.base) >= extent + room && bar.thickness >= across
 }
 
 /**
- * One series of a {@link BarChart}: its column in every category plus the
- * printed figures. A node per series, like `ChartLine`, so `showSeries` and
+ * One series of a {@link BarChart}: its bar in every category plus the printed
+ * figures. A node per series, like `ChartLine`, so `showSeries` and
  * `spotlightSeries` mean the same on both: enable the node or tween its opacity.
  * Positions come from the parent, which owns the slot arithmetic.
- *
- * The figures are {@link Text} children, so they take the theme's type style,
- * are measured by layout, and hide with the series.
  */
 export const ChartBars = component2d({
   key: "chartBars",
   state: {
     bars: fresh<BarGeometry[]>(() => []),
-    /** Pixel y of value 0, where every column grows from. */
+    /** Pixel position of value 0 along the value axis, where every bar grows from. */
     baseline: 0,
+    /** Bars grow along x from a category column rather than along y from a row. */
+    horizontal: false,
     fill: Types.custom<Fill, FillResolved[]>([], { resolve: fillOps.resolve, lerp: fillOps.lerp }),
-    barStroke: Types.custom<Stroke, StrokeResolved[]>(DEFAULT_BAR_CHART_THEME.bar.stroke, { resolve: strokeOps.resolve, lerp: strokeOps.lerp }),
-    barShadow: Types.custom<Shadow, ShadowResolved[]>(DEFAULT_BAR_CHART_THEME.bar.shadow, { resolve: shadowOps.resolve, lerp: shadowOps.lerp }),
-    cornerRadius: DEFAULT_BAR_CHART_THEME.bar.cornerRadius,
+    cornerRadius: 8,
     /**
-     * Rise of every column in `[0, 1]` about the baseline, not each column's own
-     * base: every segment travels by the same factor, so a stack stays flush
-     * mid-animation and a negative column grows down.
+     * Rise of every bar in `[0, 1]` about the baseline, not each bar's own base:
+     * every segment travels by the same factor, so a stack stays flush
+     * mid-animation and a negative bar grows the other way.
      */
     growth: 1,
-    /** Per-column opacity by row index, how the category spotlight reaches one column. Missing reads as 1. */
+    /** Per-bar opacity by row index, how the category spotlight reaches one bar. Missing reads as 1. */
     dims: fresh<number[]>(() => []),
-    showValues: false,
-    valueStyle: Types.custom<TextStyle>(DEFAULT_BAR_CHART_THEME.valueStyle),
-    /** The wholesale switch behind `showSeries`/`hideSeries`; off skips the columns and their figures. */
+    /** Read as built: whether each bar prints its figure, and where. */
+    values: Types.custom<"none" | "end" | "inside">("none"),
+    valueStyle: Types.custom<TextStyle>({ fontSize: 24, fill: "white" }),
+    /** The wholesale switch behind `showSeries`/`hideSeries`; off skips the bars and their figures. */
     enabled: true,
   },
   // A node made of its figures would otherwise hug them.
   defaults: { width: "fill", height: "fill" },
-  // One caption per column, built once (the row count is fixed at construction)
-  // and bound to the live geometry so it travels with its column.
+  // One figure per bar, built once (the row count is fixed at construction)
+  // and bound to the live geometry so it travels with its bar.
   children: (state) => {
-    if (!state.showValues) return []
-    return state.bars.map((_, i) =>
-      Text({
-        ...textOps.styleProps(state.valueStyle),
-        text: () => captionAt(state, i),
-        x: () => state.bars[i]?.x ?? 0,
-        y: () => captionY(state, i),
-        opacity: () => dimAt(state, i),
-      })
-    )
+    if (state.values === "none") return []
+    return asParts(state.bars.map((_, i) => {
+      const caption: Node2D = new Text({
+        ...boundText(() => ({ ...state.valueStyle, ...(state.values === "inside" && { fill: inkOn(state.fill) }) })),
+        text: () => state.bars[i]?.caption ?? "",
+        x: () => (state.horizontal ? captionAlong(state, i, caption.layoutBounds.width) : (state.bars[i]?.center ?? 0)),
+        y: () => (state.horizontal ? (state.bars[i]?.center ?? 0) : captionAlong(state, i, caption.layoutBounds.height)),
+        opacity: () => {
+          const box = caption.layoutBounds
+          const along = state.horizontal ? box.width : box.height
+          const across = state.horizontal ? box.height : box.width
+          if (state.values === "inside" && !fitsInside(state, i, along, across)) return 0
+          // A figure past the end rises in with its bar's last stretch.
+          return dimAt(state, i) * clamp((state.growth - 0.6) / 0.4, 0, 1)
+        },
+      }) as unknown as Node2D
+      return caption
+    }))
   },
-  // The stroke and shadow sit past the conventional slots, so they are named here.
-  load: (loader, state) =>
-    loadPaints(loader, { fills: [state.fill], shadows: [state.barShadow], strokes: [state.barStroke] }),
+  load: (loader, state) => loadPaints(loader, { fills: [state.fill] }),
   commands: {
-    /** Raise every column from the baseline (`growth` 0 to 1). The resting state is the finished one; the chart arms it back to 0. */
+    /** Raise every bar from the baseline (`growth` 0 to 1). The resting state is the finished one; the chart arms it back to 0. */
     enter: (timeline) => {
       const ease = frameEase(timeline)
       return timeline.animate((t) => ({ growth: ease(t) }))
@@ -177,29 +158,23 @@ export const ChartBars = component2d({
       for (let i = 0; i < state.bars.length; i++) {
         const bar = state.bars[i]
         const ends = endsAt(state, i)
-        if (!ends || bar.width <= 0) continue
-        const height = Math.abs(ends.end - ends.base)
-        if (height <= 0) continue
-
-        const radius = bar.round ? Math.min(state.cornerRadius, height) : 0
-        // One `Graphics2D` per column: opacity belongs to the command list, and the spotlight dims single columns.
-        const g = new Graphics2D()
-        const rect = g.rect({
-          x: bar.x,
-          y: (ends.base + ends.end) / 2,
-          width: bar.width,
-          height,
-          // Corner keys are visual (y-up): a column reaching up rounds `top*`, one reaching down `bottom*`. Only the far end rounds.
-          cornerRadius:
-            radius > 0
-              ? ends.end >= ends.base
-                ? { topLeft: radius, topRight: radius, bottomLeft: 0, bottomRight: 0 }
-                : { bottomLeft: radius, bottomRight: radius, topLeft: 0, topRight: 0 }
-              : 0,
-        })
-        rect.shadow(state.barShadow)
-        rect.fill(state.fill)
-        rect.stroke(state.barStroke)
+        if (!ends || bar.thickness <= 0) continue
+        // A segment inside a stack reaches a pixel under the next, so no seam of background shows between them.
+        const seam = bar.round ? 0 : 1
+        const length = Math.abs(ends.end - ends.base) + seam
+        if (length <= seam) continue
+        const radius = bar.round ? Math.max(0, Math.min(state.cornerRadius, length, bar.thickness / 2)) : 0
+        const forward = ends.end >= ends.base
+        const mid = (ends.base + ends.end) / 2 + (forward ? seam : -seam) / 2
+        // Corner keys are visual (y-up): only the far end rounds.
+        const far = state.horizontal
+          ? (forward ? { topRight: radius, bottomRight: radius, topLeft: 0, bottomLeft: 0 } : { topLeft: radius, bottomLeft: radius, topRight: 0, bottomRight: 0 })
+          : (forward ? { topLeft: radius, topRight: radius, bottomLeft: 0, bottomRight: 0 } : { bottomLeft: radius, bottomRight: radius, topLeft: 0, topRight: 0 })
+        // One `Graphics2D` per bar: opacity belongs to the command list, and the spotlight dims single bars.
+        const g = new Graphics2D().rect(state.horizontal
+          ? { x: mid, y: bar.center, width: length, height: bar.thickness, cornerRadius: radius > 0 ? far : 0 }
+          : { x: bar.center, y: mid, width: bar.thickness, height: length, cornerRadius: radius > 0 ? far : 0 })
+        g.fill(state.fill)
         ctx.draw(g.opacity(dimAt(state, i)))
       }
     }
@@ -208,3 +183,8 @@ export const ChartBars = component2d({
 })
 
 export type ChartBars = NodeOf<typeof ChartBars>
+
+/** A figure as the bar prints it when the chart gives no caption. */
+export function barCaption(value: number): string {
+  return value === 0 ? "" : formatMarker(value)
+}

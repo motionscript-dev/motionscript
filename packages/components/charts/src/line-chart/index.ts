@@ -1,27 +1,31 @@
 export { LineChart, lineChartDomains } from "./line-chart"
-export type { LineChartDomains, LineChartValues } from "./line-chart"
+export type { LineChartDomains, LineChartStyle, LineChartValues } from "./line-chart"
 export { ChartRegion } from "./chart-region"
-export { ChartLine } from "./chart-line"
-export { HorizontalAxis } from "./horizontal-axis"
+export { ChartArea, ChartLine, areaFill, traceX } from "./chart-line"
 export {
-  DEFAULT_CHART_THEME,
   EMPTY_REGION_BOX,
+  LINE_LABELS,
+  LINE_MARKS,
+  clipPolygonToBox,
   clipPolylineToBox,
+  curvePoints,
+  cutAt,
   hasRegion,
-  lerpChartTheme,
-  resolveChartTheme,
+
   resolveRegionBox,
   resolveYScale,
   seriesPoints,
+  stackExtent,
+  stackSeries,
   yExtent,
 } from "./shared"
 export type {
-  ChartConfig,
-  ChartTheme,
+  LineCurve,
   LineSeries,
+  LineStack,
   PlotRegion,
   RegionBox,
-  RegionConfig,
+  StackedSeries,
 } from "./shared"
-export { formatInstant, parseInstant, resolveXScale } from "./x-scale"
+export { EVERY_SAMPLE, formatInstant, parseInstant, resolveXScale } from "./x-scale"
 export type { XScale, XScaleKind } from "./x-scale"

@@ -7,26 +7,32 @@ import {
   type ChildView,
   type DataRecord,
   type NodeOf,
+  type OutOf,
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
   type Node2DProps as _Node2DProps,
+  type Fill as _Fill,
+  type FillResolved as _FillResolved,
   type Size2D,
+  type StyleInput as _StyleInput,
+  type StyleValues as _StyleValues,
 } from "@motionscript/sdk"
 import { formatNumber } from "@motionscript/sdk/component"
 
-import { cartesianFrame, cartesianViews, laidOutSize } from "../kit/cartesian"
-import { ChartBorder } from "../kit/chart-border"
+import { axisRule, cartesianFrame, chartViews, columnGhost, frameGap, gridRule, headroom, laidOutSize, overhang } from "../kit/cartesian"
 import { ChartCanvas } from "../kit/chart-canvas"
 import { ChartLegend } from "../kit/chart-legend"
 import { SERIES_ARG, asParts, fresh } from "../kit/entries"
-import { DEFAULT_MARKERS, ENTER_SHARE, LEGEND_SLIDE, beats, type AnyTimeline, type Beat } from "../kit/motion"
-import { VerticalAxis } from "../kit/vertical-axis"
+import { HorizontalAxis } from "../kit/horizontal-axis"
+import { DEFAULT_MARKERS, ENTER_SHARE, beats, legendAway, type AnyTimeline, type Beat } from "../kit/motion"
 import {
+  SPOTLIGHT_DIM,
   formatMarker,
   lerpAxisDomain,
   lerpAxisEntry,
   markerStep,
   markerValues,
+  niceTicks,
   num,
   resolveAxisDomain,
   settleAxisDomain,
@@ -34,27 +40,47 @@ import {
   type Range,
   type ResolvedAxisDomain,
 } from "../kit/shared"
-import { CategoryAxis } from "./category-axis"
+import {
+  CARTESIAN_GRID,
+  CHART_COLORS,
+  CHART_LEGEND,
+  CHART_STYLE_FAMILY,
+  CHART_STYLE_PRESETS,
+  CHART_TEXT,
+  axisConfigOf,
+  legendConfigOf,
+  rules,
+  seriesFill,
+  valueText,
+} from "../kit/style"
+import { VerticalAxis, axisPads } from "../kit/vertical-axis"
+import { CategoryAxis, slotCentre } from "./category-axis"
 import { ChartBars, type BarGeometry } from "./chart-bars"
 import {
-  DEFAULT_BAR_CHART_THEME,
+  BAR_LABELS,
+  BAR_MARKS,
   barCategories,
   barSpans,
-  lerpBarChartTheme,
-  resolveBarChartTheme,
-  resolveBarFill,
   resolveBarScale,
-  stackCapIndex,
-  type BarChartConfig,
-  type BarChartTheme,
+  type BarOrientation,
   type BarSeries,
+  type BarStack,
 } from "./shared"
+
+const BAR_STYLE = Types.style(
+  CHART_STYLE_FAMILY,
+  { colors: CHART_COLORS, text: CHART_TEXT, grid: CARTESIAN_GRID, marks: BAR_MARKS, labels: BAR_LABELS, legend: CHART_LEGEND },
+  { presets: CHART_STYLE_PRESETS }
+)
+
+/** A bar chart's resolved style. */
+export type BarChartStyle = OutOf<typeof BAR_STYLE>
 
 /** What a bar chart plots, as its entries hold it. */
 export interface BarChartValues {
   readonly data: DataRecord[]
   readonly series: BarSeries[]
-  readonly stacked: boolean
+  readonly stack: BarStack
   readonly valueAxis: AxisDomainConfig
 }
 
@@ -62,138 +88,143 @@ export interface BarChartValues {
 export type BarChartDomain = ResolvedAxisDomain
 
 interface BarState extends BarChartValues {
-  readonly theme: BarChartConfig
+  readonly categoryField: string
+  readonly orientation: BarOrientation
+  readonly style: BarChartStyle
   readonly weights: number[]
+  readonly showing: boolean[]
   readonly spotlight: number | null
   readonly spotlightReveal: number
 }
 
 function drawnValue(s: BarChartValues, domain: AxisDomainConfig): AxisDomainConfig {
   const divisions = (domain.ticks?.length ?? DEFAULT_MARKERS) - 1
-  const range = resolveBarScale(s.data, s.series, s.stacked, domain.range, divisions)
-  return { ...domain, range, ticks: domain.ticks ?? markerValues(range, DEFAULT_MARKERS - 1) }
+  const range = resolveBarScale(s.data, s.series, s.stack, domain.range, divisions)
+  const even = domain.range !== undefined || s.stack === "percent"
+  return { ...domain, range, ticks: domain.ticks ?? (even ? markerValues(range, DEFAULT_MARKERS - 1) : niceTicks(range, DEFAULT_MARKERS - 1)) }
 }
 
 /** The last domain worked out from each data array, and what it was read from. */
-const domainsDrawn = new WeakMap<DataRecord[], Omit<BarChartValues, "data"> & { readonly domain: BarChartDomain }>()
+const domainsDrawn = new WeakMap<DataRecord[], { readonly key: readonly unknown[]; readonly domain: BarChartDomain }>()
 
-/** The value axis as drawn now. */
+/** The value axis as drawn now. A series being hidden keeps its room, so the ticks hold still while it goes. */
 export function barChartDomain(s: BarChartValues): BarChartDomain {
-  const { data, series, stacked, valueAxis } = s
-  const kept = domainsDrawn.get(data)
-  if (kept && kept.series === series && kept.stacked === stacked && kept.valueAxis === valueAxis) return kept.domain
-  const domain = settleAxisDomain(valueAxis, (d) => drawnValue(s, d)) as BarChartDomain
-  domainsDrawn.set(data, { series, stacked, valueAxis, domain })
+  const key = [s.series, s.stack, s.valueAxis]
+  const kept = domainsDrawn.get(s.data)
+  if (kept && kept.key.every((value, i) => value === key[i])) return kept.domain
+  const domain = settleAxisDomain(s.valueAxis, (d) => drawnValue(s, d)) as BarChartDomain
+  domainsDrawn.set(s.data, { key, domain })
   return domain
 }
 
-/** Ticks and the figures printed on columns both read through here, so they cannot disagree about how a number looks. */
+/** Ticks and the figures printed by bars both read through here, so they cannot disagree about how a number looks. */
 function valueLabel(s: BarChartValues, domain: BarChartDomain, value: number): string {
   const pattern = s.valueAxis.format
-  return pattern === undefined ? formatMarker(value, markerStep(domain.ticks)) : formatNumber(value, pattern)
+  if (pattern !== undefined) return formatNumber(value, pattern)
+  const text = formatMarker(value, markerStep(domain.ticks))
+  return s.stack === "percent" ? `${text}%` : text
 }
 
-/** A value in the plot's centred pixel space (origin at its centre, y-up). */
-function valueToY(domain: BarChartDomain, plot: Size2D, value: number): number {
+/** A value along the value axis, a run of `length` px centred on 0. */
+function valueToPx(domain: BarChartDomain, length: number, value: number): number {
   const [min, max] = domain.range
-  if (max <= min) return -plot.height / 2
-  return ((value - min) / (max - min) - 0.5) * plot.height
+  if (max === min) return -length / 2
+  return ((value - min) / (max - min) - 0.5) * length
 }
 
-/** Pixel y columns grow from: zero clamped onto the scale, so a cropped axis grows them from the plot floor. */
-function baselinePx(domain: BarChartDomain, plot: Size2D): number {
-  const [min, max] = domain.range
-  return valueToY(domain, plot, Math.min(Math.max(0, min), max))
+/** Where bars grow from: zero held on the scale, so a cropped axis grows them from the plot's edge. */
+function baselineValue(domain: BarChartDomain): number {
+  const [lo, hi] = domain.range
+  return clamp(0, Math.min(lo, hi), Math.max(lo, hi))
 }
 
-function weightAt(s: BarState, index: number): number {
+function weightAt(s: { readonly weights: readonly number[] }, index: number): number {
   return Math.max(0, s.weights[index] ?? 1)
 }
 
-/** `row` with each series' value scaled by its live weight, which stacked spans are measured from. */
-function weightedRow(s: BarState, row: DataRecord): DataRecord {
-  const scaled: DataRecord = { ...row }
-  s.series.forEach((series, i) => {
-    const value = row[series.field]
-    if (typeof value === "number") scaled[series.field] = value * weightAt(s, i)
-  })
-  return scaled
+/** The plot's run along the value axis and across the categories. */
+function runs(s: BarState, plot: Size2D): { along: number; across: number } {
+  return s.orientation === "horizontal" ? { along: plot.width, across: plot.height } : { along: plot.height, across: plot.width }
+}
+
+/** Category `row`'s slot centre across the plot: left to right, or top to bottom. */
+function slotAt(s: BarState, row: number, across: number): number {
+  const centre = slotCentre(row, s.data.length, across)
+  return s.orientation === "horizontal" ? -centre : centre
 }
 
 /**
- * Series `index`'s columns in centred pixel space. A grouped series divides the
- * slot with its siblings by live weight, a stacked one takes the whole slot, so
- * hiding a series reflows rather than punching a hole.
+ * Series `index`'s bars in centred pixel space. Side by side, a series divides
+ * the slot with its siblings by live weight; stacked, it takes the whole slot
+ * and its weight scales its length, so hiding a series reflows rather than
+ * punching a hole.
  */
-function seriesBars(s: BarState, index: number, plot: Size2D, captioned: boolean): BarGeometry[] {
+function seriesBars(s: BarState, index: number, plot: Size2D): BarGeometry[] {
   const series = s.series[index]
   if (!series) return []
   const domain = barChartDomain(s)
+  const { along, across } = runs(s, plot)
   const n = s.data.length
-  const slotWidth = n > 0 ? plot.width / n : 0
-  const slotCenter = (i: number) => -plot.width / 2 + slotWidth * (i + 0.5)
-  const inner = slotWidth * clamp(s.theme.bar.slotFill, 0, 1)
-  const gap = s.theme.bar.groupGap
+  const slot = n > 0 ? across / n : 0
+  const inner = slot * clamp(s.style.barWidth, 0, 1)
+  const stacked = s.stack !== "none"
   let total = 0
   for (let i = 0; i < s.series.length; i++) total += weightAt(s, i)
   const unit = inner / (total > 0 ? total : 1)
   const weight = weightAt(s, index)
   let before = 0
   for (let i = 0; i < index; i++) before += weightAt(s, i)
+  const gap = s.series.length > 1 ? s.style.barGap : 0
+  const values = s.style.values
 
   return s.data.map((row, rowIndex) => {
-    // Built from live contributions, so a fading series lowers the segments above it.
-    const spans = barSpans(s.stacked ? weightedRow(s, row) : row, s.series, s.stacked)
-    const span = spans[index] ?? { from: 0, to: 0, value: 0 }
-    const cap = s.stacked ? stackCapIndex(row, s.series) : index
-    const slotLeft = slotCenter(rowIndex) - inner / 2
-    const x = s.stacked ? slotCenter(rowIndex) : slotLeft + unit * before + (unit * weight) / 2
-    const width = s.stacked ? inner : Math.max(0, unit * weight - (s.series.length > 1 ? gap : 0))
-    // The printed figure is the row's own value, not the weighted one.
-    const value = num(row, series.field)
+    // Built from live contributions, so a fading series lowers the segments beyond it.
+    const spans = barSpans(row, s.series, s.stack, s.weights)
+    const span = spans[index] ?? { from: 0, to: 0, value: 0, outer: false }
+    const centre = slotAt(s, rowIndex, across)
+    const offset = -inner / 2 + unit * before + (unit * weight) / 2
+    let caption = ""
+    if (values !== "none" && span.value !== 0) {
+      if (!stacked || values === "inside" || s.stack === "percent") caption = valueLabel(s, domain, stacked ? span.value : num(row, series.field))
+      else if (span.outer) caption = valueLabel(s, domain, span.to)
+    }
     return {
-      x,
-      width,
-      from: valueToY(domain, plot, span.from),
-      to: valueToY(domain, plot, span.to),
-      round: cap === index,
-      value,
-      ...(captioned && { caption: valueLabel(s, domain, value) }),
+      center: stacked ? centre : centre + (s.orientation === "horizontal" ? -offset : offset),
+      thickness: stacked ? inner : Math.max(0, unit * weight - gap),
+      from: valueToPx(domain, along, span.from),
+      to: valueToPx(domain, along, span.to),
+      round: span.outer,
+      caption,
     }
   })
 }
 
-/** Per-row opacity: 1 while nothing is spotlit, falling to the theme's `dimOpacity` for all but the chosen category. */
+/** Per-row opacity: 1 while nothing is spotlit, falling to {@link SPOTLIGHT_DIM} for all but the chosen category. */
 function categoryDims(s: BarState): number[] {
   const focus = clamp(s.spotlightReveal, 0, 1)
-  const dim = s.theme.spotlight.dimOpacity
   const chosen = s.spotlight
-  return s.data.map((_, i) => (focus <= 0 || chosen === i ? 1 : 1 - (1 - dim) * focus))
+  return s.data.map((_, i) => (focus <= 0 || chosen === i ? 1 : 1 - (1 - SPOTLIGHT_DIM) * focus))
 }
 
 /** The parts a bar chart's commands drive, found through its children. */
 function partsOf(children: readonly ChildView[]) {
-  const frame = cartesianViews(children)
-  if (!frame) return null
-  const cAxis = frame.below.find(CategoryAxis.is)
-  if (!VerticalAxis.is(frame.axis) || !cAxis) return null
+  const views = chartViews(children)
   return {
-    vAxis: frame.axis,
-    cAxis,
-    bars: frame.plot.filter(ChartBars.is),
-    legend: frame.below.find(ChartLegend.is) ?? null,
+    valueAxis: views.find((view) => VerticalAxis.is(view) || HorizontalAxis.is(view)) ?? null,
+    categoryAxis: views.find(CategoryAxis.is) ?? null,
+    bars: views.filter(ChartBars.is),
+    legend: views.find(ChartLegend.is) ?? null,
   }
 }
 
 /**
- * Move series `index`'s slot share to `target` with its legend entry. Its
- * columns stay drawn for every frame the move covers and switch off only once a
- * hide has landed, so arriving at a time backwards matches arriving forwards.
+ * Move series `index`'s share to `target` with its legend entry. Its bars stay
+ * drawn for every frame the move covers and switch off only once a hide has
+ * landed, so arriving at a time backwards matches arriving forwards.
  */
-function toggling(timeline: AnyTimeline, state: BarState & { readonly showing: boolean[] }, children: readonly ChildView[], index: number, target: number) {
+function toggling(timeline: AnyTimeline, state: BarState, children: readonly ChildView[], index: number, target: number) {
   const parts = partsOf(children)
-  if (!parts || !parts.bars[index]) return timeline.wait(timeline.duration)
-  // Through `weightAt`, so short stored weights still tween from the 1 drawn.
+  if (!parts.bars[index]) return timeline.wait(timeline.duration)
   const from = state.series.map((_, i) => weightAt(state, i))
   const start = from[index] ?? 1
   const showing = state.series.map((s, i) => state.showing[i] ?? (s.enabled ?? true))
@@ -210,38 +241,38 @@ function toggling(timeline: AnyTimeline, state: BarState & { readonly showing: b
 }
 
 /**
- * A grouped or stacked bar chart, built like the line chart from `ChartCanvas`,
- * `VerticalAxis`, {@link CategoryAxis}, one {@link ChartBars} per series and
- * `ChartLegend`. Zero is always on the scale and columns grow about it, so a
- * negative value draws downward from the same `growth` signal.
+ * A bar chart, vertical or horizontal, its series side by side, stacked, or
+ * stacked as shares of 100. Built like the line chart from `ChartCanvas`, a
+ * value axis, a {@link CategoryAxis}, one {@link ChartBars} per series and
+ * `ChartLegend`. Zero is always on the scale and bars grow about it, so a
+ * negative value draws the other way from the same `growth` signal.
  *
  * Resting state is the finished chart; `enter` arms every part on its first
  * frame. A `to` of the value axis's `range` or `ticks` tweens from the domain as
- * drawn, so an auto axis rescales the columns continuously.
+ * drawn, so an auto axis rescales the bars continuously.
  */
 export const BarChart = component2d({
   key: "barChart",
   state: {
-    data: fresh<DataRecord[]>(() => []),
+    data: fresh<DataRecord[]>(() => [], { kind: "dataset" }),
     // Names a column, not a value, like the line chart's `xField`.
     categoryField: "",
-    series: fresh<BarSeries[]>(() => []),
-    stacked: false,
+    series: fresh<BarSeries[]>(() => [], { kind: "series" }),
+    /** `vertical`: columns rise from a row of categories; `horizontal`: bars grow right from a column of them. */
+    orientation: Types.oneOf(["vertical", "horizontal"] as const, { animatable: false }),
+    /** `stacked`: each series sits on the sum of those before it; `percent`: every category reads as shares of 100. */
+    stack: Types.oneOf(["none", "stacked", "percent"] as const),
     valueAxis: Types.custom<AxisDomainConfig>({}, { resolve: resolveAxisDomain, lerp: lerpAxisEntry }),
     categoryAxis: Types.custom<AxisDomainConfig>({}, { resolve: resolveAxisDomain, lerp: lerpAxisDomain }),
-    theme: Types.custom<BarChartTheme, BarChartConfig>(DEFAULT_BAR_CHART_THEME, { resolve: resolveBarChartTheme, lerp: lerpBarChartTheme }),
-    /** Rise of every column about the baseline, `[0, 1]`: 0 collapses them onto it. */
+    style: BAR_STYLE,
+    /** Rise of every bar about the baseline, `[0, 1]`: 0 collapses them onto it. */
     growth: 1,
-    /** Each series' share of the slot, seeded from `enabled`: a weight rather than a switch, so hiding one widens the others. */
-    weights: fresh<number[]>(() => []),
     /** The category spotlit, or `null`. The choice snaps; `spotlightReveal` animates it. */
     spotlight: Types.custom<number | null>(null),
     spotlightReveal: 0,
-    /** Read as the chart is built: the legend is a part the chart builds or doesn't. */
-    showLegend: Types.boolean(true, { animatable: false }),
-    /** Read as the chart is built: whether each column prints the figure it plots. */
-    showValues: Types.boolean(false, { animatable: false }),
-    /** Whether each series' columns are drawn: on for every frame a show or hide covers, off once a hide lands. */
+    /** Each series' share of the slot, seeded from `enabled`: a weight rather than a switch, so hiding one widens the others. */
+    weights: Types.custom<number[]>([], { private: true }),
+    /** Whether each series' bars are drawn: on for every frame a show or hide covers, off once a hide lands. */
     showing: Types.custom<boolean[]>([], { private: true }),
   },
   defaults: {
@@ -253,106 +284,151 @@ export const BarChart = component2d({
   },
   allowedChildren: [],
   children: (state) => {
-    const theme = () => state.theme
+    const style = () => state.style
     const domain = () => barChartDomain(state)
     let plot: Node2D | undefined
     const plotSize = () => laidOutSize(plot)
-    const captioned = state.showValues === true
+    const built = state.style
+    const horizontal = state.orientation === "horizontal"
+    const categories = barCategories(state.data, state.categoryField)
+    const valueConfig = () => axisConfigOf(style(), horizontal ? "x" : "y")
+    const categoryConfig = () => axisConfigOf(style(), horizontal ? "y" : "x")
+    const valueCaptions = () => {
+      const d = domain()
+      return d.ticks.map((value) => valueLabel(state, d, value))
+    }
+    const showValue = horizontal ? built.showXAxis : built.showYAxis
+    const showCategory = horizontal ? built.showYAxis : built.showXAxis
 
-    const vAxis = new VerticalAxis({
-      range: () => domain().range,
-      markers: () => domain().ticks,
-      captions: () => {
-        const d = domain()
-        return d.ticks.map((value) => valueLabel(state, d, value))
-      },
-      axis: () => theme().yAxis,
-      label: state.valueAxis.label ?? "",
-      width: "hug",
-      height: "fill",
-    })
+    const valueAxis = showValue
+      ? (horizontal
+        ? new HorizontalAxis({
+          range: () => domain().range,
+          markers: () => domain().ticks,
+          captions: valueCaptions,
+          axis: valueConfig,
+          label: state.valueAxis.label ?? "",
+          overhang: () => ({ left: overhang(style()), right: overhang(style()) }),
+          width: "fill",
+          height: "hug",
+        })
+        : new VerticalAxis({
+          range: () => domain().range,
+          markers: () => domain().ticks,
+          captions: valueCaptions,
+          axis: valueConfig,
+          label: state.valueAxis.label ?? "",
+          width: "hug",
+          height: "fill",
+        })) as unknown as Node2D
+      : undefined
 
-    const cAxis = new CategoryAxis({
-      categories: barCategories(state.data, state.categoryField),
-      axis: () => theme().xAxis,
-      label: state.categoryAxis.label ?? "",
-      dims: () => categoryDims(state),
-      width: "fill",
-      height: "hug",
-    }) as unknown as Node2D
+    const categoryAxis = showCategory
+      ? (new CategoryAxis({
+        categories,
+        axis: categoryConfig,
+        label: state.categoryAxis.label ?? "",
+        orientation: horizontal ? "vertical" : "horizontal",
+        dims: () => categoryDims(state),
+        width: horizontal ? "hug" : "fill",
+        height: horizontal ? "fill" : "hug",
+      }) as unknown as Node2D)
+      : undefined
+
+    const left = horizontal ? categoryAxis : valueAxis
+    const bottom = horizontal ? valueAxis : categoryAxis
+    const leftConfig = horizontal ? categoryConfig : valueConfig
+    const ghost = left && bottom
+      ? columnGhost({
+        captions: horizontal ? () => categories : valueCaptions,
+        count: horizontal ? categories.length : barChartDomain(state).ticks.length,
+        text: () => leftConfig().labelStyle,
+        title: (horizontal ? state.categoryAxis.label : state.valueAxis.label) ?? "",
+        titleText: () => leftConfig().titleStyle,
+        tickPad: () => axisPads(leftConfig(), "right").tick,
+        titlePad: () => axisPads(leftConfig(), "right").title,
+      })
+      : undefined
 
     const barSets = state.series.map(
       (s, i) =>
         new ChartBars({
-          bars: () => seriesBars(state, i, plotSize(), captioned),
-          baseline: () => baselinePx(domain(), plotSize()),
-          fill: () => resolveBarFill(theme().seriesFills, s, i),
-          barStroke: () => theme().bar.stroke,
-          barShadow: () => theme().bar.shadow,
-          cornerRadius: () => theme().bar.cornerRadius,
+          bars: () => seriesBars(state, i, plotSize()),
+          baseline: () => valueToPx(domain(), runs(state, plotSize()).along, baselineValue(domain())),
+          horizontal,
+          fill: () => seriesFill(style(), s, i),
+          cornerRadius: () => style().barRadius,
           growth: () => state.growth,
           dims: () => categoryDims(state),
-          showValues: captioned,
-          valueStyle: state.theme.valueStyle,
+          // A figure past a stack's end prints the stack's total; a percent stack has none worth printing, so prints its shares inside.
+          values: () => (built.values === "end" && state.stack === "percent" ? "inside" : built.values),
+          valueStyle: () => ({ ...valueText(style()), fontSize: Math.round(style().fontSize * 0.85) }),
           enabled: () => state.showing[i] ?? (s.enabled ?? true),
         }) as unknown as Node2D
     )
 
-    const below: Node2D[] = [cAxis]
-    if (state.showLegend !== false) {
-      below.push(
-        new ChartLegend({
-          series: state.series,
-          swatches: () => state.series.map((s, i) => resolveBarFill(theme().seriesFills, s, i)),
-          legend: () => theme().legend,
-          // Spacing is fixed as built; a theme tween re-paints the swatches only.
-          gap: state.theme.legend.itemGap,
-          padding: state.theme.legend.padding,
-        }) as unknown as Node2D
-      )
-    }
+    const legendAt = built.legend
+    const legend = legendAt !== "none"
+      ? (new ChartLegend({
+        series: state.series,
+        swatches: () => state.series.map((s, i) => seriesFill(style(), s, i)),
+        legend: () => legendConfigOf(style()),
+        flow: legendAt === "right" ? "vertical" : "horizontal",
+      }) as unknown as Node2D)
+      : undefined
+
+    const n = state.data.length
+    // Category lines fall between the slots, never through a bar.
+    const boundaries = () => Array.from({ length: Math.max(0, n - 1) }, (_, i) => i + 1)
+    const slots = (): Range => [0, Math.max(1, n)]
+    const valueLines = () => (rules(style().grid, horizontal ? "vertical" : "horizontal") ? gridRule(style()) : [])
+    const categoryLines = () => (rules(style().grid, horizontal ? "horizontal" : "vertical") ? gridRule(style()) : [])
 
     plot = new Rect({
-      clip: true,
       children: [
         new ChartCanvas({
-          fill: () => theme().plotArea.fill,
-          shadow: () => theme().plotArea.shadow,
-          xGridStroke: () => theme().xAxis.lineStyle,
-          yGridStroke: () => theme().yAxis.lineStyle,
-          // Categorical x axis: no numeric position for a vertical rule to mark.
-          xMarkers: [],
-          yMarkers: () => domain().ticks,
-          xExtent: () => [0, 1] as Range,
-          yExtent: () => domain().range,
+          fill: () => style().background,
+          xGridStroke: horizontal ? valueLines : categoryLines,
+          yGridStroke: horizontal ? categoryLines : valueLines,
+          xMarkers: horizontal ? () => domain().ticks : boundaries,
+          yMarkers: horizontal ? boundaries : () => domain().ticks,
+          xExtent: horizontal ? () => domain().range : slots,
+          yExtent: horizontal ? slots : () => domain().range,
+          axisStroke: () => axisRule(style()),
+          xAxisAt: () => (horizontal ? 0 : baselineValue(domain())),
+          yAxisAt: () => (horizontal ? baselineValue(domain()) : 0),
         }),
         ...barSets,
-        new ChartBorder({ stroke: () => theme().plotArea.stroke }),
       ],
     }) as unknown as Node2D
 
-    const gutter = new VerticalAxis({
-      opacity: 0,
-      range: () => domain().range,
-      markers: () => domain().ticks,
-      axis: () => theme().yAxis,
-      label: state.valueAxis.label ?? "",
-      width: "hug",
-      height: 0,
-    }) as unknown as Node2D
-
-    return asParts([cartesianFrame({ axis: vAxis as unknown as Node2D, plot, gutter, below })])
+    return asParts([
+      cartesianFrame({
+        left,
+        ghost,
+        plot,
+        bottom,
+        legend,
+        legendAt,
+        gap: () => frameGap(style()),
+        padding: () => ({
+          top: headroom(style()),
+          right: horizontal && bottom ? overhang(style()) : 0,
+          left: horizontal && bottom && !left ? overhang(style()) : 0,
+          bottom: 0,
+        }),
+      }),
+    ])
   },
   commands: {
-    /** Axes stagger in, columns rise from the baseline, the legend fades up last. `duration` is the whole entrance. */
+    /** Axes stagger in, bars rise from the baseline, the legend fades up last. `duration` is the whole entrance. */
     enter: {
       args: {},
       // Held from arrival, so it never shows finished ahead of its draw.
       entrance: true,
       easing: easeOut(),
-      run: (timeline, _state, children) => {
+      run: (timeline, state, children) => {
         const parts = partsOf(children)
-        if (!parts) return timeline.wait(timeline.duration)
         const duration = timeline.duration
         const axes = duration * ENTER_SHARE.axes
         const rise = duration * ENTER_SHARE.marks
@@ -360,12 +436,12 @@ export const BarChart = component2d({
         const at0 = (piece: Beat["piece"]): Beat => ({ at: 0, duration: 0, piece })
         return beats(timeline, [
           at0(timeline.animate(() => ({ growth: 0 }))),
-          ...(legend ? [at0(legend.to({ opacity: 0, y: -LEGEND_SLIDE }))] : []),
-          { at: 0, duration: axes, piece: parts.vAxis.run("enter", { slide: 24 }) },
-          { at: 0, duration: axes, piece: parts.cAxis.run("enter", { slide: 24 }) },
+          ...(legend ? [at0(legend.to({ opacity: 0, ...legendAway(state.style.legend) }))] : []),
+          ...(parts.valueAxis ? [{ at: 0, duration: axes, piece: parts.valueAxis.run("enter", { slide: 24 }) }] : []),
+          ...(parts.categoryAxis ? [{ at: 0, duration: axes, piece: parts.categoryAxis.run("enter", { slide: 24 }) }] : []),
           // No priming to 0 first: the value at `t` is a function of `t`.
           { at: axes, duration: rise, piece: timeline.animate((t) => ({ growth: t })) },
-          ...(legend ? [{ at: axes + rise, duration: duration * ENTER_SHARE.legend, piece: legend.to({ opacity: 1, y: 0 }) }] : []),
+          ...(legend ? [{ at: axes + rise, duration: duration * ENTER_SHARE.legend, piece: legend.to({ opacity: 1, x: 0, y: 0 }) }] : []),
         ])
       },
     },
@@ -375,29 +451,28 @@ export const BarChart = component2d({
       easing: easeOut(),
       run: (timeline, state, children) => toggling(timeline, state, children, timeline.args.seriesIndex, 1),
     },
-    /** The mirror of `showSeries`: columns narrow away (stacked, sink out) while the rest widen into the space. */
+    /** The mirror of `showSeries`: bars narrow away (stacked, sink out) while the rest widen into the space. */
     hideSeries: {
       args: { seriesIndex: SERIES_ARG },
       easing: easeOut(),
       run: (timeline, state, children) => toggling(timeline, state, children, timeline.args.seriesIndex, 0),
     },
-    /** Fade every other series, columns and legend entry, to focus on `index`. Nothing moves, so the group does not reflow. */
+    /** Fade every other series, bars and legend entry, to focus on `index`. Nothing moves, so the group does not reflow. */
     spotlightSeries: {
       args: { seriesIndex: SERIES_ARG },
       easing: easeOut(),
-      run: (timeline, state, children) => {
+      run: (timeline, _state, children) => {
         const parts = partsOf(children)
-        if (!parts) return timeline.wait(timeline.duration)
         const index = timeline.args.seriesIndex
-        const dim = state.theme.spotlight.dimOpacity
         return timeline.together([
-          ...parts.bars.map((bars, i) => bars.to({ opacity: i === index ? 1 : dim })),
+          ...parts.bars.map((bars, i) => bars.to({ opacity: i === index ? 1 : SPOTLIGHT_DIM })),
           ...(parts.legend ? [parts.legend.run("spotlightSeries", { index })] : []),
+          timeline.wait(timeline.duration),
         ])
       },
     },
     /**
-     * Fade every other category's columns and caption to `dimOpacity`. While
+     * Fade every other category's bars and caption to {@link SPOTLIGHT_DIM}. While
      * another is lit the focus moves directly. A missing category takes its slot
      * and changes nothing.
      */

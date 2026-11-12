@@ -3,7 +3,7 @@ import type { Node2D } from "@motionscript/sdk"
 
 import { attachAt, draw, layOut } from "../tests/harness"
 import { PieRing, RingGeometry } from "./pie-ring"
-import { PIE_SPOTLIGHT_DIM, resolvePieChartTheme, type PieSlice } from "./shared"
+import { PIE_SPOTLIGHT_DIM, type CenterConfig, type LabelConfig, type PieSlice, type RingConfig } from "./shared"
 
 /**
  * The ring's geometry, with no renderer: the radius it fits to the box and the
@@ -12,7 +12,12 @@ import { PIE_SPOTLIGHT_DIM, resolvePieChartTheme, type PieSlice } from "./shared
  * from — all are functions of the box, the slices and the theme.
  */
 
-const THEME = resolvePieChartTheme(undefined)
+const text = (fontSize: number, fontWeight = 600) => ({ fontSize, fontWeight, textAlign: "center" as const, fill: "white" })
+const THEME: { ring: RingConfig; label: LabelConfig; center: CenterConfig } = {
+  ring: { gap: 6, holeRadius: 0.6, startAngle: 0, selectedGrow: 1.08, cornerRadius: 0 },
+  label: { textStyle: text(26), percentStyle: text(26, 700), insideStyle: text(26, 800), leaderStroke: { weight: 2, fill: "white" } },
+  center: { labelStyle: text(46, 800), captionStyle: text(22, 500) },
+}
 const SLICES: PieSlice[] = [
   { category: "A", value: 50, fill: "#ff0000" },
   { category: "B", value: 30, fill: "#00ff00" },
@@ -162,67 +167,67 @@ describe("PieRing: the label gutters", () => {
   it("reserve a couple of pixels a side when nothing is on a leader", () => {
     expect(ring().labelGutters).toEqual({ left: 2, right: 2 })
     expect(ring({ labelPlacement: "inside", labelMode: "both" }).labelGutters).toEqual({ left: 2, right: 2 })
-    expect(ring({ labelPlacement: "leader", labelMode: "none" }).labelGutters).toEqual({ left: 2, right: 2 })
+    expect(ring({ labelPlacement: "outside", labelMode: "none" }).labelGutters).toEqual({ left: 2, right: 2 })
   })
 
   it("reserve room for the leader, the stub, the inset, the widest label and the padding, on the sides that have a leader", () => {
     // Percentages are at most four glyphs ("100%"): 34 + 26 + 8 + 4 glyphs + 14.
-    const { left, right } = ring({ labelPlacement: "leader", labelMode: "percent" }).labelGutters
+    const { left, right } = ring({ labelPlacement: "outside", labelMode: "percent" }).labelGutters
     expect(left).toBeCloseTo(82 + 4 * GLYPH)
     expect(right).toBeCloseTo(82 + 4 * GLYPH)
   })
 
   it("widen with a long category name", () => {
-    const named = ring({ labelPlacement: "leader", labelMode: "category", slices: [{ category: "A fairly long name", value: 1, fill: "red" }, { category: "B", value: 1, fill: "blue" }] })
+    const named = ring({ labelPlacement: "outside", labelMode: "category", slices: [{ category: "A fairly long name", value: 1, fill: "red" }, { category: "B", value: 1, fill: "blue" }] })
     expect(named.labelGutters.right).toBeCloseTo(82 + "A fairly long name".length * GLYPH)
   })
 
   it("reserve a side only for slices that leader that way", () => {
-    const one = ring({ labelPlacement: "leader", labelMode: "percent", slices: [{ category: "A", value: 1, fill: "red" }] })
+    const one = ring({ labelPlacement: "outside", labelMode: "percent", slices: [{ category: "A", value: 1, fill: "red" }] })
     // A whole circle's bisector is 180 degrees: it leaders to the right.
     expect(one.labelGutters.left).toBe(2)
     expect(one.labelGutters.right).toBeCloseTo(82 + 4 * GLYPH)
   })
 
   it("slide the ring into the half the labels left over, so the group stays centred", () => {
-    const balanced = ring({ labelPlacement: "leader", labelMode: "percent" })
+    const balanced = ring({ labelPlacement: "outside", labelMode: "percent" })
     expect(balanced.centerX).toBeCloseTo(0)
-    const lopsided = ring({ labelPlacement: "leader", labelMode: "percent", slices: [{ category: "A", value: 1, fill: "red" }] })
+    const lopsided = ring({ labelPlacement: "outside", labelMode: "percent", slices: [{ category: "A", value: 1, fill: "red" }] })
     expect(lopsided.centerX).toBeCloseTo((2 - (82 + 4 * GLYPH)) / 2)
     expect(lopsided.centerX).toBeLessThan(0)
   })
 
   it("shrink the ring: the same box draws a smaller ring with leaders than with labels inside", () => {
-    const leaders = ring({ labelPlacement: "leader", labelMode: "percent" }).outerRadius
+    const leaders = ring({ labelPlacement: "outside", labelMode: "percent" }).outerRadius
     const inside = ring({ labelPlacement: "inside", labelMode: "percent" }).outerRadius
     expect(leaders).toBeLessThan(inside)
   })
 
   it("make the label rows cost height too: a leader row is a line of the percent style", () => {
-    expect(ring({ labelPlacement: "leader", labelMode: "percent" }).labelRowHeight).toBeCloseTo(26 * 1.25)
-    expect(ring({ labelPlacement: "leader", labelMode: "category" }).labelRowHeight).toBeCloseTo(26 * 1.25)
-    expect(ring({ labelPlacement: "leader", labelMode: "both" }).labelRowHeight).toBeCloseTo(26 * 1.25 * 2 + 2)
+    expect(ring({ labelPlacement: "outside", labelMode: "percent" }).labelRowHeight).toBeCloseTo(26 * 1.25)
+    expect(ring({ labelPlacement: "outside", labelMode: "category" }).labelRowHeight).toBeCloseTo(26 * 1.25)
+    expect(ring({ labelPlacement: "outside", labelMode: "both" }).labelRowHeight).toBeCloseTo(26 * 1.25 * 2 + 2)
     expect(ring({ labelPlacement: "inside", labelMode: "both" }).labelRowHeight).toBe(0)
   })
 })
 
 describe("PieRing: where a leader label goes", () => {
-  const leadered = () => ring({ labelPlacement: "leader", labelMode: "percent" })
+  const leadered = () => ring({ labelPlacement: "outside", labelMode: "percent" })
 
   it("has a placement for each drawn slice and none when nothing is leadered", () => {
     expect(leadered().placements().map((p) => p.index).sort()).toEqual([0, 1, 2])
     expect(ring().placements()).toEqual([])
     expect(ring({ labelPlacement: "inside", labelMode: "percent" }).placements()).toEqual([])
-    expect(ring({ labelPlacement: "leader", labelMode: "none" }).placements()).toEqual([])
+    expect(ring({ labelPlacement: "outside", labelMode: "none" }).placements()).toEqual([])
   })
 
   it("has none for no slices, or a ring with no radius", () => {
-    expect(ring({ labelPlacement: "leader", labelMode: "percent", slices: [] }).placements()).toEqual([])
-    expect(ring({ labelPlacement: "leader", labelMode: "percent" }, { width: 4, height: 4 }).placements()).toEqual([])
+    expect(ring({ labelPlacement: "outside", labelMode: "percent", slices: [] }).placements()).toEqual([])
+    expect(ring({ labelPlacement: "outside", labelMode: "percent" }, { width: 4, height: 4 }).placements()).toEqual([])
   })
 
   it("skips a slice with nothing to draw", () => {
-    const node = ring({ labelPlacement: "leader", labelMode: "percent", slices: [SLICES[0], { category: "Z", value: 0, fill: "red" }, SLICES[1]] })
+    const node = ring({ labelPlacement: "outside", labelMode: "percent", slices: [SLICES[0], { category: "Z", value: 0, fill: "red" }, SLICES[1]] })
     expect(node.placements().map((p) => p.index).sort()).toEqual([0, 2])
   })
 
@@ -279,7 +284,7 @@ describe("PieRing: where a leader label goes", () => {
       { category: "c", value: 5, fill: "orange" },
       { category: "d", value: 5, fill: "purple" },
     ]
-    const node = ring({ labelPlacement: "leader", labelMode: "percent", slices: crowded })
+    const node = ring({ labelPlacement: "outside", labelMode: "percent", slices: crowded })
     const left = node.placements().filter((p) => p.side === -1).map((p) => p.text.y).sort((a, b) => b - a)
     expect(left.length).toBeGreaterThan(1)
     const row = node.labelRowHeight + 12
@@ -288,7 +293,7 @@ describe("PieRing: where a leader label goes", () => {
 
   it("keeps every label inside the box's height", () => {
     const many: PieSlice[] = Array.from({ length: 12 }, (_, i) => ({ category: `s${i}`, value: 1, fill: "red" }))
-    const node = ring({ labelPlacement: "leader", labelMode: "percent", slices: many })
+    const node = ring({ labelPlacement: "outside", labelMode: "percent", slices: many })
     for (const placement of node.placements()) expect(Math.abs(placement.text.y)).toBeLessThanOrEqual(200)
   })
 })
@@ -320,7 +325,7 @@ describe("PieRing: drawing", () => {
 
   it("draws a leader line for each leadered slice once the labels are revealed", () => {
     const leaders = (labelReveal: number) =>
-      draw(ring({ labelPlacement: "leader", labelMode: "percent", labelReveal }), BOX)
+      draw(ring({ labelPlacement: "outside", labelMode: "percent", labelReveal }), BOX)
         .ops()
         .filter((ops) => ops[0].kind === "line")
     expect(leaders(1)).toHaveLength(3)
@@ -392,7 +397,7 @@ describe("PieRing: the hole's summary", () => {
   it("slides with the ring when a one-sided label column moves it", () => {
     const node = ring({
       centerLabel: "42",
-      labelPlacement: "leader",
+      labelPlacement: "outside",
       labelMode: "percent",
       slices: [{ category: "A", value: 1, fill: "red" }],
     })

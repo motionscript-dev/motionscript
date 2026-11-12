@@ -4,7 +4,7 @@ import type { Node2D, Text } from "@motionscript/sdk"
 import { enterBudget } from "@motionscript/sdk/component"
 
 import { at, layOut, scrub } from "../tests/harness"
-import { DEFAULT_Y_AXIS, resolveAxisConfig } from "./shared"
+import { DEFAULT_Y_AXIS } from "./shared"
 import { VerticalAxis } from "./vertical-axis"
 
 /**
@@ -13,7 +13,7 @@ import { VerticalAxis } from "./vertical-axis"
  * fixed at construction; the text and the positions are re-read every frame.
  */
 
-const AXIS = resolveAxisConfig(undefined, DEFAULT_Y_AXIS)
+const AXIS = DEFAULT_Y_AXIS
 const BOX = { width: 200, height: 300 }
 const linear = (t: number) => t
 
@@ -29,6 +29,11 @@ const markers = (node: VerticalAxis) => row(node).children[row(node).children.le
 const captions = (node: VerticalAxis) => markers(node).map((marker) => marker.text)
 const ys = (node: VerticalAxis) => markers(node).map((marker) => marker.y)
 const caption = (node: VerticalAxis) => (row(node).children.length > 1 ? (row(node).children[0].children[0] as Text) : null)
+/** How far a marker sits right of its resting place: the column right-aligns them against the tick padding. */
+const shift = (node: VerticalAxis, marker: Text) => {
+  const column = row(node).children[row(node).children.length - 1]
+  return marker.x + marker.layoutBounds.width / 2 - (column.layoutBounds.width - 40) / 2
+}
 /** The entrance's first frame: every marker, and the caption, armed. */
 const arm = (node: VerticalAxis, slide?: number) => node.enter({ data: slide === undefined ? {} : { slide }, duration: 1 }).at(0)
 
@@ -42,8 +47,7 @@ describe("VerticalAxis: the markers", () => {
     const [top, middle, bottom] = ys(axis())
     expect(middle).toBeCloseTo(0)
     expect(bottom).toBeCloseTo(-150)
-    // The top one is held inside the axis, 15 px lower than a centre on the edge would put it.
-    expect(top).toBeLessThan(150)
+    expect(top).toBeCloseTo(150)
   })
 
   it("places unevenly spaced markers where their values fall", () => {
@@ -51,17 +55,19 @@ describe("VerticalAxis: the markers", () => {
     expect(c).toBeCloseTo(-150)
     // 2 of 10 is a fifth of the way up from the bottom: (0.2 - 0.5) of the height.
     expect(b).toBeCloseTo(-90)
-    expect(a).toBeLessThanOrEqual(150)
+    expect(a).toBeCloseTo(150)
   })
 
-  it("holds the top marker inside the axis's top edge, by half its own height", () => {
-    const top = markers(axis())[0]
-    expect(top.y).toBeCloseTo(150 - top.layoutBounds.height / 2)
+  it("right-aligns the markers against the plot", () => {
+    const node = axis({ markers: [0, 5, 1000], range: [0, 1000] })
+    const rights = markers(node).map((m) => m.x + m.layoutBounds.width / 2)
+    expect(rights[1]).toBeCloseTo(rights[0])
+    expect(rights[2]).toBeCloseTo(rights[0])
   })
 
-  it("lets a marker at the bottom hang over the bottom edge: only the top is held", () => {
-    const bottom = markers(axis())[2]
-    expect(bottom.y).toBeCloseTo(-150)
+  it("lets a marker on an edge hang over it: the chart leaves room above the plot", () => {
+    expect(markers(axis())[0].y).toBeCloseTo(150)
+    expect(markers(axis())[2].y).toBeCloseTo(-150)
   })
 
   it("does not hold a marker that is not near the top", () => {
@@ -151,14 +157,14 @@ describe("VerticalAxis: arming and entering", () => {
   it("arms every marker and the caption transparent and shifted right on its first frame", () => {
     const node = axis({ label: "Sales" })
     arm(node)
-    expect(markers(node).map((m) => [m.opacity, m.x])).toEqual([[0, 24], [0, 24], [0, 24]])
+    expect(markers(node).map((m) => [m.opacity, shift(node, m)])).toEqual([[0, 24], [0, 24], [0, 24]])
     expect([caption(node)!.opacity, caption(node)!.x]).toEqual([0, 24])
   })
 
   it("arms to a slide it is given", () => {
     const node = axis()
     arm(node, 40)
-    expect(markers(node).map((m) => m.x)).toEqual([40, 40, 40])
+    expect(markers(node).map((m) => shift(node, m))).toEqual([40, 40, 40])
   })
 
   it("is idempotent", () => {
@@ -171,7 +177,7 @@ describe("VerticalAxis: arming and entering", () => {
 
   it("rests landed: a chart never told to enter reads as finished", () => {
     const node = axis()
-    expect(markers(node).map((m) => [m.opacity, m.x])).toEqual([[1, 0], [1, 0], [1, 0]])
+    expect(markers(node).map((m) => [m.opacity, shift(node, m)])).toEqual([[1, 0], [1, 0], [1, 0]])
   })
 
   it("enters bottom to top: the lowest marker leads, the highest follows", () => {
@@ -189,16 +195,16 @@ describe("VerticalAxis: arming and entering", () => {
     const enter = node.enter({ data: {}, duration: 1, easing: linear } as never)
     at(enter, 0.2)
     const bottom = markers(node)[2]
-    expect(bottom.x).toBeGreaterThan(0)
-    expect(bottom.x).toBeLessThan(24)
-    expect(bottom.x).toBeCloseTo(24 * (1 - bottom.opacity))
+    expect(shift(node, bottom)).toBeGreaterThan(0)
+    expect(shift(node, bottom)).toBeLessThan(24)
+    expect(shift(node, bottom)).toBeCloseTo(24 * (1 - bottom.opacity))
   })
 
   it("lands every marker and the caption by the end of the whole duration", () => {
     const node = axis({ label: "Sales" })
     const enter = node.enter({ data: {}, duration: 1, easing: linear } as never)
     at(enter, 1)
-    expect(markers(node).map((m) => [m.opacity, m.x])).toEqual([[1, 0], [1, 0], [1, 0]])
+    expect(markers(node).map((m) => [m.opacity, shift(node, m)])).toEqual([[1, 0], [1, 0], [1, 0]])
     expect([caption(node)!.opacity, caption(node)!.x]).toEqual([1, 0])
   })
 
@@ -228,7 +234,7 @@ describe("VerticalAxis: arming and entering", () => {
     const node = axis()
     const enter = node.enter({ data: { stagger: 0.1, slide: 60 }, duration: 1, easing: linear } as never)
     at(enter, 0)
-    expect(markers(node).map((m) => m.x)).toEqual([60, 60, 60])
+    expect(markers(node).map((m) => shift(node, m))).toEqual([60, 60, 60])
   })
 
   it("is a seekable of no marker for no markers", () => {

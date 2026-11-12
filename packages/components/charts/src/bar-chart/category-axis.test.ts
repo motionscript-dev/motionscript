@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { Text } from "@motionscript/sdk"
 
-import { DEFAULT_X_AXIS, resolveAxisConfig } from "../kit/shared"
+import { DEFAULT_X_AXIS, DEFAULT_Y_AXIS } from "../kit/shared"
 import { layOut, scrub } from "../tests/harness"
 import { CategoryAxis } from "./category-axis"
 
@@ -12,7 +12,7 @@ import { CategoryAxis } from "./category-axis"
  * how it looks.
  */
 
-const AXIS = resolveAxisConfig(undefined, DEFAULT_X_AXIS)
+const AXIS = DEFAULT_X_AXIS
 const BOX = { width: 400, height: 100 }
 const NAMES = ["Jan", "Feb", "Mar", "Apr"]
 const linear = (t: number) => t
@@ -159,5 +159,37 @@ describe("CategoryAxis: arming and entering", () => {
     const node = axis({ categories: [] })
     const hold = node.enter({ data: {}, duration: 2 } as never)
     expect((hold as unknown as { duration: number }).duration).toBe(2)
+  })
+})
+
+describe("CategoryAxis: a column beside the plot", () => {
+  const TALL = { width: 120, height: 400 }
+  const column = (props: Record<string, unknown> = {}) => {
+    const node = new CategoryAxis({ categories: NAMES, axis: DEFAULT_Y_AXIS, orientation: "vertical", ...TALL, ...props } as never)
+    layOut(node, TALL)
+    return node
+  }
+  /** The captions, top to bottom: the column that ends the row the axis is made of. */
+  const captions = (node: CategoryAxis) => {
+    const row = node.children[0]
+    return row.children[row.children.length - 1].children as Text[]
+  }
+
+  it("centres the first category in the top slot and the last in the bottom one", () => {
+    expect(captions(column()).map((c) => c.y)).toEqual([150, 50, -50, -150])
+  })
+
+  it("right-aligns the captions against the plot", () => {
+    const node = column({ categories: ["a", "much longer"] })
+    const [short, long] = captions(node)
+    const right = (c: Text) => c.x + c.layoutBounds.width / 2
+    expect(right(short)).toBeCloseTo(right(long))
+  })
+
+  it("dims a caption with its category, on top of its entrance", () => {
+    const node = column({ dims: [1, 0.5] })
+    expect(captions(node).map((c) => c.opacity)).toEqual([1, 0.5, 1, 1])
+    node.enter({ duration: 1 }).at(0)
+    expect(captions(node).map((c) => c.opacity)).toEqual([0, 0, 0, 0])
   })
 })

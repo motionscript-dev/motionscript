@@ -1,91 +1,66 @@
-import {
-  fillOps,
-  lerpNumber,
-  shadowOps,
-  strokeOps,
-  textOps,
-  type DataRecord,
-  type Fill,
-  type Shadow,
-  type ShadowResolved,
-  type Stroke,
-  type StrokeResolved,
-  type TextStyle,
-} from "@motionscript/sdk"
-import { niceStep } from "@motionscript/sdk/component"
+import { Types, fillOps, type DataRecord, type Fill } from "@motionscript/sdk"
 
-import {
-  CHART_PALETTE,
-  DEFAULT_LEGEND,
-  DEFAULT_PLOT_AREA,
-  DEFAULT_SERIES_FILLS,
-  DEFAULT_X_AXIS,
-  DEFAULT_Y_AXIS,
-  SPOTLIGHT_DIM,
-  lerpAxisConfig,
-  lerpLegendConfig,
-  lerpPlotArea,
-  lerpSeriesFills,
-  num,
-  resolveAxisConfig,
-  resolveLegendConfig,
-  resolvePlotArea,
-  resolveSeriesFills,
-  text,
-  type AxisConfig,
-  type ChartSeries,
-  type LegendConfig,
-  type LegendTheme,
-  type PlotAreaConfig,
-  type Range,
-} from "../kit/shared"
+import { niceRange, num, text, type ChartSeries, type Range } from "../kit/shared"
 
 /** One bar per row, beside its siblings in the category slot or stacked on them: {@link ChartSeries} under the name for what it draws here. */
 export type BarSeries = ChartSeries
 
+/** How the series share a category: side by side, stacked, or stacked as shares of 100. */
+export type BarStack = "none" | "stacked" | "percent"
+
+/** Which way the bars grow: up from a category row, or right from a category column. */
+export type BarOrientation = "vertical" | "horizontal"
+
 /**
- * One bar's span in data units. A span rather than a height because both modes
- * fit it, and a negative value just runs the other way with no special case.
+ * One bar's span in data units. A span rather than a height because every mode
+ * fits it, and a negative value just runs the other way with no special case.
  */
 export interface BarSpan {
-  /** Where the base sits: 0 when grouped, the running total below when stacked. */
+  /** Where the base sits: 0 apart, the running total below (or above, for a negative) when stacked. */
   from: number
   to: number
-  /** `to - from`, kept for the figure printed on the bar. */
+  /** `to - from`. */
   value: number
+  /** Whether it ends its stack on its side of zero, so its far end is rounded. */
+  outer: boolean
 }
 
 /**
- * One row's spans, in series order. Stacking is a running sum in listed order,
- * so series 0 sits on the baseline. A zero value still yields a degenerate span,
- * keeping the list index-aligned with the series.
+ * One row's spans, in series order. Stacking keeps a running sum on each side
+ * of zero, so a negative value stacks downward from the baseline rather than
+ * eating into the positives. In `percent` each value is its share of the row's
+ * total magnitude. A zero value still yields a degenerate span, keeping the list
+ * index-aligned with the series. `weights` scale each series' contribution.
  */
-export function barSpans(
-  row: DataRecord,
-  series: BarSeries[],
-  stacked: boolean
-): BarSpan[] {
-  let running = 0
-  return series.map((s) => {
-    const value = num(row, s.field)
-    if (!stacked) return { from: 0, to: value, value }
-    const from = running
-    running += value
-    return { from, to: running, value }
-  })
-}
-
-/**
- * The series ending a row's stack, which gets the rounded cap; `-1` when the row
- * is all zero. It is the last non-zero series, so a zero one does not take the
- * cap and leave the segment below square.
- */
-export function stackCapIndex(row: DataRecord, series: BarSeries[]): number {
-  let last = -1
-  for (let i = 0; i < series.length; i++) {
-    if (num(row, series[i].field) !== 0) last = i
+export function barSpans(row: DataRecord, series: readonly BarSeries[], stack: BarStack, weights: readonly number[] = []): BarSpan[] {
+  const weight = (i: number) => Math.max(0, weights[i] ?? 1)
+  if (stack !== "stacked" && stack !== "percent") {
+    return series.map((s) => {
+      const value = num(row, s.field)
+      return { from: 0, to: value, value, outer: true }
+    })
   }
-  return last
+  const values = series.map((s, i) => num(row, s.field) * weight(i))
+  const total = values.reduce((sum, v) => sum + Math.abs(v), 0)
+  const scaled = stack === "percent" ? values.map((v) => (total > 0 ? (v / total) * 100 : 0)) : values
+  let lastUp = -1
+  let lastDown = -1
+  scaled.forEach((v, i) => {
+    if (v > 0) lastUp = i
+    else if (v < 0) lastDown = i
+  })
+  let up = 0
+  let down = 0
+  return scaled.map((value, i) => {
+    if (value < 0) {
+      const from = down
+      down += value
+      return { from, to: down, value, outer: i === lastDown }
+    }
+    const from = up
+    up += value
+    return { from, to: up, value, outer: i === lastUp }
+  })
 }
 
 export function barCategories(data: DataRecord[], field: string): string[] {
@@ -94,18 +69,14 @@ export function barCategories(data: DataRecord[], field: string): string[] {
 
 /**
  * The `[min, max]` of everything drawn, zero always included: a scale starting
- * at 40 draws a column three times its neighbour for a 10% difference. A cropped
+ * at 40 draws a bar three times its neighbour for a 10% difference. A cropped
  * axis takes an explicit range.
  */
-export function barValueExtent(
-  data: DataRecord[],
-  series: BarSeries[],
-  stacked: boolean
-): Range {
+export function barValueExtent(data: DataRecord[], series: readonly BarSeries[], stack: BarStack, weights?: readonly number[]): Range {
   let lo = 0
   let hi = 0
   for (const row of data) {
-    for (const span of barSpans(row, series, stacked)) {
+    for (const span of barSpans(row, series, stack, weights)) {
       lo = Math.min(lo, span.from, span.to)
       hi = Math.max(hi, span.from, span.to)
     }
@@ -113,174 +84,43 @@ export function barValueExtent(
   return lo < hi ? [lo, hi] : [0, 1]
 }
 
-/** The explicit `range`, else the data's extent nudged to tidy bounds; `divisions` (one fewer than the marker count) makes the drawn ticks land on them. */
+/** The explicit `range`, else the data's extent nudged to tidy bounds (a percent stack reads to 100); `divisions` (one fewer than the marker count) makes the drawn ticks land on them. */
 export function resolveBarScale(
   data: DataRecord[],
-  series: BarSeries[],
-  stacked: boolean,
+  series: readonly BarSeries[],
+  stack: BarStack,
   range: Range | undefined,
-  divisions: number
+  divisions: number,
+  weights?: readonly number[]
 ): Range {
   if (range) return range
-  const [lo, hi] = barValueExtent(data, series, stacked)
-  const segments = Math.max(1, Math.round(divisions))
-  const step = niceStep((hi - lo) / segments || 1)
-  return [Math.floor(lo / step) * step, Math.ceil(hi / step) * step]
+  const [lo, hi] = barValueExtent(data, series, stack, weights)
+  if (stack === "percent") return [lo < 0 ? -100 : 0, hi > 0 ? 100 : 0]
+  return niceRange([lo, hi], divisions)
 }
 
-/** How the columns are drawn and the slot divided. */
-export interface BarStyleConfig {
-  /** Radius in px of a column's far-end corners; an interior stacked segment stays square. */
-  cornerRadius: number
-  /** Fraction of the category slot the bars fill, `[0, 1]`; the rest separates groups. */
-  slotFill: number
-  /** Gap in px between grouped bars within a slot; ignored when stacked. */
-  groupGap: number
-  stroke: Stroke
-  shadow: Shadow
+/** Black or white, whichever reads on `fill`: a figure printed inside a bar. */
+export function inkOn(fill: Fill): string {
+  const layers = fillOps.resolve(fill)
+  const top = layers[layers.length - 1]
+  if (top?.type !== "solid") return "white"
+  const [r, g, b] = top.color
+  const lift = (c: number) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const luminance = 0.2126 * lift(r) + 0.7152 * lift(g) + 0.0722 * lift(b)
+  return luminance > 0.4 ? "#0a0a0a" : "white"
 }
 
-/** A {@link BarChart}'s full, resolved visual theme. */
-export interface BarChartConfig {
-  /** Cycled by series index; a series' own `fill` replaces its entry outright. */
-  seriesFills: Fill[]
-  bar: BarStyleConfig
-  /** The category axis. */
-  xAxis: AxisConfig
-  /** The value axis. */
-  yAxis: AxisConfig
-  plotArea: PlotAreaConfig
-  legend: LegendConfig
-  /** The figure printed on each column. */
-  valueStyle: TextStyle
-  /** How far everything outside a spotlit series or category fades. */
-  spotlight: { dimOpacity: number }
+/** A bar chart's own look: how round and how wide the bars are. */
+export const BAR_MARKS = {
+  /** Radius of each bar's far corners; a stacked segment inside the stack stays square. */
+  barRadius: Types.number(10, { min: 0, max: 64, step: 1, unit: "px" }),
+  /** How much of its category slot a bar group fills, the rest spacing the groups. */
+  barWidth: Types.number(0.7, { min: 0.05, max: 1, step: 0.05 }),
+  /** Space between the bars of one group, side by side. */
+  barGap: Types.number(6, { min: 0, max: 40, step: 1, unit: "px" }),
 }
 
-/** The author's partial theme, deep-merged onto {@link DEFAULT_BAR_CHART_THEME}. */
-export type BarChartTheme = {
-  seriesFills?: Fill[]
-  bar?: Partial<BarStyleConfig>
-  xAxis?: Partial<AxisConfig>
-  yAxis?: Partial<AxisConfig>
-  plotArea?: Partial<PlotAreaConfig>
-  legend?: LegendTheme
-  valueStyle?: TextStyle
-  spotlight?: Partial<BarChartConfig["spotlight"]>
-}
-
-export const DEFAULT_BAR_CHART_THEME: BarChartConfig = {
-  seriesFills: DEFAULT_SERIES_FILLS,
-  bar: {
-    cornerRadius: 6,
-    slotFill: 0.72,
-    groupGap: 6,
-    stroke: [],
-    shadow: [],
-  },
-  // Captions rather than numeric markers: less weight than the line chart's ticks.
-  xAxis: {
-    ...DEFAULT_X_AXIS,
-    labelStyle: { ...DEFAULT_X_AXIS.labelStyle, fontWeight: 600 },
-    tickPadding: 16,
-  },
-  yAxis: DEFAULT_Y_AXIS,
-  plotArea: DEFAULT_PLOT_AREA,
-  legend: DEFAULT_LEGEND,
-  valueStyle: {
-    fontSize: 24,
-    fontWeight: 700,
-    textAlign: "center",
-    fill: CHART_PALETTE.markerColor,
-  },
-  spotlight: { dimOpacity: SPOTLIGHT_DIM },
-}
-
-function resolveBarStyle(
-  bar: Partial<BarStyleConfig> | undefined,
-  previous: BarStyleConfig
-): BarStyleConfig {
-  return {
-    cornerRadius: bar?.cornerRadius ?? previous.cornerRadius,
-    slotFill: bar?.slotFill ?? previous.slotFill,
-    groupGap: bar?.groupGap ?? previous.groupGap,
-    stroke: strokeOps.resolve(bar?.stroke ?? previous.stroke),
-    shadow: shadowOps.resolve(bar?.shadow ?? previous.shadow),
-  }
-}
-
-function lerpBarStyle(
-  from: BarStyleConfig,
-  to: BarStyleConfig,
-  t: number
-): BarStyleConfig {
-  return {
-    cornerRadius: lerpNumber(from.cornerRadius, to.cornerRadius, t),
-    slotFill: lerpNumber(from.slotFill, to.slotFill, t),
-    groupGap: lerpNumber(from.groupGap, to.groupGap, t),
-    stroke: strokeOps.lerp(
-      from.stroke as StrokeResolved[],
-      to.stroke as StrokeResolved[],
-      t
-    ),
-    shadow: shadowOps.lerp(
-      from.shadow as ShadowResolved[],
-      to.shadow as ShadowResolved[],
-      t
-    ),
-  }
-}
-
-/** The `theme` entry's resolve: merges a partial {@link BarChartTheme} onto `previous` (first resolution: the default). */
-export function resolveBarChartTheme(
-  theme: BarChartTheme | undefined,
-  previous?: BarChartConfig
-): BarChartConfig {
-  const base = previous ?? DEFAULT_BAR_CHART_THEME
-  return {
-    seriesFills: resolveSeriesFills(theme?.seriesFills, base.seriesFills),
-    bar: resolveBarStyle(theme?.bar, base.bar),
-    xAxis: resolveAxisConfig(theme?.xAxis, base.xAxis),
-    yAxis: resolveAxisConfig(theme?.yAxis, base.yAxis),
-    plotArea: resolvePlotArea(theme?.plotArea, base.plotArea),
-    legend: resolveLegendConfig(theme?.legend, base.legend),
-    valueStyle: textOps.resolveStyle(theme?.valueStyle, base.valueStyle),
-    spotlight: {
-      dimOpacity: theme?.spotlight?.dimOpacity ?? base.spotlight.dimOpacity,
-    },
-  }
-}
-
-export function lerpBarChartTheme(
-  from: BarChartConfig,
-  to: BarChartConfig,
-  t: number
-): BarChartConfig {
-  return {
-    seriesFills: lerpSeriesFills(from.seriesFills, to.seriesFills, t),
-    bar: lerpBarStyle(from.bar, to.bar, t),
-    xAxis: lerpAxisConfig(from.xAxis, to.xAxis, t),
-    yAxis: lerpAxisConfig(from.yAxis, to.yAxis, t),
-    plotArea: lerpPlotArea(from.plotArea, to.plotArea, t),
-    legend: lerpLegendConfig(from.legend, to.legend, t),
-    valueStyle: textOps.lerpStyle(from.valueStyle, to.valueStyle, t),
-    spotlight: {
-      dimOpacity: lerpNumber(
-        from.spotlight.dimOpacity,
-        to.spotlight.dimOpacity,
-        t
-      ),
-    },
-  }
-}
-
-/** Series `index`'s own `fill`, else the palette's entry. */
-export function resolveBarFill(
-  palette: Fill[],
-  series: BarSeries,
-  index: number
-): Fill {
-  if (series.fill != null) return fillOps.resolve(series.fill)
-  if (palette.length === 0) return "white"
-  return palette[index % palette.length]
+export const BAR_LABELS = {
+  /** Read as the chart is built: each bar's value past its end, inside it, or none. */
+  values: Types.oneOf(["none", "end", "inside"] as const, { animatable: false }),
 }

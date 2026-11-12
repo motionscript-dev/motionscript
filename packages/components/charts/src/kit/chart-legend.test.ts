@@ -4,7 +4,7 @@ import { Rect } from "@motionscript/sdk"
 
 import { at, layOut, scrub } from "../tests/harness"
 import { ChartLegend } from "./chart-legend"
-import { DEFAULT_LEGEND, SPOTLIGHT_DIM, resolveLegendConfig, type ChartSeries } from "./shared"
+import { DEFAULT_LEGEND, SPOTLIGHT_DIM, type ChartSeries } from "./shared"
 
 /**
  * The legend: a row of entries, one per series, whose reveal drives the width,
@@ -12,7 +12,7 @@ import { DEFAULT_LEGEND, SPOTLIGHT_DIM, resolveLegendConfig, type ChartSeries } 
  * showing and hiding a series moves a number, so a frame is a function of time.
  */
 
-const LEGEND = resolveLegendConfig(undefined, DEFAULT_LEGEND)
+const LEGEND = DEFAULT_LEGEND
 const SERIES: ChartSeries[] = [
   { field: "a", label: "Alpha" },
   { field: "b", label: "Beta", enabled: false },
@@ -41,14 +41,14 @@ const state = (node: ChartLegend) =>
 const reveal = (node: ChartLegend) => (node as unknown as { reveal: number[] }).reveal
 const entry = (node: ChartLegend, index: number) => node.children[index] as Rect
 
-/** The first entry's two parts: the caption, then the chip. */
+/** An entry's two parts: the chip, then the caption. */
 const parts = (node: ChartLegend, index: number) => entry(node, index).children
 
 describe("ChartLegend: the entries", () => {
   it("holds one entry per series, every one a child, in series order", () => {
     const node = legend()
     expect(node.children).toHaveLength(3)
-    const captions = node.children.map((child) => (child.children[0] as unknown as { text: string }).text)
+    const captions = node.children.map((child) => (child.children[1] as unknown as { text: string }).text)
     expect(captions).toEqual(["Alpha", "Beta", "Gamma"])
   })
 
@@ -58,7 +58,7 @@ describe("ChartLegend: the entries", () => {
 
   it("pairs each caption with a rounded chip in the series' swatch", () => {
     const node = legend()
-    const chips = node.children.map((child) => child.children[1] as unknown as { fill: unknown; width: number; height: number; cornerRadius: number })
+    const chips = node.children.map((child) => child.children[0] as unknown as { fill: unknown; width: number; height: number; cornerRadius: number })
     expect(chips).toHaveLength(3)
     for (const chip of chips) {
       expect(chip.width).toBe(LEGEND.markerStyle.width)
@@ -71,7 +71,7 @@ describe("ChartLegend: the entries", () => {
 
   it("paints a chip white when there is no swatch for its series", () => {
     const node = legend(SERIES, { swatches: ["#ff0000"] })
-    const chip = node.children[2].children[1] as unknown as { fill: unknown }
+    const chip = node.children[2].children[0] as unknown as { fill: unknown }
     expect(JSON.stringify(chip.fill)).toContain("1,1,1,1")
   })
 
@@ -206,7 +206,7 @@ describe("ChartLegend.showSeries and hideSeries", () => {
 
   it("measures the width from what the entry holds now, so a relabelled series collapses from its new width", () => {
     const node = legend()
-    const caption = parts(node, 0)[0] as unknown as { text: string }
+    const caption = parts(node, 0)[1] as unknown as { text: string }
     caption.text = "A much longer caption"
     const full = state(node)[0].width
     layOut(node, { width: 1000, height: 100 })
@@ -221,7 +221,7 @@ describe("ChartLegend.showSeries and hideSeries", () => {
   it("leaves an entry that is fully shown at the width its caption and chip come to", () => {
     const node = legend()
     const [first, , third] = state(node)
-    const natural = (label: string) => label.length * (LEGEND.textStyle.fontSize as number) * 0.5 + 12 + LEGEND.markerStyle.width
+    const natural = (label: string) => label.length * (LEGEND.textStyle.fontSize as number) * 0.5 + Math.round((LEGEND.textStyle.fontSize as number) * 0.45) + LEGEND.markerStyle.width
 
     expect(first.width).toBeCloseTo(natural("Alpha"))
     expect(third.width).toBeCloseTo(natural("Gamma"))
@@ -323,13 +323,40 @@ describe("ChartLegend.spotlightSeries", () => {
 
 describe("ChartLegend: a restyled row", () => {
   it("takes the theme's gap and padding", () => {
-    const node = legend(SERIES, { legend: resolveLegendConfig({ itemGap: 10, padding: 6 }, DEFAULT_LEGEND) })
+    const node = legend(SERIES, { legend: { ...DEFAULT_LEGEND, itemGap: 10, padding: 6 } })
     expect(node.gap).toBe(10)
     expect(node.padding).toEqual({ top: 6, right: 6, bottom: 6, left: 6 })
   })
 
   it("sets the caption in the theme's text style", () => {
-    const node = legend(SERIES, { legend: resolveLegendConfig({ textStyle: { fontSize: 41 } }, DEFAULT_LEGEND) })
-    expect((parts(node, 0)[0] as unknown as { fontSize: number }).fontSize).toBe(41)
+    const node = legend(SERIES, { legend: { ...DEFAULT_LEGEND, textStyle: { ...DEFAULT_LEGEND.textStyle, fontSize: 41 } } })
+    expect((parts(node, 0)[1] as unknown as { fontSize: number }).fontSize).toBe(41)
+  })
+})
+
+describe("ChartLegend: swatch first, and a column", () => {
+  it("puts the swatch before the caption", () => {
+    const [chip, caption] = parts(legend(), 0)
+    expect((caption as unknown as { text: string }).text).toBe("Alpha")
+    expect(chip.layoutBounds.x).toBeLessThan(caption.layoutBounds.x)
+  })
+
+  it("stacks the entries in a left-aligned column when it flows vertically, a smaller gap apart", () => {
+    const node = legend(SERIES.map((s) => ({ ...s, enabled: true })), { flow: "vertical" })
+    const ys = node.children.map((child) => child.layoutBounds.y)
+    expect(ys[0]).toBeLessThan(ys[1])
+    expect(ys[1]).toBeLessThan(ys[2])
+    const lefts = node.children.map((child) => child.layoutBounds.x - child.layoutBounds.width / 2)
+    expect(lefts[1]).toBeCloseTo(lefts[0])
+    expect(node.gap).toBeLessThan(LEGEND.itemGap)
+  })
+
+  it("collapses a hidden entry's height in a column, not its width", () => {
+    const node = legend(SERIES.map((s) => ({ ...s, enabled: true })), { flow: "vertical" })
+    const full = node.children[0].layoutBounds
+    at(node.hideSeries({ data: { index: 0 }, duration: 1, easing: linear } as never), 0.5)
+    layOut(node, { width: 1000, height: 400 })
+    expect(node.children[0].layoutBounds.height).toBeCloseTo(full.height / 2)
+    expect(node.children[0].layoutBounds.width).toBeCloseTo(full.width)
   })
 })

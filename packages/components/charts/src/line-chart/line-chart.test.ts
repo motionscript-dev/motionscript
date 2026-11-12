@@ -9,8 +9,11 @@ import { ManifestAssetCatalog } from "@motionscript/core"
 
 import { ChartLegend } from "../kit/chart-legend"
 import { NODES } from "../nodes"
-import { horizontalMarkers, verticalMarkers } from "../tests/harness"
-import { ChartLine } from "./chart-line"
+import { draw, horizontalMarkers, layOut, scrub, verticalMarkers } from "../tests/harness"
+import { partOf, partsOf as partsIn, plotOf } from "../kit/tests/parts"
+import { HorizontalAxis } from "../kit/horizontal-axis"
+import { VerticalAxis } from "../kit/vertical-axis"
+import { ChartArea, ChartLine } from "./chart-line"
 import { LineChart, lineChartDomains } from "./line-chart"
 
 // A host adds a command before its arguments are filled in, so every factory
@@ -126,11 +129,11 @@ describe("LineChart commands", () => {
     }
   })
 
-  it("declares showLegend, so a host can read it back", () => {
-    const props = registry.describe("lineChart")!.properties!
-    expect(props.showLegend).toMatchObject({ kind: "boolean", default: true })
-    expect(chart({ showLegend: false }).showLegend).toBe(false)
-    expect(run(chart({ showLegend: false }), "showSeries", { seriesIndex: 0 }).duration).toBe(1)
+  it("runs every command on a chart with no legend and no axes", () => {
+    const bare = { style: { legend: "none", showXAxis: false, showYAxis: false } }
+    for (const key of ["enter", "showSeries", "hideSeries", "spotlightSeries"]) {
+      expect(run(chart(bare), key, { seriesIndex: 0 }).duration).toBe(1)
+    }
   })
 
   it("offers the per-series argument as a series, by index", () => {
@@ -143,15 +146,11 @@ describe("LineChart commands", () => {
 
 /** The chart's parts, read off the frame it built: its last child. */
 function partsOf(node: LineChart) {
-  const frame = node.children[node.children.length - 1] as Node2D
-  const [top, bottom] = frame.children as Node2D[]
-  const [vAxis, plot] = top.children as Node2D[]
-  const [hAxis, legend] = (bottom.children[1] as Node2D).children as Node2D[]
   return {
-    vAxis,
-    hAxis,
-    lines: (plot.children as Node2D[]).filter((part) => part instanceof ChartLine) as ChartLine[],
-    legend: legend instanceof ChartLegend ? legend : null,
+    vAxis: partOf(node, VerticalAxis) as unknown as Node2D,
+    hAxis: partOf(node, HorizontalAxis) as unknown as Node2D,
+    lines: partsIn(node, ChartLine),
+    legend: partOf(node, ChartLegend) ?? null,
   }
 }
 
@@ -210,7 +209,7 @@ describe("LineChart.enter: the finished chart at rest, armed on its first frame"
   })
 
   it("moves nothing in a chart that has no legend", () => {
-    const node = chart({ showLegend: false })
+    const node = chart({ style: { legend: "none" } })
     expect(() => entering(node)).not.toThrow()
     expect(parts(node)).toMatchObject({ legend: null, progress: [0, 0] })
   })
@@ -467,3 +466,186 @@ describe("lineChartDomains", () => {
     expect(lineChartDomains(node).y.range[1]).toBeGreaterThan(first.y.range[1])
   })
 })
+
+describe("LineChart: stack modes", () => {
+  const BOX = { width: 800, height: 400 }
+  const laid = (props: Record<string, unknown> = {}) => {
+    const node = chart(props)
+    layOut(node, BOX)
+    return node
+  }
+  /** Each line's points as data: y back out of the plot's pixels through the drawn range. */
+  const values = (node: LineChart) => {
+    const plot = plotOf(node).layoutBounds
+    const [lo, hi] = lineChartDomains(node).y.range
+    return partsIn(node, ChartLine).map((line) => line.points.map((p) => Math.round((p.y / plot.height + 0.5) * (hi - lo) + lo)))
+  }
+
+  it("plots each series at its own values apart", () => {
+    expect(values(laid())).toEqual([[10, 14, 12], [4, 6, 9]])
+  })
+
+  it("sits each series on the sum of those before it when stacked, the scale reaching the top of the stack", () => {
+    const node = laid({ stack: "stacked" })
+    expect(values(node)).toEqual([[10, 14, 12], [14, 20, 21]])
+    expect(lineChartDomains(node).y.range[0]).toBe(0)
+    expect(lineChartDomains(node).y.range[1]).toBeGreaterThanOrEqual(21)
+  })
+
+  it("reads every row as shares of 100 in a percent stack, the axis captioned as percentages", () => {
+    const node = laid({ stack: "percent" })
+    const [first, second] = values(node)
+    expect(second).toEqual([100, 100, 100])
+    expect(first[0]).toBe(Math.round((10 / 14) * 100))
+    expect(lineChartDomains(node).y.range).toEqual([0, 100])
+    draw(node, BOX)
+    expect(verticalMarkers(partsOf(node).vAxis).map((m) => m.text)).toEqual(["100%", "75%", "50%", "25%", "0%"])
+  })
+
+  it("fills each area down to the series below it in a stack, and to the baseline otherwise", () => {
+    const stacked = partsIn(laid({ stack: "stacked", style: { area: "solid" } }), ChartArea)
+    expect(stacked[0].base).toHaveLength(3)
+    expect(stacked[1].base.map((p) => p.y)).toEqual(partsIn(laid({ stack: "stacked" }), ChartLine)[0].points.map((p) => p.y))
+    expect(partsIn(laid({ style: { area: "solid" } }), ChartArea)[0].base).toEqual([])
+  })
+
+  it("keeps zero on the scale under an area, so it has a baseline to fill to", () => {
+    const high = [{ month: "Jan", revenue: 180, cost: 170 }, { month: "Feb", revenue: 200, cost: 190 }]
+    expect(lineChartDomains(laid({ data: high })).y.range[0]).toBeGreaterThan(0)
+    expect(lineChartDomains(laid({ data: high, style: { area: "gradient" } })).y.range[0]).toBe(0)
+  })
+
+  it("sinks a hidden series into the one below it in a stack, the ones above settling", () => {
+    const node = laid({ stack: "stacked" })
+    const seek = scrub(node.hideSeries({ data: { seriesIndex: 0 }, duration: 1, easing: linear }))
+    seek(0.5)
+    expect(node.weights).toEqual([0.5, 1])
+    layOut(node, BOX)
+    expect(values(node)[1]).toEqual([9, 13, 15])
+    expect(partsOf(node).lines[0].enabled).toBe(true)
+    seek(1)
+    expect(partsOf(node).lines[0].enabled).toBe(false)
+    expect(partOf(node, ChartLegend)!.reveal).toEqual([0, 1])
+  })
+})
+
+describe("LineChart: style", () => {
+  it("declares one style entry in the chart family, with presets and the line's marks", () => {
+    const style = registry.describe("lineChart")!.properties!.style as unknown as {
+      kind: string
+      family: string
+      presets: Record<string, unknown>
+      properties: Record<string, { group: string; default: unknown }>
+    }
+    expect(style.kind).toBe("style")
+    expect(style.family).toBe("chart")
+    expect(Object.keys(style.presets)).toContain("paper")
+    expect(style.properties.curve).toMatchObject({ group: "marks", default: "smooth" })
+    expect(style.properties.area).toMatchObject({ group: "marks", default: "none" })
+    expect(style.properties.values).toMatchObject({ group: "labels", default: "none" })
+    expect(style.properties.legend).toMatchObject({ group: "legend", default: "bottom" })
+    expect(style.properties.barRadius).toBeUndefined()
+  })
+
+  it("has no theme or showLegend entry", () => {
+    const props = registry.describe("lineChart")!.properties!
+    expect(props.theme).toBeUndefined()
+    expect(props.showLegend).toBeUndefined()
+    expect(props.stack).toMatchObject({ kind: "enum", default: "none" })
+  })
+
+  it("tweens the stroke and the palette with to({ style })", () => {
+    const node = chart()
+    const seek = scrub(node.to({ data: { style: { strokeWidth: 8, palette: ["#000000", "#000000"] } }, duration: 1, easing: linear }))
+    seek(0.5)
+    const [line] = partsOf(node).lines
+    expect(line.stroke[0].weight).toBeCloseTo(6)
+    const [r] = (line.stroke[0].fill[0] as unknown as { color: number[] }).color
+    expect(r).toBeGreaterThan(0)
+    expect(r).toBeLessThan(0x4f / 255)
+  })
+
+  it("lays a partial style over the last, leaving the fields it does not name", () => {
+    const node = chart({ style: { strokeWidth: 6 } })
+    node.set({ style: { foreground: "#000000" } })
+    expect(node.style.strokeWidth).toBe(6)
+  })
+
+  it("steps the curve at the middle of a tween", () => {
+    const node = chart()
+    const seek = scrub(node.to({ data: { style: { curve: "step" } }, duration: 1, easing: linear }))
+    seek(0.4)
+    expect(partsOf(node).lines[0].curve).toBe("smooth")
+    seek(0.6)
+    expect(partsOf(node).lines[0].curve).toBe("step")
+  })
+
+  it("puts the legend where the style says, or builds none", () => {
+    expect(partOf(chart({ style: { legend: "none" } }), ChartLegend)).toBeUndefined()
+    expect(partOf(chart({ style: { legend: "right" } }), ChartLegend)!.flow).toBe("vertical")
+    const legendY = (legend: string) => {
+      const node = chart({ style: { legend } })
+      layOut(node, { width: 800, height: 400 })
+      return partOf(node, ChartLegend)!.parent!.layoutBounds.y
+    }
+    expect(legendY("top")).toBeLessThan(legendY("bottom"))
+  })
+
+  it("leaves out an axis the style turns off, the plot taking its room", () => {
+    const full = chart()
+    const bare = chart({ style: { showXAxis: false, showYAxis: false } })
+    layOut(full, { width: 800, height: 400 })
+    layOut(bare, { width: 800, height: 400 })
+    expect(partOf(bare, VerticalAxis)).toBeUndefined()
+    expect(partOf(bare, HorizontalAxis)).toBeUndefined()
+    expect(plotOf(bare).layoutBounds.width).toBeGreaterThan(plotOf(full).layoutBounds.width)
+    expect(plotOf(bare).layoutBounds.height).toBeGreaterThan(plotOf(full).layoutBounds.height)
+  })
+
+  it("lines the row under the plot up with the plot", () => {
+    const node = chart({ yAxis: { label: "Revenue" } })
+    layOut(node, { width: 800, height: 400 })
+    const plot = plotOf(node).layoutBounds
+    const axis = (partsOf(node).hAxis as Node2D).layoutBounds
+    expect(axis.width).toBeCloseTo(plot.width)
+    expect(axis.x).toBeCloseTo(plot.x)
+  })
+
+  it("prints each point's value when asked", () => {
+    const node = chart({ style: { values: "above" } })
+    draw(node, { width: 800, height: 400 })
+    expect(plotTexts(node)).toEqual(["10", "14", "12", "4", "6", "9"])
+  })
+})
+
+describe("LineChart: categories on the x axis", () => {
+  it("ticks every category when there are a dozen or fewer", () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+    const node = chart({ data: months.map((month, i) => ({ month, revenue: i, cost: i })) })
+    draw(node, { width: 1200, height: 400 })
+    expect(horizontalMarkers(partsOf(node).hAxis).map((m) => m.text)).toEqual(months)
+  })
+})
+
+describe("LineChart: clipping", () => {
+  it("clips the plot from a zoom's first frame until a reset lands, and not at rest", () => {
+    const node = numeric()
+    const clip = () => (plotOf(node) as unknown as { clip: boolean }).clip
+    expect(clip()).toBe(false)
+    land(run(node, "zoomTo", { region: { y: [12, 20] } }))
+    expect(clip()).toBe(true)
+    const reset = run(node, "resetZoom", {})
+    reset.at(0.5)
+    expect(clip()).toBe(true)
+    reset.at(1)
+    expect(clip()).toBe(false)
+  })
+})
+
+/** Every caption the plot holds: the value labels. */
+function plotTexts(node: LineChart): string[] {
+  return (plotOf(node).children as Node2D[]).flatMap((n) => {
+    const text = (n as unknown as { text?: unknown }).text
+    return typeof text === "string" ? [text] : []
+  })
+}

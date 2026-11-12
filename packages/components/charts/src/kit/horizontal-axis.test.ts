@@ -3,16 +3,16 @@ import { describe, expect, it } from "vitest"
 import type { Node2D, Text } from "@motionscript/sdk"
 import { enterBudget } from "@motionscript/sdk/component"
 
-import { DEFAULT_X_AXIS, resolveAxisConfig } from "../kit/shared"
+import { DEFAULT_X_AXIS } from "./shared"
 import { layOut, scrub } from "../tests/harness"
 import { HorizontalAxis } from "./horizontal-axis"
 
 /**
- * The line chart's horizontal axis: a row of text nodes, left to right, each
+ * The numeric axis under a plot: a row of text nodes, left to right, each
  * centred on its value's fraction of the range — by value, not by slot.
  */
 
-const AXIS = resolveAxisConfig(undefined, DEFAULT_X_AXIS)
+const AXIS = DEFAULT_X_AXIS
 const BOX = { width: 400, height: 100 }
 const linear = (t: number) => t
 
@@ -37,40 +37,42 @@ describe("HorizontalAxis: the markers", () => {
   })
 
   it("centres a marker on its value's fraction of the range", () => {
-    const [left, middle] = xs(axis())
-    expect(left).toBeCloseTo(-200)
+    const [, middle] = xs(axis())
     expect(middle).toBeCloseTo(0)
   })
 
   it("places markers by value: unevenly spaced values land unevenly", () => {
-    const [a, b, c] = xs(axis({ markers: [0, 1, 10], range: [0, 10] }))
-    expect(a).toBeCloseTo(-200)
+    const [, b] = xs(axis({ markers: [0, 1, 10], range: [0, 10], overhang: { left: 100, right: 100 } }))
     expect(b).toBeCloseTo(-160)
-    expect(c).toBeLessThanOrEqual(200)
   })
 
-  it("holds the last marker inside the axis's right edge, by half its own width", () => {
-    const last = markers(axis())[2]
+  it("holds both end markers inside the row by default, by half their own width", () => {
+    const [first, , last] = markers(axis())
+    expect(first.x).toBeCloseTo(-200 + first.layoutBounds.width / 2)
     expect(last.x).toBeCloseTo(200 - last.layoutBounds.width / 2)
   })
 
-  it("lets the first marker hang over the left edge, since the vertical axis' gutter is beyond it", () => {
-    expect(markers(axis())[0].x).toBeCloseTo(-200)
+  it("lets an end marker hang past the row by its overhang, centred on its value", () => {
+    const node = axis({ overhang: { left: 50, right: 50 } })
+    const [first, , last] = markers(node)
+    expect(first.x).toBeCloseTo(-200)
+    expect(last.x).toBeCloseTo(200)
   })
 
-  it("does not hold a marker that is not near the right edge", () => {
+  it("holds a marker that would hang further than the overhang at its edge", () => {
+    const node = axis({ markers: [-5, 5, 20], range: [0, 10], overhang: { left: 10, right: 10 } })
+    const [first, , last] = markers(node)
+    expect(first.x).toBeCloseTo(-210 + first.layoutBounds.width / 2)
+    expect(last.x).toBeCloseTo(210 - last.layoutBounds.width / 2)
+  })
+
+  it("does not hold a marker that is not near an edge", () => {
     expect(xs(axis({ markers: [0, 5, 6], range: [0, 10] }))[2]).toBeCloseTo(40)
   })
 
-  it("reads a range with no width as every marker at the left", () => {
-    expect(xs(axis({ range: [5, 5] }))).toEqual([-200, -200, -200])
-  })
-
-  it("positions a marker beyond the range beyond the axis on the left, and holds it on the right", () => {
-    const node = axis({ markers: [-5, 5, 20], range: [0, 10] })
-    expect(xs(node)[0]).toBeCloseTo(-400)
-    const last = markers(node)[2]
-    expect(last.x).toBeCloseTo(200 - last.layoutBounds.width / 2)
+  it("reads a range with no width as every marker at the left, held inside", () => {
+    const node = axis({ range: [5, 5] })
+    expect(xs(node)).toEqual(markers(node).map((m) => -200 + m.layoutBounds.width / 2))
   })
 })
 

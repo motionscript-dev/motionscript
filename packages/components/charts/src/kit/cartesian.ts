@@ -1,66 +1,157 @@
-import { Rect, type ChildView, type Node2D, type Size2D } from "@motionscript/sdk"
+import {
+  Rect,
+  RotatedBox,
+  Text,
+  textOps,
+  type ChildView,
+  type Fill,
+  type FillResolved,
+  type Insets,
+  type Node2D,
+  type Size2D,
+  type Stroke,
+  type TextStyle,
+} from "@motionscript/sdk"
 
-import { VerticalAxis } from "./vertical-axis"
+import type { CartesianStyle, LegendPosition } from "./style"
 
-/**
- * Headroom above the plot, in px. Real padding on the composition, so the top
- * marker, centred on the top grid line, does not draw its upper half above the
- * chart's own box.
- */
-const TOP_HEADROOM = 24
-
-interface CartesianParts {
-  readonly axis: Node2D
-  /** The box the grid and the marks share. */
-  readonly plot: Node2D
-  /** An invisible twin of the value axis, reserving its gutter under the plot. */
-  readonly gutter: Node2D
-  /** What sits under the plot, top to bottom: the other axis, then the legend. */
-  readonly below: readonly Node2D[]
+/** Space between the frame's rows and columns: the plot and the legend, the axes and the legend. */
+export function frameGap(style: Pick<CartesianStyle, "fontSize">): number {
+  return Math.round(style.fontSize * 0.9)
 }
 
-/** The frame the line and bar charts share: the value axis beside the plot, and under them the gutter, so the rows below start at the plot's left edge. */
+/** Room above the plot for the top value marker, which is centred on the top grid line. */
+export function headroom(style: Pick<CartesianStyle, "fontSize">): number {
+  return Math.ceil(style.fontSize * 0.7)
+}
+
+/** How far an end marker of a horizontal value axis may hang past the plot: half a short caption. */
+export function overhang(style: Pick<CartesianStyle, "fontSize">): number {
+  return Math.ceil(style.fontSize * 1.1)
+}
+
+interface CartesianParts {
+  /** The axis beside the plot, on its left. */
+  readonly left?: Node2D
+  /** An invisible twin of `left` under the plot, so the row there starts at the plot's left edge. */
+  readonly ghost?: Node2D
+  /** The box the grid and the marks share. */
+  readonly plot: Node2D
+  /** The axis under the plot. */
+  readonly bottom?: Node2D
+  readonly legend?: Node2D
+  readonly legendAt: LegendPosition
+  readonly gap: () => number
+  readonly padding: () => Insets
+}
+
+/**
+ * The frame the line and bar charts share. A legend above or below is centred
+ * on the whole chart; one on the right is a column beside the plot. An axis the
+ * style turns off is simply not here, and the plot takes its room.
+ */
 export function cartesianFrame(parts: CartesianParts): Node2D {
+  const top = new Rect({ flow: "horizontal", width: "fill", height: "fill", children: [...(parts.left ? [parts.left] : []), parts.plot] })
+  const rows: Node2D[] = [top as unknown as Node2D]
+  if (parts.bottom) {
+    rows.push(new Rect({ flow: "horizontal", width: "fill", height: "hug", children: [...(parts.ghost ? [parts.ghost] : []), parts.bottom] }) as unknown as Node2D)
+  }
+  const body = new Rect({ flow: "vertical", width: "fill", height: "fill", children: rows })
+  const legend = parts.legend && parts.legendAt !== "none" ? parts.legend : undefined
+  const main = new Rect({
+    flow: "horizontal",
+    width: "fill",
+    height: "fill",
+    align: "center",
+    gap: parts.gap,
+    children: [body, ...(legend && parts.legendAt === "right" ? [legend] : [])],
+  })
+  const across = (node: Node2D) => new Rect({ flow: "horizontal", width: "fill", height: "hug", align: "center", children: [node] })
   return new Rect({
     flow: "vertical",
     width: "fill",
     height: "fill",
-    padding: { top: TOP_HEADROOM },
+    gap: parts.gap,
+    padding: parts.padding,
     children: [
-      new Rect({ flow: "horizontal", height: "fill", width: "fill", children: [parts.axis, parts.plot] }),
-      new Rect({
-        flow: "horizontal",
-        width: "fill",
-        children: [parts.gutter, new Rect({ flow: "vertical", width: "fill", gap: 20, children: [...parts.below] })],
-      }),
+      ...(legend && parts.legendAt === "top" ? [across(legend)] : []),
+      main,
+      ...(legend && parts.legendAt === "bottom" ? [across(legend)] : []),
     ],
   }) as unknown as Node2D
 }
 
-interface CartesianViews {
-  readonly axis: ChildView
-  /** The plot panel's own children: grid, marks, border. */
-  readonly plot: readonly ChildView[]
-  readonly below: readonly ChildView[]
-}
-
-/** The last child shaped as {@link cartesianFrame} builds it: the chart builds it after the children it was given and a document adds its own later, so it is found by shape. */
-export function cartesianViews(children: readonly ChildView[]): CartesianViews | null {
-  for (let i = children.length - 1; i >= 0; i--) {
-    const frame = children[i]
-    if (!Rect.is(frame)) continue
-    const [top, bottom] = frame.children
-    const axis = top?.children[0]
-    const plot = top?.children[1]
-    const below = bottom?.children[1]
-    if (!axis || !VerticalAxis.is(axis) || !plot || !below) continue
-    return { axis, plot: plot.children, below: below.children }
+/** Every view under `children`, depth first in build order: the axis beside the plot comes before its twin, which holds no parts. */
+export function chartViews(children: readonly ChildView[]): ChildView[] {
+  const out: ChildView[] = []
+  const walk = (views: readonly ChildView[]) => {
+    for (const view of views) {
+      out.push(view)
+      walk(view.children)
+    }
   }
-  return null
+  walk(children)
+  return out
 }
 
 /** A part's laid-out size; zero before it is built or laid out. */
 export function laidOutSize(node: Node2D | undefined): Size2D {
   const bounds = node?.layoutBounds
   return { width: bounds?.width ?? 0, height: bounds?.height ?? 0 }
+}
+
+/**
+ * A text style as props bound to `read`, so a style tween reaches text built
+ * once. Only the keys set at build are bound: an unset family stays unset, so
+ * the host's default face still applies.
+ */
+export function boundText(read: () => TextStyle): Record<string, unknown> {
+  const keys = Object.keys(textOps.styleProps(read())) as (keyof TextStyle)[]
+  const props: Record<string, unknown> = {}
+  for (const key of keys) props[key] = () => read()[key]
+  return props
+}
+
+interface GhostSpec {
+  readonly captions: () => readonly string[]
+  /** How many captions the real axis built. */
+  readonly count: number
+  readonly text: () => TextStyle
+  readonly title: string
+  readonly titleText: () => TextStyle
+  readonly tickPad: () => number
+  readonly titlePad: () => number
+}
+
+/**
+ * An invisible column as wide as a vertical axis built from the same captions:
+ * the widest caption plus the tick padding, and the rotated title before it. A
+ * plain tree, so a command looking for the axis never finds this instead.
+ */
+export function columnGhost(spec: GhostSpec): Node2D {
+  const captions = Array.from({ length: spec.count }, (_, i) => new Text({ ...boundText(spec.text), text: () => spec.captions()[i] ?? "" }))
+  const children: Node2D[] = []
+  if (spec.title !== "") {
+    children.push(new RotatedBox({ angle: -90, width: "hug", height: "hug", children: new Text({ ...boundText(spec.titleText), text: spec.title }) }) as unknown as Node2D)
+  }
+  children.push(new Rect({ flow: "vertical", width: "hug", height: "hug", padding: () => ({ right: spec.tickPad() }), children: captions }) as unknown as Node2D)
+  return new Rect({ opacity: 0, flow: "horizontal", gap: spec.titlePad, width: "hug", height: 0, children }) as unknown as Node2D
+}
+
+/** The grid's rule: `gridWidth` in `gridColor`, dashed when `gridDashed`; none at width 0. */
+export function gridRule(style: Pick<CartesianStyle, "gridWidth" | "gridColor" | "gridDashed">): Stroke {
+  if (style.gridWidth <= 0) return []
+  const dash = Math.max(4, style.gridWidth * 3)
+  return { weight: style.gridWidth, fill: style.gridColor, align: "center", ...(style.gridDashed && { dash: [dash, dash] }) }
+}
+
+/** The baseline and value-axis rule: solid, in the grid's colour and width, or none. */
+export function axisRule(style: Pick<CartesianStyle, "gridWidth" | "gridColor" | "axisLine">): Stroke {
+  return style.axisLine && style.gridWidth > 0 ? { weight: style.gridWidth, fill: style.gridColor, align: "center" } : []
+}
+
+/** `fill` with every layer's opacity scaled by `k`. */
+export function fade(fill: Fill, k: number): Fill {
+  const layers = (Array.isArray(fill) ? fill : [fill]) as FillResolved[]
+  return layers.map((layer) => (typeof layer === "object" && layer !== null ? { ...layer, opacity: ((layer as { opacity?: number }).opacity ?? 1) * k } : layer)) as Fill
 }

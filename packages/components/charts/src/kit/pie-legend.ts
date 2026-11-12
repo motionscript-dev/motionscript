@@ -29,10 +29,10 @@ import {
   type Vector2 as _Vector2,
 } from "@motionscript/sdk"
 
-import { fresh } from "../kit/entries"
-import { armed, arrival, arrivalOf, arrivalsEntry, beats, frameEase, type Arrival } from "../kit/motion"
-import { DEFAULT_LEGEND, type LegendConfig } from "../kit/shared"
-import type { PieSlice } from "./shared"
+import { fresh } from "./entries"
+import { armed, arrival, arrivalOf, arrivalsEntry, beats, frameEase, type Arrival } from "./motion"
+import { DEFAULT_LEGEND, type LegendConfig } from "./shared"
+import type { PieSlice } from "./polar"
 
 const SLIDE = 16
 
@@ -66,7 +66,7 @@ export const PieLegend = component2d({
   },
   // The selection dim rides a wrapper, so the entrance animates the entry's own opacity without the two fighting over one value.
   children: (state) => {
-    const marker = state.legend.markerStyle
+    const marker = () => state.legend.markerStyle
     return state.slices.map((_, index) =>
       Rect({
         width: "hug",
@@ -76,7 +76,7 @@ export const PieLegend = component2d({
         children: [
           Rect({
             flow: "horizontal",
-            gap: 12,
+            gap: () => Math.round(state.legend.textStyle.fontSize === undefined ? 12 : Number(state.legend.textStyle.fontSize) * 0.4),
             align: "center",
             width: "hug",
             height: "hug",
@@ -84,15 +84,16 @@ export const PieLegend = component2d({
             x: () => arrivalOf(state.arrivals, index).shift,
             children: [
               Rect({
-                width: marker.height,
-                height: marker.height,
-                cornerRadius: marker.borderRadius,
+                width: () => marker().width,
+                height: () => marker().height,
+                cornerRadius: () => marker().borderRadius,
                 fill: () => state.slices[index]?.fill ?? "white",
-                stroke: marker.stroke,
-                shadow: marker.shadow,
               }),
               Text({
                 ...textOps.styleProps(state.legend.textStyle),
+                fill: () => state.legend.textStyle.fill ?? "white",
+                fontSize: () => state.legend.textStyle.fontSize ?? 28,
+                fontWeight: () => state.legend.textStyle.fontWeight ?? 500,
                 text: () => state.slices[index]?.category ?? "",
               }),
             ],

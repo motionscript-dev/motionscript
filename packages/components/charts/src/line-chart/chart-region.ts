@@ -14,10 +14,10 @@ import {
   type StrokeResolved,
 } from "@motionscript/sdk"
 
+import { rule } from "../kit/chart-canvas"
 import { fresh } from "../kit/entries"
 import { loadPaints } from "../kit/paints"
 import {
-  DEFAULT_CHART_THEME,
   EMPTY_REGION_BOX,
   hasRegion,
   type RegionBox,
@@ -26,7 +26,7 @@ import {
 /**
  * The call-out of a {@link LineChart}: a washed rectangle with a dashed rule on
  * each bounded edge, drawn from the pre-mapped `box`. Dimming the series outside
- * is {@link ChartLine}'s job, clipped against the same box so the two agree on
+ * is the line's and area's job, clipped against the same box so they agree on
  * the boundary. An unbounded edge is the plot's own border, and a rule there
  * would assert a limit the author did not set.
  */
@@ -35,8 +35,8 @@ export const ChartRegion = component2d({
   state: {
     /** In this node's pixel space (origin at centre, y-up), mapped by the parent. A degenerate box draws nothing. */
     box: fresh<RegionBox>(() => EMPTY_REGION_BOX),
-    stroke: Types.custom<Stroke, StrokeResolved[]>(DEFAULT_CHART_THEME.region.stroke, { resolve: strokeOps.resolve, lerp: strokeOps.lerp }),
-    fill: Types.custom<Fill, FillResolved[]>(DEFAULT_CHART_THEME.region.fill, { resolve: fillOps.resolve, lerp: fillOps.lerp }),
+    stroke: Types.custom<Stroke, StrokeResolved[]>({ weight: 2, fill: "white/70", dash: [14, 12], cap: "butt", align: "center" }, { resolve: strokeOps.resolve, lerp: strokeOps.lerp }),
+    fill: Types.custom<Fill, FillResolved[]>("white/6", { resolve: fillOps.resolve, lerp: fillOps.lerp }),
     /** Driven by the chart's `regionReveal`, so the rules and the series' dimming move as one. */
     reveal: 0,
   },
@@ -59,17 +59,13 @@ export const ChartRegion = component2d({
 
     if (state.stroke.length === 0) return
 
-    // One `draw` per rule: stroking a union of disjoint open paths paints nothing.
-    const rule = (points: { x: number; y: number }[]) =>
-      ctx.draw(new Graphics2D().line({ points }).stroke(state.stroke).opacity(r))
-
     if (box.xBounded) {
       const half = (height / 2) * r
-      for (const x of [box.left, box.right]) rule([{ x, y: cy - half }, { x, y: cy + half }])
+      for (const x of [box.left, box.right]) rule(ctx, { x, y: cy - half }, { x, y: cy + half }, state.stroke, r)
     }
     if (box.yBounded) {
       const half = (width / 2) * r
-      for (const y of [box.bottom, box.top]) rule([{ x: cx - half, y }, { x: cx + half, y }])
+      for (const y of [box.bottom, box.top]) rule(ctx, { x: cx - half, y }, { x: cx + half, y }, state.stroke, r)
     }
   },
 })

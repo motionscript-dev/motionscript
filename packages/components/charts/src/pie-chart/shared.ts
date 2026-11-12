@@ -1,85 +1,42 @@
-import {
-  clamp,
-  lerpNumber,
-  shadowOps,
-  strokeOps,
-  textOps,
-  type DataRecord,
-  type Fill,
-  type Shadow,
-  type ShadowResolved,
-  type Stroke,
-  type StrokeResolved,
-  type TextStyle,
-  type Vector2,
-} from "@motionscript/sdk"
+import { Types, type Fill, type TextStyle, type Stroke, type FillResolved as _FillResolved } from "@motionscript/sdk"
 
 import {
-  CHART_PALETTE,
-  DEFAULT_LEGEND,
-  DEFAULT_SERIES_FILLS,
-  lerpLegendConfig,
-  lerpSeriesFills,
-  num,
-  resolveLegendConfig,
-  resolveSeriesFills,
-  text,
-  type LegendConfig,
-  type LegendTheme,
-} from "../kit/shared"
+  CHART_COLORS,
+  CHART_LEGEND,
+  CHART_TEXT,
+  legendConfigOf,
+  type ChartStyleBase,
+} from "../kit/style"
+import { num, text, type LegendConfig } from "../kit/shared"
+import { DEG, PIE_SPOTLIGHT_DIM, ringPoint, selectionFade, type CenterConfig, type PieSlice } from "../kit/polar"
 
-/** One resolved slice, which the ring and legend consume; the chart resolves it from `data` and two field names. */
-export interface PieSlice {
-  /** Label and legend caption. */
-  category: string
-  /** The wedge covers `value / (sum of all values)`. */
-  value: number
-  /** Wedge and swatch paint. */
-  fill: Fill
-}
+export { DEG, PIE_SPOTLIGHT_DIM, ringPoint, selectionFade, type CenterConfig, type PieSlice }
 
 /**
  * One slice per row, painted from `palette` by row order (cycling). Paint comes
  * from the palette, not the rows, because a pie's mark is a row where a line's
  * colour belongs to a column; that lets a pie be fed a CSV of plain numbers.
  */
-export function resolvePieSlices(
-  data: DataRecord[],
-  category: string,
-  value: string,
-  palette: Fill[]
-): PieSlice[] {
+export function resolvePieSlices(data: readonly Record<string, unknown>[], category: string, value: string, palette: readonly Fill[]): PieSlice[] {
   return data.map((row, i) => ({
-    category: text(row, category),
-    value: num(row, value),
-    fill:
-      palette.length > 0 ? palette[i % palette.length] : ("white" as Fill),
+    category: text(row as never, category),
+    value: num(row as never, value),
+    fill: palette.length > 0 ? palette[i % palette.length] : ("white" as Fill),
   }))
 }
 
 /** What a {@link PieChart}'s labels say. */
 export type PieLabelMode =
-  /** Two lines, whose order flips with placement: a leader label reads category over percentage, an inside label reads the percentage big over a small category. */
+  /** Two lines, whose order flips with placement: an outside label reads category over percentage, an inside label reads the percentage big over a small category. */
   | "both"
   | "category"
   | "percent"
   /** No labels and no leader lines. */
   | "none"
 
-/** `"inside"` centres the label in the wedge's band with no leader or gutter, so the ring draws bigger; `"leader"` is what a sliver too narrow for text needs. */
-export type PieLabelPlacement = "inside" | "leader" | "none"
+/** `"inside"` centres the label in the wedge's band with no leader or gutter, so the ring draws bigger; `"outside"` sets it on a leader, which a sliver too narrow for text needs. */
+export type PieLabelPlacement = "inside" | "outside" | "none"
 
-export const DEG = Math.PI / 180
-
-/**
- * Opacity of a slice under the selection: 1 while nothing is out (`focus` is the
- * most-grown pop) and for the selected slice itself, falling toward `dimOpacity`
- * for the rest as the selection grows.
- */
-export function selectionFade(focus: number, dimOpacity: number, pop: number): number {
-  if (focus <= 0) return 1
-  return 1 - (1 - clamp(dimOpacity, 0, 1)) * focus * (1 - pop)
-}
 
 /** A slice's plotted value: negatives and non-finite values count as 0. */
 export function sliceValue(slice: PieSlice): number {
@@ -91,11 +48,6 @@ export function sliceTotal(slices: PieSlice[]): number {
   let sum = 0
   for (const slice of slices) sum += sliceValue(slice)
   return sum
-}
-
-/** The point at radius `r`, angle `a` on a ring about the origin in centred y-up space. Angles run clockwise from 12 o'clock. */
-export function ringPoint(r: number, a: number): Vector2 {
-  return { x: r * Math.sin(a), y: r * Math.cos(a) }
 }
 
 /** One slice's resolved angular span on the ring. */
@@ -149,12 +101,7 @@ interface LabelSlot {
  * cannot hold them all, the reverse pass wins and the crowding is shared evenly.
  * Mutates each `y` and returns `slots` ordered top to bottom.
  */
-export function relaxLabels<T extends LabelSlot>(
-  slots: T[],
-  minGap: number,
-  top: number,
-  bottom: number
-): T[] {
+export function relaxLabels<T extends LabelSlot>(slots: T[], minGap: number, top: number, bottom: number): T[] {
   slots.sort((a, b) => b.ideal - a.ideal)
 
   let ceiling = top
@@ -172,7 +119,7 @@ export function relaxLabels<T extends LabelSlot>(
   return slots
 }
 
-/** The ring's geometry and paint: everything about the wedges but their colour. */
+/** The ring's geometry: everything about the wedges but their colour. */
 export interface RingConfig {
   /** Channel between adjacent slices in px, constant across the band (an angular gap would splay open toward the rim). */
   gap: number
@@ -182,226 +129,83 @@ export interface RingConfig {
   startAngle: number
   /** How far a selected slice's rim reaches, as a multiple of the outer radius so the emphasis scales with the chart. Clamped to `[1, 1.6]`. */
   selectedGrow: number
-  stroke: Stroke
-  shadow: Shadow
+  /** Rounding of each wedge corner, px. */
+  cornerRadius: number
 }
 
 /** How the ring's labels are set, and the leader lines that point at them. */
 export interface LabelConfig {
-  /** The category caption. */
+  /** The category caption outside the ring. */
   textStyle: TextStyle
-  /** The percentage. */
+  /** The percentage outside the ring. */
   percentStyle: TextStyle
-  /** Both lines of a label inside its wedge: it sits on the wedge's paint, so it usually wants the opposite end of the value range from everything else. */
+  /** Both lines of a label inside its wedge; its fill is set per wedge, for contrast against the paint. */
   insideStyle: TextStyle
   /** Runs from a wedge out to its label. */
   leaderStroke: Stroke
 }
 
-/** The summary set in the ring's hole. */
-export interface CenterConfig {
-  labelStyle: TextStyle
-  captionStyle: TextStyle
+/** What a pie's `style` resolves to. */
+export interface PieStyle extends Omit<ChartStyleBase, "gridColor"> {
+  readonly innerRadius: number
+  readonly sliceGap: number
+  readonly sliceRadius: number
+  readonly labelPlacement: PieLabelPlacement
 }
 
-/** A {@link PieChart}'s full, resolved visual theme. */
-export interface PieChartConfig {
-  /** Wedge and swatch paint, cycled by **row** index (`i % length`). */
-  sliceFills: Fill[]
-  ring: RingConfig
-  label: LabelConfig
-  center: CenterConfig
-  legend: LegendConfig
-  /** How far everything outside the selection fades while any slice is selected. */
-  spotlight: { dimOpacity: number }
-}
+const { gridColor: _grid, ...PIE_COLORS } = CHART_COLORS
 
-/** The author's partial theme, deep-merged onto {@link DEFAULT_PIE_CHART_THEME}. */
-export type PieChartTheme = {
-  sliceFills?: Fill[]
-  ring?: Partial<RingConfig>
-  label?: Partial<LabelConfig>
-  center?: Partial<CenterConfig>
-  legend?: LegendTheme
-  spotlight?: Partial<PieChartConfig["spotlight"]>
-}
-
-const LABEL_TEXT_STYLE: TextStyle = {
-  fontSize: 26,
-  fontWeight: 600,
-  textAlign: "center",
-  fill: CHART_PALETTE.markerColor,
-}
-
-/** Fainter than `SPOTLIGHT_DIM`: a ring's slices touch, so at that a selected slice barely separates. */
-export const PIE_SPOTLIGHT_DIM = 0.1
-
-export const DEFAULT_PIE_CHART_THEME: PieChartConfig = {
-  sliceFills: DEFAULT_SERIES_FILLS,
-  ring: {
-    gap: 6,
-    // A donut by default: the hole is the one place a conclusion can be set.
-    holeRadius: 0.6,
-    startAngle: 0,
-    selectedGrow: 1.08,
-    stroke: [],
-    shadow: [],
+/** The groups of a pie's `style`: no grid colour, as nothing is ruled. */
+export const PIE_STYLE_GROUPS = {
+  colors: PIE_COLORS,
+  text: CHART_TEXT,
+  marks: {
+    /** Hole radius as a fraction of the outer radius: 0 is a pie, about 0.6 a donut. */
+    innerRadius: Types.number(0, { min: 0, max: 0.9, step: 0.05 }),
+    /** Channel between neighbouring wedges, px. */
+    sliceGap: Types.number(3, { min: 0, max: 40, step: 1, unit: "px" }),
+    /** Rounding of each wedge corner, px. */
+    sliceRadius: Types.number(4, { min: 0, max: 60, step: 1, unit: "px" }),
   },
-  label: {
-    textStyle: LABEL_TEXT_STYLE,
-    percentStyle: { ...LABEL_TEXT_STYLE, fontWeight: 700 },
-    // On a mid-tone wedge, so the panel colour rather than the axis ink.
-    insideStyle: { ...LABEL_TEXT_STYLE, fontWeight: 800, fill: "#15130e" },
-    leaderStroke: { weight: 2, fill: CHART_PALETTE.markerColor },
+  labels: {
+    /** Read as the chart is built: inside the wedge, outside on a leader, or none. */
+    labelPlacement: Types.oneOf(["inside", "outside", "none"] as const, { animatable: false }),
   },
-  center: {
+  legend: CHART_LEGEND,
+}
+
+export function legendOf(style: PieStyle): LegendConfig {
+  return legendConfigOf(style)
+}
+
+function face(style: PieStyle): Pick<TextStyle, "fontFamily"> {
+  return style.fontFamily ? { fontFamily: style.fontFamily } : {}
+}
+
+export function ringConfigOf(style: PieStyle): RingConfig {
+  return { gap: style.sliceGap, holeRadius: style.innerRadius, startAngle: 0, selectedGrow: 1.08, cornerRadius: style.sliceRadius }
+}
+
+export function labelConfigOf(style: PieStyle): LabelConfig {
+  const base: TextStyle = { ...face(style), fontSize: style.fontSize, fontWeight: style.fontWeight, textAlign: "center", fill: style.muted }
+  const bold = Math.min(900, style.fontWeight + 200)
+  return {
+    textStyle: base,
+    percentStyle: { ...base, fontWeight: bold, fill: style.foreground },
+    insideStyle: { ...base, fontSize: Math.round(style.fontSize * 1.9), fontWeight: bold, fill: "#111113" },
+    leaderStroke: { weight: 2, fill: style.muted },
+  }
+}
+
+export function centerConfigOf(style: PieStyle): CenterConfig {
+  return {
     labelStyle: {
-      fontSize: 46,
-      fontWeight: 800,
+      ...face(style),
+      fontSize: Math.round(style.fontSize * 1.8),
+      fontWeight: Math.min(900, style.fontWeight + 300),
       textAlign: "center",
-      fill: CHART_PALETTE.markerColor,
+      fill: style.foreground,
     },
-    captionStyle: {
-      fontSize: 22,
-      fontWeight: 500,
-      textAlign: "center",
-      fill: CHART_PALETTE.markerColor,
-    },
-  },
-  legend: DEFAULT_LEGEND,
-  spotlight: { dimOpacity: PIE_SPOTLIGHT_DIM },
-}
-
-function resolveRingConfig(
-  ring: Partial<RingConfig> | undefined,
-  previous: RingConfig
-): RingConfig {
-  return {
-    gap: ring?.gap ?? previous.gap,
-    holeRadius: ring?.holeRadius ?? previous.holeRadius,
-    startAngle: ring?.startAngle ?? previous.startAngle,
-    selectedGrow: ring?.selectedGrow ?? previous.selectedGrow,
-    stroke: strokeOps.resolve(ring?.stroke ?? previous.stroke),
-    shadow: shadowOps.resolve(ring?.shadow ?? previous.shadow),
-  }
-}
-
-function lerpRingConfig(
-  from: RingConfig,
-  to: RingConfig,
-  t: number
-): RingConfig {
-  return {
-    gap: lerpNumber(from.gap, to.gap, t),
-    holeRadius: lerpNumber(from.holeRadius, to.holeRadius, t),
-    startAngle: lerpNumber(from.startAngle, to.startAngle, t),
-    selectedGrow: lerpNumber(from.selectedGrow, to.selectedGrow, t),
-    stroke: strokeOps.lerp(
-      from.stroke as StrokeResolved[],
-      to.stroke as StrokeResolved[],
-      t
-    ),
-    shadow: shadowOps.lerp(
-      from.shadow as ShadowResolved[],
-      to.shadow as ShadowResolved[],
-      t
-    ),
-  }
-}
-
-function resolveLabelConfig(
-  label: Partial<LabelConfig> | undefined,
-  previous: LabelConfig
-): LabelConfig {
-  return {
-    textStyle: textOps.resolveStyle(label?.textStyle, previous.textStyle),
-    percentStyle: textOps.resolveStyle(
-      label?.percentStyle,
-      previous.percentStyle
-    ),
-    insideStyle: textOps.resolveStyle(label?.insideStyle, previous.insideStyle),
-    leaderStroke: strokeOps.resolve(
-      label?.leaderStroke ?? previous.leaderStroke
-    ),
-  }
-}
-
-function lerpLabelConfig(
-  from: LabelConfig,
-  to: LabelConfig,
-  t: number
-): LabelConfig {
-  return {
-    textStyle: textOps.lerpStyle(from.textStyle, to.textStyle, t),
-    percentStyle: textOps.lerpStyle(from.percentStyle, to.percentStyle, t),
-    insideStyle: textOps.lerpStyle(from.insideStyle, to.insideStyle, t),
-    leaderStroke: strokeOps.lerp(
-      from.leaderStroke as StrokeResolved[],
-      to.leaderStroke as StrokeResolved[],
-      t
-    ),
-  }
-}
-
-function resolveCenterConfig(
-  center: Partial<CenterConfig> | undefined,
-  previous: CenterConfig
-): CenterConfig {
-  return {
-    labelStyle: textOps.resolveStyle(center?.labelStyle, previous.labelStyle),
-    captionStyle: textOps.resolveStyle(
-      center?.captionStyle,
-      previous.captionStyle
-    ),
-  }
-}
-
-function lerpCenterConfig(
-  from: CenterConfig,
-  to: CenterConfig,
-  t: number
-): CenterConfig {
-  return {
-    labelStyle: textOps.lerpStyle(from.labelStyle, to.labelStyle, t),
-    captionStyle: textOps.lerpStyle(from.captionStyle, to.captionStyle, t),
-  }
-}
-
-/** The `theme` entry's resolve: merges a partial {@link PieChartTheme} onto `previous` (first resolution: the default). */
-export function resolvePieChartTheme(
-  theme: PieChartTheme | undefined,
-  previous?: PieChartConfig
-): PieChartConfig {
-  const base = previous ?? DEFAULT_PIE_CHART_THEME
-  return {
-    sliceFills: resolveSeriesFills(theme?.sliceFills, base.sliceFills),
-    ring: resolveRingConfig(theme?.ring, base.ring),
-    label: resolveLabelConfig(theme?.label, base.label),
-    center: resolveCenterConfig(theme?.center, base.center),
-    legend: resolveLegendConfig(theme?.legend, base.legend),
-    spotlight: {
-      dimOpacity: theme?.spotlight?.dimOpacity ?? base.spotlight.dimOpacity,
-    },
-  }
-}
-
-export function lerpPieChartTheme(
-  from: PieChartConfig,
-  to: PieChartConfig,
-  t: number
-): PieChartConfig {
-  return {
-    sliceFills: lerpSeriesFills(from.sliceFills, to.sliceFills, t),
-    ring: lerpRingConfig(from.ring, to.ring, t),
-    label: lerpLabelConfig(from.label, to.label, t),
-    center: lerpCenterConfig(from.center, to.center, t),
-    legend: lerpLegendConfig(from.legend, to.legend, t),
-    spotlight: {
-      dimOpacity: lerpNumber(
-        from.spotlight.dimOpacity,
-        to.spotlight.dimOpacity,
-        t
-      ),
-    },
+    captionStyle: { ...face(style), fontSize: Math.round(style.fontSize * 0.8), fontWeight: style.fontWeight, textAlign: "center", fill: style.muted },
   }
 }

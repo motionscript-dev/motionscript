@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import { fillOps, strokeOps } from "@motionscript/sdk"
+
 
 import {
-  DEFAULT_SERIES_COLORS,
-  DEFAULT_SERIES_FILLS,
-  DEFAULT_SERIES_STROKES,
   SPOTLIGHT_DIM,
   formatMarker,
   formatPercent,
@@ -13,9 +10,9 @@ import {
   markerValues,
   num,
   numericFields,
-  resolveSeriesFill,
-  resolveSeriesStroke,
   text,
+  niceRange,
+  niceTicks,
 } from "./shared"
 import { resolveYScale } from "../line-chart/shared"
 
@@ -184,79 +181,31 @@ describe("SPOTLIGHT_DIM", () => {
   })
 })
 
-describe("the series palettes", () => {
-  it("cycles five colours as strokes of 4 px and as fills", () => {
-    expect(DEFAULT_SERIES_COLORS).toHaveLength(5)
-    expect(DEFAULT_SERIES_STROKES).toHaveLength(5)
-    expect(DEFAULT_SERIES_STROKES.every((stroke) => (stroke as { weight: number }).weight === 4)).toBe(true)
-    expect(DEFAULT_SERIES_FILLS).toEqual([...DEFAULT_SERIES_COLORS])
+describe("niceRange", () => {
+  it("rounds an extent out to bounds a tidy step apart", () => {
+    expect(niceRange([0, 305], 4)).toEqual([0, 400])
+    expect(niceRange([-73, 305], 4)).toEqual([-100, 400])
+  })
+
+  it("widens a constant extent about its value", () => {
+    expect(niceRange([5, 5], 4)).toEqual([3, 7])
+    expect(niceRange([0, 0], 4)).toEqual([0, 1])
   })
 })
 
-describe("resolveSeriesStroke", () => {
-  const PALETTE = [{ weight: 4, fill: "#ff0000" }, { weight: 6, fill: "#0000ff" }]
-  const layers = (stroke: ReturnType<typeof resolveSeriesStroke>) => strokeOps.resolve(stroke)
-
-  it("takes the palette's entry for the series' index", () => {
-    const stroke = layers(resolveSeriesStroke(PALETTE, { field: "a", label: "A" }, 1))
-    expect(stroke[0].weight).toBe(6)
-    expect(stroke[0].fill).toEqual(fillOps.resolve("#0000ff"))
+describe("niceTicks", () => {
+  it("ticks every multiple of the step, so zero is one when the range spans it", () => {
+    expect(niceTicks([0, 400], 4)).toEqual([0, 100, 200, 300, 400])
+    expect(niceTicks([-100, 400], 4)).toEqual([-100, 0, 100, 200, 300, 400])
+    expect(niceTicks([0, 600], 4)).toEqual([0, 200, 400, 600])
   })
 
-  it("cycles the palette past its end", () => {
-    const first = layers(resolveSeriesStroke(PALETTE, { field: "a", label: "A" }, 0))
-    const third = layers(resolveSeriesStroke(PALETTE, { field: "a", label: "A" }, 2))
-    expect(third[0].fill).toEqual(first[0].fill)
-    expect(layers(resolveSeriesStroke(PALETTE, { field: "a", label: "A" }, 5))[0].weight).toBe(6)
+  it("splits a range no tidy step divides evenly, as an author's range may be", () => {
+    expect(niceTicks([0, 37], 4)).toEqual([0, 9.25, 18.5, 27.75, 37])
+    expect(niceTicks([0, 50], 4)).toEqual([0, 10, 20, 30, 40, 50])
   })
 
-  it("lets the series' own fill replace the colour and keep the palette entry's weight", () => {
-    const stroke = layers(resolveSeriesStroke(PALETTE, { field: "a", label: "A", fill: "#00ff00" }, 1))
-    expect(stroke).toHaveLength(1)
-    expect(stroke[0].weight).toBe(6)
-    expect(stroke[0].fill).toEqual(fillOps.resolve("#00ff00"))
-  })
-
-  it("overrides only the topmost layer of a stroke of several", () => {
-    const stacked = [[{ weight: 8, fill: "#111111" }, { weight: 3, fill: "#222222" }]]
-    const stroke = layers(resolveSeriesStroke(stacked as never, { field: "a", label: "A", fill: "#333333" }, 0))
-    expect(stroke).toHaveLength(2)
-    expect(stroke[0].fill).toEqual(fillOps.resolve("#111111"))
-    expect(stroke[1].fill).toEqual(fillOps.resolve("#333333"))
-  })
-
-  it("draws a series with an override over an empty palette in a 4 px line of that colour", () => {
-    const stroke = layers(resolveSeriesStroke([], { field: "a", label: "A", fill: "#00ff00" }, 0))
-    expect(stroke).toHaveLength(1)
-    expect(stroke[0].weight).toBe(4)
-    expect(stroke[0].fill).toEqual(fillOps.resolve("#00ff00"))
-  })
-
-  it("draws a series with no override over an empty palette in a 4 px white line", () => {
-    expect(resolveSeriesStroke([], { field: "a", label: "A" }, 0)).toEqual({ weight: 4, fill: "white" })
-  })
-
-  it("draws a series with an override over a palette entry with no layers in a 4 px line of the colour", () => {
-    // The unresolved form, as the empty entry has no layers to be resolved into.
-    expect(resolveSeriesStroke([[]] as never, { field: "a", label: "A", fill: "#00ff00" }, 0)).toEqual({ weight: 4, fill: "#00ff00" })
+  it("writes each tick without floating-point noise", () => {
+    expect(niceTicks([0, 0.3], 3)).toEqual([0, 0.1, 0.2, 0.3])
   })
 })
-
-describe("resolveSeriesFill", () => {
-  const PALETTE = [{ weight: 4, fill: "#ff0000" }, { weight: 6, fill: "#0000ff" }]
-
-  it("is the colour the series' line is drawn in", () => {
-    expect(resolveSeriesFill(PALETTE, { field: "a", label: "A" }, 1)).toEqual(fillOps.resolve("#0000ff"))
-    expect(resolveSeriesFill(PALETTE, { field: "a", label: "A", fill: "#00ff00" }, 1)).toEqual(fillOps.resolve("#00ff00"))
-  })
-
-  it("is white for an empty palette and no override", () => {
-    expect(resolveSeriesFill([], { field: "a", label: "A" }, 0)).toEqual(fillOps.resolve("white"))
-  })
-
-  it("is the topmost layer's colour for a stroke of several", () => {
-    const stacked = [[{ weight: 8, fill: "#111111" }, { weight: 3, fill: "#222222" }]]
-    expect(resolveSeriesFill(stacked as never, { field: "a", label: "A" }, 0)).toEqual(fillOps.resolve("#222222"))
-  })
-})
-

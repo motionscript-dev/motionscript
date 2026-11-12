@@ -5,6 +5,10 @@ import { NODES } from "./nodes";
 import { LineChart } from "./line-chart";
 import { BarChart } from "./bar-chart";
 import { PieChart } from "./pie-chart";
+import { RadarChart } from "./radar-chart";
+import { RadialChart } from "./radial-chart";
+import { CHART_STYLE_PRESETS } from "./kit/style";
+import { draw } from "./tests/harness";
 
 /**
  * What this package publishes to a document, read off the components: the key
@@ -22,6 +26,8 @@ describe("the charts package's node types", () => {
         expect(registry.node("lineChart")?.ctor).toBe(LineChart.node);
         expect(registry.node("barChart")?.ctor).toBe(BarChart.node);
         expect(registry.node("pieChart")?.ctor).toBe(PieChart.node);
+        expect(registry.node("radarChart")?.ctor).toBe(RadarChart.node);
+        expect(registry.node("radialChart")?.ctor).toBe(RadialChart.node);
     });
 
     it("publishes every command the component declares", () => {
@@ -164,15 +170,17 @@ describe("the charts package's node types", () => {
     it("derives the bar chart's properties from its state, with the kind each declares", () => {
         const props = registry.describe("barChart")!.properties!;
         expect(props.categoryField).toMatchObject({ kind: "text", default: "" });
-        expect(props.stacked).toMatchObject({ kind: "boolean", default: false });
+        expect(props.orientation).toMatchObject({ kind: "enum", default: "vertical" });
+        expect(props.stack).toMatchObject({ kind: "enum", default: "none" });
         expect(props.valueAxis).toMatchObject({ kind: "object", default: {} });
         expect(props.categoryAxis).toMatchObject({ kind: "object", default: {} });
-        expect(props.theme).toMatchObject({ kind: "object" });
+        expect(props.style).toMatchObject({ kind: "style", family: "chart" });
         // The two signals the commands move.
         expect(props.growth).toMatchObject({ kind: "number", default: 1 });
         expect(props.spotlightReveal).toMatchObject({ kind: "number", default: 0 });
         expect(props.spotlight).toMatchObject({ default: null });
-        expect(props).toHaveProperty("weights");
+        // The weights the commands move are the chart's own, not an entry.
+        expect(props).not.toHaveProperty("weights");
         // The box every 2D node has.
         expect(props.opacity).toMatchObject({ kind: "number" });
         expect(props.effects).toMatchObject({ kind: "effects" });
@@ -184,10 +192,9 @@ describe("the charts package's node types", () => {
         expect(props.categoryField).toMatchObject({ kind: "text", default: "" });
         expect(props.valueField).toMatchObject({ kind: "text", default: "" });
         expect(props.labelMode).toMatchObject({ kind: "text", default: "percent" });
-        expect(props.labelPlacement).toMatchObject({ kind: "text", default: "leader" });
+        expect(props.style).toMatchObject({ kind: "style", family: "chart" });
         expect(props.centerLabel).toMatchObject({ kind: "text", default: "" });
         expect(props.centerCaption).toMatchObject({ kind: "text", default: "" });
-        expect(props.theme).toMatchObject({ kind: "object" });
         // The selection the commands move.
         expect(props).toHaveProperty("pops");
         expect(props.opacity).toMatchObject({ kind: "number" });
@@ -199,20 +206,88 @@ describe("the charts package's node types", () => {
         expect(registry.describe("pieChart")).toMatchObject({ key: "pieChart", dimension: "2d" });
     });
 
-    // Only the line chart declares its dataset and series kinds, and its showLegend flag.
-    it.skip("declares the bar and pie charts' data and series like the line chart's", () => {
+    it("declares the bar and pie charts' data and series like the line chart's", () => {
         const bar = registry.describe("barChart")!.properties!;
         const pie = registry.describe("pieChart")!.properties!;
         expect(bar.data).toMatchObject({ kind: "dataset" });
         expect(bar.series).toMatchObject({ kind: "series" });
         expect(pie.data).toMatchObject({ kind: "dataset" });
+        for (const key of ["radarChart", "radialChart"]) expect(registry.describe(key)!.properties!.data, key).toMatchObject({ kind: "dataset" });
     });
 
-    it("declares the bar and pie charts' flags as properties a host can read back", () => {
-        const bar = registry.describe("barChart")!.properties!;
+    it("declares the pie chart's centre flag as a property a host can read back", () => {
         const pie = registry.describe("pieChart")!.properties!;
-        for (const [props, flags] of [[bar, { showLegend: true, showValues: false }], [pie, { showLegend: true, showCenter: true }]] as const) {
-            for (const [flag, initial] of Object.entries(flags)) expect(props[flag], flag).toMatchObject({ animatable: false, kind: "boolean", default: initial });
+        expect(pie.showCenter).toMatchObject({ animatable: false, kind: "boolean", default: true });
+        expect(registry.describe("radialChart")!.properties!.showCenter).toMatchObject({ animatable: false, kind: "boolean", default: true });
+    });
+});
+
+const CHART_KEYS = ["lineChart", "barChart", "pieChart", "radarChart", "radialChart"] as const;
+
+const SAMPLE = {
+    data: [
+        { month: "Jan", revenue: 10, cost: 4 },
+        { month: "Feb", revenue: 14, cost: 6 },
+        { month: "Mar", revenue: 12, cost: 9 },
+    ],
+    xField: "month",
+    categoryField: "month",
+    valueField: "revenue",
+    series: [
+        { field: "revenue", label: "Revenue" },
+        { field: "cost", label: "Cost" },
+    ],
+};
+
+/** A chart built the way a host builds a new one: every default `describe` reports, written as a prop. */
+function described(key: string): Record<string, unknown> {
+    const properties = registry.describe(key)!.properties!;
+    return Object.fromEntries(
+        Object.entries(properties).filter(([, p]) => p.default !== undefined).map(([name, p]) => [name, p.default]),
+    );
+}
+
+function build(key: string, props: Record<string, unknown>) {
+    return registry.instantiate({ id: "chart", type: key, parentId: null, layerOrder: 0, props: { width: 760, height: 460, ...props } }) as never;
+}
+
+describe("every chart, as a host offers it", () => {
+    it("lists exactly the five charts", () => {
+        expect(NODES.length).toBe(CHART_KEYS.length);
+        for (const key of CHART_KEYS) expect(registry.describe(key)).toMatchObject({ key, dimension: "2d" });
+    });
+
+    it.each(CHART_KEYS)("%s describes one style entry of the chart family, with presets and grouped fields", (key) => {
+        const style = registry.describe(key)!.properties!.style as unknown as {
+            kind: string; family: string; presets: Record<string, unknown>;
+            properties: Record<string, { kind: string; group: string; default: unknown }>;
+        };
+        expect(style).toMatchObject({ kind: "style", family: "chart" });
+        expect(Object.keys(style.presets)).toEqual(Object.keys(CHART_STYLE_PRESETS));
+        const fields = Object.entries(style.properties);
+        expect(fields.length).toBeGreaterThan(8);
+        for (const [name, field] of fields) {
+            expect(field.group, name).toEqual(expect.any(String));
+            expect(field.default, name).not.toBeUndefined();
         }
+        for (const field of ["palette", "foreground", "fontSize", "legend"]) expect(style.properties[field], field).toBeDefined();
+        expect(style.properties.palette).toMatchObject({ kind: "palette", group: "colors" });
+        expect(new Set(fields.map(([, field]) => field.group)).size).toBeGreaterThanOrEqual(4);
+        // The look is the style's alone: nothing beside it is a theme or a legend flag.
+        const props = registry.describe(key)!.properties!;
+        for (const gone of ["theme", "showLegend", "showValues", "stacked"]) expect(props, gone).not.toHaveProperty(gone);
+    });
+
+    it.each(CHART_KEYS)("%s builds from nothing and from every default it describes", (key) => {
+        const box = { width: 760, height: 460 };
+        expect(() => draw(build(key, {}), box)).not.toThrow();
+        expect(() => draw(build(key, described(key)), box)).not.toThrow();
+    });
+
+    it.each(CHART_KEYS)("%s draws the same bare as from its described defaults, given the same data", (key) => {
+        const box = { width: 760, height: 460 };
+        const bare = draw(build(key, SAMPLE), box);
+        const hosted = draw(build(key, { ...described(key), ...SAMPLE }), box);
+        expect(JSON.stringify(hosted.ops())).toBe(JSON.stringify(bare.ops()));
     });
 });

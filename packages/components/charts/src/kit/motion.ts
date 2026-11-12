@@ -8,6 +8,13 @@ export type AnyTimeline = Timeline<any, any>
 /** How far a legend starts below its slot when `enter` brings it in, in px. */
 export const LEGEND_SLIDE = 20
 
+/** Where a legend waits before it comes up: below its place, above it, or to its right. */
+export function legendAway(at: string): { x?: number; y?: number } {
+  if (at === "top") return { y: LEGEND_SLIDE }
+  if (at === "right") return { x: LEGEND_SLIDE }
+  return { y: -LEGEND_SLIDE }
+}
+
 /** Marker count when an axis states no ticks. */
 export const DEFAULT_MARKERS = 5
 

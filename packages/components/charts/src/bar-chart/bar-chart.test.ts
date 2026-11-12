@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest"
 import type { Command, Text } from "@motionscript/sdk"
 
-import { Recorder, attachAt, cartesianOf, draw, layOut, scrub } from "../tests/harness"
+import { Recorder, attachAt, draw, layOut, scrub } from "../tests/harness"
+import { partOf, partsOf as partsIn, plotOf } from "../kit/tests/parts"
 import { ChartLegend } from "../kit/chart-legend"
 import { SPOTLIGHT_DIM } from "../kit/shared"
+import { HorizontalAxis } from "../kit/horizontal-axis"
+import { VerticalAxis } from "../kit/vertical-axis"
 import { BarChart, barChartDomain } from "./bar-chart"
 import { CategoryAxis } from "./category-axis"
 import { ChartBars } from "./chart-bars"
@@ -36,12 +39,11 @@ function chart(props: Record<string, unknown> = {}): BarChart {
 
 /** The chart's parts, read off the frame it built. */
 function partsOf(node: BarChart) {
-  const { plot, below } = cartesianOf(node)
   return {
-    plot,
-    bars: plot.children.filter((part) => part instanceof ChartBars) as ChartBars[],
-    cAxis: below.find((part) => part instanceof CategoryAxis) as CategoryAxis,
-    legend: (below.find((part) => part instanceof ChartLegend) ?? null) as ChartLegend | null,
+    plot: plotOf(node),
+    bars: partsIn(node, ChartBars),
+    cAxis: partOf(node, CategoryAxis)!,
+    legend: partOf(node, ChartLegend) ?? null,
   }
 }
 
@@ -52,7 +54,7 @@ const legendReveal = (node: BarChart) => partsOf(node).legend!.reveal
 const categoryDims = (node: BarChart) => partsOf(node).cAxis.dims
 const panel = (node: BarChart) => partsOf(node).plot.layoutBounds
 const slotWidth = (node: BarChart) => panel(node).width / node.data.length
-const slotInner = (node: BarChart) => slotWidth(node) * node.theme.bar.slotFill
+const slotInner = (node: BarChart) => slotWidth(node) * node.style.barWidth
 const slotCenter = (node: BarChart, index: number) => -panel(node).width / 2 + slotWidth(node) * (index + 0.5)
 const valueToY = (node: BarChart, value: number) => {
   const [min, max] = barChartDomain(node).range
@@ -79,8 +81,10 @@ describe("BarChart: weights", () => {
     expect(enabled(chart({ series: [SERIES[0], { ...SERIES[1], enabled: false }] }))).toEqual([true, false])
   })
 
-  it("keeps the weights it is built with", () => {
-    expect(chart({ weights: [1, 0.5] }).weights).toEqual([1, 0.5])
+  it("keeps the weights a command writes", () => {
+    const node = chart()
+    node.set({ weights: [1, 0.5] } as never)
+    expect(node.weights).toEqual([1, 0.5])
   })
 
   it("divides a slot's inner width between the series in proportion to their weights", () => {
@@ -88,33 +92,33 @@ describe("BarChart: weights", () => {
     const inner = slotInner(node)
     const [a, b] = [bars(node, 0)[0], bars(node, 1)[0]]
     // Two even series share the slot, less the group gap of 6 each.
-    expect(a.width).toBeCloseTo(inner / 2 - 6)
-    expect(b.width).toBeCloseTo(inner / 2 - 6)
+    expect(a.thickness).toBeCloseTo(inner / 2 - 6)
+    expect(b.thickness).toBeCloseTo(inner / 2 - 6)
     node.set({ weights: [1, 3] } as never)
-    expect(bars(node, 0)[0].width).toBeCloseTo(inner / 4 - 6)
-    expect(bars(node, 1)[0].width).toBeCloseTo((inner * 3) / 4 - 6)
+    expect(bars(node, 0)[0].thickness).toBeCloseTo(inner / 4 - 6)
+    expect(bars(node, 1)[0].thickness).toBeCloseTo((inner * 3) / 4 - 6)
   })
 
   it("gives a single series the whole slot, with no gap taken off", () => {
     const node = chart({ series: [SERIES[0]] })
-    expect(bars(node, 0)[0].width).toBeCloseTo(slotInner(node))
+    expect(bars(node, 0)[0].thickness).toBeCloseTo(slotInner(node))
   })
 
   it("reads a missing or negative weight as the full share or none", () => {
     const node = chart()
     node.set({ weights: [] } as never)
-    expect(bars(node, 0)[0].width).toBeCloseTo(slotInner(node) / 2 - 6)
+    expect(bars(node, 0)[0].thickness).toBeCloseTo(slotInner(node) / 2 - 6)
     node.set({ weights: [-2, 1] } as never)
-    expect(bars(node, 0)[0].width).toBe(0)
+    expect(bars(node, 0)[0].thickness).toBe(0)
     // The negative one counts as nothing, so the other has the slot to itself.
-    expect(bars(node, 1)[0].width).toBeCloseTo(slotInner(node) - 6)
-    expect(bars(node, 1)[0].x).toBeCloseTo(slotCenter(node, 0))
+    expect(bars(node, 1)[0].thickness).toBeCloseTo(slotInner(node) - 6)
+    expect(bars(node, 1)[0].center).toBeCloseTo(slotCenter(node, 0))
   })
 
   it("shares the slot as if the total were 1 when every weight is 0, rather than dividing by nothing", () => {
     const node = chart()
     node.set({ weights: [0, 0] } as never)
-    for (const column of [...bars(node, 0), ...bars(node, 1)]) expect(Number.isFinite(column.width) && Number.isFinite(column.x)).toBe(true)
+    for (const column of [...bars(node, 0), ...bars(node, 1)]) expect(Number.isFinite(column.thickness) && Number.isFinite(column.center)).toBe(true)
   })
 })
 
@@ -127,22 +131,22 @@ describe("BarChart.hideSeries: the group reflows", () => {
     relay(node)
     // Weights [0.5, 1]: a share of the slot is a third for the first, two thirds for the second.
     expect(node.weights).toEqual([0.5, 1])
-    expect(bars(node, 0)[0].width).toBeCloseTo((inner / 1.5) * 0.5 - 6)
-    expect(bars(node, 1)[0].width).toBeCloseTo(inner / 1.5 - 6)
+    expect(bars(node, 0)[0].thickness).toBeCloseTo((inner / 1.5) * 0.5 - 6)
+    expect(bars(node, 1)[0].thickness).toBeCloseTo(inner / 1.5 - 6)
     seek(1)
     relay(node)
-    expect(bars(node, 0)[0].width).toBe(0)
-    expect(bars(node, 1)[0].width).toBeCloseTo(inner - 6)
+    expect(bars(node, 0)[0].thickness).toBe(0)
+    expect(bars(node, 1)[0].thickness).toBeCloseTo(inner - 6)
   })
 
   it("slides the remaining column in to the slot's centre, where a lone column sits", () => {
     const node = chart()
-    const before = bars(node, 1)[0].x
+    const before = bars(node, 1)[0].center
     const seek = scrub(node.hideSeries({ data: { seriesIndex: 0 }, duration: 1, easing: linear }))
     seek(1)
-    expect(bars(node, 1)[0].x).toBeLessThan(before)
+    expect(bars(node, 1)[0].center).toBeLessThan(before)
     // Alone, it is centred on the slot.
-    expect(bars(node, 1)[0].x).toBeCloseTo(slotCenter(node, 0))
+    expect(bars(node, 1)[0].center).toBeCloseTo(slotCenter(node, 0))
   })
 
   it("holds the columns switched on until the last frame, so they are there to narrow", () => {
@@ -203,11 +207,11 @@ describe("BarChart.showSeries", () => {
     seek(0.5)
     relay(node)
     expect(node.weights).toEqual([1, 0.5])
-    expect(bars(node, 1)[0].width).toBeGreaterThan(0)
+    expect(bars(node, 1)[0].thickness).toBeGreaterThan(0)
     seek(1)
     relay(node)
-    expect(bars(node, 0)[0].width).toBeCloseTo(slotInner(node) / 2 - 6)
-    expect(bars(node, 1)[0].width).toBeCloseTo(slotInner(node) / 2 - 6)
+    expect(bars(node, 0)[0].thickness).toBeCloseTo(slotInner(node) / 2 - 6)
+    expect(bars(node, 1)[0].thickness).toBeCloseTo(slotInner(node) / 2 - 6)
   })
 
   it("switches the columns on from the first frame, though they have no width yet", () => {
@@ -215,7 +219,7 @@ describe("BarChart.showSeries", () => {
     const seek = scrub(node.showSeries({ data: { seriesIndex: 1 }, duration: 1, easing: linear }))
     seek(0)
     expect(enabled(node)[1]).toBe(true)
-    expect(bars(node, 1)[0].width).toBe(0)
+    expect(bars(node, 1)[0].thickness).toBe(0)
   })
 
   it("keeps showing a series that is already showing", () => {
@@ -242,7 +246,7 @@ describe("BarChart: a series that does not exist", () => {
 })
 
 describe("BarChart: a stacked chart", () => {
-  const stacked = () => chart({ stacked: true })
+  const stacked = () => chart({ stack: "stacked" })
 
   it("measures the stack from the live contributions, so a series fading out lowers the segments above it", () => {
     const node = stacked()
@@ -259,13 +263,25 @@ describe("BarChart: a stacked chart", () => {
   it("keeps a column the width of the slot whatever the weights say", () => {
     const node = stacked()
     scrub(node.hideSeries({ data: { seriesIndex: 0 }, duration: 1, easing: linear }))(0.5)
-    expect(bars(node, 1)[0].width).toBeCloseTo(slotInner(node))
+    expect(bars(node, 1)[0].thickness).toBeCloseTo(slotInner(node))
   })
 
-  it("prints the row's own value, not the weighted one, so a fading series is not seen counting down", () => {
-    const node = stacked()
-    scrub(node.hideSeries({ data: { seriesIndex: 0 }, duration: 1, easing: linear }))(0.5)
-    expect(bars(node, 0)[0].value).toBe(10)
+  it("prints each segment's own value inside it", () => {
+    const node = chart({ stack: "stacked", style: { values: "inside" } })
+    expect(bars(node, 0).map((bar) => bar.caption)).toEqual(["10", "30", "20"])
+    expect(bars(node, 1).map((bar) => bar.caption)).toEqual(["20", "10", "20"])
+  })
+
+  it("prints the stack's total past its end, on the last segment only", () => {
+    const node = chart({ stack: "stacked", style: { values: "end" } })
+    expect(bars(node, 0).map((bar) => bar.caption)).toEqual(["", "", ""])
+    expect(bars(node, 1).map((bar) => bar.caption)).toEqual(["30", "40", "40"])
+  })
+
+  it("prints shares in a percent stack, inside, even when asked for the end", () => {
+    const node = chart({ stack: "percent", style: { values: "end" } })
+    expect(bars(node, 0).map((bar) => bar.caption)).toEqual(["33.3%", "75%", "50%"])
+    expect(partsOf(node).bars[0].values).toBe("inside")
   })
 })
 
@@ -302,7 +318,7 @@ describe("BarChart: the rounded end of a column", () => {
 
 describe("BarChart: the figures on the columns", () => {
   it("builds and prints each column's figure, as the value axis writes its ticks", () => {
-    const node = chart({ showValues: true, valueAxis: { format: "$#,##0" } })
+    const node = chart({ style: { values: "end" }, valueAxis: { format: "$#,##0" } })
     draw(node, BOX)
     expect(bars(node, 0).map((column) => column.caption)).toEqual(["$10", "$30", "$20"])
     const figures = partsOf(node).bars[0].children as Text[]
@@ -312,7 +328,7 @@ describe("BarChart: the figures on the columns", () => {
   it("prints none when it is not asked to", () => {
     const node = chart()
     expect(partsOf(node).bars[0].children).toHaveLength(0)
-    expect(bars(node, 0)[0].caption).toBeUndefined()
+    expect(bars(node, 0)[0].caption).toBe("")
   })
 })
 
@@ -341,12 +357,6 @@ describe("BarChart: spotlighting a category", () => {
     const node = chart()
     node.set({ spotlight: 9, spotlightReveal: 1 } as never)
     expectDims(categoryDims(node), [SPOTLIGHT_DIM, SPOTLIGHT_DIM, SPOTLIGHT_DIM])
-  })
-
-  it("dims by the theme's own opacity", () => {
-    const node = chart({ theme: { spotlight: { dimOpacity: 0.5 } } })
-    node.set({ spotlight: 0, spotlightReveal: 1 } as never)
-    expectDims(categoryDims(node), [1, 0.5, 0.5])
   })
 
   it("reaches the columns and the captions both", () => {
@@ -456,5 +466,120 @@ describe("BarChart: spotlighting a category", () => {
       expect(node.spotlightReveal).toBeCloseTo(0.5)
       expect(node.spotlight).toBe(1)
     })
+  })
+})
+
+describe("BarChart: orientation", () => {
+  const sideways = (props: Record<string, unknown> = {}) => chart({ orientation: "horizontal", ...props })
+
+  it("puts the categories in a column beside the plot and the values under it", () => {
+    const node = sideways()
+    expect(partOf(node, CategoryAxis)!.orientation).toBe("vertical")
+    expect(partOf(node, HorizontalAxis)).toBeDefined()
+    expect(partOf(node, VerticalAxis)).toBeUndefined()
+    const upright = chart()
+    expect(partOf(upright, CategoryAxis)!.orientation).toBe("horizontal")
+    expect(partOf(upright, VerticalAxis)).toBeDefined()
+  })
+
+  it("grows the bars right from the zero line, first category at the top", () => {
+    const node = sideways()
+    const { bars: sets } = partsOf(node)
+    expect(sets[0].horizontal).toBe(true)
+    const plot = panel(node)
+    const [lo, hi] = barChartDomain(node).range
+    const zero = ((0 - lo) / (hi - lo) - 0.5) * plot.width
+    const first = bars(node, 0)[0]
+    expect(first.from).toBeCloseTo(zero)
+    expect(first.to).toBeGreaterThan(first.from)
+    // Slots run down the plot's height, the first above the last.
+    expect(bars(node, 0)[0].center).toBeGreaterThan(bars(node, 0)[2].center)
+    expect(Math.abs(bars(node, 0)[0].center - bars(node, 0)[2].center)).toBeCloseTo((plot.height / 3) * 2)
+  })
+
+  it("rounds the right end of a bar that grows right, and the left of one that grows left", () => {
+    const radii = (node: BarChart) =>
+      partsOf(node).bars.flatMap((set) => {
+        const ctx = new Recorder()
+        ctx.execute(() => set.render(ctx))
+        return ctx.ops().flatMap((ops) => ops.flatMap((op) => (op.kind === "rect" ? [(op.state as { cornerRadius?: Record<string, number> }).cornerRadius] : [])))
+      })
+    for (const radius of radii(sideways())) {
+      expect(radius!.topRight).toBeGreaterThan(0)
+      expect(radius!.topLeft).toBe(0)
+    }
+    for (const radius of radii(sideways({ data: ROWS.map((row) => ({ ...row, a: -row.a, b: -row.b })) }))) {
+      expect(radius!.topLeft).toBeGreaterThan(0)
+      expect(radius!.topRight).toBe(0)
+    }
+  })
+})
+
+describe("BarChart: stack modes", () => {
+  it("scales the value axis to the tallest bar apart, the tallest stack stacked, and 100 as shares", () => {
+    expect(barChartDomain(chart()).range).toEqual([0, 30])
+    expect(barChartDomain(chart({ stack: "stacked" })).range).toEqual([0, 40])
+    expect(barChartDomain(chart({ stack: "percent" })).range).toEqual([0, 100])
+  })
+
+  it("writes a percent stack's ticks as shares", () => {
+    const node = chart({ stack: "percent" })
+    draw(node, BOX)
+    const axis = partOf(node, VerticalAxis)!
+    expect(axis.captions).toEqual(["0%", "25%", "50%", "75%", "100%"])
+  })
+
+  it("rounds only the last segment of a stack", () => {
+    const node = chart({ stack: "stacked" })
+    expect(bars(node, 0).map((bar) => bar.round)).toEqual([false, false, false])
+    expect(bars(node, 1).map((bar) => bar.round)).toEqual([true, true, true])
+  })
+
+  it("ticks every multiple of the step, so zero is a tick when the bars run both ways", () => {
+    const node = chart({ data: [{ m: "a", a: -73, b: 10 }, { m: "b", a: 305, b: 20 }] })
+    expect(barChartDomain(node).ticks).toContain(0)
+    expect(barChartDomain(node).ticks).toEqual([-100, 0, 100, 200, 300, 400])
+  })
+})
+
+describe("BarChart: style", () => {
+  it("declares one style entry in the chart family, with the bar marks and labels", () => {
+    const style = new BarChart({}).style
+    expect(style).toMatchObject({ barRadius: 10, barWidth: 0.7, barGap: 6, values: "none", grid: "horizontal", legend: "bottom" })
+  })
+
+  it("tweens the bars' rounding and width with to({ style })", () => {
+    const node = chart()
+    const seek = scrub(node.to({ data: { style: { barRadius: 20, barWidth: 0.5 } }, duration: 1, easing: linear }))
+    seek(0.5)
+    relay(node)
+    expect(node.style.barRadius).toBeCloseTo(15)
+    expect(partsOf(node).bars[0].cornerRadius).toBeCloseTo(15)
+    expect(slotInner(node)).toBeCloseTo(slotWidth(node) * 0.6)
+  })
+
+  it("leaves out a value or category axis the style turns off, the plot taking its room", () => {
+    const full = plotOf(chart()).layoutBounds
+    const bare = chart({ style: { showXAxis: false, showYAxis: false } })
+    expect(partOf(bare, VerticalAxis)).toBeUndefined()
+    expect(partOf(bare, CategoryAxis)).toBeUndefined()
+    expect(plotOf(bare).layoutBounds.width).toBeGreaterThan(full.width)
+    expect(plotOf(bare).layoutBounds.height).toBeGreaterThan(full.height)
+  })
+
+  it("builds no legend for legend: none, and a column for one on the right", () => {
+    expect(partOf(chart({ style: { legend: "none" } }), ChartLegend)).toBeUndefined()
+    const right = partOf(chart({ style: { legend: "right" } }), ChartLegend)!
+    expect(right.flow).toBe("vertical")
+    expect(partOf(chart({ style: { legend: "top" } }), ChartLegend)!.flow).toBe("horizontal")
+  })
+
+  it("puts a top legend above the plot and a bottom one below it", () => {
+    const y = (legend: string) => {
+      const node = chart({ style: { legend } })
+      const entry = partOf(node, ChartLegend)!
+      return entry.parent!.layoutBounds.y
+    }
+    expect(y("top")).toBeLessThan(y("bottom"))
   })
 })

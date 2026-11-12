@@ -8,7 +8,13 @@ import {
   resolveYScale,
   yExtent,
   type RegionBox,
+  clipPolygonToBox,
+  curvePoints,
+  cutAt,
+  stackExtent,
+  stackSeries,
 } from "./shared"
+import { resolveXScale } from "./x-scale"
 
 /**
  * The pure parts of the line chart: how tall its scale is, and where a spotlit
@@ -234,5 +240,109 @@ describe("clipPolylineToBox", () => {
   it("clips against a box that is not centred on the origin", () => {
     const off: RegionBox = { left: 10, right: 20, bottom: 0, top: 10, xBounded: true, yBounded: false }
     expect(clipPolylineToBox([pt(0, 5), pt(30, 5)], off)).toEqual([[pt(10, 5), pt(20, 5)]])
+  })
+})
+
+const pt = (x: number, y: number) => ({ x, y })
+
+describe("stackSeries", () => {
+  const DATA = [
+    { m: "Jan", a: 1, b: 3 },
+    { m: "Feb", a: 2, b: 2 },
+  ]
+  const SERIES = [{ field: "a", label: "A" }, { field: "b", label: "B" }]
+  const x = resolveXScale(DATA, "m")
+  const ys = (stack: "none" | "stacked" | "percent", weights?: number[]) =>
+    stackSeries(DATA, x, SERIES, stack, weights).map((s) => ({ top: s.points.map(([, y]) => y), base: s.base?.map(([, y]) => y) ?? null }))
+
+  it("leaves every series at its own values apart, with no base", () => {
+    expect(ys("none")).toEqual([{ top: [1, 2], base: null }, { top: [3, 2], base: null }])
+  })
+
+  it("sits each series on the running sum of those before it", () => {
+    expect(ys("stacked")).toEqual([{ top: [1, 2], base: [0, 0] }, { top: [4, 4], base: [1, 2] }])
+  })
+
+  it("reads each row as shares of its total in a percent stack", () => {
+    expect(ys("percent")).toEqual([{ top: [25, 50], base: [0, 0] }, { top: [100, 100], base: [25, 50] }])
+  })
+
+  it("scales a series' contribution by its weight, so one sinking out lowers the ones above it", () => {
+    expect(ys("stacked", [0, 1])).toEqual([{ top: [0, 0], base: [0, 0] }, { top: [3, 2], base: [0, 0] }])
+  })
+
+  it("orders the points along x, whatever order the rows are in", () => {
+    const data = [{ n: 2, a: 5 }, { n: 0, a: 1 }]
+    const [series] = stackSeries(data, resolveXScale(data, "n"), [SERIES[0]], "none")
+    expect(series.points).toEqual([[0, 1], [2, 5]])
+  })
+
+  it("measures the extent across tops and bases alike", () => {
+    expect(stackExtent(stackSeries(DATA, x, SERIES, "stacked"))).toEqual([0, 4])
+  })
+})
+
+describe("curvePoints", () => {
+  const P = [pt(0, 0), pt(10, 10), pt(20, 0), pt(30, 0), pt(40, 20)]
+
+  it("is the points themselves for a linear line", () => {
+    expect(curvePoints(P, "linear")).toEqual(P)
+  })
+
+  it("passes through every point of a smooth line", () => {
+    const curve = curvePoints(P, "smooth")
+    for (const p of P) expect(curve.some((q) => Math.abs(q.x - p.x) < 1e-9 && Math.abs(q.y - p.y) < 1e-9)).toBe(true)
+  })
+
+  it("never overshoots the data between two points: each stretch stays within its ends", () => {
+    const curve = curvePoints(P, "smooth")
+    for (let i = 1; i < P.length; i++) {
+      const [a, b] = [P[i - 1], P[i]]
+      const stretch = curve.filter((q) => q.x >= a.x && q.x <= b.x)
+      for (const q of stretch) {
+        expect(q.y).toBeGreaterThanOrEqual(Math.min(a.y, b.y) - 1e-9)
+        expect(q.y).toBeLessThanOrEqual(Math.max(a.y, b.y) + 1e-9)
+      }
+    }
+  })
+
+  it("keeps a smooth line flat across a run of equal values", () => {
+    const curve = curvePoints(P, "smooth").filter((q) => q.x >= 20 && q.x <= 30)
+    for (const q of curve) expect(q.y).toBeCloseTo(0)
+  })
+
+  it("steps level between points, changing half way", () => {
+    expect(curvePoints([pt(0, 0), pt(10, 5)], "step")).toEqual([pt(0, 0), pt(5, 0), pt(5, 5), pt(10, 5)])
+  })
+
+  it("is a straight segment for two points, smooth or not", () => {
+    expect(curvePoints([pt(0, 0), pt(10, 5)], "smooth")).toEqual([pt(0, 0), pt(10, 5)])
+  })
+})
+
+describe("cutAt", () => {
+  it("keeps the points left of x and ends on the crossing", () => {
+    expect(cutAt([pt(0, 0), pt(10, 10), pt(20, 0)], 15)).toEqual([pt(0, 0), pt(10, 10), pt(15, 5)])
+  })
+
+  it("is nothing left of the first point, and everything past the last", () => {
+    expect(cutAt([pt(0, 0), pt(10, 10)], -1)).toEqual([])
+    expect(cutAt([pt(0, 0), pt(10, 10)], 99)).toEqual([pt(0, 0), pt(10, 10)])
+  })
+})
+
+describe("clipPolygonToBox", () => {
+  const BOX: RegionBox = { left: 0, right: 10, bottom: 0, top: 10, xBounded: true, yBounded: true }
+
+  it("keeps the part of an outline inside the box", () => {
+    const clipped = clipPolygonToBox([pt(-5, 5), pt(5, 5), pt(5, -5), pt(-5, -5)], BOX)
+    const xs = clipped.map((p) => p.x)
+    const ys = clipped.map((p) => p.y)
+    expect([Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]).toEqual([0, 5, 0, 5])
+  })
+
+  it("is nothing for an outline wholly outside, or without a region", () => {
+    expect(clipPolygonToBox([pt(20, 20), pt(30, 20), pt(30, 30)], BOX)).toEqual([])
+    expect(clipPolygonToBox([pt(1, 1), pt(2, 1), pt(2, 2)], EMPTY_REGION_BOX)).toEqual([])
   })
 })

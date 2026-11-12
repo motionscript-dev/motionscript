@@ -11,23 +11,15 @@
  */
 
 import {
-  fillOps,
   lerpNumber,
-  shadowOps,
-  strokeOps,
-  insetsOps,
-  textOps,
   type DataRecord,
   type Fill,
-  type FillResolved,
   type Insets,
-  type InsetsResolved,
   type Shadow,
-  type ShadowResolved,
   type Stroke,
-  type StrokeResolved,
   type TextStyle,
 } from "@motionscript/sdk"
+import { niceStep } from "@motionscript/sdk/component"
 
 /** One series of a chart: a column of the table, captioned and painted. */
 export interface ChartSeries {
@@ -166,7 +158,7 @@ export function settleAxisDomain(domain: AxisDomainConfig, drawn: (domain: AxisD
 }
 
 /** The colour tokens the default themes are built from: a dark plot panel with warm-grey axis furniture. */
-export const CHART_PALETTE = {
+const CHART_PALETTE = {
   plotFill: "#15130e",
   borderColor: "#4a4036",
   gridColor: "#2c2820",
@@ -175,15 +167,6 @@ export const CHART_PALETTE = {
   /** A spotlit region's dashed rules and wash. */
   regionColor: "#d99a3a",
 } as const
-
-/** The out-of-the-box series palette, cycled by series index. */
-export const DEFAULT_SERIES_COLORS = [
-  "#d9603b",
-  "#8194ad",
-  "#e0a93b",
-  "#5e9d6b",
-  "#9ec85a",
-] as const
 
 /** Opacity an un-spotlighted series fades to, mark and legend entry alike. */
 export const SPOTLIGHT_DIM = 0.2
@@ -269,13 +252,6 @@ export interface LegendConfig {
   markerStyle: LegendMarkerConfig
 }
 
-/** The plot panel a cartesian chart draws its marks over. */
-export interface PlotAreaConfig {
-  stroke: Stroke
-  fill: Fill
-  shadow: Shadow
-}
-
 const AXIS_LABEL_STYLE: TextStyle = {
   fontSize: 24,
   fontWeight: 700,
@@ -306,13 +282,6 @@ export const DEFAULT_Y_AXIS: AxisConfig = {
   titlePadding: 24,
 }
 
-/** Unpainted but framed: a chart reads against the stage rather than punching a panel into it. */
-export const DEFAULT_PLOT_AREA: PlotAreaConfig = {
-  fill: [],
-  stroke: { weight: 6, fill: CHART_PALETTE.borderColor },
-  shadow: [],
-}
-
 export const DEFAULT_LEGEND: LegendConfig = {
   padding: 0,
   textStyle: {
@@ -329,249 +298,6 @@ export const DEFAULT_LEGEND: LegendConfig = {
     stroke: [],
     shadow: [],
   },
-}
-
-/** {@link DEFAULT_SERIES_COLORS} as 4px strokes. */
-export const DEFAULT_SERIES_STROKES: Stroke[] = DEFAULT_SERIES_COLORS.map(
-  (fill) => ({ weight: 4, fill })
-)
-
-/** {@link DEFAULT_SERIES_COLORS} as solid fills. */
-export const DEFAULT_SERIES_FILLS: Fill[] = DEFAULT_SERIES_COLORS.map(
-  (fill) => fill
-)
-
-export function resolveAxisConfig(
-  axis: Partial<AxisConfig> | undefined,
-  previous: AxisConfig
-): AxisConfig {
-  return {
-    labelStyle: textOps.resolveStyle(axis?.labelStyle, previous.labelStyle),
-    titleStyle: textOps.resolveStyle(axis?.titleStyle, previous.titleStyle),
-    lineStyle: strokeOps.resolve(axis?.lineStyle ?? previous.lineStyle),
-    tickPadding: insetsOps.resolve(
-      axis?.tickPadding ?? previous.tickPadding,
-      previous.tickPadding as InsetsResolved
-    ),
-    titlePadding: insetsOps.resolve(
-      axis?.titlePadding ?? previous.titlePadding,
-      previous.titlePadding as InsetsResolved
-    ),
-  }
-}
-
-export function lerpAxisConfig(
-  from: AxisConfig,
-  to: AxisConfig,
-  t: number
-): AxisConfig {
-  return {
-    labelStyle: textOps.lerpStyle(from.labelStyle, to.labelStyle, t),
-    titleStyle: textOps.lerpStyle(from.titleStyle, to.titleStyle, t),
-    lineStyle: strokeOps.lerp(
-      from.lineStyle as StrokeResolved[],
-      to.lineStyle as StrokeResolved[],
-      t
-    ),
-    tickPadding: insetsOps.lerp(
-      from.tickPadding as InsetsResolved,
-      to.tickPadding as InsetsResolved,
-      t
-    ),
-    titlePadding: insetsOps.lerp(
-      from.titlePadding as InsetsResolved,
-      to.titlePadding as InsetsResolved,
-      t
-    ),
-  }
-}
-
-export function resolvePlotArea(
-  plotArea: Partial<PlotAreaConfig> | undefined,
-  previous: PlotAreaConfig
-): PlotAreaConfig {
-  return {
-    fill: fillOps.resolve(plotArea?.fill ?? previous.fill),
-    stroke: strokeOps.resolve(plotArea?.stroke ?? previous.stroke),
-    shadow: shadowOps.resolve(plotArea?.shadow ?? previous.shadow),
-  }
-}
-
-export function lerpPlotArea(
-  from: PlotAreaConfig,
-  to: PlotAreaConfig,
-  t: number
-): PlotAreaConfig {
-  return {
-    fill: fillOps.lerp(
-      from.fill as FillResolved[],
-      to.fill as FillResolved[],
-      t
-    ),
-    stroke: strokeOps.lerp(
-      from.stroke as StrokeResolved[],
-      to.stroke as StrokeResolved[],
-      t
-    ),
-    shadow: shadowOps.lerp(
-      from.shadow as ShadowResolved[],
-      to.shadow as ShadowResolved[],
-      t
-    ),
-  }
-}
-
-function resolveLegendMarkerConfig(
-  marker: Partial<LegendMarkerConfig> | undefined,
-  previous: LegendMarkerConfig
-): LegendMarkerConfig {
-  return {
-    width: marker?.width ?? previous.width,
-    height: marker?.height ?? previous.height,
-    borderRadius: marker?.borderRadius ?? previous.borderRadius,
-    stroke: strokeOps.resolve(marker?.stroke ?? previous.stroke),
-    shadow: shadowOps.resolve(marker?.shadow ?? previous.shadow),
-  }
-}
-
-function lerpLegendMarkerConfig(
-  from: LegendMarkerConfig,
-  to: LegendMarkerConfig,
-  t: number
-): LegendMarkerConfig {
-  return {
-    width: lerpNumber(from.width, to.width, t),
-    height: lerpNumber(from.height, to.height, t),
-    borderRadius: lerpNumber(from.borderRadius, to.borderRadius, t),
-    stroke: strokeOps.lerp(
-      from.stroke as StrokeResolved[],
-      to.stroke as StrokeResolved[],
-      t
-    ),
-    shadow: shadowOps.lerp(
-      from.shadow as ShadowResolved[],
-      to.shadow as ShadowResolved[],
-      t
-    ),
-  }
-}
-
-/** A legend theme as the author may state it: every branch optional. */
-export type LegendTheme = Partial<Omit<LegendConfig, "markerStyle">> & {
-  markerStyle?: Partial<LegendMarkerConfig>
-}
-
-export function resolveLegendConfig(
-  legend: LegendTheme | undefined,
-  previous: LegendConfig
-): LegendConfig {
-  return {
-    padding: insetsOps.resolve(
-      legend?.padding ?? previous.padding,
-      previous.padding as InsetsResolved
-    ),
-    textStyle: textOps.resolveStyle(legend?.textStyle, previous.textStyle),
-    itemGap: legend?.itemGap ?? previous.itemGap,
-    markerStyle: resolveLegendMarkerConfig(
-      legend?.markerStyle,
-      previous.markerStyle
-    ),
-  }
-}
-
-export function lerpLegendConfig(
-  from: LegendConfig,
-  to: LegendConfig,
-  t: number
-): LegendConfig {
-  return {
-    padding: insetsOps.lerp(
-      from.padding as InsetsResolved,
-      to.padding as InsetsResolved,
-      t
-    ),
-    textStyle: textOps.lerpStyle(from.textStyle, to.textStyle, t),
-    itemGap: lerpNumber(from.itemGap, to.itemGap, t),
-    markerStyle: lerpLegendMarkerConfig(from.markerStyle, to.markerStyle, t),
-  }
-}
-
-/** A palette override replaces the previous palette outright. */
-export function resolveSeriesStrokes(
-  styles: Stroke[] | undefined,
-  previous: Stroke[]
-): Stroke[] {
-  return (styles ?? previous).map((s) => strokeOps.resolve(s))
-}
-
-/** Pairwise by index; a palette that grows/shrinks holds the longer side's tail. */
-export function lerpSeriesStrokes(
-  from: Stroke[],
-  to: Stroke[],
-  t: number
-): Stroke[] {
-  const n = Math.max(from.length, to.length)
-  const out: Stroke[] = []
-  for (let i = 0; i < n; i++) {
-    const a = (from[i] ?? to[i]) as StrokeResolved[]
-    const b = (to[i] ?? from[i]) as StrokeResolved[]
-    out.push(strokeOps.lerp(a, b, t))
-  }
-  return out
-}
-
-/** The fill-palette twin of {@link resolveSeriesStrokes}, for filled marks. */
-export function resolveSeriesFills(
-  fills: Fill[] | undefined,
-  previous: Fill[]
-): Fill[] {
-  return (fills ?? previous).map((f) => fillOps.resolve(f))
-}
-
-/** The fill-palette twin of {@link lerpSeriesStrokes}. */
-export function lerpSeriesFills(from: Fill[], to: Fill[], t: number): Fill[] {
-  const n = Math.max(from.length, to.length)
-  const out: Fill[] = []
-  for (let i = 0; i < n; i++) {
-    const a = (from[i] ?? to[i]) as FillResolved[]
-    const b = (to[i] ?? from[i]) as FillResolved[]
-    out.push(fillOps.lerp(a, b, t))
-  }
-  return out
-}
-
-/**
- * The stroke for series `index`: the palette's entry at `index % palette.length`,
- * with the series' own `fill`, if set, replacing just the topmost layer's colour.
- */
-export function resolveSeriesStroke(
-  palette: Stroke[],
-  series: ChartSeries,
-  index: number
-): Stroke {
-  const entry: Stroke =
-    palette.length > 0
-      ? palette[index % palette.length]
-      : { weight: 4, fill: "white" }
-  if (series.fill == null) return entry
-  const layers = strokeOps.resolve(entry)
-  if (layers.length === 0) return { weight: 4, fill: series.fill }
-  const next = [...layers]
-  next[next.length - 1] = {
-    ...next[next.length - 1],
-    fill: fillOps.resolve(series.fill),
-  }
-  return next
-}
-
-/** The colour {@link resolveSeriesStroke} draws series `index` in, for a legend swatch. */
-export function resolveSeriesFill(
-  palette: Stroke[],
-  series: ChartSeries,
-  index: number
-): Fill {
-  const layers = strokeOps.resolve(resolveSeriesStroke(palette, series, index))
-  return layers[layers.length - 1]?.fill ?? "white"
 }
 
 /**
@@ -618,4 +344,55 @@ export function formatPercent(fraction: number): string {
 export function markerValues([min, max]: Range, markerCount: number): number[] {
   const n = Math.max(2, Math.round(markerCount))
   return Array.from({ length: n + 1 }, (_, i) => min + ((max - min) / n) * i)
+}
+
+/** `[lo, hi]` nudged out to bounds a whole number of tidy steps apart, about `divisions` of them. */
+export function niceRange([lo, hi]: Range, divisions: number): Range {
+  const segments = Math.max(1, Math.round(divisions))
+  if (hi === lo) return constantScale(lo, segments)
+  const step = niceStep((hi - lo) / segments)
+  return [Math.floor(lo / step) * step, Math.ceil(hi / step) * step]
+}
+
+/**
+ * The scale for constant data. A zero-width scale would put every tick on one
+ * value and the line on the floor, so it widens by a step sized to the
+ * magnitude (`5` gets `[3, 7]`), or `[0, 1]` for zero.
+ */
+function constantScale(value: number, segments: number): Range {
+  if (value === 0) return [0, 1]
+  const step = niceStep(Math.abs(value) / segments)
+  return [value - step, value + step]
+}
+
+/**
+ * Ticks for a range worked out from the data: every multiple of the tidiest
+ * step (1, 2 or 5 times a power of ten) that divides it into about `divisions`
+ * parts, so zero is a tick whenever the range spans it. A range no such step
+ * divides (an author's) is split evenly instead.
+ */
+export function niceTicks([lo, hi]: Range, divisions: number): number[] {
+  const span = hi - lo
+  const target = Math.max(1, Math.round(divisions))
+  if (!(span > 0)) return markerValues([lo, hi], target)
+  const whole = (v: number) => Math.abs(v - Math.round(v)) < 1e-6
+  const base = niceStep(span / target)
+  let best: number | undefined
+  for (const step of ladder(base)) {
+    const parts = span / step
+    if (!whole(parts) || !whole(lo / step) || parts < 2 || parts > 8) continue
+    if (best === undefined || Math.abs(parts - target) < Math.abs(span / best - target)) best = step
+  }
+  if (best === undefined) return markerValues([lo, hi], target)
+  const first = Math.round(lo / best)
+  return Array.from({ length: Math.round(span / best) + 1 }, (_, k) => Number(((first + k) * best).toPrecision(12)))
+}
+
+/** `step` and its neighbours on the 1-2-5 ladder, two either side. */
+function ladder(step: number): number[] {
+  const mag = 10 ** Math.floor(Math.log10(step))
+  const rungs: number[] = []
+  for (const m of [mag / 10, mag, mag * 10]) for (const k of [1, 2, 5]) rungs.push(k * m)
+  const at = rungs.findIndex((r) => Math.abs(r - step) < step * 1e-9)
+  return rungs.slice(Math.max(0, at - 2), at + 3)
 }

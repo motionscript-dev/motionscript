@@ -105,28 +105,31 @@ describe("resolveXScale", () => {
     expect(c - b).toBeGreaterThan(100 * 86_400_000)
   })
 
-  it("ticks a time axis on rows rather than between them", () => {
-    const data = rows(
-      "Month",
-      ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"]
-    )
+  it("ticks every month of a short time axis, each on its row", () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"]
+    const data = rows("Month", months)
+    const scale = resolveXScale(data, "Month")
+    const ticks = scale.ticks(scale.extent, 4)
+    expect(ticks).toEqual(xs(data, "Month"))
+    expect(ticks.map((t) => scale.label(t))).toEqual(months)
+  })
+
+  it("ticks a long time axis on rows rather than between them, ends included", () => {
+    const months = Array.from({ length: 14 }, (_, i) => `${2026 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, "0")}`)
+    const data = rows("Month", months)
     const scale = resolveXScale(data, "Month")
     const ticks = scale.ticks(scale.extent, 4)
     const positions = xs(data, "Month")
-
     expect(ticks.length).toBeLessThanOrEqual(5)
     for (const tick of ticks) expect(positions).toContain(tick)
-    // Ends included, so the axis spans what it says it spans.
     expect(ticks[0]).toBe(positions[0])
     expect(ticks[ticks.length - 1]).toBe(positions[positions.length - 1])
-    // Every tick is captioned with a month the file actually names.
-    expect(ticks.map((t) => scale.label(t))).toEqual([
-      "Jan",
-      "Mar",
-      "May",
-      "Jun",
-      "Aug",
-    ])
+  })
+
+  it("ticks every category of a short ordinal axis", () => {
+    const data = rows("name", ["a", "b", "c", "d", "e", "f", "g"])
+    const scale = resolveXScale(data, "name")
+    expect(scale.ticks(scale.extent, 4)).toEqual([0, 1, 2, 3, 4, 5, 6])
   })
 
   it("collapses a burst of rows too close together to caption", () => {
