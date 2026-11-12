@@ -95,6 +95,15 @@ dependency, or copied into a project from the same source (the files each
   an editor's "Add" look dead and a typed repeat delete its row (math's
   `networkGraph` and `latex` part fills, `tests/structures.test.ts`).
 
+- **A line is a stroke, an area is a fill; never re-spell them.** A rule, an
+  outline, a grid line or a spoke is one `Types.stroke(…)` entry (weight,
+  colour, dash and caps come with it; an empty stroke draws nothing), a panel or
+  a track is one `Types.fill(…)`, and likewise `Types.shadow` and
+  `Types.cornerRadius`. No `…Width` + `…Dashed` + `…Color` + on/off switch for
+  something those types already say: a host has full editors for them, and a
+  look saved off one component carries them whole. This holds inside a
+  `Types.style` group too.
+
 - **A specialised node takes only the paints it draws.** Spread only the
   modules it draws with, or take part of one
   (`const { overlay: _o, ...paint } = Paint.state`, and the same for
