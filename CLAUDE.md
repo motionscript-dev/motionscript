@@ -161,6 +161,9 @@ dependency rules. The ones that fail silently when broken:
   `alpha` is in Changesets pre mode (`.changeset/pre.json`, tag `alpha`) and
   publishes `0.1.0-alpha.x`; `main` publishes stable versions. All public
   packages are one fixed group.
+- 3D geometry anywhere (a kit, a scene, the `packages/e2e/zz-arch` and
+  `zz-catan` sources) follows [3d.md, Depth](packages/core/docs/3d.md#depth-thin-and-touching-geometry),
+  or thin parts that touch or lie on a surface flicker in zig-zag stripes.
 - Nothing in this repo names the private studio app or any specific downstream
   product; consumers appear only as generic roles ("a host application", "a
   renderer backend", "a server").

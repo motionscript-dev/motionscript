@@ -63,6 +63,9 @@ dependency, or copied into a project from the same source (the files each
   `Node3D` and `NodeAudio` are types: tell a node apart by a component's
   `.is`, or `X.node` with `instanceof` for one component, or by shape.
   A test that needs a node of its own writes a `component2d`.
+- **A `component3d` never puts two faces at nearly one depth**, or they
+  z-fight in zig-zag stripes: shared or flush faces and hair-thin lifts are the
+  usual causes. The rules and gaps are [3d.md, Depth](../core/docs/3d.md#depth-thin-and-touching-geometry).
 - **A kit's `dist/*.d.ts` name `@motionscript/sdk` alone**, never core (a dev
   dependency only). Type `NODES` (and any list of components) by name,
   `(typeof A | typeof B)[]`, and where an inferred component type spells a
