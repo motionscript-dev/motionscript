@@ -1,0 +1,360 @@
+{
+  "kind": "project",
+  "name": "view3d-thin-stack",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "view3d-thin-stack",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [
+          {
+            "id": "spin",
+            "value": 0
+          }
+        ],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "canvas3d0",
+            "type": "canvas3d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 900,
+              "height": 500,
+              "cornerRadius": 16
+            }
+          },
+          {
+            "id": "camera3d0",
+            "type": "camera3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 0,
+            "props": {
+              "position": [
+                0,
+                11,
+                17
+              ],
+              "target": [
+                0,
+                0.3,
+                0
+              ],
+              "fov": 22
+            }
+          },
+          {
+            "id": "ambient-light3d0",
+            "type": "ambient-light3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 1,
+            "props": {
+              "intensity": 0.6
+            }
+          },
+          {
+            "id": "directional-light3d0",
+            "type": "directional-light3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 2,
+            "props": {
+              "intensity": 2,
+              "position": [
+                4,
+                9,
+                5
+              ]
+            }
+          },
+          {
+            "id": "group3d0",
+            "type": "group3d",
+            "parentId": "canvas3d0",
+            "layerOrder": 3,
+            "props": {
+              "rotation": [
+                0,
+                "=[spin]",
+                0
+              ]
+            }
+          },
+          {
+            "id": "box3d0",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 0,
+            "props": {
+              "width": 8,
+              "height": 0.2,
+              "depth": 6,
+              "fill": "#d9d4c7"
+            }
+          },
+          {
+            "id": "box3d1",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 1,
+            "props": {
+              "width": 3.6,
+              "height": 0.001,
+              "depth": 2.4,
+              "position": [
+                0,
+                0.1015,
+                0
+              ],
+              "fill": "#3b6fd6"
+            }
+          },
+          {
+            "id": "box3d2",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 2,
+            "props": {
+              "width": 0.05,
+              "height": 0.001,
+              "depth": 5.6,
+              "position": [
+                -3,
+                0.10350000000000001,
+                0
+              ],
+              "fill": "#1f2430"
+            }
+          },
+          {
+            "id": "box3d3",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 3,
+            "props": {
+              "width": 0.05,
+              "height": 0.001,
+              "depth": 5.6,
+              "position": [
+                -2.25,
+                0.10350000000000001,
+                0
+              ],
+              "fill": "#1f2430"
+            }
+          },
+          {
+            "id": "box3d4",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 4,
+            "props": {
+              "width": 0.05,
+              "height": 0.001,
+              "depth": 5.6,
+              "position": [
+                -1.5,
+                0.10350000000000001,
+                0
+              ],
+              "fill": "#1f2430"
+            }
+          },
+          {
+            "id": "box3d5",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 5,
+            "props": {
+              "width": 0.05,
+              "height": 0.001,
+              "depth": 5.6,
+              "position": [
+                -0.75,
+                0.10350000000000001,
+                0
+              ],
+              "fill": "#1f2430"
+            }
+          },
+          {
+            "id": "box3d6",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 6,
+            "props": {
+              "width": 0.05,
+              "height": 0.001,
+              "depth": 5.6,
+              "position": [
+                0.75,
+                0.10350000000000001,
+                0
+              ],
+              "fill": "#1f2430"
+            }
+          },
+          {
+            "id": "box3d7",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 7,
+            "props": {
+              "width": 0.05,
+              "height": 0.001,
+              "depth": 5.6,
+              "position": [
+                1.5,
+                0.10350000000000001,
+                0
+              ],
+              "fill": "#1f2430"
+            }
+          },
+          {
+            "id": "box3d8",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 8,
+            "props": {
+              "width": 0.05,
+              "height": 0.001,
+              "depth": 5.6,
+              "position": [
+                2.25,
+                0.10350000000000001,
+                0
+              ],
+              "fill": "#1f2430"
+            }
+          },
+          {
+            "id": "box3d9",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 9,
+            "props": {
+              "width": 0.05,
+              "height": 0.001,
+              "depth": 5.6,
+              "position": [
+                3,
+                0.10350000000000001,
+                0
+              ],
+              "fill": "#1f2430"
+            }
+          },
+          {
+            "id": "box3d10",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 10,
+            "props": {
+              "width": 3,
+              "height": 0.024,
+              "depth": 2,
+              "position": [
+                -1.6,
+                1,
+                0
+              ],
+              "fill": "#e8e2d4"
+            }
+          },
+          {
+            "id": "box3d11",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 11,
+            "props": {
+              "width": 3.2,
+              "height": 0.022,
+              "depth": 0.2,
+              "position": [
+                -1.6,
+                1,
+                -0.6
+              ],
+              "fill": "#c0392b"
+            }
+          },
+          {
+            "id": "box3d12",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 12,
+            "props": {
+              "width": 3.2,
+              "height": 0.022,
+              "depth": 0.2,
+              "position": [
+                -1.6,
+                1,
+                0
+              ],
+              "fill": "#c0392b"
+            }
+          },
+          {
+            "id": "box3d13",
+            "type": "box3d",
+            "parentId": "group3d0",
+            "layerOrder": 13,
+            "props": {
+              "width": 3.2,
+              "height": 0.022,
+              "depth": 0.2,
+              "position": [
+                -1.6,
+                1,
+                0.6
+              ],
+              "fill": "#c0392b"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "variableTo",
+            "targetId": "spin",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "value": 25
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}
