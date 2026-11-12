@@ -1,5 +1,7 @@
 # @motionscript/geography
 
+## 0.1.1-alpha.2
+
 ## 0.1.1-alpha.1
 
 ## 0.1.1-alpha.0

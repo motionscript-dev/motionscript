@@ -21,6 +21,7 @@
     "@motionscript/sdk": "0.1.0"
   },
   "changesets": [
+    "chart-text-and-backgrounds",
     "charts-rehaul",
     "component-styles",
     "declarations-recalled",

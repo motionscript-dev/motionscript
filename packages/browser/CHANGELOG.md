@@ -1,5 +1,11 @@
 # @motionscript/browser
 
+## 0.1.1-alpha.2
+
+### Patch Changes
+
+- @motionscript/renderer@0.1.1-alpha.2
+
 ## 0.1.1-alpha.1
 
 ### Patch Changes
