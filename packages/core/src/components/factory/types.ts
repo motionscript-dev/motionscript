@@ -20,6 +20,7 @@ import type { TweenFn } from "@/props/host";
 import type { PathData } from "@/render/descriptors/path";
 import type { AnyType, InOf, Inputs, NodeView, OutOf, StateSpec, Type, Values } from "@/components/factory/api";
 import { defOf, type Inherit, type TypeDef } from "@/components/factory/type-def";
+import { paletteDef, styleDef, type StyleGroups, type StyleInput, type StyleOptions, type StyleShape, type StyleValues } from "@/components/factory/style";
 
 export interface EntryOptions {
     /** Not in documents or calls; only commands write it. A seek restores it like any entry. */
@@ -132,6 +133,16 @@ export const Types = {
         const { resolve, lerp, private: _private, inherit: _inherit, ...rest } = options ?? ({} as NonNullable<typeof options>);
         // No kind of its own: a host reads one off the default, as for a bare `property`.
         return make({ default: initial, mapper: resolve, tween: lerp, editor: rest as PropertyEditor, private: options?.private === true, inherit: options?.inherit });
+    },
+    /** A colour per series or item, cycled by index. */
+    palette: (initial: readonly Fill[] = []): Type<Fill[], FillResolved[][]> => make(paletteDef(initial)),
+    /**
+     * A component's look as one entry: fields written in groups (`colors`, `text`, …), read flat
+     * (`style.palette`). A host edits it field by field, saves it, and lays a saved one onto any
+     * component of the same `family`; `to({ style })` tweens it field by field.
+     */
+    style<const G extends StyleGroups>(family: string, groups: G, options?: StyleOptions<StyleShape<G>>): Type<StyleInput<StyleShape<G>>, StyleValues<StyleShape<G>>> {
+        return make(styleDef(family, groups, options as StyleOptions<unknown>));
     },
     image: (src = ""): Type<string> => make({ default: src, editor: { kind: "image" }, private: false }),
     video: (src = ""): Type<string> => make({ default: src, editor: { kind: "video" }, private: false }),

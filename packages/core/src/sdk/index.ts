@@ -135,6 +135,7 @@ export * as Material from '../components/modules/material';
 // A viewport onto 3D children: the default camera and lights, the grid, the render settings.
 export * as View3D from '../components/modules/view3d';
 export type { Attribute, EntryOptions, NumberOptions, TextOptions } from '../components/factory/types';
+export type { StyleGroups, StyleInput, StyleOptions, StyleShape, StyleValues } from '../components/factory/style';
 export type {
     Box2DState, BoxAudioState, CallProps, ChildView, Children2D, Component, Element, Entry, InOf, Inputs, Loader,
     Measurer, MergePaint, NodeOf, NodeView, OutOf, Piece, Placement2D, Provided, SoundOptions, StateSpec,
