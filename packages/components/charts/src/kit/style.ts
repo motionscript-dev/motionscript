@@ -112,7 +112,7 @@ export const CHART_STYLE_PRESETS = {
     horizontalGrid: { weight: 2, fill: "white/15" },
     gridStroke: { weight: 2, fill: "white/15" },
     spokeStroke: { weight: 2, fill: "white/15" },
-    track: "white/15",
+    track: "white/10",
     background: [],
   },
   paper: {
