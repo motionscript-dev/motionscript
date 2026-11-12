@@ -1,7 +1,7 @@
 import { RadarChart } from '@motionscript/charts';
 import { Rect } from '@motionscript/sdk';
 import { createRef, el, scene } from '../doc';
-import { holdTail } from './_lib';
+import { holdTail, inter } from './_lib';
 
 const DATA = [
     { skill: 'Design', ana: 86, ben: 62 },
@@ -26,7 +26,7 @@ export default scene((stage) => {
                     { field: 'ana', label: 'Ana' },
                     { field: 'ben', label: 'Ben' },
                 ],
-                style: { fontFamily: 'Inter' },
+                style: { ...inter('spokeText', 'legendText'), gridBackground: 'white/5' },
             }),
         ] }),
     );

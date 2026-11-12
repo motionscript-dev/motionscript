@@ -1,7 +1,7 @@
 import { PieChart } from '@motionscript/charts';
 import { Rect } from '@motionscript/sdk';
 import { createRef, el, scene } from '../doc';
-import { holdTail } from './_lib';
+import { holdTail, inter } from './_lib';
 
 const DATA = [
     { browser: 'Chrome', visitors: 275 },
@@ -24,7 +24,7 @@ export default scene((stage) => {
                 valueField: 'visitors',
                 centerLabel: '925',
                 centerCaption: 'Visitors',
-                style: { fontFamily: 'Inter', innerRadius: 0.6, labelPlacement: 'outside', legend: 'right' },
+                style: { ...inter('labelText', 'valueText', 'centerText', 'legendText'), innerRadius: 0.6, labelPlacement: 'outside', legend: 'right' },
             }),
         ] }),
     );

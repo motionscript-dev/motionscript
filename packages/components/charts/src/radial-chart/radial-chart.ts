@@ -10,13 +10,14 @@ import {
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
   type Node2DProps as _Node2DProps,
+  type TextStyle as _TextStyle,
   type Fill as _Fill,
   type FillResolved as _FillResolved,
 } from "@motionscript/sdk"
 
 import { SERIES_ARG, asParts, fresh } from "../kit/entries"
 import { beats, type AnyTimeline, type Beat } from "../kit/motion"
-import { CHART_STYLE_FAMILY, CHART_STYLE_PRESETS } from "../kit/style"
+import { CHART_STYLE_FAMILY, CHART_STYLE_PRESETS, migrateChartStyle } from "../kit/style"
 import { PieLegend } from "../kit/pie-legend"
 import { PIE_SPOTLIGHT_DIM, selectionFade } from "../kit/polar"
 import { RadialRings } from "./radial-rings"
@@ -111,6 +112,7 @@ export const RadialChart = component2d({
     height: "fill",
     pops: (state) => state.data.map(() => 0),
   },
+  migrate: { style: migrateChartStyle("radial") },
   allowedChildren: [],
   children: (state) => {
     const style = () => state.style

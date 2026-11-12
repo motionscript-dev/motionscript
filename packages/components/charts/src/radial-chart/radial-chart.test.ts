@@ -58,7 +58,7 @@ const geometry = (node: RadialRings, box = BOX) => new RadialGeometry(node as ne
 
 describe("radial maths", () => {
   it("resolves one row per record, painted from the palette by row", () => {
-    const resolved = resolveRadialRows(ROWS, "m", "v", { palette: ["#111", "#222"] as never })
+    const resolved = resolveRadialRows(ROWS, "m", "v", { seriesFills: ["#111", "#222"] as never })
     expect(resolved.map((row) => row.category)).toEqual(["A", "B", "C"])
     expect(resolved.map((row) => row.value)).toEqual([80, 40, 20])
     expect(resolved.map((row) => row.fill)).toEqual(["#111", "#222", "#111"])
@@ -209,7 +209,7 @@ describe("RadialChart: parts and style", () => {
   })
 
   it("paints the rings from the style's palette", () => {
-    const node = chart({ style: { palette: ["#ff0000", "#00ff00"] } })
+    const node = chart({ style: { seriesFills: ["#ff0000", "#00ff00"] } })
     const { rings: part, legend } = partsOf(node)
     expect(part.rows.map((row) => row.category)).toEqual(["A", "B", "C"])
     expect(part.rows.map((row) => fillOps.resolve(row.fill))).toEqual(["#ff0000", "#00ff00", "#ff0000"].map((c) => fillOps.resolve(c)))

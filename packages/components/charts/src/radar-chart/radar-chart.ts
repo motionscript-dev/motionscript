@@ -4,13 +4,13 @@ import {
   Types,
   component2d,
   easeOut,
-  textOps,
   type ChildView,
   type DataRecord,
   type NodeOf,
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
   type Node2DProps as _Node2DProps,
+  type TextStyle as _TextStyle,
   type Fill as _Fill,
   type FillResolved as _FillResolved,
   type Stroke as _Stroke,
@@ -19,25 +19,28 @@ import {
   type Vector2,
 } from "@motionscript/sdk"
 
-import { laidOutSize } from "../kit/cartesian"
+import { boundText, laidOutSize } from "../kit/cartesian"
 import { ChartLegend } from "../kit/chart-legend"
 import { SERIES_ARG, asParts, fresh } from "../kit/entries"
 import { ENTER_SHARE, LEGEND_SLIDE, beats, type AnyTimeline, type Beat } from "../kit/motion"
 import { SPOTLIGHT_DIM, type ChartSeries } from "../kit/shared"
 import {
-  CHART_COLORS,
   CHART_LEGEND,
+  CHART_SERIES,
   CHART_STYLE_FAMILY,
   CHART_STYLE_PRESETS,
-  CHART_TEXT,
+  GRID_BACKGROUND,
   legendConfigOf,
-  markerText,
+  migrateChartStyle,
+  placedText,
   seriesFill,
+  sizeOf,
 } from "../kit/style"
 import { RadarGrid } from "./radar-grid"
 import { RadarSeries } from "./radar-series"
 import {
   RADAR_GRID,
+  RADAR_TEXT,
   RADAR_MARKS,
   categoriesOf,
   fitRadius,
@@ -125,8 +128,9 @@ export const RadarChart = component2d({
     style: Types.style(
       CHART_STYLE_FAMILY,
       {
-        colors: CHART_COLORS,
-        text: CHART_TEXT,
+        series: CHART_SERIES,
+        background: GRID_BACKGROUND,
+        text: RADAR_TEXT,
         grid: RADAR_GRID,
         marks: RADAR_MARKS,
         legend: CHART_LEGEND,
@@ -136,12 +140,13 @@ export const RadarChart = component2d({
   },
   // A node made of parts that fill would otherwise hug them.
   defaults: { width: "fill", height: "fill" },
+  migrate: { style: migrateChartStyle("radar") },
   allowedChildren: [],
   children: (state) => {
     const style = () => state.style
     let plot: Node2D | undefined
     const plotSize = (): Size2D => laidOutSize(plot)
-    const radius = () => fitRadius(plotSize(), categoriesOf(state.data, state.categoryField), style().fontSize, style().spokeLabels)
+    const radius = () => fitRadius(plotSize(), categoriesOf(state.data, state.categoryField), sizeOf(style().spokeText), style().spokeLabels)
     const count = state.data.length
     const enabled = state.series.map((s) => s.enabled ?? true)
 
@@ -149,6 +154,7 @@ export const RadarChart = component2d({
       count: () => state.data.length,
       radius,
       levels: () => style().gridLevels,
+      fill: () => style().gridBackground,
       shape: () => style().gridShape,
       stroke: () => style().gridStroke,
       spokeStroke: () => style().spokeStroke,
@@ -178,14 +184,11 @@ export const RadarChart = component2d({
       for (let i = 0; i < count; i++) {
         const anchor = labelAnchor(i, count)
         const align = anchor === "centerLeft" ? "left" : anchor === "centerRight" ? "right" : "center"
-        const at = (): Vector2 => labelPoint(i, count, radius(), style().fontSize)
+        const at = (): Vector2 => labelPoint(i, count, radius(), sizeOf(style().spokeText))
         labels.push(
           new Text({
-            ...textOps.styleProps(markerText(state.style, align)),
+            ...boundText(() => placedText(style().spokeText, align)),
             text: () => categoriesOf(state.data, state.categoryField)[i] ?? "",
-            fontSize: () => style().fontSize,
-            fontWeight: () => style().fontWeight,
-            fill: () => style().muted,
             [anchor]: at,
           }) as unknown as Node2D
         )

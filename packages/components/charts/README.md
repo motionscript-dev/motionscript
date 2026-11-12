@@ -39,8 +39,10 @@ shelved and the box it is seeded at are the host's to keep. `lineChartDomains` a
 is out.
 
 The style kit exports `CHART_STYLE_FAMILY` (`"chart"`), `CHART_STYLE_PRESETS`,
-`CHART_PALETTE_DEFAULT` and the shared field groups (`CHART_COLORS`,
-`CHART_TEXT`, `CARTESIAN_GRID`, `CHART_LEGEND`).
+`CHART_PALETTE_DEFAULT`, the shared field groups (`CHART_SERIES`,
+`CHART_BACKGROUND`, `GRID_BACKGROUND`, `CARTESIAN_TEXT`, `LEGEND_TEXT`,
+`CARTESIAN_GRID`, `CHART_LEGEND`) and `migrateChartStyle`, each chart's
+`migrate` hook for styles written before 0.1.1-alpha.2.
 
 ## Nodes
 
@@ -65,16 +67,25 @@ is above 0.
 
 Each chart has one look entry, `style`, and nothing else about colour or type:
 no `theme`, no `showLegend`. Its fields come in groups, written grouped and read
-flat (`state.style.fontSize`):
+flat (`state.style.xLabelText`):
 
 | Group | Fields | On |
 |---|---|---|
-| colors | `palette`, `foreground`, `muted`, `background` | every chart |
-| text | `fontFamily`, `fontSize`, `fontWeight` | every chart |
+| series | `seriesFills`: a fill per series (per row on a pie or radial), cycled; each may stack paints | every chart |
+| background | `background` (the whole chart), `gridBackground` (the plot, under the grid) | every chart; `gridBackground` on line, bar, radar |
+| text | `xLabelText`, `xTitleText`, `yLabelText`, `yTitleText`, `valueText`, `legendText` | line, bar |
+| text | `labelText`, `valueText`, `centerText`, `legendText` | pie |
+| text | `spokeText`, `legendText` (radar); `labelText`, `centerText`, `legendText` (radial) | radar, radial |
 | grid | `horizontalGrid` (a 2px `white/15` stroke), `verticalGrid` (none), `axisStroke` (none), `showXAxis`, `showYAxis` | line, bar |
 | grid | `gridShape`, `gridLevels`, `gridStroke` (rings), `spokeStroke` (spokes), `spokeLabels` | radar |
-| marks | the chart's own: `strokeWidth`, `curve`, `dots`, `area`, `barRadius`, `innerRadius`, `sweep`, ... | every chart |
+| marks | the chart's own: `strokeWidth`, `curve`, `dots`, `area`, `barCornerRadius`, `barCornerStyle`, `innerRadius`, `sweep`, ... | every chart |
 | labels | `values` (line, bar), `labelPlacement` (pie), `ringLabels` (radial) | |
+
+Every run of text is a `Types.typography` field (face, size, weight, style,
+spacing, paint), so each is set like a text node; a partial (`{ fill }`) keeps the
+rest of the field's default. The chart places and aligns the text itself.
+`barCornerRadius` and `barCornerStyle` read as for a bar standing up: the top
+pair round its far end, the bottom pair its base, turned with the bar.
 
 A line is a stroke and an area is a fill: `horizontalGrid`, `verticalGrid`, `axisStroke`, `gridStroke`
 and `spokeStroke` are `Types.stroke` entries (weight, colour, dash and caps; empty draws
@@ -87,14 +98,14 @@ previous style, and a key the chart does not have is dropped, so one style dress
 every chart in the family.
 
 `CHART_STYLE_PRESETS` (`midnight`, `paper`, `ember`, `neon`, `ocean`, `sunset`,
-`pastel`, `mono`) are colour-only partials. Spread one into a style and add to it:
+`pastel`, `mono`) are colour-only partials (each text field's `fill`, the rules, the backgrounds). Spread one into a style and add to it:
 
 ```ts
 import { CHART_STYLE_PRESETS } from '@motionscript/charts';
 
 const props = {
   // ...data, series
-  style: { ...CHART_STYLE_PRESETS.paper, fontSize: 32, area: 'gradient' },
+  style: { ...CHART_STYLE_PRESETS.paper, legendText: { fontSize: 32 }, area: 'gradient' },
 };
 ```
 

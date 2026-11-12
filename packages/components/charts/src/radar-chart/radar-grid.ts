@@ -3,7 +3,10 @@ import {
   Types,
   clamp,
   component2d,
+  fillOps,
   strokeOps,
+  type Fill,
+  type FillResolved,
   type NodeOf,
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D as _Node2D,
@@ -28,6 +31,8 @@ export const RadarGrid = component2d({
     /** The rim, in px. */
     radius: 0,
     levels: 4,
+    /** Inside the outer ring, under the rings and spokes; empty paints nothing. */
+    fill: Types.custom<Fill, FillResolved[]>([], { resolve: fillOps.resolve, lerp: fillOps.lerp }),
     shape: Types.custom<GridShape>("polygon"),
     stroke: Types.custom<Stroke, StrokeResolved[]>([], { resolve: strokeOps.resolve, lerp: strokeOps.lerp }),
     /** The line out to each category; empty draws none. */
@@ -36,7 +41,7 @@ export const RadarGrid = component2d({
     reveal: 1,
   },
   defaults: { width: "fill", height: "fill" },
-  load: (loader, state) => loadPaints(loader, { strokes: [state.stroke, state.spokeStroke] }),
+  load: (loader, state) => loadPaints(loader, { fills: [state.fill], strokes: [state.stroke, state.spokeStroke] }),
   render: (ctx, state) => {
     const grow = clamp(state.reveal, 0, 1)
     const rim = state.radius * grow
@@ -44,22 +49,22 @@ export const RadarGrid = component2d({
     const count = Math.max(0, Math.round(state.count))
     const levels = Math.max(1, Math.round(state.levels))
     const round = state.shape === "circle" || count < 3
+    const outline = (g: Graphics2D, r: number): Graphics2D => {
+      if (round) return g.ellipse({ width: r * 2, height: r * 2 })
+      const points: Vector2[] = []
+      for (let i = 0; i < count; i++) {
+        const d = spokeDirection(i, count)
+        points.push({ x: d.x * r, y: d.y * r })
+      }
+      return g.line({ points, closed: true })
+    }
+
+    if (state.fill.length > 0) ctx.draw(outline(new Graphics2D(), rim).fill(state.fill).opacity(grow))
 
     // One draw per ring: rings chained into one surface would stroke only their union's outline.
     for (let level = 1; state.stroke.length > 0 && level <= levels; level++) {
       const r = (rim * level) / levels
-      const ring = new Graphics2D()
-      if (round) {
-        ring.ellipse({ width: r * 2, height: r * 2 })
-      } else {
-        const points: Vector2[] = []
-        for (let i = 0; i < count; i++) {
-          const d = spokeDirection(i, count)
-          points.push({ x: d.x * r, y: d.y * r })
-        }
-        ring.line({ points, closed: true })
-      }
-      ctx.draw(ring.stroke(state.stroke).opacity(grow))
+      ctx.draw(outline(new Graphics2D(), r).stroke(state.stroke).opacity(grow))
     }
 
     if (state.spokeStroke.length === 0) return

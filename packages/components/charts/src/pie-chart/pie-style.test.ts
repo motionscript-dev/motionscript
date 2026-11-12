@@ -44,19 +44,20 @@ describe("PieChart: style", () => {
   })
 
   it("paints wedges and swatches from the palette by row, cycled", () => {
-    const { ring, legend } = parts(chart({ style: { palette: ["#ff0000", "#00ff00"] } }))
+    const { ring, legend } = parts(chart({ style: { seriesFills: ["#ff0000", "#00ff00"] } }))
     expect(ring.slices.map((slice) => fillOps.resolve(slice.fill))).toEqual(["#ff0000", "#00ff00", "#ff0000"].map((c) => fillOps.resolve(c)))
     expect(legend!.slices).toEqual(ring.slices)
   })
 
-  it("sets outside labels in the muted colour, leaders included", () => {
-    const { ring } = parts(chart({ style: { labelPlacement: "outside", muted: "#123456" } }))
+  it("sets outside labels in the label text, leaders in its ink", () => {
+    const { ring } = parts(chart({ style: { labelPlacement: "outside", labelText: { fill: "#123456", fontSize: 30 } } }))
+    expect(ring.label.textStyle.fontSize).toBe(30)
     expect(ring.labelPlacement).toBe("outside")
     expect(fillOps.resolve((ring.label.leaderStroke as unknown as { fill: never }).fill)).toEqual(fillOps.resolve("#123456"))
     expect(fillOps.resolve(ring.label.textStyle.fill as never)).toEqual(fillOps.resolve("#123456"))
   })
 
-  it("builds no labels when placement is none, and the centre in the foreground", () => {
+  it("builds no labels when placement is none, and the centre in its own text", () => {
     const none = parts(chart({ style: { labelPlacement: "none" }, centerLabel: "9" })).ring
     expect(none.children).toHaveLength(1)
     expect(fillOps.resolve(none.centerStyle.labelStyle.fill as never)).toEqual(fillOps.resolve("#f4f4f5"))
@@ -89,7 +90,7 @@ describe("PieChart: style", () => {
 
   it("follows a style change made after build", () => {
     const node = chart()
-    node.set({ style: { innerRadius: 0.5, sliceGap: 1, foreground: "#ffffff" } } as never)
+    node.set({ style: { innerRadius: 0.5, sliceGap: 1, centerText: { fill: "#ffffff" } } })
     expect(parts(node).ring.ring).toMatchObject({ holeRadius: 0.5, gap: 1 })
     expect(fillOps.resolve(parts(node).ring.centerStyle.labelStyle.fill as never)).toEqual(fillOps.resolve("#ffffff"))
   })

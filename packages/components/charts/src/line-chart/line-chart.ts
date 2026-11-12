@@ -12,6 +12,7 @@ import {
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
   type Node2DProps as _Node2DProps,
+  type TextStyle as _TextStyle,
   type Fill as _Fill,
   type FillResolved as _FillResolved,
   type Stroke as _Stroke,
@@ -46,14 +47,17 @@ import {
 } from "../kit/shared"
 import {
   CARTESIAN_GRID,
-  CHART_COLORS,
+  CARTESIAN_TEXT,
   CHART_LEGEND,
+  CHART_SERIES,
   CHART_STYLE_FAMILY,
   CHART_STYLE_PRESETS,
-  CHART_TEXT,
+  GRID_BACKGROUND,
   axisConfigOf,
   legendConfigOf,
+  migrateChartStyle,
   seriesFill,
+  sizeOf,
   valueText,
 } from "../kit/style"
 import { VerticalAxis, axisPads } from "../kit/vertical-axis"
@@ -75,7 +79,7 @@ import { resolveXScale, type XScale } from "./x-scale"
 
 const LINE_STYLE = Types.style(
   CHART_STYLE_FAMILY,
-  { colors: CHART_COLORS, text: CHART_TEXT, grid: CARTESIAN_GRID, marks: LINE_MARKS, labels: LINE_LABELS, legend: CHART_LEGEND },
+  { series: CHART_SERIES, background: GRID_BACKGROUND, text: CARTESIAN_TEXT, grid: CARTESIAN_GRID, marks: LINE_MARKS, labels: LINE_LABELS, legend: CHART_LEGEND },
   { presets: CHART_STYLE_PRESETS }
 )
 
@@ -352,6 +356,7 @@ export const LineChart = component2d({
     height: "fill",
     weights: (state) => state.series.map((s) => ((s.enabled ?? true) ? 1 : 0)),
   },
+  migrate: { style: migrateChartStyle("cartesian") },
   allowedChildren: [],
   children: (state) => {
     const style = () => state.style
@@ -450,7 +455,7 @@ export const LineChart = component2d({
         state.data.forEach((_row, k) => {
           const line = lines[i]
           const label: Node2D = new Text({
-            ...boundText(() => ({ ...valueText(style()), fontSize: Math.round(style().fontSize * 0.8) })),
+            ...boundText(() => valueText(style())),
             text: () => {
               const value = pixels(i).values[k]
               return value === undefined ? "" : yLabel(state, value, domains().y.ticks)
@@ -462,7 +467,7 @@ export const LineChart = component2d({
             },
             y: () => {
               const point = pixels(i).points[k]
-              const clear = label.layoutBounds.height / 2 + (style().dots ? style().dotSize / 2 : style().strokeWidth / 2) + Math.round(style().fontSize * 0.25)
+              const clear = label.layoutBounds.height / 2 + (style().dots ? style().dotSize / 2 : style().strokeWidth / 2) + Math.round(sizeOf(style().valueText) * 0.25)
               return (point?.y ?? 0) + (below ? -clear : clear)
             },
             // In once the trace has passed its point.
@@ -492,7 +497,7 @@ export const LineChart = component2d({
       clip: () => state.clipped || overflows(state, domains()),
       children: [
         new ChartCanvas({
-          fill: () => style().background,
+          fill: () => style().gridBackground,
           xGridStroke: () => style().verticalGrid,
           yGridStroke: () => style().horizontalGrid,
           xMarkers: () => domains().x.ticks,
@@ -506,8 +511,8 @@ export const LineChart = component2d({
         // Under the marks, so the highlight does not tint the stretch it picks out.
         new ChartRegion({
           box: spotlight,
-          stroke: () => ({ weight: 2, fill: fade(style().foreground, 0.7), dash: [14, 12], cap: "butt", align: "center" }),
-          fill: () => fade(style().foreground, 0.06),
+          stroke: () => ({ weight: 2, fill: fade(style().valueText.fill ?? "white", 0.7), dash: [14, 12], cap: "butt", align: "center" }),
+          fill: () => fade(style().valueText.fill ?? "white", 0.06),
           reveal: () => state.regionReveal,
         }),
         ...areas,
@@ -518,6 +523,7 @@ export const LineChart = component2d({
 
     return asParts([
       cartesianFrame({
+        background: () => style().background,
         left: vAxis,
         ghost,
         plot,

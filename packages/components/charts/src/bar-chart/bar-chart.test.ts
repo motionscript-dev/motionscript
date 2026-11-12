@@ -546,7 +546,14 @@ describe("BarChart: stack modes", () => {
 describe("BarChart: style", () => {
   it("declares one style entry in the chart family, with the bar marks and labels", () => {
     const style = new BarChart({}).style
-    expect(style).toMatchObject({ barRadius: 10, barWidth: 0.7, barGap: 6, values: "none", legend: "bottom" })
+    expect(style).toMatchObject({
+      barCornerRadius: { topLeft: 10, topRight: 10, bottomRight: 0, bottomLeft: 0 },
+      barCornerStyle: { topLeft: "rounded" },
+      barWidth: 0.7,
+      barGap: 6,
+      values: "none",
+      legend: "bottom",
+    })
   })
 
   it("rules the value ticks by default, as strokes: horizontal on, vertical and axis off", () => {
@@ -574,11 +581,12 @@ describe("BarChart: style", () => {
 
   it("tweens the bars' rounding and width with to({ style })", () => {
     const node = chart()
-    const seek = scrub(node.to({ data: { style: { barRadius: 20, barWidth: 0.5 } }, duration: 1, easing: linear }))
+    const seek = scrub(node.to({ data: { style: { barCornerRadius: { topLeft: 20, topRight: 20 }, barWidth: 0.5 } }, duration: 1, easing: linear }))
     seek(0.5)
     relay(node)
-    expect(node.style.barRadius).toBeCloseTo(15)
-    expect(partsOf(node).bars[0].cornerRadius).toBeCloseTo(15)
+    expect(node.style.barCornerRadius.topLeft).toBeCloseTo(15)
+    expect(node.style.barCornerRadius.bottomLeft).toBe(0)
+    expect(partsOf(node).bars[0].cornerRadius.topRight).toBeCloseTo(15)
     expect(slotInner(node)).toBeCloseTo(slotWidth(node) * 0.6)
   })
 

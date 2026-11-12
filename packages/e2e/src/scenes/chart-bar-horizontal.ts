@@ -1,7 +1,7 @@
 import { BarChart } from '@motionscript/charts';
 import { Rect } from '@motionscript/sdk';
 import { createRef, el, scene } from '../doc';
-import { holdTail } from './_lib';
+import { holdTail, inter } from './_lib';
 
 const DATA = [
     { browser: 'Chrome', organic: 275, paid: 120 },
@@ -24,7 +24,7 @@ export default scene((stage) => {
                 orientation: 'horizontal',
                 stack: 'stacked',
                 series: [{ field: 'organic', label: 'Organic' }, { field: 'paid', label: 'Paid' }],
-                style: { fontFamily: 'Inter', horizontalGrid: [], verticalGrid: { weight: 2, fill: 'white/15' }, values: 'inside' },
+                style: { ...inter('xLabelText', 'xTitleText', 'yLabelText', 'yTitleText', 'valueText', 'legendText'), horizontalGrid: [], verticalGrid: { weight: 2, fill: 'white/15' }, values: 'inside' },
             }),
         ] }),
     );

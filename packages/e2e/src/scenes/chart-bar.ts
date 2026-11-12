@@ -1,7 +1,7 @@
 import { BarChart } from '@motionscript/charts';
 import { Rect } from '@motionscript/sdk';
 import { createRef, el, scene } from '../doc';
-import { holdTail } from './_lib';
+import { holdTail, inter } from './_lib';
 
 const DATA = [
     { month: 'Jan', desktop: 186, mobile: 80 },
@@ -23,7 +23,7 @@ export default scene((stage) => {
                 data: DATA,
                 categoryField: 'month',
                 series: [{ field: 'desktop', label: 'Desktop' }, { field: 'mobile', label: 'Mobile' }],
-                style: { fontFamily: 'Inter' },
+                style: { ...inter('xLabelText', 'xTitleText', 'yLabelText', 'yTitleText', 'valueText', 'legendText'), barCornerRadius: { topLeft: 14, topRight: 14, bottomRight: 4, bottomLeft: 4 }, gridBackground: 'white/4' },
             }),
         ] }),
     );

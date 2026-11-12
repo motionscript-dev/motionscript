@@ -544,7 +544,7 @@ describe("LineChart: style", () => {
     expect(style.properties.area).toMatchObject({ group: "marks", default: "none" })
     expect(style.properties.values).toMatchObject({ group: "labels", default: "none" })
     expect(style.properties.legend).toMatchObject({ group: "legend", default: "bottom" })
-    expect(style.properties.barRadius).toBeUndefined()
+    expect(style.properties.barCornerRadius).toBeUndefined()
   })
 
   it("has no theme or showLegend entry", () => {
@@ -556,7 +556,7 @@ describe("LineChart: style", () => {
 
   it("tweens the stroke and the palette with to({ style })", () => {
     const node = chart()
-    const seek = scrub(node.to({ data: { style: { strokeWidth: 8, palette: ["#000000", "#000000"] } }, duration: 1, easing: linear }))
+    const seek = scrub(node.to({ data: { style: { strokeWidth: 8, seriesFills: ["#000000", "#000000"] } }, duration: 1, easing: linear }))
     seek(0.5)
     const [line] = partsOf(node).lines
     expect(line.stroke[0].weight).toBeCloseTo(6)
@@ -567,7 +567,7 @@ describe("LineChart: style", () => {
 
   it("lays a partial style over the last, leaving the fields it does not name", () => {
     const node = chart({ style: { strokeWidth: 6 } })
-    node.set({ style: { foreground: "#000000" } })
+    node.set({ style: { legendText: { fill: "#000000" } } })
     expect(node.style.strokeWidth).toBe(6)
   })
 

@@ -1,4 +1,14 @@
-import { Types, fillOps, type DataRecord, type Fill } from "@motionscript/sdk"
+import {
+  Types,
+  fillOps,
+  type DataRecord,
+  type Fill,
+  // Named so the emitted marks types reach these through the sdk, not core.
+  type CornerRadiusResolved as _CornerRadiusResolved,
+  type CornerStyleResolved as _CornerStyleResolved,
+  type RectCornerRadius as _RectCornerRadius,
+  type RectCornerStyle as _RectCornerStyle,
+} from "@motionscript/sdk"
 
 import { niceRange, num, text, type ChartSeries, type Range } from "../kit/shared"
 
@@ -110,12 +120,17 @@ export function inkOn(fill: Fill): string {
   return luminance > 0.4 ? "#0a0a0a" : "white"
 }
 
-/** A bar chart's own look: how round and how wide the bars are. */
+/** A bar chart's own look: its corners, and how wide the bars are. */
 export const BAR_MARKS = {
-  /** Radius of each bar's far corners; a stacked segment inside the stack stays square. */
-  barRadius: Types.number(10, { min: 0, max: 64, step: 1, unit: "px" }),
+  /**
+   * Each corner as for a bar standing up from the baseline: the top pair round
+   * its far end, the bottom pair its base. Inside a stack, a segment's far end
+   * stays square unless it ends the stack, and its base unless it starts it.
+   */
+  barCornerRadius: Types.cornerRadius({ topLeft: 10, topRight: 10, bottomRight: 0, bottomLeft: 0 }),
+  barCornerStyle: Types.cornerStyle("rounded"),
   /** How much of its category slot a bar group fills, the rest spacing the groups. */
-  barWidth: Types.number(0.7, { min: 0.05, max: 1, step: 0.05 }),
+  barWidth: Types.number(0.7, { min: 0.05, max: 1, step: 0.05, unit: "%", scale: 100 }),
   /** Space between the bars of one group, side by side. */
   barGap: Types.number(6, { min: 0, max: 40, step: 1, unit: "px" }),
 }

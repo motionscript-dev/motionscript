@@ -112,7 +112,7 @@ function red(fill: unknown): number {
 }
 
 /** A palette tween from black (authored) to white: `red` of what the chart draws is 0 before, 1 after, between at the middle. */
-const TO_PALETTE = [{ type: "to", args: { style: { palette: ["#ffffff"] } } }]
+const TO_PALETTE = [{ type: "to", args: { style: { seriesFills: ["#ffffff"] } } }]
 
 function expectTween(seek: (time: number) => number) {
   expect(seek(0.5)).toBeCloseTo(0, 1)
@@ -322,7 +322,7 @@ describe("a line chart's commands, from a document", () => {
   })
 
   it("tweens the palette the lines are drawn in through a to command on style", () => {
-    const seek = play<LineChart>(clipDoc("lineChart", { ...LINE, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    const seek = play<LineChart>(clipDoc("lineChart", { ...LINE, style: { seriesFills: ["#000000"] } }, TO_PALETTE as never))
     expectTween((time) => red(partsOf(seek(time), ChartLine)[0].dotFill))
   })
 })
@@ -434,7 +434,7 @@ describe("a bar chart's commands, from a document", () => {
   })
 
   it("tweens the palette the columns are drawn in through a to command on style", () => {
-    const seek = play<BarChart>(clipDoc("barChart", { ...BAR, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    const seek = play<BarChart>(clipDoc("barChart", { ...BAR, style: { seriesFills: ["#000000"] } }, TO_PALETTE as never))
     expectTween((time) => red(partsOf(seek(time), ChartBars)[0].fill))
   })
 })
@@ -557,7 +557,7 @@ describe("a pie chart's commands, from a document", () => {
   })
 
   it("tweens the palette the wedges are drawn in through a to command on style", () => {
-    const seek = play<PieChart>(clipDoc("pieChart", { ...PIE, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    const seek = play<PieChart>(clipDoc("pieChart", { ...PIE, style: { seriesFills: ["#000000"] } }, TO_PALETTE as never))
     expectTween((time) => red(pieParts(seek(time)).ring.slices[0].fill))
   })
 })
@@ -568,7 +568,7 @@ describe("a pie chart's ring and legend", () => {
     chart.set({ data: [{ month: "Q1", share: 7 }, { month: "Q2", share: 1 }, { month: "Q3", share: 2 }] })
 
     const { ring, legend } = pieParts(chart)
-    const slices = () => resolvePieSlices(chart.data, chart.categoryField, chart.valueField, chart.style.palette)
+    const slices = () => resolvePieSlices(chart.data, chart.categoryField, chart.valueField, chart.style.seriesFills)
     expect(ring.slices).toEqual(slices())
     expect(legend!.slices).toEqual(slices())
     expect(ring.slices.map((slice) => slice.category)).toEqual(["Q1", "Q2", "Q3"])
@@ -576,7 +576,7 @@ describe("a pie chart's ring and legend", () => {
     expect(pieArcs(ring.slices, ring.ring.startAngle)[0].fraction).toBeCloseTo(0.7)
 
     // A palette change reaches the wedges and the swatches.
-    chart.set({ style: { palette: ["#ff0000", "#00ff00", "#0000ff"] } })
+    chart.set({ style: { seriesFills: ["#ff0000", "#00ff00", "#0000ff"] } })
     expect(ringFills(ring.slices)).toEqual(["#ff0000", "#00ff00", "#0000ff"].map((color) => fillOps.resolve(color)))
     expect(ring.slices).toEqual(slices())
   })
@@ -595,14 +595,14 @@ describe("a radial chart's commands, from a document", () => {
   })
 
   it("tweens the palette the rings are drawn in through a to command on style", () => {
-    const seek = play<RadialChart>(clipDoc("radialChart", { ...RADIAL, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    const seek = play<RadialChart>(clipDoc("radialChart", { ...RADIAL, style: { seriesFills: ["#000000"] } }, TO_PALETTE as never))
     expectTween((time) => red(partOf(seek(time), RadialRings)!.rows[0].fill))
   })
 })
 
 describe("a radar chart, from a document", () => {
   it("tweens the palette the polygons are drawn in through a to command on style", () => {
-    const seek = play<RadarChart>(clipDoc("radarChart", { ...RADAR, style: { palette: ["#000000"] } }, TO_PALETTE as never))
+    const seek = play<RadarChart>(clipDoc("radarChart", { ...RADAR, style: { seriesFills: ["#000000"] } }, TO_PALETTE as never))
     expectTween((time) => red(partsOf(seek(time), RadarSeries)[0].fill))
   })
 })

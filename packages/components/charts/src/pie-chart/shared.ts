@@ -1,10 +1,15 @@
 import { Types, type Fill, type TextStyle, type Stroke, type FillResolved as _FillResolved } from "@motionscript/sdk"
 
 import {
-  CHART_COLORS,
+  CHART_BACKGROUND,
+  CHART_FOREGROUND,
   CHART_LEGEND,
-  CHART_TEXT,
+  CHART_MUTED,
+  CHART_SERIES,
+  LEGEND_TEXT,
   legendConfigOf,
+  placedText,
+  sizeOf,
   type ChartStyleBase,
 } from "../kit/style"
 import { num, text, type LegendConfig } from "../kit/shared"
@@ -13,7 +18,7 @@ import { DEG, PIE_SPOTLIGHT_DIM, ringPoint, selectionFade, type CenterConfig, ty
 export { DEG, PIE_SPOTLIGHT_DIM, ringPoint, selectionFade, type CenterConfig, type PieSlice }
 
 /**
- * One slice per row, painted from `palette` by row order (cycling). Paint comes
+ * One slice per row, painted from `seriesFills` by row order (cycling). Paint comes
  * from the palette, not the rows, because a pie's mark is a row where a line's
  * colour belongs to a column; that lets a pie be fed a CSV of plain numbers.
  */
@@ -147,6 +152,9 @@ export interface LabelConfig {
 
 /** What a pie's `style` resolves to. */
 export interface PieStyle extends ChartStyleBase {
+  readonly labelText: TextStyle
+  readonly valueText: TextStyle
+  readonly centerText: TextStyle
   readonly innerRadius: number
   readonly sliceGap: number
   readonly sliceRadius: number
@@ -155,8 +163,17 @@ export interface PieStyle extends ChartStyleBase {
 
 /** The groups of a pie's `style`: no grid, as nothing is ruled. */
 export const PIE_STYLE_GROUPS = {
-  colors: CHART_COLORS,
-  text: CHART_TEXT,
+  series: CHART_SERIES,
+  background: CHART_BACKGROUND,
+  text: {
+    /** Each slice's name. */
+    labelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
+    /** Each slice's share or value, beside its name; inside a wedge both are set larger, inked for contrast. */
+    valueText: Types.typography({ fontSize: 28, fontWeight: 700, fill: CHART_FOREGROUND }),
+    /** The summary in the hole; its caption is set smaller, in the slice names' ink. */
+    centerText: Types.typography({ fontSize: 50, fontWeight: 800, fill: CHART_FOREGROUND }),
+    ...LEGEND_TEXT,
+  },
   marks: {
     /** Hole radius as a fraction of the outer radius: 0 is a pie, about 0.6 a donut. */
     innerRadius: Types.number(0, { min: 0, max: 0.9, step: 0.05 }),
@@ -176,34 +193,25 @@ export function legendOf(style: PieStyle): LegendConfig {
   return legendConfigOf(style)
 }
 
-function face(style: PieStyle): Pick<TextStyle, "fontFamily"> {
-  return style.fontFamily ? { fontFamily: style.fontFamily } : {}
-}
-
 export function ringConfigOf(style: PieStyle): RingConfig {
   return { gap: style.sliceGap, holeRadius: style.innerRadius, startAngle: 0, selectedGrow: 1.08, cornerRadius: style.sliceRadius }
 }
 
 export function labelConfigOf(style: PieStyle): LabelConfig {
-  const base: TextStyle = { ...face(style), fontSize: style.fontSize, fontWeight: style.fontWeight, textAlign: "center", fill: style.muted }
-  const bold = Math.min(900, style.fontWeight + 200)
+  const base = placedText(style.labelText)
+  const value = placedText(style.valueText)
   return {
     textStyle: base,
-    percentStyle: { ...base, fontWeight: bold, fill: style.foreground },
-    insideStyle: { ...base, fontSize: Math.round(style.fontSize * 1.9), fontWeight: bold, fill: "#111113" },
-    leaderStroke: { weight: 2, fill: style.muted },
+    percentStyle: value,
+    insideStyle: { ...value, fontSize: Math.round(sizeOf(style.valueText) * 1.9), fill: "#111113" },
+    leaderStroke: { weight: 2, fill: style.labelText.fill ?? "white" },
   }
 }
 
 export function centerConfigOf(style: PieStyle): CenterConfig {
+  const size = sizeOf(style.centerText, 50)
   return {
-    labelStyle: {
-      ...face(style),
-      fontSize: Math.round(style.fontSize * 1.8),
-      fontWeight: Math.min(900, style.fontWeight + 300),
-      textAlign: "center",
-      fill: style.foreground,
-    },
-    captionStyle: { ...face(style), fontSize: Math.round(style.fontSize * 0.8), fontWeight: style.fontWeight, textAlign: "center", fill: style.muted },
+    labelStyle: placedText(style.centerText),
+    captionStyle: placedText(style.labelText, "center", { fontSize: Math.round(size * 0.45) }),
   }
 }

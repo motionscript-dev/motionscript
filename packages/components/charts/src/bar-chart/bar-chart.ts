@@ -11,6 +11,11 @@ import {
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
   type Node2DProps as _Node2DProps,
+  type TextStyle as _TextStyle,
+  type CornerRadiusResolved as _CornerRadiusResolved,
+  type CornerStyleResolved as _CornerStyleResolved,
+  type RectCornerRadius as _RectCornerRadius,
+  type RectCornerStyle as _RectCornerStyle,
   type Fill as _Fill,
   type FillResolved as _FillResolved,
   type Stroke as _Stroke,
@@ -44,12 +49,14 @@ import {
 } from "../kit/shared"
 import {
   CARTESIAN_GRID,
-  CHART_COLORS,
+  CARTESIAN_TEXT,
   CHART_LEGEND,
+  CHART_SERIES,
   CHART_STYLE_FAMILY,
   CHART_STYLE_PRESETS,
-  CHART_TEXT,
+  GRID_BACKGROUND,
   axisConfigOf,
+  migrateChartStyle,
   legendConfigOf,
   seriesFill,
   valueText,
@@ -70,7 +77,7 @@ import {
 
 const BAR_STYLE = Types.style(
   CHART_STYLE_FAMILY,
-  { colors: CHART_COLORS, text: CHART_TEXT, grid: CARTESIAN_GRID, marks: BAR_MARKS, labels: BAR_LABELS, legend: CHART_LEGEND },
+  { series: CHART_SERIES, background: GRID_BACKGROUND, text: CARTESIAN_TEXT, grid: CARTESIAN_GRID, marks: BAR_MARKS, labels: BAR_LABELS, legend: CHART_LEGEND },
   { presets: CHART_STYLE_PRESETS }
 )
 
@@ -195,6 +202,7 @@ function seriesBars(s: BarState, index: number, plot: Size2D): BarGeometry[] {
       from: valueToPx(domain, along, span.from),
       to: valueToPx(domain, along, span.to),
       round: span.outer,
+      grounded: !stacked || span.from === 0,
       caption,
     }
   })
@@ -283,6 +291,7 @@ export const BarChart = component2d({
     weights: (state) => state.series.map((s) => ((s.enabled ?? true) ? 1 : 0)),
     showing: (state) => state.series.map((s) => s.enabled ?? true),
   },
+  migrate: { style: migrateChartStyle("cartesian") },
   allowedChildren: [],
   children: (state) => {
     const style = () => state.style
@@ -358,12 +367,13 @@ export const BarChart = component2d({
           baseline: () => valueToPx(domain(), runs(state, plotSize()).along, baselineValue(domain())),
           horizontal,
           fill: () => seriesFill(style(), s, i),
-          cornerRadius: () => style().barRadius,
+          cornerRadius: () => style().barCornerRadius,
+          cornerStyle: () => style().barCornerStyle,
           growth: () => state.growth,
           dims: () => categoryDims(state),
           // A figure past a stack's end prints the stack's total; a percent stack has none worth printing, so prints its shares inside.
           values: () => (built.values === "end" && state.stack === "percent" ? "inside" : built.values),
-          valueStyle: () => ({ ...valueText(style()), fontSize: Math.round(style().fontSize * 0.85) }),
+          valueStyle: () => valueText(style()),
           enabled: () => state.showing[i] ?? (s.enabled ?? true),
         }) as unknown as Node2D
     )
@@ -385,7 +395,7 @@ export const BarChart = component2d({
     plot = new Rect({
       children: [
         new ChartCanvas({
-          fill: () => style().background,
+          fill: () => style().gridBackground,
           xGridStroke: () => style().verticalGrid,
           yGridStroke: () => style().horizontalGrid,
           xMarkers: horizontal ? () => domain().ticks : boundaries,
@@ -402,6 +412,7 @@ export const BarChart = component2d({
 
     return asParts([
       cartesianFrame({
+        background: () => style().background,
         left,
         ghost,
         plot,

@@ -1,6 +1,18 @@
 import { Types, clamp, type DataRecord, type TextStyle, type Fill as _Fill, type FillResolved as _FillResolved } from "@motionscript/sdk"
 
-import { CHART_COLORS, CHART_LEGEND, CHART_TEXT, legendConfigOf, type ChartStyleBase, paletteFill } from "../kit/style"
+import {
+  CHART_BACKGROUND,
+  CHART_FOREGROUND,
+  CHART_LEGEND,
+  CHART_MUTED,
+  CHART_SERIES,
+  LEGEND_TEXT,
+  legendConfigOf,
+  paletteFill,
+  placedText,
+  sizeOf,
+  type ChartStyleBase,
+} from "../kit/style"
 import type { LegendConfig } from "../kit/shared"
 import { num, text } from "../kit/shared"
 import type { CenterConfig, PieSlice } from "../kit/polar"
@@ -8,7 +20,7 @@ import type { CenterConfig, PieSlice } from "../kit/polar"
 /** One ring: a row's caption, magnitude and paint. The same shape as a pie's slice, so the legend is shared. */
 export type RadialRow = PieSlice
 
-export function resolveRadialRows(data: readonly DataRecord[], category: string, value: string, style: Pick<ChartStyleBase, "palette">): RadialRow[] {
+export function resolveRadialRows(data: readonly DataRecord[], category: string, value: string, style: Pick<ChartStyleBase, "seriesFills">): RadialRow[] {
   return data.map((row, i) => ({ category: text(row, category), value: num(row, value), fill: paletteFill(style, i) }))
 }
 
@@ -51,11 +63,20 @@ export interface RadialStyle extends ChartStyleBase {
   readonly track: _FillResolved[]
   readonly roundCaps: boolean
   readonly ringLabels: boolean
+  readonly labelText: TextStyle
+  readonly centerText: TextStyle
 }
 
 export const RADIAL_STYLE_GROUPS = {
-  colors: CHART_COLORS,
-  text: CHART_TEXT,
+  series: CHART_SERIES,
+  background: CHART_BACKGROUND,
+  text: {
+    /** The category at each ring's start, and the caption under the centre. */
+    labelText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
+    /** The summary in the middle. */
+    centerText: Types.typography({ fontSize: 50, fontWeight: 800, fill: CHART_FOREGROUND }),
+    ...LEGEND_TEXT,
+  },
   marks: {
     /** Where the innermost ring starts, as a fraction of the outer radius. */
     innerRadius: Types.number(0.3, { min: 0, max: 0.9, step: 0.05 }),
@@ -71,7 +92,7 @@ export const RADIAL_STYLE_GROUPS = {
     roundCaps: Types.boolean(true),
   },
   labels: {
-    /** The category written at each ring's start, in the muted colour. */
+    /** The category written at each ring's start, set in the label text. */
     ringLabels: Types.boolean(false),
   },
   legend: CHART_LEGEND,
@@ -92,23 +113,14 @@ export function legendOf(style: RadialStyle): LegendConfig {
   return legendConfigOf(style)
 }
 
-function face(style: RadialStyle): Pick<TextStyle, "fontFamily"> {
-  return style.fontFamily ? { fontFamily: style.fontFamily } : {}
-}
-
 export function ringLabelOf(style: RadialStyle): TextStyle {
-  return { ...face(style), fontSize: style.fontSize, fontWeight: style.fontWeight, textAlign: "center", fill: style.muted }
+  return placedText(style.labelText)
 }
 
 export function centerOf(style: RadialStyle): CenterConfig {
+  const size = sizeOf(style.centerText, 50)
   return {
-    labelStyle: {
-      ...face(style),
-      fontSize: Math.round(style.fontSize * 1.8),
-      fontWeight: Math.min(900, style.fontWeight + 300),
-      textAlign: "center",
-      fill: style.foreground,
-    },
-    captionStyle: { ...face(style), fontSize: Math.round(style.fontSize * 0.8), fontWeight: style.fontWeight, textAlign: "center", fill: style.muted },
+    labelStyle: placedText(style.centerText),
+    captionStyle: placedText(style.labelText, "center", { fontSize: Math.round(size * 0.45) }),
   }
 }

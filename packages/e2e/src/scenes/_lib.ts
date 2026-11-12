@@ -57,3 +57,8 @@ export const placeholder = (id: string): CompositionDocument =>
             ] }),
         );
     }, [holdTail(0)]);
+
+/** The chart text fields `keys`, each set in Inter. */
+export function inter<K extends string>(...keys: K[]): Record<K, { fontFamily: string }> {
+    return Object.fromEntries(keys.map((key) => [key, { fontFamily: 'Inter' }])) as Record<K, { fontFamily: string }>;
+}

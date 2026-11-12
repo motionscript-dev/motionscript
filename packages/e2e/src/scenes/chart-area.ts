@@ -1,7 +1,7 @@
 import { LineChart } from '@motionscript/charts';
 import { Rect } from '@motionscript/sdk';
 import { createRef, el, scene } from '../doc';
-import { holdTail } from './_lib';
+import { holdTail, inter } from './_lib';
 
 const DATA = [
     { month: 'Jan', desktop: 186, mobile: 80, tablet: 45 },
@@ -28,7 +28,7 @@ export default scene((stage) => {
                     { field: 'mobile', label: 'Mobile' },
                     { field: 'tablet', label: 'Tablet' },
                 ],
-                style: { fontFamily: 'Inter', area: 'gradient', strokeWidth: 3 },
+                style: { ...inter('xLabelText', 'xTitleText', 'yLabelText', 'yTitleText', 'valueText', 'legendText'), area: 'gradient', strokeWidth: 3 },
             }),
         ] }),
     );

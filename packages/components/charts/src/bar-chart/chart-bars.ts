@@ -11,7 +11,11 @@ import {
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
   type Node2D,
   type Node2DProps as _Node2DProps,
+  type RectCornerRadius as _RectCornerRadius,
+  type RectCornerStyle as _RectCornerStyle,
   type TextStyle,
+  type CornerRadiusResolved,
+  type CornerStyleResolved,
 } from "@motionscript/sdk"
 
 import { boundText } from "../kit/cartesian"
@@ -35,8 +39,10 @@ export interface BarGeometry {
   from: number
   /** The far end at full growth. */
   to: number
-  /** Whether the far end takes the corner radius (the stack's last segment on its side). */
+  /** Whether the far end takes the far corners (the stack's last segment on its side). */
   round: boolean
+  /** Whether the base takes the base corners (it stands on the baseline: every grouped bar, a stack's first segment). */
+  grounded?: boolean
   /** The figure printed by the bar; empty for none. */
   caption: string
 }
@@ -106,7 +112,9 @@ export const ChartBars = component2d({
     /** Bars grow along x from a category column rather than along y from a row. */
     horizontal: false,
     fill: Types.custom<Fill, FillResolved[]>([], { resolve: fillOps.resolve, lerp: fillOps.lerp }),
-    cornerRadius: 8,
+    /** As for a bar standing up from the baseline: `topLeft`/`topRight` round its far end, the bottom pair its base. */
+    cornerRadius: Types.cornerRadius(8),
+    cornerStyle: Types.cornerStyle("rounded"),
     /**
      * Rise of every bar in `[0, 1]` about the baseline, not each bar's own base:
      * every segment travels by the same factor, so a stack stays flush
@@ -163,17 +171,13 @@ export const ChartBars = component2d({
         const seam = bar.round ? 0 : 1
         const length = Math.abs(ends.end - ends.base) + seam
         if (length <= seam) continue
-        const radius = bar.round ? Math.max(0, Math.min(state.cornerRadius, length, bar.thickness / 2)) : 0
         const forward = ends.end >= ends.base
         const mid = (ends.base + ends.end) / 2 + (forward ? seam : -seam) / 2
-        // Corner keys are visual (y-up): only the far end rounds.
-        const far = state.horizontal
-          ? (forward ? { topRight: radius, bottomRight: radius, topLeft: 0, bottomLeft: 0 } : { topLeft: radius, bottomLeft: radius, topRight: 0, bottomRight: 0 })
-          : (forward ? { topLeft: radius, topRight: radius, bottomLeft: 0, bottomRight: 0 } : { bottomLeft: radius, bottomRight: radius, topLeft: 0, topRight: 0 })
+        const corners = barCorners(state, bar, forward, length)
         // One `Graphics2D` per bar: opacity belongs to the command list, and the spotlight dims single bars.
         const g = new Graphics2D().rect(state.horizontal
-          ? { x: mid, y: bar.center, width: length, height: bar.thickness, cornerRadius: radius > 0 ? far : 0 }
-          : { x: bar.center, y: mid, width: bar.thickness, height: length, cornerRadius: radius > 0 ? far : 0 })
+          ? { x: mid, y: bar.center, width: length, height: bar.thickness, ...corners }
+          : { x: bar.center, y: mid, width: bar.thickness, height: length, ...corners })
         g.fill(state.fill)
         ctx.draw(g.opacity(dimAt(state, i)))
       }
@@ -183,6 +187,41 @@ export const ChartBars = component2d({
 })
 
 export type ChartBars = NodeOf<typeof ChartBars>
+
+type Corners<T> = { topLeft: T; topRight: T; bottomRight: T; bottomLeft: T }
+
+/**
+ * Turns corners written for a bar standing up into the drawn bar's visual
+ * (y-up) corners: mirrored for a bar below zero, turned a quarter clockwise
+ * for one growing right, and both for one growing left.
+ */
+function orient<T>(c: Corners<T>, horizontal: boolean, forward: boolean): Corners<T> {
+  if (!horizontal) return forward ? c : { topLeft: c.bottomLeft, topRight: c.bottomRight, bottomRight: c.topRight, bottomLeft: c.topLeft }
+  return forward
+    ? { topLeft: c.bottomLeft, topRight: c.topLeft, bottomRight: c.topRight, bottomLeft: c.bottomRight }
+    : { topLeft: c.topLeft, topRight: c.bottomLeft, bottomRight: c.bottomRight, bottomLeft: c.topRight }
+}
+
+/** Bar `bar`'s rect corners: the far pair only where its stack ends, the base pair only on the baseline, each held inside the bar. */
+export function barCorners(
+  state: { readonly cornerRadius: CornerRadiusResolved; readonly cornerStyle: CornerStyleResolved; readonly horizontal: boolean },
+  bar: BarGeometry,
+  forward: boolean,
+  length: number
+): { cornerRadius: Corners<number>; cornerStyle: CornerStyleResolved } {
+  const grounded = bar.grounded ?? true
+  const r = state.cornerRadius
+  const ends = (bar.round ? 1 : 0) + (grounded ? 1 : 0)
+  const cap = Math.max(0, Math.min(bar.thickness / 2, ends > 1 ? length / 2 : length))
+  const fit = (v: number, on: boolean) => (on ? Math.max(0, Math.min(v, cap)) : 0)
+  const upright: Corners<number> = {
+    topLeft: fit(r.topLeft, bar.round),
+    topRight: fit(r.topRight, bar.round),
+    bottomRight: fit(r.bottomRight, grounded),
+    bottomLeft: fit(r.bottomLeft, grounded),
+  }
+  return { cornerRadius: orient(upright, state.horizontal, forward), cornerStyle: orient(state.cornerStyle, state.horizontal, forward) }
+}
 
 /** A figure as the bar prints it when the chart gives no caption. */
 export function barCaption(value: number): string {

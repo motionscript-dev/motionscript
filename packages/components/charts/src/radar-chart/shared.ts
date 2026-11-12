@@ -1,6 +1,13 @@
-import { Types, type DataRecord, type Size2D, type StrokeResolved, type Stroke as _Stroke, type Vector2 } from "@motionscript/sdk"
+import { Types, type TextStyle, type DataRecord, type Size2D, type StrokeResolved, type Stroke as _Stroke, type Vector2 } from "@motionscript/sdk"
 
 import { num, text, type ChartSeries } from "../kit/shared"
+import { CHART_MUTED, LEGEND_TEXT } from "../kit/style"
+
+/** The radar chart's text: the category names around the rim, and the legend. */
+export const RADAR_TEXT = {
+  spokeText: Types.typography({ fontSize: 28, fontWeight: 500, fill: CHART_MUTED }),
+  ...LEGEND_TEXT,
+}
 
 export type GridShape = "polygon" | "circle"
 
@@ -39,7 +46,7 @@ export interface RadarStyle {
   readonly areaOpacity: number
   readonly dots: boolean
   readonly dotSize: number
-  readonly fontSize: number
+  readonly spokeText: TextStyle
 }
 
 /** Fraction of the label's font size between the rim and the label. */

@@ -12,24 +12,26 @@ import {
   type TextStyle,
 } from "@motionscript/sdk"
 
-import type { CartesianStyle, LegendPosition } from "./style"
+import { sizeOf, type CartesianStyle, type LegendPosition } from "./style"
 
 /** Space between the frame's rows and columns: the plot and the legend, the axes and the legend. */
-export function frameGap(style: Pick<CartesianStyle, "fontSize">): number {
-  return Math.round(style.fontSize * 0.9)
+export function frameGap(style: Pick<CartesianStyle, "legendText">): number {
+  return Math.round(sizeOf(style.legendText) * 0.9)
 }
 
 /** Room above the plot for the top value marker, which is centred on the top grid line. */
-export function headroom(style: Pick<CartesianStyle, "fontSize">): number {
-  return Math.ceil(style.fontSize * 0.7)
+export function headroom(style: Pick<CartesianStyle, "yLabelText">): number {
+  return Math.ceil(sizeOf(style.yLabelText) * 0.7)
 }
 
 /** How far an end marker of a horizontal value axis may hang past the plot: half a short caption. */
-export function overhang(style: Pick<CartesianStyle, "fontSize">): number {
-  return Math.ceil(style.fontSize * 1.1)
+export function overhang(style: Pick<CartesianStyle, "xLabelText">): number {
+  return Math.ceil(sizeOf(style.xLabelText) * 1.1)
 }
 
 interface CartesianParts {
+  /** Behind the whole chart, axes and legend included. */
+  readonly background?: () => Fill
   /** The axis beside the plot, on its left. */
   readonly left?: Node2D
   /** An invisible twin of `left` under the plot, so the row there starts at the plot's left edge. */
@@ -72,6 +74,7 @@ export function cartesianFrame(parts: CartesianParts): Node2D {
     height: "fill",
     gap: parts.gap,
     padding: parts.padding,
+    ...(parts.background ? { fill: parts.background } : {}),
     children: [
       ...(legend && parts.legendAt === "top" ? [across(legend)] : []),
       main,

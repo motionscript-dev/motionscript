@@ -302,7 +302,7 @@ describe("RadarChart series commands", () => {
 describe("RadarChart style", () => {
   it("keeps every drawn field bound, so a later style reaches the parts without a rebuild", () => {
     const node = chart()
-    node.set({ style: { strokeWidth: 12, gridShape: "circle", gridLevels: 5, areaOpacity: 0.5, fontSize: 40 } } as never)
+    node.set({ style: { strokeWidth: 12, gridShape: "circle", gridLevels: 5, areaOpacity: 0.5, spokeText: { fontSize: 40 } } })
     layOut(node, BOX)
     const p = partsOf(node)
     expect(p.series[0].stroke[0].weight).toBe(12)
@@ -313,8 +313,8 @@ describe("RadarChart style", () => {
     expect(p.grid.radius).toBeLessThan(partsOf(chart()).grid.radius)
   })
 
-  it("applies a preset's palette", () => {
-    const { series } = partsOf(chart({ style: { palette: CHART_STYLE_PRESETS.neon.palette } }))
+  it("applies a preset's series fills", () => {
+    const { series } = partsOf(chart({ style: { seriesFills: CHART_STYLE_PRESETS.neon.seriesFills } }))
     expect(JSON.stringify(series[0].fill)).toContain("0.1333")
   })
 
@@ -343,8 +343,9 @@ describe("radarChart in the registry", () => {
     const style = (described.properties as Record<string, { kind: string; family: string; properties: Record<string, { group: string; animatable?: boolean }> }>).style
     expect(style).toMatchObject({ kind: "style", family: "chart" })
     const groups = (keys: string[]) => keys.map((k) => style.properties[k]?.group)
-    expect(groups(["palette", "foreground", "muted", "background"])).toEqual(Array(4).fill("colors"))
-    expect(groups(["fontFamily", "fontSize", "fontWeight"])).toEqual(Array(3).fill("text"))
+    expect(groups(["seriesFills"])).toEqual(["series"])
+    expect(groups(["background", "gridBackground"])).toEqual(Array(2).fill("background"))
+    expect(groups(["spokeText", "legendText"])).toEqual(Array(2).fill("text"))
     expect(groups(["gridShape", "gridLevels", "gridStroke", "spokeStroke", "spokeLabels"])).toEqual(Array(5).fill("grid"))
     expect(groups(["strokeWidth", "areaOpacity", "dots", "dotSize"])).toEqual(Array(4).fill("marks"))
     expect(groups(["legend", "swatch"])).toEqual(["legend", "legend"])
