@@ -58,14 +58,20 @@ const KEEP_UNUSED = 120;
 /** A path or paint definition and the sync that last used it. */
 interface Interned { id: number; used: number; live: boolean }
 
+// After each multiply, the shift folds the high bits down. A multiply alone carries a word's bit 31 (a float's
+// sign) only to bit 31, so flipping every sign of an even count of words (a path or gradient mirrored through the
+// origin) would cancel out and hash the same.
 function hashWords(words: ArrayLike<number>): number {
     let h = 0x811c9dc5;
-    for (let i = 0; i < words.length; i++) h = Math.imul(h ^ words[i], 0x01000193);
+    for (let i = 0; i < words.length; i++) {
+        h = Math.imul(h ^ words[i], 0x01000193);
+        h ^= h >>> 15;
+    }
     return h >>> 0;
 }
 
 /** FNV-1a over a path's verbs and point bits, twice with different seeds. */
-function pathKey(d: PathData): string {
+export function pathKey(d: PathData): string {
     const bits = new Uint32Array(d.points.buffer, d.points.byteOffset, d.points.length);
     let a = 0x811c9dc5, b = 0x01000193 ^ d.points.length;
     for (let i = 0; i < d.verbs.length; i++) {
@@ -74,7 +80,9 @@ function pathKey(d: PathData): string {
     }
     for (let i = 0; i < bits.length; i++) {
         a = Math.imul(a ^ bits[i], 0x01000193);
+        a ^= a >>> 15;
         b = Math.imul(b ^ bits[i], 0x5bd1e995);
+        b ^= b >>> 13;
     }
     return `${d.verbs.length}:${bits.length}:${a >>> 0}:${b >>> 0}`;
 }
