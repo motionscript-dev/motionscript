@@ -1,0 +1,92 @@
+{
+  "extends": "node3d",
+  "node": {
+    "icon": "house",
+    "leaf": true
+  },
+  "props": {
+    "storeys": {
+      "control": "slider"
+    },
+    "windows": {
+      "label": "Windows"
+    },
+    "floors": {
+      "label": "Floor lines"
+    },
+    "dimensions": {
+      "label": "Dimensions"
+    },
+    "raised": {
+      "label": "Raised"
+    },
+    "measured": {
+      "label": "Measured"
+    },
+    "hiddenLines": {
+      "label": "Hidden lines"
+    }
+  },
+  "layout": [
+    {
+      "section": "house",
+      "title": "House",
+      "icon": "house",
+      "before": "appearance",
+      "items": [
+        {
+          "row": [
+            "width",
+            "depth"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        "storeys"
+      ]
+    },
+    {
+      "section": "lines",
+      "title": "Lines",
+      "icon": "pen-line",
+      "before": "appearance",
+      "items": [
+        "windows",
+        "floors",
+        "hiddenLines",
+        "dimensions"
+      ]
+    },
+    {
+      "section": "startsAt",
+      "title": "Starts at",
+      "icon": "play",
+      "collapsible": true,
+      "collapsed": true,
+      "items": [
+        "raised",
+        "measured"
+      ]
+    }
+  ],
+  "commands": {
+    "raise": {
+      "label": "Raise",
+      "icon": "arrow-up-to-line",
+      "category": "transform",
+      "description": "Rises a storey at a time.",
+      "defaults": {
+        "duration": 2.4
+      }
+    },
+    "measure": {
+      "label": "Measure",
+      "icon": "ruler",
+      "category": "paint",
+      "description": "Draws its dimensions in.",
+      "defaults": {
+        "duration": 0.8
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Renders stills of each dumped template scene: shots.sh [scene...]
-cd /c/Users/workk/Projects/motionscript/motionscript/packages/e2e
+cd "$(dirname "$0")/.."
 for s in "$@"; do
   case $s in
     title-sheet) t="2 5 8.5";; plan) t="2.5 9.5";; massing) t="3 11.5";; frame) t="3.5 11.5";;

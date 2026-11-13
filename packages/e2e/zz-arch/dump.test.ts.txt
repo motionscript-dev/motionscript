@@ -11,6 +11,6 @@ it("dumps the architecture scenes", () => {
     const built = templateSceneDocument({ scene, theme, describe: () => undefined })
     if (!built) throw new Error("no document " + scene.name)
     const slug = scene.name.toLowerCase().replace(/[^a-z]+/g, "-")
-    fs.writeFileSync(`C:/Users/workk/Projects/motionscript/motionscript/packages/e2e/zz-arch/tmpl-${slug}.json`, JSON.stringify({ ...built.document, duration: built.seconds }))
+    fs.writeFileSync(`${process.env.ZZ_ARCH_OUT ?? "C:/Users/workk/Projects/motionscript/motionscript/packages/e2e/zz-arch"}/tmpl-${slug}.json`, JSON.stringify({ ...built.document, duration: built.seconds }))
   }
 })

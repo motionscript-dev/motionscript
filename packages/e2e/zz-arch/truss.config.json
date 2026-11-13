@@ -1,0 +1,124 @@
+{
+  "extends": "node3d",
+  "node": {
+    "icon": "spline",
+    "leaf": true
+  },
+  "props": {
+    "panels": {
+      "control": "stepper"
+    },
+    "deck": {
+      "label": "Deck"
+    },
+    "tension": {
+      "label": "Tension"
+    },
+    "compression": {
+      "label": "Compression"
+    },
+    "arrows": {
+      "label": "Load arrows"
+    },
+    "dimensions": {
+      "label": "Dimensions"
+    },
+    "erected": {
+      "label": "Erected"
+    },
+    "loaded": {
+      "label": "Loaded"
+    },
+    "measured": {
+      "label": "Measured"
+    }
+  },
+  "layout": [
+    {
+      "section": "truss",
+      "title": "Truss",
+      "icon": "spline",
+      "before": "appearance",
+      "items": [
+        {
+          "row": [
+            "panels",
+            "bay"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        "width"
+      ]
+    },
+    {
+      "section": "parts",
+      "title": "Parts",
+      "icon": "layers",
+      "before": "appearance",
+      "items": [
+        "deck",
+        {
+          "row": [
+            "tension",
+            "compression"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        "arrows",
+        "dimensions"
+      ]
+    },
+    {
+      "section": "startsAt",
+      "title": "Starts at",
+      "icon": "play",
+      "collapsible": true,
+      "collapsed": true,
+      "items": [
+        "erected",
+        "loaded",
+        "measured"
+      ]
+    }
+  ],
+  "commands": {
+    "erect": {
+      "label": "Erect",
+      "icon": "grid-2x2",
+      "category": "transform",
+      "description": "Puts it up member by member.",
+      "defaults": {
+        "duration": 4
+      }
+    },
+    "load": {
+      "label": "Load",
+      "icon": "arrow-down-to-line",
+      "category": "paint",
+      "description": "Loads the deck: members tint by tension and compression, and it sags.",
+      "defaults": {
+        "duration": 1.6
+      }
+    },
+    "unload": {
+      "label": "Unload",
+      "icon": "arrow-up-to-line",
+      "category": "paint",
+      "description": "Takes the load off.",
+      "defaults": {
+        "duration": 1
+      }
+    },
+    "measure": {
+      "label": "Measure",
+      "icon": "ruler",
+      "category": "paint",
+      "description": "Draws its dimensions in.",
+      "defaults": {
+        "duration": 0.8
+      }
+    }
+  }
+}
