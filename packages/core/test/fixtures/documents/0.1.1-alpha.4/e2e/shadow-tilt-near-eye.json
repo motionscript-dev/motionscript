@@ -1,0 +1,80 @@
+{
+  "kind": "project",
+  "name": "shadow-tilt-near-eye",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "shadow-tilt-near-eye",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "#e8ecf4"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": 1800,
+              "height": 1000,
+              "cornerRadius": 24,
+              "fill": "#3d6fe0",
+              "shadow": {
+                "blur": 8,
+                "offset": {
+                  "x": 0,
+                  "y": 12
+                },
+                "fill": "black/40"
+              },
+              "rotationX": 20,
+              "rotationY": -55,
+              "rotationZ": 117.8,
+              "perspective": 800
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "rotationX": 80
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}

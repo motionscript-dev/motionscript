@@ -1,0 +1,114 @@
+{
+  "kind": "project",
+  "name": "effect-scatter-horizontal",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "effect-scatter-horizontal",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 360,
+              "height": 240,
+              "cornerRadius": 20,
+              "fill": "card",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              },
+              "effects": [
+                {
+                  "type": "scatter",
+                  "strength": 0,
+                  "axis": "x"
+                }
+              ]
+            }
+          },
+          {
+            "id": "text0",
+            "type": "text",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "text": "NOISE",
+              "fontFamily": "Inter",
+              "fontWeight": 800,
+              "fontSize": 56,
+              "fill": "primary"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "scatter",
+                  "strength": 24,
+                  "axis": "x"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}
