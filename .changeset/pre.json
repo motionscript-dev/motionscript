@@ -28,11 +28,13 @@
     "declarations-recalled",
     "depth-reversed",
     "mesh-bounds-reported",
+    "paint3d",
     "prewarm-pipelines",
     "remove-deprecated-shims",
     "scene-textures-follow",
     "shared-asset-loads",
     "text-segments-paint",
-    "tidy-component-kits"
+    "tidy-component-kits",
+    "tilted-shadow-layers"
   ]
 }

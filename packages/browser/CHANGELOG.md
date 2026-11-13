@@ -1,5 +1,12 @@
 # @motionscript/browser
 
+## 0.1.1-alpha.4
+
+### Patch Changes
+
+- Updated dependencies [d67777c]
+  - @motionscript/renderer@0.1.1-alpha.4
+
 ## 0.1.1-alpha.3
 
 ### Patch Changes

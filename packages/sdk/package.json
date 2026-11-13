@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/sdk",
-  "version": "0.1.1-alpha.3",
+  "version": "0.1.1-alpha.4",
   "type": "module",
   "description": "The Motion Script authoring surface behind one import: document types, components and their modules, commands, styling, and the machinery component kits build on.",
   "repository": {
