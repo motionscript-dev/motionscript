@@ -364,16 +364,20 @@ fn map_rect(m: &[f32], r: Rect) -> Rect {
     out
 }
 
-/// Device px per local unit along local x and y at local point (x, y).
-fn axis_scales(m: &[f32], x: f32, y: f32) -> (f32, f32) {
+/// Device px per local unit along local x and y at local point (x, y): the
+/// columns of `m`'s Jacobian there.
+fn jacobian(m: &[f32], x: f32, y: f32) -> ([f32; 2], [f32; 2]) {
     if is_affine(m) {
-        return ((m[0] * m[0] + m[1] * m[1]).sqrt(), (m[2] * m[2] + m[3] * m[3]).sqrt());
+        return ([m[0], m[1]], [m[2], m[3]]);
     }
     let w = (m[6] * x + m[7] * y + m[8]).max(NEAR_W);
     let dx = (m[0] * x + m[2] * y + m[4]) / w;
     let dy = (m[1] * x + m[3] * y + m[5]) / w;
-    let jx = [(m[0] - dx * m[6]) / w, (m[1] - dy * m[6]) / w];
-    let jy = [(m[2] - dx * m[7]) / w, (m[3] - dy * m[7]) / w];
+    ([(m[0] - dx * m[6]) / w, (m[1] - dy * m[6]) / w], [(m[2] - dx * m[7]) / w, (m[3] - dy * m[7]) / w])
+}
+
+fn axis_scales(m: &[f32], x: f32, y: f32) -> (f32, f32) {
+    let (jx, jy) = jacobian(m, x, y);
     ((jx[0] * jx[0] + jx[1] * jx[1]).sqrt(), (jy[0] * jy[0] + jy[1] * jy[1]).sqrt())
 }
 
@@ -419,8 +423,17 @@ fn min_scale(m: &[f32]) -> f32 {
 /// Largest axis scale where the device-space centre of `dev` maps from:
 /// the scale a projective group's device-space filters measure at.
 fn scale_near(m: &[f32], dev: Rect) -> f32 {
+    let (jx, jy) = jacobian_near(m, dev);
+    let (sx, sy) = ((jx[0] * jx[0] + jx[1] * jx[1]).sqrt(), (jy[0] * jy[0] + jy[1] * jy[1]).sqrt());
+    if is_affine(m) { sx.max(sy) } else { sx.max(sy).min(1e3) }
+}
+
+/// `m`'s Jacobian where the device-space centre of `dev` maps from (at the
+/// local origin when affine, empty or unmappable), so a projective node's
+/// device-space filters measure their sigma and offset where they are seen.
+fn jacobian_near(m: &[f32], dev: Rect) -> ([f32; 2], [f32; 2]) {
     if is_affine(m) || is_empty(&dev) {
-        return max_scale(m);
+        return jacobian(m, 0.0, 0.0);
     }
     let (px, py) = ((dev[0] + dev[2]) * 0.5, (dev[1] + dev[3]) * 0.5);
     // Inverse homography by adjugate: rows of H are [a c e / b d f / g h i].
@@ -429,10 +442,22 @@ fn scale_near(m: &[f32], dev: Rect) -> f32 {
     let y = (f * g - b * k) * px + (a * k - e * g) * py + (e * b - a * f);
     let w = (b * h - d * g) * px + (c * g - a * h) * py + (a * d - c * b);
     if w.abs() < 1e-12 {
-        return max_scale(m);
+        return jacobian(m, 0.0, 0.0);
     }
-    let (sx, sy) = axis_scales(m, x / w, y / w);
-    sx.max(sy).min(1e3)
+    jacobian(m, x / w, y / w)
+}
+
+/// WebGPU's guaranteed `maxTextureDimension2D`, less the packer's gutters: no
+/// layer may outgrow it, or its pass's viewport is invalid and the whole frame's
+/// command buffer with it.
+const MAX_LAYER: f32 = 8192.0 - 8.0;
+
+/// How far a layer may reach past `cull` (for a blur or effect to sample
+/// beyond what is seen) and still fit `MAX_LAYER`. Perspective near the
+/// eye magnifies a blur without bound; past this it is a flat smear anyway.
+fn bounded_reach(cull: Rect, reach: f32) -> f32 {
+    let side = (cull[2] - cull[0]).max(cull[3] - cull[1]);
+    reach.min(((MAX_LAYER - side) * 0.5).max(0.0))
 }
 
 /// (largest, smallest) axis scale over local rect `r`: under perspective the
@@ -948,7 +973,7 @@ impl FrameBuilder {
                     // stroke together), so it is isolated in a layer that the
                     // compositor blends against the backdrop.
                     let reach: f32 = s.effects[i].iter().filter(|e| !is_backdrop(e)).map(|e| e.reach.max(0.0)).sum::<f32>() * max_scale(&m);
-                    let r = intersect(b, outset(ctx.cull, reach));
+                    let r = intersect(b, outset(ctx.cull, bounded_reach(ctx.cull, reach)));
                     let (layer, saved) = out.begin_layer(Layer {
                         rect: [r[0].floor() as i32, r[1].floor() as i32, r[2].ceil() as i32, r[3].ceil() as i32],
                         opacity: 1.0,
@@ -1166,7 +1191,8 @@ impl FrameBuilder {
                 Filter::None => (DevFilter::None, 0.0),
                 Filter::Blur { sigma } => (DevFilter::Blur { sigma: sigma * sc }, 3.0 * sigma * sc),
                 Filter::DropShadow { dx, dy, sigma, color } => {
-                    let off = [m[0] * dx + m[2] * dy, m[1] * dx + m[3] * dy];
+                    let (jx, jy) = jacobian_near(&m, self.bounds[i]);
+                    let off = [jx[0] * dx + jy[0] * dy, jx[1] * dx + jy[1] * dy];
                     let reach = 3.0 * sigma * sc + off[0].abs().max(off[1].abs());
                     (DevFilter::DropShadow { dx: off[0], dy: off[1], sigma: sigma * sc, color }, reach)
                 }
@@ -1174,7 +1200,7 @@ impl FrameBuilder {
             // Content just outside the visible area still bleeds in through a
             // blur, so the layer (and what is drawn into it) reaches past the cull.
             let effect_reach: f32 = s.effects[i].iter().map(|e| e.reach.max(0.0)).sum::<f32>() * sc;
-            let content_cull = outset(ctx.cull, reach + effect_reach);
+            let content_cull = outset(ctx.cull, bounded_reach(ctx.cull, reach + effect_reach));
             let r = intersect(self.bounds[i], content_cull);
             if is_empty(&r) {
                 return;
@@ -1571,6 +1597,7 @@ impl FrameBuilder {
             return;
         }
         let reach: f32 = s.effects[i].iter().filter(|e| is_backdrop(e)).map(|e| e.reach.max(0.0)).sum::<f32>() * max_scale(m);
+        let reach = bounded_reach(cull, reach);
         let r = intersect(outset(dev, reach), outset(cull, reach));
         let saved_clip = out.cur_clip;
         let inst = out.prims.len() as u32;
@@ -1650,17 +1677,21 @@ impl FrameBuilder {
         if is_empty(&local) {
             return;
         }
-        let [sc, sc_min] = self.scales[i];
+        let [sc_max, sc_min] = self.scales[i];
         let aa = 2.0 / sc_min;
-        let zoom = zoom_bucket(sc);
+        let zoom = zoom_bucket(sc_max);
+        // Under perspective, the scale where the shape is seen, not its largest:
+        // a corner near the eye would blow the blur up a thousandfold.
+        let (jx, jy) = jacobian_near(m, intersect(map_rect(m, local), cull));
+        let sc = scale_near(m, intersect(map_rect(m, local), cull));
         for sh in s.shadows[i].clone() {
-            let off = [m[0] * sh.dx + m[2] * sh.dy, m[1] * sh.dx + m[3] * sh.dy];
+            let off = [jx[0] * sh.dx + jy[0] * sh.dy, jx[1] * sh.dx + jy[1] * sh.dy];
             let sigma = sh.sigma * sc;
             let spread = sh.spread.max(0.0);
             let shape = outset(map_rect(m, outset(local, spread)), 1.0 + 3.0 * sigma);
             // The part of the shadow that lands inside `cull`, in silhouette space.
             let shifted_cull = [cull[0] - off[0], cull[1] - off[1], cull[2] - off[0], cull[3] - off[1]];
-            let r = intersect(shape, outset(shifted_cull, 3.0 * sigma));
+            let r = intersect(shape, outset(shifted_cull, bounded_reach(cull, 3.0 * sigma)));
             if is_empty(&r) {
                 continue;
             }
@@ -1990,5 +2021,27 @@ mod tests {
         let m: Xf = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.001, 0.0, 1.0];
         let nf = node_frame(&m, [0.0, 0.0, 10.0, 10.0], [20.0, 40.0, 120.0, 90.0], 1.0);
         assert_eq!(nf, [0.01, 0.0, -0.2, 100.0, 0.0, 0.02, -0.8, 50.0]);
+    }
+
+    #[test]
+    fn a_layer_reaches_past_the_cull_only_as_far_as_a_texture_holds() {
+        let cull = [0.0, 0.0, 1920.0, 1080.0];
+        assert_eq!(bounded_reach(cull, 24.0), 24.0);
+        let reach = bounded_reach(cull, 24_000.0);
+        assert!(outset(cull, reach)[2] - outset(cull, reach)[0] <= MAX_LAYER);
+        assert_eq!(bounded_reach([0.0, 0.0, 9000.0, 10.0], 5.0), 0.0);
+    }
+
+    #[test]
+    fn a_projective_shadow_measures_where_the_shape_is_seen() {
+        // Tipped so that local y near 999 approaches the eye plane (w → 0).
+        let m: Xf = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -0.001, 1.0];
+        let seen = map_rect(&m, [0.0, 0.0, 100.0, 100.0]);
+        let near = scale_near(&m, seen);
+        assert!(near > 1.0 && near < 1.3, "scale near the visible part {near}");
+        assert_eq!(scale_range(&m, [0.0, 0.0, 100.0, 999.5])[0], 1e3);
+        // The affine case is the plain linear part.
+        let a: Xf = [2.0, 0.0, 0.0, 3.0, 5.0, 5.0, 0.0, 0.0, 1.0];
+        assert_eq!(jacobian_near(&a, [0.0, 0.0, 10.0, 10.0]), ([2.0, 0.0], [0.0, 3.0]));
     }
 }

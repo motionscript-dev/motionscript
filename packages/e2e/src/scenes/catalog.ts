@@ -155,6 +155,7 @@ export const catalog: SceneEntry[] = [
     { id: "shadow-inner", name: "ShadowInner", section: "Shadows", description: "Inner shadow on rect", load: () => import('./shadow-inner') },
     { id: "shadow-spread-positive", name: "ShadowSpreadPositive", section: "Shadows", description: "Shadow with positive spread (expanded)", load: () => import('./shadow-spread-positive') },
     { id: "shadow-spread-negative", name: "ShadowSpreadNegative", section: "Shadows", description: "Shadow with negative spread (contracted)", load: () => import('./shadow-spread-negative') },
+    { id: "shadow-tilt-near-eye", name: "ShadowTiltNearEye", section: "Shadows", description: "A full-stage card with a drop shadow tipping in perspective until one edge nears the eye: the blur stays measured where the card is seen and its layer within a texture", load: () => import('./shadow-tilt-near-eye') },
     { id: "shadow-fill-gradient", name: "ShadowFillGradient", section: "Shadows", description: "Shadow using a gradient fill color", load: () => import('./shadow-fill-gradient') },
     { id: "shadow-media-fill", name: "ShadowMediaFill", section: "Shadows", description: "Image, shader and pattern fills on a drop shadow", load: () => import('./shadow-media-fill') },
     { id: "shadow-layered", name: "ShadowLayered", section: "Shadows", description: "Multiple shadows stacked (inner + outer)", load: () => import('./shadow-layered') },

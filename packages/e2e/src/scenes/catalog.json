@@ -828,6 +828,12 @@
     "description": "Shadow with negative spread (contracted)"
   },
   {
+    "id": "shadow-tilt-near-eye",
+    "name": "ShadowTiltNearEye",
+    "section": "Shadows",
+    "description": "A full-stage card with a drop shadow tipping in perspective until one edge nears the eye: the blur stays measured where the card is seen and its layer within a texture"
+  },
+  {
     "id": "shadow-fill-gradient",
     "name": "ShadowFillGradient",
     "section": "Shadows",
