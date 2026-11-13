@@ -132,6 +132,8 @@ export * as Typeface from '../components/modules/text-style';
 export * as TextLayout from '../components/modules/text-layout';
 // A mesh's surface: the material entries, and the mesh drawn with them.
 export * as Material from '../components/modules/material';
+// A custom 3D node's paint: the 2D `fill` and `stroke` entries, as a material and as lines.
+export * as Paint3D from '../components/modules/paint3d';
 // A viewport onto 3D children: the default camera and lights, the grid, the render settings.
 export * as View3D from '../components/modules/view3d';
 export type { Attribute, EntryOptions, NumberOptions, TextOptions } from '../components/factory/types';
