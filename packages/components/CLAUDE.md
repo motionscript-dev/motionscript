@@ -113,6 +113,13 @@ dependency, or copied into a project from the same source (the files each
   `lineWidth`. Built-in meshes keep `Material.state`
   (`packages/core/docs/3d.md#painting-a-custom-3d-node`).
 
+- **One object per component, with few entries.** When an enum changes what is
+  drawn, so that some entries matter only for some of its values, it is several
+  components sharing a helper, not one with a `kind`. An entry is something an
+  author sets on the object in a scene; a number nobody changes is a constant
+  in the code. An optional part is a paint that is empty when off, not a
+  boolean beside it.
+
 - **A specialised node takes only the paints it draws.** Spread only the
   modules it draws with, or take part of one
   (`const { overlay: _o, ...paint } = Paint.state`, and the same for

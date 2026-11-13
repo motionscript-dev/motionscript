@@ -13,7 +13,7 @@ OUT = pathlib.Path(
 )
 
 SDK = re.compile(r'import \{([^}]*)\} from "@motionscript/sdk"\n')
-KIT = re.compile(r'import \{[^}]*\} from "\./cad-kit"\n', re.S)
+LOCAL = re.compile(r'import \{[^}]*\} from "\./([a-z-]+)"\n', re.S)
 
 
 def names(source: str) -> list[str]:
@@ -21,34 +21,53 @@ def names(source: str) -> list[str]:
     return [n.strip() for n in m.group(1).split(",") if n.strip()] if m else []
 
 
-def inline(node: str, kit: str) -> str:
-    found = names(kit) + names(node)
+def expand(name: str, seen: set[str], found: list[str]) -> str:
+    """`name`.ts with each local import replaced by that file's body (once per node), its SDK names collected."""
+    text = (SRC / f"{name}.ts").read_text(encoding="utf8").replace("\r\n", "\n")
+    found += names(text)
+    text = SDK.sub("", text, count=1)
+
+    def inline(m: re.Match) -> str:
+        dep = m.group(1)
+        if dep in seen:
+            return ""
+        seen.add(dep)
+        body = re.sub(r"^export ", "", expand(dep, seen, found), flags=re.M)
+        return body.strip() + "\n\n"
+
+    return LOCAL.sub(inline, text)
+
+
+def inline(src: str) -> str:
+    found: list[str] = []
+    body = expand(src[: -len(".ts")], set(), found)
     values = sorted({n for n in found if not n.startswith("type ")}, key=str.lower)
     types = sorted({n for n in found if n.startswith("type ") and n[5:] not in values}, key=lambda n: n[5:].lower())
     head = "import { " + ", ".join(values + types) + ' } from "@motionscript/sdk"\n'
-    body = SDK.sub("", kit, count=1)
-    body = re.sub(r"^export ", "", body, flags=re.M)
-    node = SDK.sub("", node, count=1)
-    assert KIT.search(node), "no kit import"
-    return head + KIT.sub(lambda _: body.strip() + "\n\n// --- The node " + "-" * 70 + "\n", node, count=1)
+    # The node's own code follows the kits it was given.
+    split = body.rfind("\n/**", 0, body.index("export default"))
+    return head + body[:split].rstrip() + "\n\n// --- The node " + "-" * 70 + "\n" + body[split:].lstrip("\n")
 
 
 def literal(text: str) -> str:
     text = text.replace("\r\n", "\n")
-    return "`" + text.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${") + "`"
+    return "`" + text.replace("\\", "\\\\").replace("`", "\`").replace("${", "\${") + "`"
 
 
-kit = (SRC / "cad-kit.ts").read_text(encoding="utf8")
 NODES = [
-    ("building", "Building", "building", "building.ts", "building.config.json"),
-    ("structure", "Structure", "structure", "structure.ts", "structure.config.json"),
+    ("house", "House", "houseModel", "house.ts", "house.config.json"),
+    ("block", "Office block", "blockModel", "block.ts", "block.config.json"),
+    ("tower", "Tower", "towerModel", "tower.ts", "tower.config.json"),
+    ("frame", "Steel frame", "steelFrame", "frame.ts", "frame.config.json"),
+    ("truss", "Truss bridge", "trussBridge", "truss.ts", "truss.config.json"),
     ("site", "Site plate", "sitePlate", "site.ts", "site.config.json"),
+    ("plot", "Site plot", "sitePlot", "plot.ts", "plot.config.json"),
 ]
 
 consts = []
 entries = []
 for mid, name, key, src, cfg in NODES:
-    source = inline((SRC / src).read_text(encoding="utf8"), kit)
+    source = inline(src)
     (SRC / "out" / f"inlined-{src}").write_text(source, encoding="utf8")
     const = mid.upper() + "_SOURCE"
     consts.append(f"const {const} = {literal(source)}\n")
@@ -67,15 +86,15 @@ out = f'''import type {{ TemplateModule }} from "@/features/editor/themes/types"
 
 /**
  * The custom nodes the Architecture template (key `architecture`) is drawn
- * with, as the source a workspace module holds. Each is drawn as a CAD view:
- * solids in four quiet tones, hairline edges, dashed hidden lines, and
- * dimensions lettered in a single-stroke hand (geometry, not textures).
- * `building` is a house, block or tower that rises a storey at a time;
- * `structure` is a steel frame put up storey by storey, or a Pratt truss
- * bridge whose members colour by tension and compression under `load`;
- * `sitePlate` is the ruled plate a massing model stands on. Generated from
- * the engine repo's scratch sources (`packages/e2e/zz-arch/gen-modules.py`),
- * where the drafting kit they share is one file.
+ * with, as the source a workspace module holds: one component per object, each
+ * painted with a fill and strokes, drawn as a CAD view (solids in four quiet
+ * tones of the fill, outline and fine lines as strokes, dashed hidden lines,
+ * dimensions lettered in a single-stroke hand). A house, an office block and a
+ * tower rise a storey at a time; a steel frame goes up storey by storey; a
+ * Pratt truss bridge tints its members by tension and compression under
+ * `load`; a site plate is ruled, and a site plot pegged out on it. Generated
+ * from the engine repo's scratch sources (`packages/e2e/zz-arch/gen-modules.py`),
+ * where the kits they share are files of their own.
  */
 
 {chr(10).join(consts)}

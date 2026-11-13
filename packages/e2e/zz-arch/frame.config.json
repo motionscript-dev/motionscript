@@ -1,0 +1,95 @@
+{
+  "extends": "node3d",
+  "node": {
+    "icon": "grid-2x2",
+    "leaf": true
+  },
+  "props": {
+    "storeys": {
+      "control": "slider"
+    },
+    "slabs": {
+      "label": "Slabs"
+    },
+    "braces": {
+      "label": "Braces"
+    },
+    "dimensions": {
+      "label": "Dimensions"
+    },
+    "erected": {
+      "label": "Erected"
+    },
+    "measured": {
+      "label": "Measured"
+    }
+  },
+  "layout": [
+    {
+      "section": "frame",
+      "title": "Frame",
+      "icon": "grid-2x2",
+      "before": "appearance",
+      "items": [
+        {
+          "row": [
+            "baysX",
+            "baysZ"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        },
+        {
+          "row": [
+            "storeys",
+            "bay"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        }
+      ]
+    },
+    {
+      "section": "parts",
+      "title": "Parts",
+      "icon": "layers",
+      "before": "appearance",
+      "items": [
+        "slabs",
+        "braces",
+        "dimensions"
+      ]
+    },
+    {
+      "section": "startsAt",
+      "title": "Starts at",
+      "icon": "play",
+      "collapsible": true,
+      "collapsed": true,
+      "items": [
+        "erected",
+        "measured"
+      ]
+    }
+  ],
+  "commands": {
+    "erect": {
+      "label": "Erect",
+      "icon": "grid-2x2",
+      "category": "transform",
+      "description": "Puts it up a storey at a time: columns, beams, bracing, slab.",
+      "defaults": {
+        "duration": 4
+      }
+    },
+    "measure": {
+      "label": "Measure",
+      "icon": "ruler",
+      "category": "paint",
+      "description": "Draws its dimensions in.",
+      "defaults": {
+        "duration": 0.8
+      }
+    }
+  }
+}

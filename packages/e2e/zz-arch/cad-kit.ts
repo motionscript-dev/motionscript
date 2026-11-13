@@ -1,10 +1,12 @@
-import { Geo, Mat, type Geometry3D, type Graphics3D, type Material3D, type Transform3D } from "@motionscript/sdk"
+import { Geo, Mat, type FillResolved, type Geometry3D, type Graphics3D, type Material3D, type StrokeResolved, type Transform3D } from "@motionscript/sdk"
 
 // --- The drafting kit ------------------------------------------------------------
-// Shared by the architecture template's nodes: solids shaded in four quiet tones,
-// edges and hidden lines as thin instanced bars, and dimensions lettered in a
-// single-stroke hand. Everything is geometry, so nothing depends on how a
-// renderer numbers a frame's images.
+// Shared by the architecture template's nodes: solids shaded in four quiet tones of
+// their fill, every line one of their strokes drawn as thin instanced bars, and
+// dimensions lettered in a single-stroke hand. Everything is geometry, so nothing
+// depends on how a renderer numbers a frame's images. `material` and `lines` are the
+// engine's Paint3D helpers, same names and units, kept here until the studio's
+// engine carries Paint3D; then they become `Paint3D.material` and `Paint3D.lines`.
 
 export type Rgba = [number, number, number, number]
 export type Point = readonly [number, number]
@@ -23,6 +25,74 @@ export const easeInOut = (t: number) => {
 }
 /** How far `t` is through the window `[a, b]`, 0 before it and 1 after. */
 export const span = (t: number, a: number, b: number) => clamp01((t - a) / (b - a))
+
+// --- The drafting palette -----------------------------------------------------------
+
+export const INK = "#1A2230"
+export const PAPER = "#E9E6DD"
+export const PLATE = "#E4E1D8"
+export const STEEL = "#5B6B82"
+export const ORANGE = "#E8642C"
+export const BLUE = "#2563EB"
+
+/** A model's outline: the drafting pen, its corners closed. */
+export const OUTLINE = { weight: 5.5, fill: INK, cap: "square" } as const
+/** A fine line drawn on a face: floors, openings, mullions. */
+export const FINE = { weight: 3, fill: INK, cap: "square" } as const
+/** Hidden edges, dashed faintly through the solid. */
+export const HIDDEN = { weight: 3.85, fill: "#1A223042", dash: [18, 14] } as const
+
+// --- Paints -------------------------------------------------------------------------
+
+/** A stroke `weight` or `dash` of 1 is this many scene units. */
+export const STROKE_UNIT = 0.001
+
+/** The colour a paint is, read off its first solid layer with that layer's opacity; `null` for none. */
+export function colorOf(paint: readonly FillResolved[] | undefined): Rgba | null {
+  for (const layer of paint ?? []) {
+    if (layer.type !== "solid") continue
+    const [r, g, b, a = 1] = layer.color as unknown as number[]
+    return [r!, g!, b!, a * (layer.opacity ?? 1)]
+  }
+  return null
+}
+
+/** The unlit material a surface painted with `fill` wears; `null` when it paints nothing. */
+export function material(fill: readonly FillResolved[], fade = 1): Material3D | null {
+  const c = colorOf(fill)
+  return c ? flat([c[0], c[1], c[2], c[3] * fade]) : null
+}
+
+export interface LinesOptions {
+  /** Drawn through solids, for hidden lines. */
+  through?: boolean
+  /** Multiplies every layer's opacity, as a line fades in. */
+  fade?: number
+  transform?: Transform3D
+}
+
+/**
+ * `segments` drawn with each layer of `stroke`: one batch of bars per layer, weight and
+ * dash in thousandths of a scene unit, a square cap running each bar half its weight past
+ * its ends. An empty stroke draws nothing.
+ */
+export function lines(g: Graphics3D, stroke: readonly StrokeResolved[], segments: readonly [Vec, Vec][], options: LinesOptions = {}): void {
+  const fade = options.fade ?? 1
+  for (const layer of stroke) {
+    const c = colorOf(layer.fill)
+    if (!c || !(layer.weight > 0) || c[3] * fade <= 0.002) continue
+    const w = layer.weight * STROKE_UNIT
+    const extend = layer.cap === "square" ? w / 2 : 0
+    const dash = (layer.dash ?? []).map((d) => d * STROKE_UNIT)
+    const bars = dash.length >= 2 ? dashed(segments, w, dash[0]!, dash[1]!) : segments.map(([a, b]) => bar(a, b, w, extend))
+    if (bars.length === 0) continue
+    const ink = flat([c[0], c[1], c[2], c[3] * fade], options.through ? { depthTest: false, depthWrite: false } : {})
+    g.instances(BAR, options.through ? ({ ...ink, transparent: true } as Material3D) : ink, bars, options.transform ? { transform: options.transform } : undefined)
+  }
+}
+
+/** The weight of a stroke's first layer, in scene units; 0 when it draws nothing. */
+export const weightOf = (stroke: readonly StrokeResolved[]) => (stroke[0]?.weight ?? 0) * STROKE_UNIT
 
 /** An outline in the xy plane extruded from `z0` to `z1`, as flat faces; the caps fan from its first corner, which must see every other. */
 export function prism(poly: readonly Point[], z0: number, z1: number): Face[] {
@@ -158,6 +228,13 @@ export function solid(g: Graphics3D, geometry: Geometry3D, material: Material3D,
   g.mesh(geometry, opacity < 1 ? ({ ...material, opacity, transparent: true } as Material3D) : material, transform)
 }
 
+/** Faces shaded in the tones of `fill`, faded by `opacity`: nothing for an empty fill. */
+export function body(g: Graphics3D, faces: readonly Face[], fill: readonly FillResolved[], opacity = 1, transform: Transform3D = {}): void {
+  const c = colorOf(fill)
+  if (!c) return
+  solid(g, shaded(faces, c), PAINTED, opacity * c[3], transform)
+}
+
 // --- Lines -----------------------------------------------------------------------
 
 export const BAR = Geo.box({ width: 1, height: 1, depth: 1 })
@@ -198,14 +275,16 @@ export function prismEdges(poly: readonly Point[], z0: number, z1: number): [Vec
   })
 }
 
-/** Edges as dashes, for the hidden lines a CAD view shows through the solid. */
-export function dashed(edges: readonly [Vec, Vec][], w: number, step: number): Transform3D[] {
+/** Edges as dashes `on` long with `off` between, `w` thick. */
+export function dashed(edges: readonly [Vec, Vec][], w: number, on: number, off: number): Transform3D[] {
   const out: Transform3D[] = []
+  const step = on + off
   for (const [p, q] of edges) {
     const len = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2])
     const n = Math.max(1, Math.round(len / step))
+    const share = on / step
     const at = (t: number): Vec => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t]
-    for (let k = 0; k < n; k++) out.push(bar(at(k / n), at((k + 0.55) / n), w))
+    for (let k = 0; k < n; k++) out.push(bar(at(k / n), at((k + share) / n), w))
   }
   return out
 }
@@ -265,18 +344,24 @@ export function lettering(strokes: readonly [Vec, Vec][], w: number): Transform3
 }
 
 /**
+ * How large dimensions drawn with a `pen` (scene units across) are: offsets, ticks and
+ * lettering together. A drafting pen sets its lettering, a tenth or so of the height,
+ * so a heavier dimension stroke draws larger figures.
+ */
+export const dimensionScale = (pen: number) => pen / 0.003
+
+/**
  * A drafting dimension from `a` to `b`: extension lines out from the solid that stop on the
- * dimension line, an arrowhead at each end, and the size beside it in metres. `out` is the
+ * dimension line, a tick at each end, and the size beside it in metres. `out` is the
  * direction and reach of the offset; `k` (0..1) slides the whole drawing out as it is drawn in.
- * `u` scales the arrowheads, line weight and lettering; `mirror` flips the lettering when the
+ * `u` scales the offsets and lettering, `w` is the pen; `mirror` flips the lettering when the
  * drawing is seen from behind, so it never reads backwards.
  */
-export function dimension(bars: Transform3D[], a: Vec, b: Vec, out: Vec, k: number, u: number, mirror: boolean, text: string): void {
+export function dimension(bars: Transform3D[], a: Vec, b: Vec, out: Vec, k: number, u: number, w: number, mirror: boolean, text: string): void {
   const off = (v: Vec, f: number): Vec => [v[0] + out[0] * f, v[1] + out[1] * f, v[2] + out[2] * f]
   const reach = 0.5 + 0.5 * k
   const a1 = off(a, reach)
   const b1 = off(b, reach)
-  const w = 0.003 * u
   bars.push(bar(off(a, 0.2), off(a, reach + 0.12), w), bar(off(b, 0.2), off(b, reach + 0.12), w), bar(a1, b1, w))
   const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
   const d: Vec = [(b[0] - a[0]) / len, (b[1] - a[1]) / len, (b[2] - a[2]) / len]
@@ -294,7 +379,14 @@ export function dimension(bars: Transform3D[], a: Vec, b: Vec, out: Vec, k: numb
   const flip = mirror ? -1 : 1
   const width = text.length * 0.82 * size
   const shift = sideways ? (width / 2 + size * 0.8) * Math.sign(n[0] || 1) * flip : 0
-  bars.push(...lettering(letter(text, size, (x, y) => [mid[0] + flip * x + shift, mid[1] + y, mid[2]]), 0.0042 * u))
+  bars.push(...lettering(letter(text, size, (x, y) => [mid[0] + flip * x + shift, mid[1] + y, mid[2]]), w * 1.4))
+}
+
+/** Dimension bars drawn in the first layer of `stroke`, faded in by `k`. */
+export function drawDimensions(g: Graphics3D, stroke: readonly StrokeResolved[], bars: readonly Transform3D[], k: number): void {
+  const c = colorOf(stroke[0]?.fill)
+  if (!c || bars.length === 0) return
+  g.instances(BAR, flat([c[0], c[1], c[2], c[3] * k]), [...bars])
 }
 
 /** Metres as a dimension reads them; the drawing's unit is ten metres. */

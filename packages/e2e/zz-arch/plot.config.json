@@ -1,0 +1,51 @@
+{
+  "extends": "node3d",
+  "node": {
+    "icon": "square-dashed",
+    "leaf": true
+  },
+  "props": {
+    "pegged": {
+      "label": "Pegged"
+    }
+  },
+  "layout": [
+    {
+      "section": "plot",
+      "title": "Plot",
+      "icon": "square-dashed",
+      "before": "appearance",
+      "items": [
+        {
+          "row": [
+            "width",
+            "depth"
+          ],
+          "cells": "labelled",
+          "columns": 2
+        }
+      ]
+    },
+    {
+      "section": "startsAt",
+      "title": "Starts at",
+      "icon": "play",
+      "collapsible": true,
+      "collapsed": true,
+      "items": [
+        "pegged"
+      ]
+    }
+  ],
+  "commands": {
+    "peg": {
+      "label": "Peg out",
+      "icon": "square-dashed",
+      "category": "paint",
+      "description": "Pegs the boundary out.",
+      "defaults": {
+        "duration": 1
+      }
+    }
+  }
+}

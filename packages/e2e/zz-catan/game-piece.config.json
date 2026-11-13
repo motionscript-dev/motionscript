@@ -1,11 +1,12 @@
 {
   "extends": "node3d",
-  "icon": "pentagon",
-  "leaf": true,
-  "properties": {
+  "node": {
+    "icon": "pentagon",
+    "leaf": true
+  },
+  "props": {
     "kind": {
       "label": "Piece",
-      "control": "segmented",
       "options": [
         {
           "value": "settlement",
@@ -19,7 +20,8 @@
           "value": "road",
           "label": "Road"
         }
-      ]
+      ],
+      "control": "segmented"
     },
     "color": {
       "label": "Color"
@@ -37,7 +39,6 @@
     },
     "look": {
       "label": "Outline",
-      "control": "segmented",
       "options": [
         {
           "value": "cad",
@@ -55,31 +56,12 @@
           "value": "flat",
           "label": "None"
         }
-      ]
+      ],
+      "control": "segmented"
     },
     "dimensions": {
       "label": "Dimensions",
       "control": "switch"
-    }
-  },
-  "commands": {
-    "place": {
-      "label": "Place",
-      "icon": "arrow-down-to-line",
-      "category": "transform",
-      "description": "Brings the piece down from above to stand where it is.",
-      "defaults": {
-        "duration": 1
-      }
-    },
-    "measure": {
-      "label": "Measure",
-      "icon": "ruler",
-      "category": "paint",
-      "description": "Draws the dimensions in: they fade and slide out from the piece.",
-      "defaults": {
-        "duration": 0.7
-      }
     }
   },
   "layout": [
@@ -114,5 +96,25 @@
         "measured"
       ]
     }
-  ]
+  ],
+  "commands": {
+    "place": {
+      "label": "Place",
+      "icon": "arrow-down-to-line",
+      "category": "transform",
+      "description": "Brings the piece down from above to stand where it is.",
+      "defaults": {
+        "duration": 1
+      }
+    },
+    "measure": {
+      "label": "Measure",
+      "icon": "ruler",
+      "category": "paint",
+      "description": "Draws the dimensions in: they fade and slide out from the piece.",
+      "defaults": {
+        "duration": 0.7
+      }
+    }
+  }
 }
