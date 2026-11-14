@@ -201,7 +201,8 @@ does not run CI or Release again.
   package and the root `package.json`, which Changesets does not version), then
   `pnpm install --no-frozen-lockfile`; committed as `ci: release <version>`.
 - **Publish.** `pnpm build:lib` (skipped with `--prebuilt`) and `sync-notice`,
-  then each public package not on npm at the version is packed by `pnpm pack`
+  then each `dist/browser/manifest.json` restamped with its package's version
+  (a prebuilt tree was built before the version step), then each public package not on npm at the version is packed by `pnpm pack`
   (which rewrites `workspace:` ranges) and uploaded by
   `npm publish <tarball> --tag <alpha|latest>`, four at a time under `--ci` and
   one at a time by hand (npm's one-time password), then tagged

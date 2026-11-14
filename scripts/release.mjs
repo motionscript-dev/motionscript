@@ -119,6 +119,19 @@ const publicPackages = () =>
     .filter((pkg) => !pkg.private)
     .sort((a, b) => a.name.localeCompare(b.name))
 
+// A browser build's manifest names the version it was built at, and a prebuilt
+// tree was built before the version step bumped it, and a host that fetches a
+// version by its manifest finds the previous one.
+function stampBrowserManifests(pkgs) {
+  for (const pkg of pkgs) {
+    const path = join(pkg.dir, "dist/browser/manifest.json")
+    if (!existsSync(path)) continue
+    const manifest = readJson(path)
+    if (manifest.name !== pkg.name) fail(`${path} names ${manifest.name}, not ${pkg.name}.`)
+    if (manifest.version !== pkg.version) writeFileSync(path, `${JSON.stringify({ ...manifest, version: pkg.version }, null, 2)}\n`)
+  }
+}
+
 const tagOf = (name, version) => `${name}@${version}`
 // npm's answers for this run: nothing else publishes while it runs, and what
 // it publishes it records here.
@@ -263,6 +276,7 @@ async function publishStep() {
   if (dryRun) return log(`publish: would ${built ? "use the build in the tree" : "build"}, then publish ${todo.length} package(s) at ${version} under "${channel.tag}"`)
   if ((!built && !run("pnpm build:lib")) || !run("node scripts/sync-notice.mjs")) fail("the build failed; nothing was published.")
   built = true
+  stampBrowserManifests(todo)
   if (capture("git status --porcelain").out) fail("the build changed tracked files; commit or fix them, then run pnpm release again.")
   if (!(await confirm(`Publish ${todo.length} package(s) at ${version} to npm under "${channel.tag}"? A published version can't be reused.`))) fail("stopped before publishing.")
 
