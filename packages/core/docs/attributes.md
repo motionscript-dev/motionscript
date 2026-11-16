@@ -32,7 +32,7 @@ An ops value is an `AttributeOps<Input, Resolved>` (`attributes/shared/operators
 | Gradient `start`/`end`/`center`, image `anchor` | normalised box: `(0, 0)` at the shape's centre, `+-1` at its edges, **y up** |
 | Effect `center` options | normalised unit: `(0, 0)` to `(1, 1)` across the layer |
 | Pixels | logical px; device scale and camera zoom are the renderer's. Shadow `offset` and `dropShadow.offsetY` are y up |
-| Angles | degrees everywhere, including hsl hue |
+| Angles | degrees everywhere, including hsl hue. A conic gradient's `startAngle` places its first stop clockwise on screen from the box's three o'clock, and the ramp runs a full turn from there |
 | Stroke `align` | `-1` inside (the default), `0` centred, `1` outside; strings `inside`/`center`/`outside` resolve to those |
 | Fill `space` | `local` (the shape's bounds, default), `parent`, `global` (the viewport); carried by `resolveFill` for every kind |
 

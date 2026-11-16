@@ -177,10 +177,12 @@ fn eval_paint(id: u32, p: vec2f, dx: vec2f, dy: vec2f) -> vec4f {
         t = length(p - pt.geom.xy) / max(pt.geom.z, 1e-6);
     } else {
         // Sweep: degrees clockwise from +x (y-down), mapped over [start, end].
+        // The angle wraps into [start, start + 360) so the seam sits at start
+        // for any start, not at +x.
         let q = p - pt.geom.xy;
-        var deg = degrees(atan2(q.y, q.x));
-        deg = select(deg, deg + 360.0, deg < 0.0);
-        t = (deg - pt.geom.z) / max(pt.geom.w - pt.geom.z, 1e-6);
+        var rel = degrees(atan2(q.y, q.x)) - pt.geom.z;
+        rel -= 360.0 * floor(rel / 360.0);
+        t = rel / max(pt.geom.w - pt.geom.z, 1e-6);
     }
     if (tile == 1u) {
         t = fract(t);
