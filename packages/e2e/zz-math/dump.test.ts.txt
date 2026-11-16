@@ -1,0 +1,23 @@
+import fs from "node:fs"
+import { it } from "vitest"
+
+import { Registry } from "@/engine/core"
+import { NODES as MATH_NODES } from "@/engine/math"
+import { installNodeRefRegistry } from "@/features/editor/nodes/lib/node-ref-props"
+import { MATH_VIDEO_PRESET } from "@/features/editor/themes/lib/math-video-preset"
+import { presetAsScenes, presetAsTheme } from "@/features/editor/themes/lib/template-catalog"
+import { templateSceneDocument } from "@/features/editor/themes/lib/template-preview"
+
+it("dumps the math video scenes", () => {
+  const registry = new Registry({ nodes: MATH_NODES as never })
+  installNodeRefRegistry(registry)
+  const theme = presetAsTheme(MATH_VIDEO_PRESET)
+  const only = (process.env.ZZ_ONLY ?? "").split(",").filter(Boolean)
+  for (const scene of presetAsScenes(MATH_VIDEO_PRESET)) {
+    const slug = scene.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "")
+    if (only.length && !only.includes(slug)) continue
+    const built = templateSceneDocument({ scene, theme, describe: (key) => registry.describe(key) })
+    if (!built) throw new Error("no document " + scene.name)
+    fs.writeFileSync(`${process.env.ZZ_OUT}/tmpl-${slug}.json`, JSON.stringify({ ...built.document, duration: built.seconds }))
+  }
+})
