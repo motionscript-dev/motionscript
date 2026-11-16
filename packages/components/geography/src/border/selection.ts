@@ -40,6 +40,8 @@ export interface GeoSelection {
     pending: boolean
     /** Codes whose file loaded without them. */
     unknown: string[]
+    /** The state of each file read, in order: a key built on it changes only when one of these does. */
+    files: string
 }
 
 /**
@@ -51,6 +53,7 @@ export function selectGeoFeatures(codes: readonly string[], level: GeoLevel, fra
     const features: GeoFeature[] = []
     const seen = new Set<string>()
     const unknown: string[] = []
+    const files: string[] = []
     let pending = false
 
     const add = (feature: GeoFeature) => {
@@ -72,6 +75,7 @@ export function selectGeoFeatures(codes: readonly string[], level: GeoLevel, fra
         const subdivision = isSubdivision(code)
         const key = subdivision || level === "state" ? statesFileKey(code.slice(0, 2)) : countryFileKey(code)
         const entry = geoFileEntry(key)
+        files.push(entry ? entry.status[0] : "-")
         if (!entry || entry.status !== "ready") {
             if (!entry) pending = true
             continue
@@ -91,5 +95,5 @@ export function selectGeoFeatures(codes: readonly string[], level: GeoLevel, fra
         else unknown.push(code)
     }
 
-    return { features, pending, unknown }
+    return { features, pending, unknown, files: files.join("") }
 }

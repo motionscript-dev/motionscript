@@ -3,6 +3,7 @@ import {
     geoBounds,
     geoConicEqualArea,
     geoEquirectangular,
+    geoGraticule,
     geoMercator,
     geoOrthographic,
     geoPath,
@@ -297,21 +298,34 @@ function chainArcs(arcs: readonly GeoArc[]): Chain[] {
     return chains
 }
 
-function buildGeometry(
-    features: readonly GeoFeature[],
-    frame: GeoFrame,
-    fitted: Frame,
-    borders: GeoBorders,
-    detail: number
-): GeoGeometry {
+type LonLat = [number, number]
+
+export interface GeoOutlines {
+    /** Kept polygons in lon/lat degrees, exterior ring first, every ring closed. */
+    polygons: LonLat[][][]
+    /** Borders in lon/lat degrees: every border, or the outer ones only for `outline`. */
+    lines: LonLat[][]
+    bytes: number
+}
+
+/** A polygon's identity across files: a territory its country's file also holds is the same arcs. */
+const polygonKey = (polygon: GeoPolygon) => [...new Set(polygon.rings[0].map(({ arc }) => String(arc.key)))].sort().join(",")
+
+function simplify(features: readonly GeoFeature[], frame: GeoFrame, borders: GeoBorders, detail: number): GeoOutlines {
     const parts = partsOf(features, frame)
     const area = parts.reduce((sum, { polygon }) => sum + polygon.area, 0)
     const pointLimit = pointBucketLimit(detail, area)
     const polygonLimit = polygonAreaLimit(detail, area)
 
+    // Two selected regions can both carry one polygon (France and Guadeloupe):
+    // filled twice it darkens, and its coast would count as a shared border.
+    const seen = new Set<string>()
     const kept: GeoRingRef[][][] = []
     for (const { polygon, largest } of parts) {
         if (!largest && polygon.area < polygonLimit) continue
+        const key = polygonKey(polygon)
+        if (seen.has(key)) continue
+        seen.add(key)
         kept.push(polygon.rings.filter((_, i) => i === 0 || polygon.ringAreas[i] >= polygonLimit))
     }
 
@@ -354,36 +368,36 @@ function buildGeometry(
         }
     }
 
-    const fills = project(
-        fitted,
-        {
-            type: "MultiPolygon",
-            coordinates: kept.flatMap((rings) => {
-                const [exterior, ...holes] = rings.map((ring) => filteredPoints(ring, maskFor))
-                return exterior.length < 4 ? [] : [[exterior, ...holes.filter((hole) => hole.length >= 4)]]
-            }),
-        } as GeoPermissibleObjects,
-        true
-    )
-
+    const polygons = kept.flatMap((rings) => {
+        const [exterior, ...holes] = rings.map((ring) => filteredPoints(ring, maskFor))
+        return exterior.length < 4 ? [] : [[exterior, ...holes.filter((hole) => hole.length >= 4)]]
+    })
     const lineArcs = [...usage.values()].filter(({ count }) => borders === "all" || count === 1).map(({ arc }) => arc)
-    const lines: GeoContour[] = []
-    for (const chain of chainArcs(lineArcs)) {
-        lines.push(
-            ...project(fitted, { type: "LineString", coordinates: filteredPoints(chain.refs, maskFor) } as GeoPermissibleObjects, false)
-        )
-    }
+    const lines = chainArcs(lineArcs).map((chain) => filteredPoints(chain.refs, maskFor))
 
-    const sum = (contours: GeoContour[]) => contours.reduce((total, c) => total + c.length, 0)
-    const bytes = [...fills, ...lines].reduce((total, c) => total + c.points.byteLength + 32, 0)
+    let points = 0
+    for (const polygon of polygons) for (const ring of polygon) points += ring.length
+    for (const line of lines) points += line.length
+    return { polygons, lines, bytes: points * 48 + 64 }
+}
+
+const multiPolygon = (polygons: LonLat[][][]) => ({ type: "MultiPolygon", coordinates: polygons }) as GeoPermissibleObjects
+const lineString = (line: LonLat[]) => ({ type: "LineString", coordinates: line }) as GeoPermissibleObjects
+
+const totalLength = (contours: readonly GeoContour[]) => contours.reduce((total, c) => total + c.length, 0)
+const byteSize = (contours: readonly GeoContour[]) => contours.reduce((total, c) => total + c.points.byteLength + 32, 0)
+
+function buildGeometry(outlines: GeoOutlines, fitted: Frame): GeoGeometry {
+    const fills = project(fitted, multiPolygon(outlines.polygons), true)
+    const lines = outlines.lines.flatMap((line) => project(fitted, lineString(line), false))
     return {
         width: fitted.width,
         height: fitted.height,
         fills,
         lines,
-        fillLength: sum(fills),
-        lineLength: sum(lines),
-        bytes,
+        fillLength: totalLength(fills),
+        lineLength: totalLength(lines),
+        bytes: byteSize(fills) + byteSize(lines),
     }
 }
 
@@ -422,16 +436,33 @@ class ByteCache<V extends { bytes: number }> {
 }
 
 const frames = new ByteCache<Frame & { bytes: number }>(64)
+const outlinesCache = new ByteCache<GeoOutlines>(64 * 1024 * 1024)
 const geometries = new ByteCache<GeoGeometry>(64 * 1024 * 1024)
 
-export interface GeoGeometryRequest {
-    /** Identifies `features` and `frame`: equal keys must mean equal selections. */
+const roundDetail = (detail: number) => Math.round(clamp01(detail) * 100) / 100
+
+export interface GeoOutlinesRequest {
+    /** Identifies `features`: equal keys must mean equal selections. */
     selectionKey: string
     features: readonly GeoFeature[]
     frame: GeoFrame
-    projection: GeoProjectionKind
     borders: GeoBorders
     detail: number
+}
+
+/** A selection simplified for `detail`, before any projection; cached, so a globe can turn without simplifying again. */
+export function geoOutlines(request: GeoOutlinesRequest): GeoOutlines {
+    const detail = roundDetail(request.detail)
+    const key = `${request.selectionKey}|${request.frame}|${request.borders}|${detail}`
+    const cached = outlinesCache.get(key)
+    if (cached) return cached
+    const outlines = simplify(request.features, request.frame, request.borders, detail)
+    outlinesCache.set(key, outlines)
+    return outlines
+}
+
+export interface GeoGeometryRequest extends GeoOutlinesRequest {
+    projection: GeoProjectionKind
 }
 
 /**
@@ -439,9 +470,9 @@ export interface GeoGeometryRequest {
  * selection at full detail, so a `detail` tween never moves or rescales it.
  */
 export function geoGeometry(request: GeoGeometryRequest): GeoGeometry | null {
-    const detail = Math.round(clamp01(request.detail) * 100) / 100
+    const detail = roundDetail(request.detail)
     const frameKey = `${request.selectionKey}|${request.projection}`
-    const key = `${frameKey}|${request.borders}|${detail}`
+    const key = `${frameKey}|${request.frame}|${request.borders}|${detail}`
     const cached = geometries.get(key)
     if (cached) return cached
 
@@ -452,12 +483,127 @@ export function geoGeometry(request: GeoGeometryRequest): GeoGeometry | null {
         fitted = made
         frames.set(frameKey, { ...made, bytes: 1 })
     }
-    const geometry = buildGeometry(request.features, request.frame, fitted, request.borders, detail)
+    const geometry = buildGeometry(geoOutlines({ ...request, detail }), fitted)
     geometries.set(key, geometry)
     return geometry
 }
 
+// Projected at this scale and then normalised, so d3's adaptive resampling
+// (measured in output units) still bends a long edge round the sphere.
+const GLOBE_SCALE = 512
+
+const RAD = Math.PI / 180
+
+/** A spherical cap holding a run of points: its centre as a unit vector, and its angular radius. */
+interface Cap {
+    x: number
+    y: number
+    z: number
+    radius: number
+}
+
+function capOf(points: readonly LonLat[]): Cap {
+    let x = 0
+    let y = 0
+    let z = 0
+    const vectors = points.map(([lon, lat]) => {
+        const cosLat = Math.cos(lat * RAD)
+        const v = [cosLat * Math.cos(lon * RAD), cosLat * Math.sin(lon * RAD), Math.sin(lat * RAD)] as const
+        x += v[0]
+        y += v[1]
+        z += v[2]
+        return v
+    })
+    const length = Math.hypot(x, y, z)
+    // A run spread round the whole sphere has no centre: it is never culled.
+    if (length < 1e-9) return { x: 1, y: 0, z: 0, radius: Math.PI }
+    x /= length
+    y /= length
+    z /= length
+    let radius = 0
+    for (const v of vectors) radius = Math.max(radius, Math.acos(Math.max(-1, Math.min(1, v[0] * x + v[1] * y + v[2] * z))))
+    return { x, y, z, radius }
+}
+
+const caps = new WeakMap<GeoOutlines, { polygons: Cap[]; lines: Cap[] }>()
+
+function capsOf(outlines: GeoOutlines) {
+    let found = caps.get(outlines)
+    if (!found) {
+        found = { polygons: outlines.polygons.map((polygon) => capOf(polygon[0])), lines: outlines.lines.map(capOf) }
+        caps.set(outlines, found)
+    }
+    return found
+}
+
+/** Whether any of a cap can show on the hemisphere centred on `view` (with a degree to spare). */
+const nearSide = (cap: Cap, view: readonly [number, number, number]) =>
+    Math.acos(Math.max(-1, Math.min(1, cap.x * view[0] + cap.y * view[1] + cap.z * view[2]))) < Math.PI / 2 + cap.radius + RAD
+
+/** What of `outlines` can show facing `view`: d3 projects and clips every point it is given, near side or not. */
+function facing(outlines: GeoOutlines, view: readonly [number, number, number]): GeoOutlines {
+    const { polygons, lines } = capsOf(outlines)
+    return {
+        polygons: outlines.polygons.filter((_, i) => nearSide(polygons[i], view)),
+        lines: outlines.lines.filter((_, i) => nearSide(lines[i], view)),
+        bytes: 0,
+    }
+}
+
+export interface GeoGlobeRequest {
+    land: GeoOutlines
+    highlight: GeoOutlines | null
+    /** The point that faces the viewer, in degrees. */
+    longitude: number
+    latitude: number
+    /** Degrees between graticule lines; 0 draws none. */
+    graticuleStep: number
+}
+
+/** A globe's drawing in unit space: the sphere's diameter is 1, centred on the origin, y up. */
+export interface GeoGlobeGeometry {
+    land: GeoContour[]
+    coast: GeoContour[]
+    highlight: GeoContour[]
+    graticule: GeoContour[]
+    landLength: number
+    coastLength: number
+    highlightLength: number
+    graticuleLength: number
+}
+
+/** The near side of the sphere turned to face `longitude`/`latitude`, cut at the horizon. */
+export function geoGlobeGeometry(request: GeoGlobeRequest): GeoGlobeGeometry {
+    const frame: Frame = {
+        projection: geoOrthographic().scale(GLOBE_SCALE).translate([0, 0]).rotate([-request.longitude, -request.latitude]),
+        centerX: 0,
+        centerY: 0,
+        size: 2 * GLOBE_SCALE,
+        width: 1,
+        height: 1,
+    }
+    const step = request.graticuleStep
+    const cosLat = Math.cos(request.latitude * RAD)
+    const view = [cosLat * Math.cos(request.longitude * RAD), cosLat * Math.sin(request.longitude * RAD), Math.sin(request.latitude * RAD)] as const
+    const near = facing(request.land, view)
+    const land = project(frame, multiPolygon(near.polygons), true)
+    const coast = near.lines.flatMap((line) => project(frame, lineString(line), false))
+    const highlight = request.highlight ? project(frame, multiPolygon(facing(request.highlight, view).polygons), true) : []
+    const graticule = step > 0 ? project(frame, geoGraticule().step([step, step])(), false) : []
+    return {
+        land,
+        coast,
+        highlight,
+        graticule,
+        landLength: totalLength(land),
+        coastLength: totalLength(coast),
+        highlightLength: totalLength(highlight),
+        graticuleLength: totalLength(graticule),
+    }
+}
+
 export function clearGeoGeometry(): void {
     frames.clear()
+    outlinesCache.clear()
     geometries.clear()
 }

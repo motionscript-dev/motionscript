@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { Registry } from "@motionscript/sdk"
 
 import { GeoBorder } from "./border"
+import { GeoGlobe } from "./globe"
 import { NODES } from "./nodes"
 
 describe("the geo package's node types", () => {
@@ -9,11 +10,20 @@ describe("the geo package's node types", () => {
 
     it("registers each component under its document key", () => {
         expect(registry.node("geoBorder")?.ctor).toBe(GeoBorder.node)
+        expect(registry.node("geoGlobe")?.ctor).toBe(GeoGlobe.node)
         expect(registry.hasNode("globe")).toBe(false)
     })
 
     it("describes GeoBorder's own props for an editor", () => {
         const props = registry.describe("geoBorder")?.properties ?? {}
         expect(Object.keys(props)).toEqual(expect.arrayContaining(["iso", "level", "detail", "projection", "frame", "borders"]))
+    })
+
+    it("describes GeoGlobe's paints, angle and commands, and no overlay", () => {
+        const described = registry.describe("geoGlobe")
+        const props = Object.keys(described?.properties ?? {})
+        expect(props).toEqual(expect.arrayContaining(["fill", "stroke", "land", "coast", "graticule", "longitude", "latitude", "highlight", "highlightFill"]))
+        expect(props).not.toContain("overlay")
+        expect([...(registry.node("geoGlobe")?.commands.keys() ?? [])]).toEqual(expect.arrayContaining(["turnTo", "spin", "fillTo", "progressTo", "landTo", "coastTo", "graticuleTo", "highlightFillTo"]))
     })
 })

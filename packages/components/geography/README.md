@@ -45,6 +45,31 @@ npm install @motionscript/geography @motionscript/sdk
 - **Drawing never throws.** A node declares each file it needs as the asset
   `geo:<key>` (gate `render`: layout does not wait for it, but an export loads the
   files before the frame that needs them); a missing or failed file draws nothing.
+- **A selection draws once all its files have landed**, and is cached on the
+  state of those files alone, so a file another node loads never refits it.
+- **A polygon two selected regions both carry is kept once.** A country's file
+  also holds territories that have codes of their own (Guadeloupe in `FR`,
+  Svalbard in `NO`); selecting both would fill it twice and drop its coast from
+  `borders: "outline"` as a shared border.
+
+## GeoGlobe
+
+The whole world (`GEO_WORLD`, every country file) on an orthographic sphere
+inscribed in the node's box, turned so `longitude`/`latitude` faces the viewer.
+
+- **Paints:** `fill` and `stroke` are the sphere (ocean and rim), `land` and
+  `coast` the countries (`borders` picks every border or the coasts alone),
+  `graticule` the parallels and meridians every `graticuleStep` degrees (empty
+  draws none), and `highlightFill` the countries in `highlight`. `start`/`end`
+  trim each of the four drawings along its own length.
+- **Commands:** `landTo`, `coastTo`, `graticuleTo` and `highlightFillTo` tween its own
+  paints, as `fillTo` and `strokeTo` do the sphere's. `turnTo` takes the shorter way round to a longitude and latitude,
+  either of which may be left out; `spin` turns it by any number of degrees,
+  positive the way the Earth turns.
+- **Cost:** the simplified world is cached by `detail` apart from the angle, so a
+  turning globe only projects it again each frame (about 10 ms at the
+  default `detail`); a still one costs nothing. It loads all 252 country files
+  (about 6 MB), and like `GeoBorder` draws once they have landed.
 
 ### Data sources
 

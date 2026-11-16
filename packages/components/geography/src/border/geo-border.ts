@@ -5,7 +5,6 @@ import {
     Shapes,
     Types,
     component2d,
-    type EntryOptions,
     type FillResolved,
     type NodeOf,
     // Named so this component's emitted type reaches the shape surface it spreads through the sdk, not core.
@@ -19,77 +18,24 @@ import {
     type Shadow as _Shadow,
     type Stroke as _Stroke,
     type Vector2 as _Vector2,
-    type PathBounds,
     type ShadowResolved,
     type Size2D,
     type StrokeResolved,
-    type Type,
 } from "@motionscript/sdk"
 import { snapValue } from "@motionscript/sdk/component"
 
-import { geoGeometry, type GeoBorders, type GeoContour, type GeoGeometry, type GeoProjectionKind } from "./geometry"
-import { geoDataVersion, geoLoader } from "./loader"
+import { geoChoice as choice, geoChunkPath as pathOp, geoChunks as chunk, type GeoChunk } from "./drawing"
+import { geoGeometry, type GeoBorders, type GeoGeometry, type GeoProjectionKind } from "./geometry"
+import { geoLoader } from "./loader"
 import { geoRegistry } from "./registry"
 import { geoFilesFor, normalizeIso, selectGeoFeatures, type GeoFrame, type GeoLevel } from "./selection"
-
-interface Chunk {
-    data: string
-    /** Where this chunk's contours sit along the whole drawing, as fractions of its length. */
-    from: number
-    to: number
-}
 
 interface Drawn {
     geometry: GeoGeometry
     width: number
     height: number
-    fills: Chunk[]
-    lines: Chunk[]
-}
-
-// A renderer's cost for one path grows faster than its contour count, and a shape
-// drawn as several paths under one paint is unioned every frame — so a region
-// is cut into paths of bounded size, each painted on its own.
-const CONTOURS_PER_PATH = 256
-const POINTS_PER_PATH = 40_000
-
-const coordinate = (value: number) => String(Math.round(value * 100) / 100)
-
-function chunk(contours: readonly GeoContour[], total: number, scale: number): Chunk[] {
-    const chunks: Chunk[] = []
-    let parts: string[] = []
-    let count = 0
-    let points = 0
-    let from = 0
-    let length = 0
-    const flush = () => {
-        if (count === 0) return
-        const to = total > 0 ? Math.min(1, length / total) : 1
-        chunks.push({ data: parts.join(""), from, to })
-        from = to
-        parts = []
-        count = 0
-        points = 0
-    }
-    for (const contour of contours) {
-        const p = contour.points
-        // Path data is y-down; the unit geometry is y-up.
-        for (let i = 0; i < p.length; i += 2) {
-            parts.push(i === 0 ? "M" : "L", coordinate(p[i] * scale), " ", coordinate(-p[i + 1] * scale))
-        }
-        if (contour.closed) parts.push("Z")
-        count++
-        points += p.length / 2
-        length += contour.length
-        if (count >= CONTOURS_PER_PATH || points >= POINTS_PER_PATH) flush()
-    }
-    flush()
-    return chunks
-}
-
-/** One of `values`, switched at the end of a `to`, with its choices listed as its `options`. */
-function choice<const V extends readonly string[]>(values: V, initial: V[number]): Type<V[number]> {
-    return Types.custom<V[number], V[number], EntryOptions & { readonly options: V }>(initial, { lerp: snapValue, options: values })
+    fills: GeoChunk[]
+    lines: GeoChunk[]
 }
 
 /** A node's own drawing state, kept by its fields' view (one object per node, the same every frame). */
@@ -126,10 +72,12 @@ function drawnOf(state: Selected, size: Size2D): Drawn | null {
         own.warned.add(code)
         console.warn(`[GeoBorder] no region with code ${code}`)
     }
-    if (selection.features.length === 0) return null
+    // Drawn once every file it needs has landed, and keyed on those files alone:
+    // the world's 252 landing one by one would otherwise refit it 252 times.
+    if (selection.pending || selection.features.length === 0) return null
 
     const geometry = geoGeometry({
-        selectionKey: `${geoRegistry.generation}:${geoDataVersion()}:${level}:${frame}:${codes.join(",")}`,
+        selectionKey: `${geoRegistry.generation}:${selection.files}:${level}:${frame}:${codes.join(",")}`,
         features: selection.features,
         frame,
         projection: state.projection,
@@ -151,23 +99,6 @@ function drawnOf(state: Selected, size: Size2D): Drawn | null {
     }
     own.drawn = drawn
     return drawn
-}
-
-/** Adds `chunk` to `g`, trimmed by `start`/`end` along the whole drawing; `false` when none of it is drawn. */
-function pathOp(g: Graphics2D, chunk: Chunk, size: Size2D, start: number, end: number): boolean {
-    const { width, height } = size
-    const centerBounds: PathBounds = [-width / 2, -height / 2, width / 2, height / 2]
-    if (start <= 0 && end >= 1) {
-        g.path({ data: chunk.data, centerBounds })
-        return true
-    }
-    const span = chunk.to - chunk.from
-    if (span <= 0) return false
-    const localStart = Math.max(0, (start - chunk.from) / span)
-    const localEnd = Math.min(1, (end - chunk.from) / span)
-    if (localEnd <= localStart) return false
-    g.path({ data: chunk.data, centerBounds, start: localStart, end: localEnd })
-    return true
 }
 
 /**

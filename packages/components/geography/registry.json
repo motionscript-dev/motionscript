@@ -11,6 +11,14 @@
       "files": [
         "geo-border.ts"
       ]
+    },
+    {
+      "name": "geo-globe",
+      "description": "The whole world on an orthographic sphere that turns with a command, with coasts, a graticule and highlighted countries.",
+      "root": "src/globe",
+      "files": [
+        "geo-globe.ts"
+      ]
     }
   ]
 }
