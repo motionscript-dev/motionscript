@@ -754,7 +754,7 @@ export class WgpuBackend {
             buildMs: s[0], encodeMs: s[1], applyMs: s[2], prims: s[3], ops: s[4], layers: s[5],
             passes: s[6], draws: s[7], culled: s[8], tessellated: s[9], poolTextures: s[10],
             poolMiB: s[11], geomVertices: s[12], reusedPrims: s[13], cleanPrims: s[14], deltaWords: this.lastDeltaWords,
-            scene3dEncodeMs: this.encode3dMs, scene3dWords: this.words3d, scene3dSetMs: s[15], scene3dDrawMs: s[16], scene3dMapsMs: s[17], surfacesDrawn: s[18], surfaces: s[19],
+            scene3dEncodeMs: this.encode3dMs, scene3dWords: this.words3d, scene3dSetMs: s[15], scene3dDrawMs: s[16], scene3dMapsMs: s[17], surfacesDrawn: s[18], surfaces: s[19], banded: s[20],
         };
     }
 

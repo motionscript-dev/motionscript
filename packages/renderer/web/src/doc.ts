@@ -100,6 +100,7 @@ export type BlendMode = (typeof BLEND_MODES)[number];
 
 export const VERB = { move: 0, line: 1, quad: 2, cubic: 3, close: 4 } as const;
 
+/** Never written once built: what is worked out from one (bounds, an id, its outline) is kept by identity. */
 export interface PathData {
     verbs: Uint8Array;
     points: Float32Array;
@@ -386,14 +387,50 @@ export function transformPath(d: PathData, m: Mat): PathData {
     return { verbs: d.verbs, points: pts };
 }
 
+const boundsOf = new WeakMap<PathData, readonly [number, number, number, number]>();
+const axisAlignedOf = new WeakMap<PathData, boolean>();
+
 /** Control-point bounds of a path: x0 y0 x1 y1. */
 export function pathBounds(d: PathData): [number, number, number, number] {
-    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let i = 0; i < d.points.length; i += 2) {
-        x0 = Math.min(x0, d.points[i]); x1 = Math.max(x1, d.points[i]);
-        y0 = Math.min(y0, d.points[i + 1]); y1 = Math.max(y1, d.points[i + 1]);
+    let b = boundsOf.get(d);
+    if (!b) {
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+        for (let i = 0; i < d.points.length; i += 2) {
+            x0 = Math.min(x0, d.points[i]); x1 = Math.max(x1, d.points[i]);
+            y0 = Math.min(y0, d.points[i + 1]); y1 = Math.max(y1, d.points[i + 1]);
+        }
+        b = Number.isFinite(x0) ? [x0, y0, x1, y1] : [0, 0, 0, 0];
+        boundsOf.set(d, b);
     }
-    return Number.isFinite(x0) ? [x0, y0, x1, y1] : [0, 0, 0, 0];
+    return [b[0], b[1], b[2], b[3]];
+}
+
+/** Lines only, each horizontal or vertical (a contour's closing line too): the outlines pixel snapping keeps crisp. */
+export function isAxisAligned(d: PathData): boolean {
+    let known = axisAlignedOf.get(d);
+    if (known === undefined) {
+        known = axisAligned(d);
+        axisAlignedOf.set(d, known);
+    }
+    return known;
+}
+
+function axisAligned(d: PathData): boolean {
+    const p = d.points;
+    let k = 0, x = 0, y = 0, sx = 0, sy = 0, lines = 0;
+    for (const v of d.verbs) {
+        if (v === VERB.move) {
+            x = sx = p[k++]; y = sy = p[k++];
+        } else if (v === VERB.line) {
+            const nx = p[k++], ny = p[k++];
+            if (nx !== x && ny !== y) return false;
+            x = nx; y = ny; lines++;
+        } else if (v === VERB.close) {
+            if (sx !== x && sy !== y) return false;
+            x = sx; y = sy;
+        } else return false;
+    }
+    return lines > 0;
 }
 
 export function memberOp(m: Member): MemberOp {

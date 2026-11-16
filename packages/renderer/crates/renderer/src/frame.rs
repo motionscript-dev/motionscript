@@ -8,7 +8,7 @@
 //!    which groups need an offscreen layer, and appends instances.
 
 use crate::paths::{
-    build_path, compound_outline, kurbo_stroke, members_hash, push_segments, shape_path, stroke_outline, zoom_bucket, GeomCache, GeomKey, GeomSource, GeomStyle,
+    build_path, compound_outline, kurbo_stroke, members_exact, members_hash, push_segments, shape_path, stroke_outline, zoom_bucket, GeomCache, GeomKey, GeomSource, GeomStyle,
     Outline, Segments,
 };
 use crate::field::{outline_key, Field, FieldCache, FieldSource};
@@ -630,7 +630,7 @@ impl FrameBuilder {
         out.clean.clear();
         out.reused = 0;
         self.recording = false;
-        geom.begin_frame();
+        geom.begin_frame(self.frame_no, self.reuse);
         // A geometry arena reset (here or in a surface build since) moves
         // every outline: recorded prims point into the old arena.
         if geom.epoch != self.geom_epoch {
@@ -1280,7 +1280,7 @@ impl FrameBuilder {
                     style: GeomStyle::Fill { even_odd: clip.even_odd },
                     zoom: zoom_bucket(scale_range(&m, clip.rect)[0]),
                 };
-                geom.get_or_build(key, self.frame_no, |tol| {
+                geom.get_or_build(key, !pd.has_curves, self.frame_no, |tol| {
                     let mut add = Vec::new();
                     push_segments(&pd.path, tol, false, &mut add);
                     Some(Segments { add, sub: Vec::new(), even_odd: clip.even_odd })
@@ -1402,7 +1402,8 @@ impl FrameBuilder {
                         // Dashes can't be an SDF: stroke the shape's outline.
                         let dims = [w.to_bits(), h.to_bits(), radii[0].to_bits(), radii[1].to_bits(), radii[2].to_bits(), radii[3].to_bits()];
                         let key = GeomKey { source: GeomSource::Shape { ellipse, dims }, style: stroke_style(&st), zoom };
-                        let built = geom.get_or_build(key, self.frame_no, |tol| {
+                        let exact = !ellipse && radii.iter().all(|&r| r <= 0.0) && stroke_exact(&st);
+                        let built = geom.get_or_build(key, exact, self.frame_no, |tol| {
                             let outline = stroke_outline(&shape_path(ellipse, w, h, radii), &kurbo_stroke(&st, Some(d)), tol);
                             let mut add = Vec::new();
                             push_segments(&outline, tol, false, &mut add);
@@ -1434,9 +1435,10 @@ impl FrameBuilder {
                 let hash = members_hash(&s.members[i], &s.paths);
                 let source = GeomSource::Compound { node: id, hash };
                 let members = &s.members[i];
+                let exact = members_exact(members, &s.paths);
                 if fill != NONE {
                     let key = GeomKey { source, style: GeomStyle::Fill { even_odd: false }, zoom };
-                    let built = geom.get_or_build(key, self.frame_no, |tol| {
+                    let built = geom.get_or_build(key, exact, self.frame_no, |tol| {
                         let outline = compound_outline(members, &s.paths, tol);
                         let mut add = Vec::new();
                         push_segments(&outline, tol, false, &mut add);
@@ -1449,7 +1451,7 @@ impl FrameBuilder {
                 if st.paint != NONE && st.width > 0.0 {
                     let dash = s.dashes.get(st.dash as usize).and_then(|d| d.as_ref());
                     let key = GeomKey { source, style: stroke_style(&st), zoom };
-                    let built = geom.get_or_build(key, self.frame_no, |tol| {
+                    let built = geom.get_or_build(key, exact && stroke_exact(&st), self.frame_no, |tol| {
                         let union = compound_outline(members, &s.paths, tol);
                         let outline = stroke_outline(&union, &kurbo_stroke(&st, dash), tol);
                         let mut add = Vec::new();
@@ -1468,7 +1470,7 @@ impl FrameBuilder {
                 if fill != NONE {
                     let even_odd = s.fill_rule[i] == 1;
                     let key = GeomKey { source, style: GeomStyle::Fill { even_odd }, zoom };
-                    let built = geom.get_or_build(key, self.frame_no, |tol| {
+                    let built = geom.get_or_build(key, !pd.has_curves, self.frame_no, |tol| {
                         let mut add = Vec::new();
                         push_segments(&pd.path, tol, false, &mut add);
                         Some(Segments { add, sub: Vec::new(), even_odd })
@@ -1480,7 +1482,7 @@ impl FrameBuilder {
                 if st.paint != NONE && st.width > 0.0 {
                     let dash = s.dashes.get(st.dash as usize).and_then(|d| d.as_ref());
                     let key = GeomKey { source, style: stroke_style(&st), zoom };
-                    let built = geom.get_or_build(key, self.frame_no, |tol| {
+                    let built = geom.get_or_build(key, !pd.has_curves && stroke_exact(&st), self.frame_no, |tol| {
                         let outline = stroke_outline(&pd.path, &kurbo_stroke(&st, dash), tol);
                         let mut add = Vec::new();
                         push_segments(&outline, tol, false, &mut add);
@@ -1534,7 +1536,7 @@ impl FrameBuilder {
                 };
                 let even_odd = s.kind[i] == Kind::Path && s.fill_rule[i] == 1;
                 let key = GeomKey { source, style: GeomStyle::Fill { even_odd }, zoom };
-                let o = geom.get_or_build(key, frame_no, |tol| {
+                let o = geom.get_or_build(key, leaf_exact(s, i), frame_no, |tol| {
                     let outline = match s.kind[i] {
                         Kind::Compound => compound_outline(&s.members[i], &s.paths, tol),
                         _ => s.paths.get(s.path[i])?.path.clone(),
@@ -1562,7 +1564,7 @@ impl FrameBuilder {
                         style: GeomStyle::Fill { even_odd: clip.even_odd },
                         zoom,
                     };
-                    let o = geom.get_or_build(key, frame_no, |tol| {
+                    let o = geom.get_or_build(key, !pd.has_curves, frame_no, |tol| {
                         let mut add = Vec::new();
                         push_segments(&pd.path, tol, false, &mut add);
                         Some(Segments { add, sub: Vec::new(), even_odd: clip.even_odd })
@@ -1737,7 +1739,8 @@ impl FrameBuilder {
                     _ => s.paths.get(s.path[i]).map(|p| p.path.clone()),
                 };
                 let fill_key = GeomKey { source, style: GeomStyle::Fill { even_odd }, zoom };
-                if let Some(o) = geom.get_or_build(fill_key, self.frame_no, |tol| {
+                let exact = leaf_exact(s, i);
+                if let Some(o) = geom.get_or_build(fill_key, exact, self.frame_no, |tol| {
                     let mut add = Vec::new();
                     push_segments(&silhouette(tol)?, tol, false, &mut add);
                     Some(Segments { add, sub: Vec::new(), even_odd })
@@ -1748,7 +1751,7 @@ impl FrameBuilder {
                 if spread > 0.0 {
                     let st = Stroke { paint: NONE, width: 2.0 * spread, join: 1, cap: 1, miter: 4.0, dash: NONE };
                     let key = GeomKey { source, style: stroke_style(&st), zoom };
-                    if let Some(o) = geom.get_or_build(key, self.frame_no, |tol| {
+                    if let Some(o) = geom.get_or_build(key, exact && stroke_exact(&st), self.frame_no, |tol| {
                         let outline = stroke_outline(&silhouette(tol)?, &kurbo_stroke(&st, None), tol);
                         let mut add = Vec::new();
                         push_segments(&outline, tol, false, &mut add);
@@ -1824,7 +1827,7 @@ impl FrameBuilder {
                 None => GeomStyle::Fill { even_odd: false },
             };
             let engine = &mut self.engine;
-            let built = geom.get_or_build(GeomKey { source, style, zoom }, frame_no, |tol| {
+            let built = geom.get_or_build(GeomKey { source, style, zoom }, false, frame_no, |tol| {
                 let gp = engine.fonts.glyph_path(run.font, glyph, run.size, weight)?;
                 if gp.is_empty() {
                     return None;
@@ -1951,6 +1954,20 @@ fn leaf_local_bounds(s: &Scene, i: usize) -> Rect {
             local
         }
         _ => empty_rect(),
+    }
+}
+
+/// A curve-free outline stroked without a round join or cap is lines only too.
+/// Its joins still depend on the tolerance, which `GeomCache` sets finest.
+fn stroke_exact(st: &Stroke) -> bool {
+    st.join != 1 && st.cap != 1
+}
+
+/// Whether a path or compound leaf's fill outline is lines only.
+fn leaf_exact(s: &Scene, i: usize) -> bool {
+    match s.kind[i] {
+        Kind::Compound => members_exact(&s.members[i], &s.paths),
+        _ => s.paths.get(s.path[i]).is_some_and(|p| !p.has_curves),
     }
 }
 

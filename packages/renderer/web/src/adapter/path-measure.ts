@@ -154,9 +154,16 @@ export function reversePath(path: PathData): PathData {
 
 /** Every contour closed (the shape has an interior to align a stroke against). */
 export function isClosed(path: PathData): boolean {
-    const cs = contours(path);
-    return cs.length > 0 && cs.every((c) => c.closed);
+    let known = closedOf.get(path);
+    if (known === undefined) {
+        const cs = contours(path);
+        known = cs.length > 0 && cs.every((c) => c.closed);
+        closedOf.set(path, known);
+    }
+    return known;
 }
+
+const closedOf = new WeakMap<PathData, boolean>();
 
 /** getSegment(a, z, startWithMoveTo = true) of one contour, appended to `b`; false when nothing was. */
 function segment(segs: Seg[], a: number, z: number, b: PathBuilder): boolean {

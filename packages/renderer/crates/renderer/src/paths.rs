@@ -6,8 +6,10 @@
 //! the segments of its band (see `path_coverage` in prim.wgsl), so edges get
 //! analytic anti-aliasing under any transform and an animated transform reuses
 //! the cached outline. Strokes and dashes are turned into outlines by kurbo.
-//! Only a change of path data, stroke style or zoom bucket (tolerance) builds
-//! the outline again.
+//! Segments and bands are cached apart: a zoom bucket change builds new bands
+//! (their margin is one device pixel) over cached segments where it can, and
+//! only a change of path data or stroke style, or a finer tolerance than any
+//! cached flattening of a curved outline, flattens again.
 
 
 use kurbo::{Affine, BezPath, Cap, Join, PathEl, Point, Stroke as KStroke, StrokeOpts};
@@ -28,6 +30,8 @@ pub struct PathData {
     pub path: BezPath,
     pub bounds: [f32; 4],
     pub version: u32,
+    /// Any quad or cubic: flattening, and so its segments, depend on the tolerance.
+    pub has_curves: bool,
 }
 
 #[derive(Default)]
@@ -39,6 +43,7 @@ pub struct PathStore {
 impl PathStore {
     pub fn define(&mut self, id: u32, verbs: Vec<u8>, points: Vec<[f32; 2]>) {
         let path = build_path(&verbs, &points);
+        let has_curves = verbs.iter().any(|&v| v == VERB_QUAD || v == VERB_CUBIC);
         let mut b = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
         for p in &points {
             b[0] = b[0].min(p[0]);
@@ -54,7 +59,7 @@ impl PathStore {
             self.paths.resize_with(i + 1, || None);
         }
         self.next_version += 1;
-        self.paths[i] = Some(PathData { path, bounds: b, version: self.next_version });
+        self.paths[i] = Some(PathData { path, bounds: b, version: self.next_version, has_curves });
     }
 
     pub fn free(&mut self, id: u32) {
@@ -297,6 +302,16 @@ pub fn members_hash(members: &[Member], store: &PathStore) -> u64 {
     h.finish()
 }
 
+/// Whether a compound's outline is lines only: no ellipse, rounded rect or curved path among its members.
+pub fn members_exact(members: &[Member], store: &PathStore) -> bool {
+    members.iter().all(|m| match m.kind {
+        1 => m.radii.iter().all(|&r| r <= 0.0),
+        2 => false,
+        3 => store.get(m.path).is_none_or(|p| !p.has_curves),
+        _ => true,
+    })
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GeomSource {
     Path { id: u32, version: u32 },
@@ -314,15 +329,16 @@ pub enum GeomStyle {
     Stroke { width: u32, join: u8, cap: u8, miter: u32, dash: u32 },
 }
 
+/// Where an outline's bands are cached: its source and style at a zoom bucket
+/// (log2 of the device scale), since a band's margin is one device pixel.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GeomKey {
     pub source: GeomSource,
     pub style: GeomStyle,
-    /// log2 of the device scale the outline was flattened for.
     pub zoom: i8,
 }
 
-/// Where a cached outline lives in the band/segment arenas.
+/// Where an outline lives in the band/segment arenas.
 #[derive(Clone, Copy, Debug)]
 pub struct Outline {
     /// Offset of the band headers (2 words each: start, count) in `bands`.
@@ -336,11 +352,6 @@ pub struct Outline {
     pub even_odd: bool,
 }
 
-struct Entry {
-    outline: Outline,
-    last_used: u64,
-}
-
 /// What a builder hands the cache: segments to add and (for a cut) subtract.
 pub struct Segments {
     pub add: Vec<[f32; 4]>,
@@ -348,33 +359,89 @@ pub struct Segments {
     pub even_odd: bool,
 }
 
+/// A flattened outline: `zoom` is the bucket it was flattened for, or
+/// `EXACT` for lines only, built once at the finest tolerance.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct SegKey {
+    source: GeomSource,
+    style: GeomStyle,
+    zoom: i8,
+}
+
+const EXACT: i8 = i8::MIN;
+
+/// How many buckets finer than asked a cached outline may be and still serve:
+/// each bucket is ~√2 more segments on curves, which every pixel loops over.
+const MAX_FINER: i8 = 4;
+
+/// Its `add` segments, then its `sub` ones, from `start` in `segs`.
+#[derive(Clone, Copy)]
+struct SegEntry {
+    start: u32,
+    add: u32,
+    sub: u32,
+    even_odd: bool,
+    bounds: [f32; 4],
+    last_used: u64,
+}
+
+/// Bands over a `SegEntry`'s segments: `words` words of `bands` from `start`,
+/// the added set's headers and lists, then the subtracted set's.
+#[derive(Clone, Copy)]
+struct BandEntry {
+    seg: SegKey,
+    outline: Outline,
+    start: u32,
+    words: u32,
+    last_used: u64,
+}
+
 pub struct GeomCache {
-    map: crate::fxhash::FxHashMap<GeomKey, Entry>,
+    seg_map: crate::fxhash::FxHashMap<SegKey, SegEntry>,
+    band_map: crate::fxhash::FxHashMap<GeomKey, BandEntry>,
     pub segs: Vec<[f32; 4]>,
     pub bands: Vec<u32>,
     /// Arena contents before these points are already on the GPU.
     pub uploaded_segs: usize,
     pub uploaded_bands: usize,
-    /// Set when the arenas were cleared and must be re-uploaded whole.
+    /// Set when the arenas were rewritten and must be re-uploaded whole.
     pub reset: bool,
+    /// Outlines flattened (and stroked) this frame.
     pub built_this_frame: u32,
-    /// Bumped whenever the arenas are cleared (every outline moves).
+    /// Band sets built this frame, over new or cached segments.
+    pub banded_this_frame: u32,
+    /// Bumped whenever the arenas are compacted (every outline moves).
     pub epoch: u64,
+    /// Arena sizes when a sweep last found nothing to evict.
+    swept_at: (usize, usize),
+    /// Segments and band words past which a main build sweeps.
+    limits: (usize, usize),
+    /// Scratch: each segment's band range while bands are built.
+    spans: Vec<(u32, u32)>,
 }
 
 const ARENA_LIMIT_SEGS: usize = 4_000_000;
+const ARENA_LIMIT_BANDS: usize = 16_000_000;
+/// Builds an outline stays cached after its last use, however full the arenas:
+/// a frame is a main build plus a build per redrawn surface.
+const PROTECT_BUILDS: u64 = 8;
 
 impl Default for GeomCache {
     fn default() -> Self {
         GeomCache {
-            map: Default::default(),
+            seg_map: Default::default(),
+            band_map: Default::default(),
             segs: Vec::new(),
             bands: Vec::new(),
             uploaded_segs: 0,
             uploaded_bands: 0,
             reset: true,
             built_this_frame: 0,
+            banded_this_frame: 0,
             epoch: 0,
+            swept_at: (0, 0),
+            limits: (ARENA_LIMIT_SEGS, ARENA_LIMIT_BANDS),
+            spans: Vec::new(),
         }
     }
 }
@@ -403,12 +470,73 @@ fn band_span(s: &[f32; 4], y0: f32, band_h: f32, n: u32, margin: f32) -> std::op
     a..b
 }
 
-fn band_entries(segs: &[[f32; 4]], y0: f32, band_h: f32, n: u32, margin: f32) -> usize {
-    segs.iter().map(|s| band_span(s, y0, band_h, n, margin).len()).sum()
+/// Each segment's `band_span` into `out`; returns how many band entries they make.
+fn band_spans(segs: &[[f32; 4]], y0: f32, band_h: f32, n: u32, margin: f32, out: &mut Vec<(u32, u32)>) -> usize {
+    out.clear();
+    let mut entries = 0;
+    for s in segs {
+        let r = band_span(s, y0, band_h, n, margin);
+        entries += r.len();
+        out.push((r.start as u32, r.end as u32));
+    }
+    entries
 }
 
+/// Appends band headers and lists for segments with these `spans`, which sit
+/// from `base` in the segment arena; returns the headers' offset.
+fn push_bands(bands: &mut Vec<u32>, spans: &[(u32, u32)], base: u32, n: u32) -> u32 {
+    let headers = bands.len();
+    bands.resize(headers + 2 * n as usize, 0);
+    // Counting sort by band; each band keeps segment order.
+    let mut counts = vec![0u32; n as usize];
+    for &(a, b) in spans {
+        for i in a..b {
+            counts[i as usize] += 1;
+        }
+    }
+    let mut at = Vec::with_capacity(n as usize);
+    let mut start = bands.len() as u32;
+    for (i, &c) in counts.iter().enumerate() {
+        bands[headers + 2 * i] = start;
+        bands[headers + 2 * i + 1] = c;
+        at.push(start as usize);
+        start += c;
+    }
+    bands.resize(start as usize, 0);
+    for (k, &(a, b)) in spans.iter().enumerate() {
+        for i in a as usize..b as usize {
+            bands[at[i]] = base + k as u32;
+            at[i] += 1;
+        }
+    }
+    headers as u32
+}
+
+/// Moves a band block copied to a new place: headers point `db` words on, list
+/// entries `ds` segments on. `old` is where the block began.
+fn relocate(block: &mut [u32], o: &Outline, old: u32, db: i64, ds: i64) {
+    let n = o.band_count as usize;
+    let len = block.len();
+    let add_end = if o.band_sub == u32::MAX { len } else { (o.band_sub - old) as usize };
+    let mut fix = |headers: u32, end: usize| {
+        let h = (headers - old) as usize;
+        for i in 0..n {
+            block[h + 2 * i] = (block[h + 2 * i] as i64 + db) as u32;
+        }
+        for w in &mut block[h + 2 * n..end] {
+            *w = (*w as i64 + ds) as u32;
+        }
+    };
+    fix(o.band_add, add_end);
+    if o.band_sub != u32::MAX {
+        fix(o.band_sub, len);
+    }
+}
+
+const MAX_ZOOM: i8 = 8;
+
 pub fn zoom_bucket(scale: f32) -> i8 {
-    scale.max(1e-3).log2().ceil().clamp(-8.0, 8.0) as i8
+    scale.max(1e-3).log2().ceil().clamp(-8.0, MAX_ZOOM as f32) as i8
 }
 
 pub fn tolerance(zoom: i8) -> f64 {
@@ -416,38 +544,83 @@ pub fn tolerance(zoom: i8) -> f64 {
 }
 
 impl GeomCache {
-    pub fn begin_frame(&mut self) {
-        self.built_this_frame = 0;
-        if self.segs.len() > ARENA_LIMIT_SEGS {
-            // Prototype policy: drop everything and let the frame rebuild what
-            // it still uses.
-            self.map.clear();
-            self.segs.clear();
-            self.bands.clear();
-            self.uploaded_segs = 0;
-            self.uploaded_bands = 0;
-            self.reset = true;
-            self.epoch += 1;
-        }
+    #[cfg(test)]
+    pub fn with_limits(segs: usize, bands: usize) -> Self {
+        GeomCache { limits: (segs, bands), ..Default::default() }
     }
 
-    pub fn get_or_build(&mut self, key: GeomKey, frame: u64, build: impl FnOnce(f64) -> Option<Segments>) -> Option<Outline> {
-        if let Some(e) = self.map.get_mut(&key) {
-            e.last_used = frame;
-            return Some(e.outline);
+    /// Starts build `frame`. A main build (`sweep`) past the arena limits
+    /// evicts what no recent build used and compacts the rest; surface builds
+    /// only add, as the main frame may still draw from the arenas as they are.
+    pub fn begin_frame(&mut self, frame: u64, sweep: bool) {
+        self.built_this_frame = 0;
+        self.banded_this_frame = 0;
+        if !sweep || (self.segs.len() <= self.limits.0 && self.bands.len() <= self.limits.1) {
+            return;
         }
-        let s = build(tolerance(key.zoom))?;
-        if s.add.is_empty() {
-            return None;
+        if self.swept_at == (self.segs.len(), self.bands.len()) {
+            return;
         }
-        self.built_this_frame += 1;
-        let mut b = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
-        for g in &s.add {
-            b[0] = b[0].min(g[0]).min(g[2]);
-            b[1] = b[1].min(g[1]).min(g[3]);
-            b[2] = b[2].max(g[0]).max(g[2]);
-            b[3] = b[3].max(g[1]).max(g[3]);
+        if !self.evict(frame) {
+            self.swept_at = (self.segs.len(), self.bands.len());
+            return;
         }
+        self.compact();
+    }
+
+    /// The outline for `key`, building its segments with `build` (given the
+    /// flattening tolerance) when no cached flattening serves. `exact`: lines
+    /// only, built at the finest tolerance (kurbo leaves out a join that turns
+    /// less than 2·tolerance/width), so one build serves every zoom. Otherwise
+    /// a flattening up to `MAX_FINER` buckets finer serves too, so scaling down
+    /// builds bands only.
+    pub fn get_or_build(&mut self, key: GeomKey, exact: bool, frame: u64, build: impl FnOnce(f64) -> Option<Segments>) -> Option<Outline> {
+        if let Some(b) = self.band_map.get_mut(&key) {
+            b.last_used = frame;
+            let (seg, outline) = (b.seg, b.outline);
+            if let Some(s) = self.seg_map.get_mut(&seg) {
+                s.last_used = frame;
+            }
+            return Some(outline);
+        }
+        let at = |zoom: i8| SegKey { source: key.source, style: key.style, zoom };
+        let found = if exact {
+            Some(at(EXACT)).filter(|k| self.seg_map.contains_key(k))
+        } else {
+            (0..=MAX_FINER).map(|d| at(key.zoom.saturating_add(d))).find(|k| self.seg_map.contains_key(k))
+        };
+        let seg_key = match found {
+            Some(k) => k,
+            None => {
+                let s = build(tolerance(if exact { MAX_ZOOM } else { key.zoom }))?;
+                if s.add.is_empty() {
+                    return None;
+                }
+                self.built_this_frame += 1;
+                let mut b = [f32::MAX, f32::MAX, f32::MIN, f32::MIN];
+                for g in &s.add {
+                    b[0] = b[0].min(g[0]).min(g[2]);
+                    b[1] = b[1].min(g[1]).min(g[3]);
+                    b[2] = b[2].max(g[0]).max(g[2]);
+                    b[3] = b[3].max(g[1]).max(g[3]);
+                }
+                let k = at(if exact { EXACT } else { key.zoom });
+                let start = self.segs.len() as u32;
+                self.segs.extend_from_slice(&s.add);
+                self.segs.extend_from_slice(&s.sub);
+                let e = SegEntry { start, add: s.add.len() as u32, sub: s.sub.len() as u32, even_odd: s.even_odd, bounds: b, last_used: frame };
+                self.seg_map.insert(k, e);
+                k
+            }
+        };
+        let e = self.seg_map.get_mut(&seg_key).unwrap();
+        e.last_used = frame;
+        let e = *e;
+        self.banded_this_frame += 1;
+        let (start, na) = (e.start as usize, e.add as usize);
+        let add = &self.segs[start..start + na];
+        let sub = &self.segs[start + na..start + na + e.sub as usize];
+        let b = e.bounds;
         let height = (b[3] - b[1]).max(1e-3);
         // Bands overlap by a little over one device pixel at this zoom bucket,
         // so every segment touching a pixel's footprint is in the pixel's band.
@@ -456,45 +629,103 @@ impl GeomCache {
         // full-screen outline of 10k segments under 32 bands cost ~80 ms at
         // 4K. Bands stay at least four margins tall, and the copies of
         // segments spanning several bands stay within 8× the segment count.
-        let mut n = ((s.add.len() / 8) as u32).clamp(1, 4096).min(((height / (4.0 * margin)) as u32).max(1));
-        while n > 1 && band_entries(&s.add, b[1], height / n as f32, n, margin) > 8 * s.add.len() + 64 {
+        let mut n = ((na / 8) as u32).clamp(1, 4096).min(((height / (4.0 * margin)) as u32).max(1));
+        let mut spans = std::mem::take(&mut self.spans);
+        while band_spans(add, b[1], height / n as f32, n, margin, &mut spans) > 8 * na + 64 && n > 1 {
             n /= 2;
         }
         let band_h = height / n as f32;
-        let band_add = self.push_bands(&s.add, b[1], band_h, n, margin);
-        let band_sub = if s.sub.is_empty() { u32::MAX } else { self.push_bands(&s.sub, b[1], band_h, n, margin) };
-        let outline = Outline { band_add, band_sub, band_count: n, y0: b[1], band_h, bounds: b, even_odd: s.even_odd };
-        self.map.insert(key, Entry { outline, last_used: frame });
+        let block = self.bands.len() as u32;
+        let band_add = push_bands(&mut self.bands, &spans, e.start, n);
+        let band_sub = if sub.is_empty() {
+            u32::MAX
+        } else {
+            band_spans(sub, b[1], band_h, n, margin, &mut spans);
+            push_bands(&mut self.bands, &spans, e.start + e.add, n)
+        };
+        self.spans = spans;
+        let outline = Outline { band_add, band_sub, band_count: n, y0: b[1], band_h, bounds: b, even_odd: e.even_odd };
+        let words = self.bands.len() as u32 - block;
+        self.band_map.insert(key, BandEntry { seg: seg_key, outline, start: block, words, last_used: frame });
         Some(outline)
     }
 
-    fn push_bands(&mut self, segs: &[[f32; 4]], y0: f32, band_h: f32, n: u32, margin: f32) -> u32 {
-        let base = self.segs.len() as u32;
-        self.segs.extend_from_slice(segs);
-        let headers = self.bands.len();
-        self.bands.resize(headers + 2 * n as usize, 0);
-        // Counting sort by band; each band keeps segment order.
-        let mut counts = vec![0u32; n as usize];
-        for s in segs {
-            for i in band_span(s, y0, band_h, n, margin) {
-                counts[i] += 1;
+    /// Drops the least recently used outlines until the arenas are half their
+    /// limits, sparing what the last `PROTECT_BUILDS` builds used. A dropped
+    /// flattening takes its bands with it. False when nothing could go.
+    fn evict(&mut self, frame: u64) -> bool {
+        let stale_before = frame.saturating_sub(PROTECT_BUILDS);
+        let mut live = self.segs.len();
+        let mut stale: Vec<(u64, SegKey, usize)> = self
+            .seg_map
+            .iter()
+            .filter(|(_, e)| e.last_used < stale_before)
+            .map(|(k, e)| (e.last_used, *k, (e.add + e.sub) as usize))
+            .collect();
+        stale.sort_unstable_by_key(|s| s.0);
+        let mut dropped = std::collections::HashSet::new();
+        for (_, k, n) in stale {
+            if live <= self.limits.0 / 2 {
+                break;
+            }
+            dropped.insert(k);
+            live -= n;
+        }
+        let before = self.band_map.len();
+        self.band_map.retain(|_, b| !dropped.contains(&b.seg));
+        let mut words: usize = self.band_map.values().map(|b| b.words as usize).sum();
+        if words > self.limits.1 / 2 {
+            let mut stale: Vec<(u64, GeomKey, usize)> = self
+                .band_map
+                .iter()
+                .filter(|(_, b)| b.last_used < stale_before)
+                .map(|(k, b)| (b.last_used, *k, b.words as usize))
+                .collect();
+            stale.sort_unstable_by_key(|s| s.0);
+            for (_, k, n) in stale {
+                if words <= self.limits.1 / 2 {
+                    break;
+                }
+                self.band_map.remove(&k);
+                words -= n;
             }
         }
-        let mut at = Vec::with_capacity(n as usize);
-        let mut start = self.bands.len() as u32;
-        for (i, &c) in counts.iter().enumerate() {
-            self.bands[headers + 2 * i] = start;
-            self.bands[headers + 2 * i + 1] = c;
-            at.push(start as usize);
-            start += c;
+        for k in &dropped {
+            self.seg_map.remove(k);
         }
-        self.bands.resize(start as usize, 0);
-        for (k, s) in segs.iter().enumerate() {
-            for i in band_span(s, y0, band_h, n, margin) {
-                self.bands[at[i]] = base + k as u32;
-                at[i] += 1;
+        !dropped.is_empty() || self.band_map.len() != before
+    }
+
+    /// Rewrites both arenas with only what the maps hold. Every outline moves,
+    /// so the next upload is whole and `epoch` tells builders their records
+    /// point into the old arenas.
+    fn compact(&mut self) {
+        let mut segs = Vec::with_capacity(self.seg_map.values().map(|e| (e.add + e.sub) as usize).sum());
+        let mut moved: crate::fxhash::FxHashMap<SegKey, i64> = Default::default();
+        for (k, e) in self.seg_map.iter_mut() {
+            let at = segs.len() as u32;
+            segs.extend_from_slice(&self.segs[e.start as usize..(e.start + e.add + e.sub) as usize]);
+            moved.insert(*k, at as i64 - e.start as i64);
+            e.start = at;
+        }
+        let mut bands = Vec::with_capacity(self.band_map.values().map(|b| b.words as usize).sum());
+        for b in self.band_map.values_mut() {
+            let at = bands.len();
+            bands.extend_from_slice(&self.bands[b.start as usize..(b.start + b.words) as usize]);
+            let db = at as i64 - b.start as i64;
+            relocate(&mut bands[at..], &b.outline, b.start, db, moved[&b.seg]);
+            b.start = at as u32;
+            b.outline.band_add = (b.outline.band_add as i64 + db) as u32;
+            if b.outline.band_sub != u32::MAX {
+                b.outline.band_sub = (b.outline.band_sub as i64 + db) as u32;
             }
         }
-        headers as u32
+        self.segs = segs;
+        self.bands = bands;
+        self.uploaded_segs = 0;
+        self.uploaded_bands = 0;
+        self.reset = true;
+        self.epoch += 1;
+        self.swept_at = (0, 0);
     }
 }

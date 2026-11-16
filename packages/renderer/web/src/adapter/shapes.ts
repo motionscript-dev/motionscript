@@ -219,14 +219,60 @@ function nativeOf(shape: ShapeGeometry<any, any>, full: Any, geo: Any): NativeSh
 function pathShape(state: Any): ShapeOut {
     const shape = new PathGeometry(state as never);
     const full = shape.fullState as Any;
-    const raw = parseSvgPath(shape.buildSVGPath(shape.geometry));
-    const [x0, y0, x1, y1] = full.centerBounds ?? pathBounds(raw);
-    const ox = -(x0 + (x1 - x0) / 2), oy = -(y0 + (y1 - y0) / 2);
-    const centred = transformPath(raw, [1, 0, 0, 1, ox, oy]);
-    const base = shapeTransform({ ...full, x: 0, y: 0 }, centred);
+    const svg = shape.buildSVGPath(shape.geometry);
     const range = shape.needsTrim() ? shape.getTrimRange() : null;
-    const fill = range ? trimPath(base, range.start, range.end) : base;
+    const place = `${full.centerBounds ?? ""}|${full.rotation}|${full.scale}|${full.pivot.x},${full.pivot.y}|${full.width},${full.height}`;
+    const variants = parsedVariants(svg);
+    let base = variants.get(place);
+    if (!base) {
+        const raw = parseSvgPath(svg);
+        const [x0, y0, x1, y1] = full.centerBounds ?? pathBounds(raw);
+        const ox = -(x0 + (x1 - x0) / 2), oy = -(y0 + (y1 - y0) / 2);
+        base = shapeTransform({ ...full, x: 0, y: 0 }, transformPath(raw, [1, 0, 0, 1, ox, oy]));
+        keepParsed(variants, place, base, place);
+    }
+    let fill = base;
+    if (range) {
+        const trim = `${place}|${range.start},${range.end}`;
+        fill = variants.get(trim) ?? keepParsed(variants, trim, trimPath(base, range.start, range.end), place);
+    }
     return { fill, stroke: fill, interior: range ? base : fill, bounds: null, trimmed: !!range };
+}
+
+// Parsed paths by SVG string, then by placement (centring, turn, trim), so a path drawn again unchanged is the same
+// `PathData`: nothing downstream parses, measures or hashes it again. Least recently drawn strings go first.
+const parsed = new Map<string, Map<string, PathData>>();
+let parsedFloats = 0;
+const PARSED_STRINGS = 1024;
+const PARSED_FLOATS = 4_000_000;
+/** Placements kept per string: an animated trim makes a new one every frame. */
+const PLACEMENTS = 4;
+
+function parsedVariants(svg: string): Map<string, PathData> {
+    let variants = parsed.get(svg);
+    if (variants) parsed.delete(svg);
+    else variants = new Map();
+    parsed.set(svg, variants);
+    return variants;
+}
+
+function keepParsed(variants: Map<string, PathData>, key: string, path: PathData, base: string): PathData {
+    if (variants.size >= PLACEMENTS) {
+        for (const [k, p] of variants) {
+            if (k === base) continue;
+            variants.delete(k);
+            parsedFloats -= p.points.length;
+            break;
+        }
+    }
+    variants.set(key, path);
+    parsedFloats += path.points.length;
+    for (const [svg, old] of parsed) {
+        if (parsed.size <= 1 || (parsed.size <= PARSED_STRINGS && parsedFloats <= PARSED_FLOATS)) break;
+        parsed.delete(svg);
+        for (const p of old.values()) parsedFloats -= p.points.length;
+    }
+    return path;
 }
 
 const negPathY = (state: Any): Any => {

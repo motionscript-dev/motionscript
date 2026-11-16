@@ -9,7 +9,7 @@ import {
     type MaskOptions, type NodeRenderState, type RenderContext2D, type RenderIssue, type ShadowResolved, shadowOps, type Size2D, type StrokeResolved, strokeOps,
     type TextSegment, type TransformState, type Vector2,
 } from "@motionscript/core";
-import { BLEND_MODES, type BlendMode, Doc, type ImageAsset, isProjective, type Mat, type Member, type MemberOp, mulX, type Node, type Paint, PathBuilder, type PathData, pathBounds, type Shadow, type TextRunSpec, type TextSpec, transformPath, type Xform } from "../doc";
+import { BLEND_MODES, type BlendMode, Doc, type ImageAsset, isAxisAligned, isProjective, type Mat, type Member, type MemberOp, mulX, type Node, type Paint, PathBuilder, type PathData, pathBounds, type Shadow, type TextRunSpec, type TextSpec, transformPath, type Xform } from "../doc";
 import { assetKey } from "./driver";
 import { fillPaint, shadowOf } from "./paint";
 import { shaderParamIssues } from "./shader-params";
@@ -983,8 +983,8 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
         return m;
     }
 
-    /** StrokeHandler.snapPath: an axis-aligned thin stroke's shape scaled and
-     *  moved so its device bounds sit on pixel edges (centres for odd widths). */
+    /** A thin stroke's shape scaled and moved so its device bounds sit on
+     *  pixel edges (centres for odd widths). */
     private snap(path: PathData, intWidth: number, m: Xform): Mat | null {
         return this.snapBounds(pathBounds(path), intWidth, m);
     }
@@ -1017,15 +1017,15 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
         const scale = Math.sqrt(Math.abs(dev[0] * dev[3] - dev[1] * dev[2]));
         const rotated = isProjective(dev) || Math.abs(dev[1]) > 1e-6 || Math.abs(dev[2]) > 1e-6;
         for (const st of strokes) {
-            // resolveStrokeWidth: under 2.5 device px (axis-aligned), a whole
-            // number of device px.
-            let weight = st.weight, intWidth = -1;
-            if (!rotated && weight > 0 && scale > 0 && weight * scale < 2.5) {
-                intWidth = Math.max(1, Math.round(weight * scale));
-                weight = intWidth / scale;
-            }
-            if (this.strokeNative(st, weight, intWidth, dev)) continue;
+            // Under 2.5 device px (unturned), a whole number of device px.
+            const thin = !rotated && st.weight > 0 && scale > 0 && st.weight * scale < 2.5 ? Math.max(1, Math.round(st.weight * scale)) : -1;
+            if (this.strokeNative(st, thin > 0 ? thin / scale : st.weight, thin, dev)) continue;
             for (const shape of this.strokeShapes()) {
+                // Only an outline of horizontal and vertical lines is crisper on pixel edges. Any other keeps its
+                // authored width and place, as text does: snapped, it steps while scaling and is stroked again
+                // every frame.
+                const intWidth = thin > 0 && shape.fill && shape.stroke && isAxisAligned(shape.stroke) ? thin : -1;
+                const weight = intWidth > 0 ? intWidth / scale : st.weight;
                 let geom: Geom, interior: Geom | null;
                 let plan: StrokePlan = { cap: st.cap, ends: [], dash: st.dash, dashPhase: st.dashOffset };
                 if (shape.members) {

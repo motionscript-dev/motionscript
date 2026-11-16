@@ -174,9 +174,30 @@ world transform changes) nothing is reused.
   computes the exact signed area of the pixel footprint (`fwidth` box) covered
   by the outline, then applies non-zero or even-odd. Result: 256-level edges
   under any transform, with no tessellation. An animated transform reuses the
-  cached outline. Cache key = path id + version (or compound hash), style, and
-  a zoom bucket (log2 of device scale) that picks the flattening tolerance and
-  band margin.
+  cached outline.
+  - **Outline cache** (2026-11-15): segments and bands are cached apart.
+    Segments are keyed by source (path id + version, compound hash, glyph) and
+    style. An outline of lines only (the fill of a curve-free path, compound or
+    square-cornered rect, and its stroke when no join or cap is round) is built
+    once, at the finest tolerance, and serves every scale: kurbo leaves out a
+    join that turns less than 2·tolerance/width, so a stroke built coarser
+    would show the gaps at a larger scale. That costs a polyline map's stroke
+    ~20% more segments than one built for a 0.5 scale (~15% more GPU time on
+    the measurement below). A curved outline is flattened for a zoom bucket
+    (log2 of the device scale, which picks the tolerance), and a cached
+    flattening up to four buckets finer serves a smaller scale. Bands stay
+    keyed by zoom bucket, since their margin is one device pixel, so reaching
+    a new power of two builds bands over cached segments instead of flattening
+    and stroking again. Past 4M segments or 16M band words, a main build
+    evicts the least recently used outlines (sparing the last 8 builds') down
+    to half and compacts both arenas, which moves every outline (`epoch`).
+    Surface builds never sweep, since the main frame may still draw from the
+    arenas as they are. Measured with the thin-stroke rule and parse cache of
+    §8.0, on a synthetic 120k-point map (three paths, fill plus a 2 px stroke)
+    scaled 1 → 4 → 0.25 at a 0.5 preview ratio in Chrome on a desktop GPU: CPU
+    per frame 42 → 0.85 ms mean (66 → 0.9 ms p95), outlines flattened while
+    scaling 285 → 0, and the four frames that reach a new bucket build bands
+    in 9–17 ms (they flattened and stroked everything again in 40–50 ms).
   - The per-segment integral splits at the ramp ends and averages the linear
     pieces. An antiderivative form lost precision on near-vertical segments
     (several percent of leaked coverage on the GPU); a CPU port of the shader
@@ -248,8 +269,8 @@ level 0):
    same target waits for a later wave, because its replay draws that
    composite.
 2. **Content passes.** Every layer of the level, shelf-packed into 2048² atlas
-   pages with a 2 px transparent gutter. One MSAA pass per page with a
-   per-region viewport, scissor and viewport uniform.
+   pages with a 2 px transparent gutter. One single-sample pass per page with
+   a per-region viewport, scissor and viewport uniform.
 3. **Filter passes.** For blur/drop shadow: 2x downsample steps while σ > 4,
    then horizontal, then vertical. Each step is one pass for all filtered
    layers of the level. The compositor's bilinear sample upsamples.
@@ -264,11 +285,9 @@ level 0):
    instead (a second pipeline set per output format) and there is no blit:
    −0.7 ms at 4K. The engine surface runs this way (§8.0).
 
-Offscreens come from a pool keyed by class (MSAA colour, single-sample,
-stencil) with best-fit reuse (≤ 4× area waste). Textures are released back
-the moment their last reader is recorded and destroyed after 30 idle frames.
-MSAA and stencil attachments of the pass that is about to run are released
-immediately, since the encoder orders later reuse after the pass.
+Offscreens come from a pool of single-sample working textures with best-fit
+reuse (≤ 4× area waste). Textures are released back the moment their last
+reader is recorded and destroyed after 30 idle frames.
 
 Working format **Rgba16Float**, single-sample (all coverage is analytic).
 Two blending modes:
@@ -868,6 +887,20 @@ Pieces, all under `web/src/adapter/`:
   A biased stroke draws as a centred one round the offset box. Everything else
   is a path. The edge pixels this changes are in
   [why](docs/why.md#plain-rects-and-ellipses-draw-as-the-renderers-own-shapes).
+- **Thin strokes** (2026-11-15): under 2.5 device px (unturned), a stroke is
+  a whole number of device px set on pixel edges only round the renderer's own
+  rect or ellipse, and along an outline of horizontal and vertical lines, where
+  that keeps it crisp. Any other stroke keeps its authored width and place, as
+  text does (§5.4): snapped, it stepped between widths while scaling, and its
+  new width missed the outline cache, so it was stroked again every frame. A
+  stroke thinner than a device pixel now fades with its coverage instead of
+  drawing 1 px wide.
+- **Parsed paths are kept** (2026-11-15): `shapes.ts` keeps each path op's
+  `PathData` by SVG string, then by placement (centring, turn, trim), for the
+  1024 strings last drawn and at most 4M floats. A path drawn again unchanged
+  is the same object, so its bounds, alignment and closedness (remembered per
+  `PathData`) and its backend id (`pathKey`) are worked out once, not every
+  frame.
 - **Paint** (`paint.ts`): core `Fill`/`Stroke`/`Shadow` to the doc's paints
   (solid, gradients, images, procedural fills, canvas3d as a 3D scene asset).
 - **Text**: text and rich-text ops to the doc's `TextSpec` (fonts registered

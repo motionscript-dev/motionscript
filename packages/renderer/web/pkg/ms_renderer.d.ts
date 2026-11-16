@@ -152,7 +152,8 @@ export class Renderer {
      *  draws, culled, outlines built this frame, pool textures, pool MiB,
      *  cached outline segments, prims reused from recorded subtrees,
      *  prims left on the GPU from the previous build, 3D decode + set ms,
-     *  3D draw CPU ms, 3D map refresh ms, surfaces redrawn, surfaces]
+     *  3D draw CPU ms, 3D map refresh ms, surfaces redrawn, surfaces,
+     *  band sets built this frame]
      */
     stats(): Float64Array;
     /**
