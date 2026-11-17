@@ -1,0 +1,145 @@
+{
+  "kind": "project",
+  "name": "effect-pixelate-backdrop",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "effect-pixelate-backdrop",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "horizontal",
+              "gap": 16,
+              "padding": 40,
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#6990dd"
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 1,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#e8617c"
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 2,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "cornerRadius": 12,
+              "fill": "#f2c94c"
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 1,
+            "props": {
+              "width": 260,
+              "height": 260,
+              "cornerRadius": 130,
+              "stroke": {
+                "weight": 4,
+                "fill": "#f4f6ff"
+              },
+              "effects": [
+                {
+                  "type": "pixelate",
+                  "blocks": {
+                    "x": 64,
+                    "y": 64
+                  },
+                  "sharpColors": true,
+                  "mode": "backdrop"
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect4",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "effects": [
+                {
+                  "type": "pixelate",
+                  "blocks": {
+                    "x": 8,
+                    "y": 8
+                  },
+                  "sharpColors": true,
+                  "mode": "backdrop"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}

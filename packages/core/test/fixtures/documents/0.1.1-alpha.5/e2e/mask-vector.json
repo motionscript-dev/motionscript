@@ -1,0 +1,99 @@
+{
+  "kind": "project",
+  "name": "mask-vector",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "mask-vector",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "mask0",
+            "type": "mask",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "mode": "vector",
+              "width": "fill",
+              "height": "fill"
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "mask0",
+            "layerOrder": 0,
+            "props": {
+              "width": 120,
+              "height": 120,
+              "fill": "#ffffff"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "mask0",
+            "layerOrder": 1,
+            "props": {
+              "width": 400,
+              "height": 260,
+              "cornerRadius": 20,
+              "fill": [
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#28d6c8",
+                    "#e83fd6"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "ellipse0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "width": 520,
+              "height": 520
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}

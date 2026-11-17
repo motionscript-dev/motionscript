@@ -1,0 +1,477 @@
+{
+  "kind": "project",
+  "name": "composition-commands",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "composition-commands-0",
+      "clip": {
+        "kind": "composition",
+        "duration": 4,
+        "variables": [
+          {
+            "id": "progress",
+            "value": 0
+          },
+          {
+            "id": "tint",
+            "value": "#ff0000",
+            "lerp": "color"
+          }
+        ],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg",
+              "opacity": "=[progress] * 0.5 + 0.5"
+            }
+          },
+          {
+            "id": "rect-23",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 24,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "fill": "primary"
+            },
+            "key": "box"
+          },
+          {
+            "id": "ellipse-24",
+            "type": "ellipse",
+            "parentId": null,
+            "layerOrder": 25,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "fill": "accent",
+              "stroke": {
+                "weight": 2,
+                "fill": "white"
+              }
+            }
+          },
+          {
+            "id": "rect-25",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 26,
+            "props": {
+              "width": 40,
+              "height": 40,
+              "fill": "card",
+              "x": "=[box.x]"
+            },
+            "startAt": 1,
+            "endAt": 3
+          },
+          {
+            "id": "text-26",
+            "type": "text",
+            "parentId": null,
+            "layerOrder": 27,
+            "props": {
+              "text": "Hi",
+              "fontSize": 24,
+              "fill": "white"
+            }
+          },
+          {
+            "id": "number-27",
+            "type": "number",
+            "parentId": null,
+            "layerOrder": 28,
+            "props": {
+              "value": 0,
+              "fontSize": 24,
+              "fill": "white"
+            }
+          },
+          {
+            "id": "camera-28",
+            "type": "camera",
+            "parentId": null,
+            "layerOrder": 29,
+            "props": {
+              "width": 300,
+              "height": 200
+            }
+          },
+          {
+            "id": "orbitCamera-29",
+            "type": "orbitCamera",
+            "parentId": null,
+            "layerOrder": 30,
+            "props": {}
+          }
+        ],
+        "commands": [
+          {
+            "id": "c0",
+            "type": "moveTo",
+            "targetId": "rect-23",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "x": 120,
+              "y": -40
+            },
+            "easing": {
+              "kind": "inOut"
+            }
+          },
+          {
+            "id": "c1",
+            "type": "fadeTo",
+            "targetId": "rect-23",
+            "at": 0.5,
+            "duration": 0.5,
+            "args": {
+              "opacity": 0.4
+            },
+            "easing": {
+              "kind": "out",
+              "args": 3
+            }
+          },
+          {
+            "id": "c2",
+            "type": "rotateTo",
+            "targetId": "rect-23",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "rotation": 90
+            },
+            "loop": {
+              "count": 2,
+              "direction": "alternate"
+            }
+          },
+          {
+            "id": "c3",
+            "type": "scaleTo",
+            "targetId": "rect-23",
+            "at": 1.5,
+            "duration": 0.5,
+            "args": {
+              "scale": 1.4
+            },
+            "easing": {
+              "kind": "custom",
+              "args": [
+                {
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "x": 0.3,
+                  "y": 0.8
+                },
+                {
+                  "x": 1,
+                  "y": 1
+                }
+              ]
+            }
+          },
+          {
+            "id": "c4",
+            "type": "layoutTo",
+            "targetId": "rect-23",
+            "at": 2,
+            "duration": 0.5,
+            "args": {
+              "width": 120
+            }
+          },
+          {
+            "id": "c5",
+            "type": "pulse",
+            "targetId": "rect-23",
+            "at": 2.5,
+            "duration": 0.5,
+            "args": {
+              "factor": 1.2
+            }
+          },
+          {
+            "id": "c6",
+            "type": "wiggle",
+            "targetId": "rect-23",
+            "at": 3,
+            "duration": 0.5,
+            "args": {
+              "angle": 10,
+              "turns": 2
+            }
+          },
+          {
+            "id": "c7",
+            "type": "flash",
+            "targetId": "ellipse-24",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "portion": 0.3
+            }
+          },
+          {
+            "id": "c8",
+            "type": "effectTo",
+            "targetId": "ellipse-24",
+            "at": 0.5,
+            "duration": 0.5,
+            "args": {
+              "effects": [
+                {
+                  "type": "blur",
+                  "radius": 6
+                }
+              ]
+            }
+          },
+          {
+            "id": "c9",
+            "type": "fillTo",
+            "targetId": "ellipse-24",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "fill": "primary"
+            }
+          },
+          {
+            "id": "c10",
+            "type": "strokeTo",
+            "targetId": "ellipse-24",
+            "at": 1.5,
+            "duration": 0.5,
+            "args": {
+              "stroke": {
+                "weight": 4,
+                "fill": "accent"
+              }
+            }
+          },
+          {
+            "id": "c11",
+            "type": "shadowTo",
+            "targetId": "ellipse-24",
+            "at": 2,
+            "duration": 0.5,
+            "args": {
+              "shadow": {
+                "blur": 10,
+                "color": "black/50"
+              }
+            }
+          },
+          {
+            "id": "c12",
+            "type": "overlayTo",
+            "targetId": "ellipse-24",
+            "at": 2.5,
+            "duration": 0.5,
+            "args": {
+              "overlay": "white/20"
+            }
+          },
+          {
+            "id": "c13",
+            "type": "progressTo",
+            "targetId": "ellipse-24",
+            "at": 3,
+            "duration": 0.5,
+            "args": {
+              "start": 0.2,
+              "end": 0.8
+            }
+          },
+          {
+            "id": "c14",
+            "type": "to",
+            "targetId": "rect-25",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "y": 60,
+              "fill": "accent"
+            }
+          },
+          {
+            "id": "c15",
+            "type": "set",
+            "targetId": "rect-25",
+            "at": 2,
+            "duration": 0,
+            "args": {
+              "opacity": "=[progress]"
+            }
+          },
+          {
+            "id": "c16",
+            "type": "save",
+            "targetId": "rect-23",
+            "at": 3.5,
+            "duration": 0,
+            "args": {}
+          },
+          {
+            "id": "c17",
+            "type": "restore",
+            "targetId": "rect-23",
+            "at": 3.8,
+            "duration": 0,
+            "args": {}
+          },
+          {
+            "id": "c18",
+            "type": "append",
+            "targetId": "text-26",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "text": " there"
+            }
+          },
+          {
+            "id": "c19",
+            "type": "prepend",
+            "targetId": "text-26",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "text": "Oh, "
+            }
+          },
+          {
+            "id": "c20",
+            "type": "countTo",
+            "targetId": "number-27",
+            "at": 0,
+            "duration": 2,
+            "args": {
+              "value": 99
+            }
+          },
+          {
+            "id": "c21",
+            "type": "zoomTo",
+            "targetId": "camera-28",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "zoom": 2
+            }
+          },
+          {
+            "id": "c22",
+            "type": "panTo",
+            "targetId": "camera-28",
+            "at": 0.5,
+            "duration": 0.5,
+            "args": {
+              "lookAt": {
+                "x": 20,
+                "y": 10
+              }
+            }
+          },
+          {
+            "id": "c23",
+            "type": "headingTo",
+            "targetId": "camera-28",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "heading": 15
+            }
+          },
+          {
+            "id": "c24",
+            "type": "orbitTo",
+            "targetId": "orbitCamera-29",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "orbit": 30,
+              "elevation": 15
+            }
+          },
+          {
+            "id": "c25",
+            "type": "dollyTo",
+            "targetId": "orbitCamera-29",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "dolly": 0.5
+            }
+          },
+          {
+            "id": "c26",
+            "type": "zoomTo",
+            "targetId": null,
+            "at": 2,
+            "duration": 0.5,
+            "args": {
+              "zoom": 1.2
+            }
+          },
+          {
+            "id": "c27",
+            "type": "variableTo",
+            "targetId": "progress",
+            "at": 0,
+            "duration": 3,
+            "args": {
+              "value": 1
+            }
+          },
+          {
+            "id": "c28",
+            "type": "variableTo",
+            "targetId": "tint",
+            "at": 0,
+            "duration": 2,
+            "args": {
+              "value": "#0000ff"
+            }
+          },
+          {
+            "id": "c29",
+            "type": "variableSet",
+            "targetId": "progress",
+            "at": 3.5,
+            "duration": 0,
+            "args": {
+              "value": 0.25
+            }
+          }
+        ]
+      },
+      "startAt": 0,
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}

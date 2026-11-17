@@ -1,0 +1,7306 @@
+{
+  "nodes": {
+    "ambient-light3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "color": {
+          "kind": "color"
+        },
+        "intensity": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "area-light3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "color": {
+          "kind": "color"
+        },
+        "intensity": {
+          "kind": "unknown"
+        },
+        "width": {
+          "kind": "unknown"
+        },
+        "height": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "audioBus": {
+      "properties": {
+        "volume": {
+          "kind": "audioParam",
+          "default": 1
+        },
+        "pan": {
+          "kind": "audioParam",
+          "default": 0
+        },
+        "mute": {
+          "kind": "boolean",
+          "default": false
+        },
+        "effects": {
+          "kind": "audioEffects",
+          "default": []
+        },
+        "transitionIn": {
+          "kind": "unknown"
+        },
+        "transitionOut": {
+          "kind": "unknown"
+        },
+        "solo": {
+          "kind": "boolean",
+          "default": false
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "restore",
+        "to"
+      ]
+    },
+    "boolean": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "op": {
+          "kind": "enum",
+          "default": "union"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "overlayTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "box3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "width": {
+          "kind": "unknown"
+        },
+        "height": {
+          "kind": "unknown"
+        },
+        "depth": {
+          "kind": "unknown"
+        },
+        "cornerRadius": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "camera": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "zoom": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "heading": {
+          "kind": "number",
+          "default": 0
+        },
+        "follow": {
+          "kind": "nodeRef",
+          "default": ""
+        },
+        "cornerRadius": {
+          "kind": "cornerRadius",
+          "default": 0
+        },
+        "cornerStyle": {
+          "kind": "cornerStyle",
+          "default": "rounded"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "headingTo",
+        "layoutTo",
+        "moveTo",
+        "overlayTo",
+        "panTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle",
+        "zoomTo"
+      ]
+    },
+    "camera3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "type": {
+          "kind": "text",
+          "default": "perspective"
+        },
+        "target": {
+          "kind": "vector3"
+        },
+        "orbit": {
+          "kind": "unknown"
+        },
+        "elevation": {
+          "kind": "unknown"
+        },
+        "distance": {
+          "kind": "unknown"
+        },
+        "fov": {
+          "kind": "unknown"
+        },
+        "frustumHeight": {
+          "kind": "unknown"
+        },
+        "near": {
+          "kind": "unknown"
+        },
+        "far": {
+          "kind": "unknown"
+        },
+        "zoom": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "lookTo",
+        "moveTo",
+        "orbitTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "canvas2d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "zoom": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "object",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "heading": {
+          "kind": "number",
+          "default": 0
+        },
+        "space3D": {
+          "kind": "boolean",
+          "default": false
+        },
+        "orbit": {
+          "kind": "number",
+          "default": 0
+        },
+        "elevation": {
+          "kind": "number",
+          "default": 0
+        },
+        "dolly": {
+          "kind": "number",
+          "default": 0
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "dollyTo",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "headingTo",
+        "layoutTo",
+        "moveTo",
+        "orbitTo",
+        "overlayTo",
+        "panTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to",
+        "wiggle",
+        "zoomTo"
+      ]
+    },
+    "canvas3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "cornerRadius": {
+          "kind": "cornerRadius",
+          "default": 0
+        },
+        "cornerStyle": {
+          "kind": "cornerStyle",
+          "default": "rounded"
+        },
+        "orbit": {
+          "kind": "number",
+          "default": 35
+        },
+        "elevation": {
+          "kind": "number",
+          "default": 20
+        },
+        "zoom": {
+          "kind": "number",
+          "default": 12
+        },
+        "fov": {
+          "kind": "number",
+          "default": 45
+        },
+        "ambientIntensity": {
+          "kind": "number",
+          "default": 0.45
+        },
+        "ambientColor": {
+          "kind": "text",
+          "default": "#ffffff"
+        },
+        "keyIntensity": {
+          "kind": "number",
+          "default": 2.4
+        },
+        "keyColor": {
+          "kind": "text",
+          "default": "#ffffff"
+        },
+        "showGrid": {
+          "kind": "boolean",
+          "default": false
+        },
+        "gridSize": {
+          "kind": "number",
+          "default": 40
+        },
+        "gridDivisions": {
+          "kind": "number",
+          "default": 40
+        },
+        "gridMajorEvery": {
+          "kind": "number",
+          "default": 5
+        },
+        "gridColor": {
+          "kind": "text",
+          "default": "#26292f"
+        },
+        "gridMajorColor": {
+          "kind": "text",
+          "default": "#363a42"
+        },
+        "showAxes": {
+          "kind": "boolean",
+          "default": false
+        },
+        "axisXColor": {
+          "kind": "text",
+          "default": "#c8404f"
+        },
+        "axisZColor": {
+          "kind": "text",
+          "default": "#2f6fd0"
+        },
+        "gridFade": {
+          "kind": "number",
+          "default": 0.55
+        },
+        "gridFadeColor": {
+          "kind": "text",
+          "default": "#0b0d12"
+        },
+        "maxPixelRatio": {
+          "kind": "number",
+          "default": 2
+        },
+        "antialias": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadows": {
+          "kind": "boolean",
+          "default": false
+        },
+        "tone": {
+          "kind": "unknown"
+        },
+        "exposure": {
+          "kind": "unknown"
+        },
+        "post": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "orbitTo",
+        "overlayTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "capsule3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "height": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "circle3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "startAngle": {
+          "kind": "unknown"
+        },
+        "sweep": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "cone3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "height": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "capped": {
+          "kind": "unknown"
+        },
+        "startAngle": {
+          "kind": "unknown"
+        },
+        "sweep": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "cylinder3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "height": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "capped": {
+          "kind": "unknown"
+        },
+        "startAngle": {
+          "kind": "unknown"
+        },
+        "sweep": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "default-text-style": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fontFamily": {
+          "kind": "unknown"
+        },
+        "fontSize": {
+          "kind": "unknown"
+        },
+        "fontWeight": {
+          "kind": "unknown"
+        },
+        "fontStyle": {
+          "kind": "unknown"
+        },
+        "letterSpacing": {
+          "kind": "unknown"
+        },
+        "lineHeight": {
+          "kind": "unknown"
+        },
+        "textAlign": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "unknown"
+        },
+        "stroke": {
+          "kind": "unknown"
+        },
+        "shadow": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "layoutTo",
+        "moveTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "directional-light3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": false
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "color": {
+          "kind": "color"
+        },
+        "intensity": {
+          "kind": "unknown"
+        },
+        "target": {
+          "kind": "vector3"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "ellipse": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "startAngle": {
+          "kind": "number",
+          "default": 0
+        },
+        "sweep": {
+          "kind": "number",
+          "default": 360
+        },
+        "ratio": {
+          "kind": "number",
+          "default": 0
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "overlayTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "environment3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "src": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "preset": {
+          "kind": "unknown"
+        },
+        "intensity": {
+          "kind": "unknown"
+        },
+        "background": {
+          "kind": "unknown"
+        },
+        "blur": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "extrude3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "path": {
+          "kind": "unknown"
+        },
+        "depth": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "bevel": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "fog3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "color": {
+          "kind": "color"
+        },
+        "near": {
+          "kind": "unknown"
+        },
+        "far": {
+          "kind": "unknown"
+        },
+        "density": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "group3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "hemisphere-light3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "sky": {
+          "kind": "color"
+        },
+        "ground": {
+          "kind": "color"
+        },
+        "intensity": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "instances3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "instances": {
+          "kind": "unknown"
+        },
+        "colors": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "lathe3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "points": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "startAngle": {
+          "kind": "unknown"
+        },
+        "sweep": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "line3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "points": {
+          "kind": "unknown"
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "closed": {
+          "kind": "boolean",
+          "default": false
+        },
+        "segments": {
+          "kind": "boolean",
+          "default": false
+        },
+        "stroke": {
+          "kind": "unknown"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "mask": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "mode": {
+          "kind": "enum",
+          "default": "alpha"
+        },
+        "inverted": {
+          "kind": "boolean",
+          "default": false
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "layoutTo",
+        "moveTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "mesh3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "model3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "src": {
+          "kind": "unknown"
+        },
+        "animation": {
+          "kind": "unknown"
+        },
+        "override": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "number": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "fontFamily": {
+          "kind": "unknown"
+        },
+        "fontSize": {
+          "kind": "number",
+          "default": 48
+        },
+        "fontWeight": {
+          "kind": "number",
+          "default": 400
+        },
+        "fontStyle": {
+          "kind": "text",
+          "default": "normal"
+        },
+        "letterSpacing": {
+          "kind": "number",
+          "default": 0
+        },
+        "lineHeight": {
+          "kind": "number",
+          "default": 1.2
+        },
+        "textAlign": {
+          "kind": "text",
+          "default": "center"
+        },
+        "verticalAlign": {
+          "kind": "enum",
+          "default": "center"
+        },
+        "textDecoration": {
+          "kind": "enum",
+          "default": "none"
+        },
+        "textCase": {
+          "kind": "enum",
+          "default": "none"
+        },
+        "minFontSize": {
+          "kind": "number",
+          "default": 12
+        },
+        "variant": {
+          "kind": "unknown"
+        },
+        "value": {
+          "kind": "number",
+          "default": 0
+        },
+        "format": {
+          "kind": "text",
+          "default": "number"
+        },
+        "customPattern": {
+          "kind": "text",
+          "default": ""
+        },
+        "fractionDigits": {
+          "kind": "number",
+          "default": 0
+        },
+        "grouped": {
+          "kind": "boolean",
+          "default": true
+        },
+        "currencySymbol": {
+          "kind": "text",
+          "default": "$"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "countTo",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "orbitCamera": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 1000
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector2",
+          "default": {
+            "x": 0,
+            "y": 0
+          }
+        },
+        "zoom": {
+          "kind": "number",
+          "default": 1
+        },
+        "heading": {
+          "kind": "number",
+          "default": 0
+        },
+        "orbit": {
+          "kind": "number",
+          "default": 0
+        },
+        "elevation": {
+          "kind": "number",
+          "default": 0
+        },
+        "dolly": {
+          "kind": "number",
+          "default": 0
+        },
+        "orbitSpeed": {
+          "kind": "number",
+          "default": 0
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "dollyTo",
+        "effectTo",
+        "fadeTo",
+        "headingTo",
+        "layoutTo",
+        "moveTo",
+        "orbitTo",
+        "panTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to",
+        "wiggle",
+        "zoomTo"
+      ]
+    },
+    "path": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "data": {
+          "kind": "path",
+          "default": ""
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "overlayTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "plane3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "width": {
+          "kind": "unknown"
+        },
+        "height": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "point-light3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": false
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "color": {
+          "kind": "color"
+        },
+        "intensity": {
+          "kind": "unknown"
+        },
+        "distance": {
+          "kind": "unknown"
+        },
+        "decay": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "points3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "polygon": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "sides": {
+          "kind": "number",
+          "default": 5
+        },
+        "cornerRadius": {
+          "kind": "number",
+          "default": 0
+        },
+        "cornerStyle": {
+          "kind": "text",
+          "default": "rounded"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "overlayTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "polygram": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "sides": {
+          "kind": "number",
+          "default": 5
+        },
+        "ratio": {
+          "kind": "number",
+          "default": 0.5
+        },
+        "cornerRadius": {
+          "kind": "number",
+          "default": 0
+        },
+        "cornerStyle": {
+          "kind": "text",
+          "default": "rounded"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "overlayTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "polyhedron3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "shape": {
+          "kind": "text",
+          "default": "icosahedron"
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "provider": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "context": {
+          "kind": "unknown"
+        },
+        "value": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "layoutTo",
+        "moveTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "rect": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "cornerRadius": {
+          "kind": "cornerRadius",
+          "default": 0
+        },
+        "cornerStyle": {
+          "kind": "cornerStyle",
+          "default": "rounded"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "overlayTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "richtext": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "fontFamily": {
+          "kind": "unknown"
+        },
+        "fontSize": {
+          "kind": "number",
+          "default": 48
+        },
+        "fontWeight": {
+          "kind": "number",
+          "default": 400
+        },
+        "fontStyle": {
+          "kind": "text",
+          "default": "normal"
+        },
+        "letterSpacing": {
+          "kind": "number",
+          "default": 0
+        },
+        "lineHeight": {
+          "kind": "number",
+          "default": 1.2
+        },
+        "textAlign": {
+          "kind": "text",
+          "default": "center"
+        },
+        "variant": {
+          "kind": "unknown"
+        },
+        "spans": {
+          "kind": "vector",
+          "default": []
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "ring3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "innerRadius": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "startAngle": {
+          "kind": "unknown"
+        },
+        "sweep": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "rotated-box": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "angle": {
+          "kind": "number",
+          "default": -90
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "layoutTo",
+        "moveTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "sound": {
+      "properties": {
+        "volume": {
+          "kind": "audioParam",
+          "default": 1
+        },
+        "pan": {
+          "kind": "audioParam",
+          "default": 0
+        },
+        "mute": {
+          "kind": "boolean",
+          "default": false
+        },
+        "effects": {
+          "kind": "audioEffects",
+          "default": []
+        },
+        "transitionIn": {
+          "kind": "unknown"
+        },
+        "transitionOut": {
+          "kind": "unknown"
+        },
+        "src": {
+          "kind": "unknown"
+        },
+        "trimStart": {
+          "kind": "number",
+          "default": 0
+        },
+        "trimEnd": {
+          "kind": "unknown"
+        },
+        "loop": {
+          "kind": "boolean",
+          "default": false
+        },
+        "speed": {
+          "kind": "audioParam",
+          "default": 1
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "play",
+        "restore",
+        "to"
+      ]
+    },
+    "sphere3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "startAngle": {
+          "kind": "unknown"
+        },
+        "sweep": {
+          "kind": "unknown"
+        },
+        "startLatitude": {
+          "kind": "unknown"
+        },
+        "latitudeSweep": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "spot-light3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": false
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "color": {
+          "kind": "color"
+        },
+        "intensity": {
+          "kind": "unknown"
+        },
+        "distance": {
+          "kind": "unknown"
+        },
+        "angle": {
+          "kind": "unknown"
+        },
+        "penumbra": {
+          "kind": "unknown"
+        },
+        "decay": {
+          "kind": "unknown"
+        },
+        "target": {
+          "kind": "vector3"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "sprite3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "fill": {
+          "kind": "unknown"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "text": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "fontFamily": {
+          "kind": "unknown"
+        },
+        "fontSize": {
+          "kind": "number",
+          "default": 48
+        },
+        "fontWeight": {
+          "kind": "number",
+          "default": 400
+        },
+        "fontStyle": {
+          "kind": "text",
+          "default": "normal"
+        },
+        "letterSpacing": {
+          "kind": "number",
+          "default": 0
+        },
+        "lineHeight": {
+          "kind": "number",
+          "default": 1.2
+        },
+        "textAlign": {
+          "kind": "text",
+          "default": "center"
+        },
+        "verticalAlign": {
+          "kind": "enum",
+          "default": "center"
+        },
+        "textDecoration": {
+          "kind": "enum",
+          "default": "none"
+        },
+        "textCase": {
+          "kind": "enum",
+          "default": "none"
+        },
+        "minFontSize": {
+          "kind": "number",
+          "default": 12
+        },
+        "variant": {
+          "kind": "unknown"
+        },
+        "text": {
+          "kind": "text",
+          "default": ""
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "path": {
+          "kind": "unknown",
+          "default": null
+        },
+        "runs": {
+          "kind": "vector",
+          "default": []
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "append",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "prepend",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "theme-provider": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "theme": {
+          "kind": "unknown"
+        },
+        "data": {
+          "kind": "unknown"
+        },
+        "seed": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "layoutTo",
+        "moveTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to",
+        "wiggle"
+      ]
+    },
+    "torus-knot3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "thickness": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "windings": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "torus3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "thickness": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "startAngle": {
+          "kind": "unknown"
+        },
+        "sweep": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "tube3d": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "z": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationOrder": {
+          "kind": "text",
+          "default": "XYZ"
+        },
+        "quaternion": {
+          "kind": "quaternion",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "scaleX": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleY": {
+          "kind": "number",
+          "default": 1
+        },
+        "scaleZ": {
+          "kind": "number",
+          "default": 1
+        },
+        "lookAt": {
+          "kind": "vector3"
+        },
+        "visible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "shadow": {
+          "kind": "boolean",
+          "default": true
+        },
+        "renderOrder": {
+          "kind": "number",
+          "default": 0
+        },
+        "geometry": {
+          "kind": "unknown"
+        },
+        "material": {
+          "kind": "unknown"
+        },
+        "fill": {
+          "kind": "text",
+          "default": "white"
+        },
+        "opacity": {
+          "kind": "unknown"
+        },
+        "roughness": {
+          "kind": "unknown"
+        },
+        "metalness": {
+          "kind": "unknown"
+        },
+        "emission": {
+          "kind": "color"
+        },
+        "emissionStrength": {
+          "kind": "unknown"
+        },
+        "normalMap": {
+          "kind": "unknown"
+        },
+        "roughnessMap": {
+          "kind": "unknown"
+        },
+        "metalnessMap": {
+          "kind": "unknown"
+        },
+        "aoMap": {
+          "kind": "unknown"
+        },
+        "alphaMap": {
+          "kind": "unknown"
+        },
+        "envMapIntensity": {
+          "kind": "unknown"
+        },
+        "wireframe": {
+          "kind": "unknown"
+        },
+        "shading": {
+          "kind": "unknown"
+        },
+        "faces": {
+          "kind": "unknown"
+        },
+        "vertexColors": {
+          "kind": "unknown"
+        },
+        "blend": {
+          "kind": "unknown"
+        },
+        "unlit": {
+          "kind": "boolean",
+          "default": false
+        },
+        "points": {
+          "kind": "unknown"
+        },
+        "radius": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "unknown"
+        },
+        "closed": {
+          "kind": "unknown"
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "moveTo",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "to"
+      ]
+    },
+    "video": {
+      "properties": {
+        "x": {
+          "kind": "number",
+          "default": 0
+        },
+        "y": {
+          "kind": "number",
+          "default": 0
+        },
+        "width": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "height": {
+          "kind": "text",
+          "default": "fill"
+        },
+        "scale": {
+          "kind": "number",
+          "default": 1
+        },
+        "rotation": {
+          "kind": "number",
+          "default": 0
+        },
+        "opacity": {
+          "kind": "number",
+          "default": 1
+        },
+        "blend": {
+          "kind": "text",
+          "default": "pass-through"
+        },
+        "effects": {
+          "kind": "effects",
+          "default": []
+        },
+        "padding": {
+          "kind": "insets",
+          "default": 0
+        },
+        "pivot": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "flipHorizontal": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flipVertical": {
+          "kind": "boolean",
+          "default": false
+        },
+        "rotationX": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationY": {
+          "kind": "number",
+          "default": 0
+        },
+        "rotationZ": {
+          "kind": "number",
+          "default": 0
+        },
+        "depth": {
+          "kind": "number",
+          "default": 0
+        },
+        "perspective": {
+          "kind": "number",
+          "default": 0
+        },
+        "backfaceVisible": {
+          "kind": "boolean",
+          "default": true
+        },
+        "transformOrigin": {
+          "kind": "unknown"
+        },
+        "clip": {
+          "kind": "boolean",
+          "default": false
+        },
+        "flex": {
+          "kind": "number",
+          "default": 1
+        },
+        "gapScale": {
+          "kind": "number",
+          "default": 1
+        },
+        "column": {
+          "kind": "unknown"
+        },
+        "row": {
+          "kind": "unknown"
+        },
+        "colSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "rowSpan": {
+          "kind": "number",
+          "default": 1
+        },
+        "fill": {
+          "kind": "fills",
+          "default": []
+        },
+        "stroke": {
+          "kind": "strokes",
+          "default": []
+        },
+        "shadow": {
+          "kind": "shadows",
+          "default": []
+        },
+        "overlay": {
+          "kind": "fills",
+          "default": []
+        },
+        "start": {
+          "kind": "number",
+          "default": 0
+        },
+        "end": {
+          "kind": "number",
+          "default": 1
+        },
+        "flow": {
+          "kind": "text",
+          "default": "freeform"
+        },
+        "gap": {
+          "kind": "number",
+          "default": 0
+        },
+        "wrap": {
+          "kind": "boolean",
+          "default": false
+        },
+        "crossGap": {
+          "kind": "unknown"
+        },
+        "columns": {
+          "kind": "number",
+          "default": 1
+        },
+        "align": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "cornerRadius": {
+          "kind": "cornerRadius",
+          "default": 0
+        },
+        "cornerStyle": {
+          "kind": "cornerStyle",
+          "default": "rounded"
+        },
+        "src": {
+          "kind": "unknown"
+        },
+        "fit": {
+          "kind": "unknown"
+        },
+        "crop": {
+          "kind": "insets",
+          "default": 0
+        },
+        "zoom": {
+          "kind": "number",
+          "default": 1
+        },
+        "anchor": {
+          "kind": "alignment",
+          "default": "center"
+        },
+        "matrix": {
+          "kind": "unknown"
+        },
+        "filters": {
+          "kind": "vector",
+          "default": []
+        },
+        "playing": {
+          "kind": "boolean",
+          "default": true
+        },
+        "timestamp": {
+          "kind": "unknown"
+        },
+        "trimStart": {
+          "kind": "unknown"
+        },
+        "trimEnd": {
+          "kind": "unknown"
+        },
+        "speed": {
+          "kind": "unknown"
+        },
+        "loop": {
+          "kind": "unknown"
+        },
+        "duration": {
+          "kind": "unknown"
+        },
+        "volume": {
+          "kind": "number",
+          "default": 1
+        },
+        "muted": {
+          "kind": "boolean",
+          "default": false
+        },
+        "audioEffects": {
+          "kind": "vector",
+          "default": []
+        },
+        "bus": {
+          "kind": "unknown"
+        },
+        "segments": {
+          "kind": "vector",
+          "default": []
+        }
+      },
+      "commands": [
+        "addChildAt",
+        "effectTo",
+        "fadeTo",
+        "fillTo",
+        "flash",
+        "layoutTo",
+        "moveTo",
+        "overlayTo",
+        "play",
+        "progressTo",
+        "pulse",
+        "removeChildAt",
+        "reparent",
+        "restore",
+        "rotateTo",
+        "scaleTo",
+        "shadowTo",
+        "strokeTo",
+        "to",
+        "wiggle"
+      ]
+    }
+  },
+  "commands": [
+    "fillTo",
+    "overlayTo",
+    "save",
+    "set",
+    "shadowTo",
+    "strokeTo",
+    "to",
+    "variableSet",
+    "variableTo"
+  ]
+}
