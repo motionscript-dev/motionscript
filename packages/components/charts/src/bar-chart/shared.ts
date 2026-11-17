@@ -4,6 +4,8 @@ import {
   type DataRecord,
   type Fill,
   // Named so the emitted marks types reach these through the sdk, not core.
+  type Stroke as _Stroke,
+  type StrokeResolved as _StrokeResolved,
   type CornerRadiusResolved as _CornerRadiusResolved,
   type CornerStyleResolved as _CornerStyleResolved,
   type RectCornerRadius as _RectCornerRadius,
@@ -122,7 +124,7 @@ export function inkOn(fill: Fill): string {
   return luminance > 0.4 ? "#0a0a0a" : "white"
 }
 
-/** A bar chart's own look: its corners, and how wide the bars are. */
+/** A bar chart's own look: its corners, its outline, and how wide the bars are. */
 export const BAR_MARKS = {
   /**
    * Each corner as for a bar standing up from the baseline: the top pair round
@@ -131,6 +133,8 @@ export const BAR_MARKS = {
    */
   barCornerRadius: Types.cornerRadius({ topLeft: 10, topRight: 10, bottomRight: 0, bottomLeft: 0 }),
   barCornerStyle: Types.cornerStyle("rounded"),
+  /** The outline round every bar; empty draws none. */
+  barStroke: Types.stroke([]),
   /** How much of its category slot a bar group fills, the rest spacing the groups. */
   barWidth: Types.number(0.7, { min: 0.05, max: 1, step: 0.05, unit: "%", scale: 100 }),
   /** Space between the bars of one group, side by side. */

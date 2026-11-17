@@ -9,6 +9,8 @@ import {
   type FillResolved,
   type NodeOf,
   // Named so this component's emitted type reaches `Node2D` and its props through the sdk, not core.
+  type Stroke as _Stroke,
+  type StrokeResolved as _StrokeResolved,
   type Node2D,
   type Node2DProps as _Node2DProps,
   type RectCornerRadius as _RectCornerRadius,
@@ -115,6 +117,7 @@ export const ChartBars = component2d({
     /** As for a bar standing up from the baseline: `topLeft`/`topRight` round its far end, the bottom pair its base. */
     cornerRadius: Types.cornerRadius(8),
     cornerStyle: Types.cornerStyle("rounded"),
+    stroke: Types.stroke([]),
     /**
      * Rise of every bar in `[0, 1]` about the baseline, not each bar's own base:
      * every segment travels by the same factor, so a stack stays flush
@@ -179,6 +182,7 @@ export const ChartBars = component2d({
           ? { x: mid, y: bar.center, width: length, height: bar.thickness, ...corners }
           : { x: bar.center, y: mid, width: bar.thickness, height: length, ...corners })
         g.fill(state.fill)
+        if (state.stroke.length > 0) g.stroke(state.stroke)
         ctx.draw(g.opacity(dimAt(state, i)))
       }
     }

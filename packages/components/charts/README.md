@@ -76,7 +76,7 @@ flat (`state.style.xLabelText`):
 | grid | `horizontalGrid` (a 2px `white/15` stroke), `verticalGrid` (none) | line, bar |
 | axes | `axisStroke` (none), `showXAxis`, `xLabelText`, `xTitleText`, `showYAxis`, `yLabelText`, `yTitleText` | line, bar |
 | grid | `gridShape`, `gridLevels`, `gridStroke` (rings), `spokeStroke` (spokes), `spokeLabels`, `spokeText` | radar |
-| marks | the chart's own: `strokeWidth`, `curve`, `dots`, `area`, `barCornerRadius`, `barCornerStyle`, `innerRadius`, `sweep`, ... | every chart |
+| marks | the chart's own: `strokeWidth`, `curve`, `dots`, `area`, `barCornerRadius`, `barCornerStyle`, `barStroke`, `innerRadius`, `sweep`, ... | every chart |
 | labels | `values` and `valueText` (line, bar); `labelPlacement`, `labelText`, `valueText`, `centerText` (pie); `ringLabels`, `labelText`, `centerText` (radial) | |
 
 Every run of text is a `Types.typography` field in the group of the part it labels (face, size, weight, style,
@@ -85,7 +85,7 @@ rest of the field's default. The chart places and aligns the text itself.
 `barCornerRadius` and `barCornerStyle` read as for a bar standing up: the top
 pair round its far end, the bottom pair its base, turned with the bar.
 
-A line is a stroke and an area is a fill: `horizontalGrid`, `verticalGrid`, `axisStroke`, `gridStroke`
+A line is a stroke and an area is a fill: `barStroke` (every bar's outline), `horizontalGrid`, `verticalGrid`, `axisStroke`, `gridStroke`
 and `spokeStroke` are `Types.stroke` entries (weight, colour, dash and caps; empty draws
 nothing), and a radial's `track` is a `Types.fill` (empty draws no track). A series' `label`
 is optional; the legend shows `label || field`.

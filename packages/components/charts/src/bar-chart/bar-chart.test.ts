@@ -556,6 +556,18 @@ describe("BarChart: style", () => {
     })
   })
 
+  it("outlines every bar with barStroke, and none by default", () => {
+    const strokes = (node: BarChart) =>
+      partsOf(node).bars.flatMap((set) => {
+        const ctx = new Recorder()
+        ctx.execute(() => set.render(ctx))
+        return ctx.ops().flatMap((ops) => ops.filter((op) => op.kind === "stroke"))
+      })
+    expect(strokes(chart())).toEqual([])
+    const outlined = chart({ style: { barStroke: { weight: 2, fill: "#ffffff" } } })
+    expect(strokes(outlined).length).toBeGreaterThan(0)
+  })
+
   it("rules the value ticks by default, as strokes: horizontal on, vertical and axis off", () => {
     const style = new BarChart({}).style
     expect(style.horizontalGrid).toMatchObject([{ weight: 2 }])

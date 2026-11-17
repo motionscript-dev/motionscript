@@ -369,6 +369,7 @@ export const BarChart = component2d({
           fill: () => seriesFill(style(), s, i),
           cornerRadius: () => style().barCornerRadius,
           cornerStyle: () => style().barCornerStyle,
+          stroke: () => style().barStroke,
           growth: () => state.growth,
           dims: () => categoryDims(state),
           // A figure past a stack's end prints the stack's total; a percent stack has none worth printing, so prints its shares inside.
