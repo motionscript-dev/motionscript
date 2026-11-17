@@ -69,23 +69,38 @@ function pathsOf(pass: Pass, props: Record<string, unknown>) {
 const PAINT = { fill: "#1d3557", overlay: "#ffffff40", stroke: { weight: 3, fill: "#f1faee" } }
 
 describe("GeoBorder start and end", () => {
-    // `start` and `end` draw the whole node on: the fill and the overlay are
-    // trimmed along with the line, so a filled node grows as partial polygons
-    // closed by a chord, and a stroke-only one grows as an outline. Trimming the
-    // line alone would need its own prop.
-    it.each(["fill", "overlay", "stroke"] as const)("trims what the %s pass draws", (pass) => {
-        const whole = pathsOf(pass, PAINT)
-        expect(whole.length).toBeGreaterThan(0)
-        for (const op of whole) expect(op.end ?? 1).toBe(1)
-
-        const half = pathsOf(pass, { ...PAINT, end: 0.5 })
+    // `start` and `end` draw the borders on; the fill and the overlay stay whole,
+    // so a filled region never shows partial polygons closed by a chord.
+    it("trims what the stroke pass draws", () => {
+        expect(pathsOf("stroke", PAINT).every((op) => (op.end ?? 1) === 1)).toBe(true)
+        const half = pathsOf("stroke", { ...PAINT, end: 0.5 })
         expect(half.length).toBeGreaterThan(0)
-        for (const op of half) expect(op.end).toBeLessThanOrEqual(1)
         expect(half.some((op) => op.end !== undefined && op.end < 1)).toBe(true)
+        expect(pathsOf("stroke", { ...PAINT, start: 0.6, end: 0.4 })).toHaveLength(0)
     })
 
-    it("draws nothing for a fill when start is not below end", () => {
-        expect(pathsOf("fill", { ...PAINT, start: 0.6, end: 0.4 })).toHaveLength(0)
-        expect(pathsOf("stroke", { ...PAINT, start: 0.6, end: 0.4 })).toHaveLength(0)
+    it.each(["fill", "overlay"] as const)("leaves what the %s pass draws whole", (pass) => {
+        const whole = pathsOf(pass, PAINT)
+        expect(whole.length).toBeGreaterThan(1)
+        expect(pathsOf(pass, { ...PAINT, end: 0.5 })).toEqual(whole)
+        expect(pathsOf(pass, { ...PAINT, start: 0.6, end: 0.4 })).toEqual(whole)
+    })
+})
+
+describe("GeoBorder's fill", () => {
+    it("is one shape measured against the node's box, so a pattern runs on across parts", () => {
+        const node = new GeoBorder({ iso: "FR", frame: "all", detail: 0.3, fill: "#1d3557" } as never)
+        node.attach({
+            assets: new ManifestAssetCatalog({ image: {}, video: {}, audio: {}, font: {} }),
+            context: ContextMap.EMPTY,
+            time: 0,
+        })
+        const ctx = new Recorder()
+        node.layout({ x: 0, y: 0, width: 200, height: 120 }, ctx)
+        ctx.execute(() => node.render(ctx))
+        const ops = ctx.draws.find((draw) => draw.some((op) => op.kind === "path"))!
+        expect(ops.filter((op) => op.kind === "fill")).toHaveLength(1)
+        const corners = ops.filter((op) => op.kind === "path").at(-1) as unknown as { state: { data: string } }
+        expect(corners.state.data).toBe("M-100 -60L-100 -60M100 60L100 60")
     })
 })

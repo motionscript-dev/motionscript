@@ -1,8 +1,9 @@
 # @motionscript/geography
 
 Geography for [Motion Script](https://motionscript.dev): `GeoBorder`, country and
-state outlines by ISO 3166 code. Hand `NODES` to the engine through your
-project entry, and a document can name `geoBorder`:
+state outlines by ISO 3166 code, and `GeoGlobe`/`GeoGlobe3d`, the world on a
+sphere. Hand `NODES` to the engine through your project entry, and a document
+can name `geoBorder`, `geoGlobe` and `geoGlobe3d`:
 
 ```ts
 // src/project.ts
@@ -25,11 +26,14 @@ npm install @motionscript/geography @motionscript/sdk
 
 ## GeoBorder
 
-- **`start` and `end` trim the fill and the overlay as well as the outline.**
-  Each path is cut to the part of `[start, end]` that falls inside it, so a
-  filled border drawn on with `end` from 0 to 1 grows as partial polygons, each
-  closed by a straight chord, and a stroke-only one grows as a line. There is no
-  way to trim the stroke alone.
+- **`start` and `end` draw the borders on and leave the fill whole.** Each
+  border is cut to the part of `[start, end]` that falls inside it; the fill and
+  the overlay are never trimmed, so draw the outline on with `progressTo` and
+  fade the land in with `fillTo`.
+- **The fill is one shape measured against the node's box.** Every part fills
+  together, with the box as the fill's bounds, so a `grid` or a gradient runs on
+  across borders and islands and does not move when the selection or its
+  `detail` changes; a square box gives a grid square cells.
 - **Fill and stroke are separate geometry.** The fill is each kept polygon; the
   stroke draws each arc once, so a border two selected regions share is stroked
   once, and `stroke.align` is forced to the centre. `clipSelf` is the layout box,
@@ -52,24 +56,38 @@ npm install @motionscript/geography @motionscript/sdk
   Svalbard in `NO`); selecting both would fill it twice and drop its coast from
   `borders: "outline"` as a shared border.
 
-## GeoGlobe
+## GeoGlobe and GeoGlobe3d
 
-The whole world (`GEO_WORLD`, every country file) on an orthographic sphere
-inscribed in the node's box, turned so `longitude`/`latitude` faces the viewer.
+The whole world (`GEO_WORLD`, every country file) painted on a sphere, turned
+so `longitude`/`latitude` faces the viewer. `geoGlobe` is a 2D node: the sphere
+is its box's inscribed circle, seen square-on, so it drops onto any board.
+`geoGlobe3d` is the same globe as a node of a `canvas3d` scene, `radius` scene
+units across, facing +z before its own rotation tilts it.
 
-- **Paints:** `fill` and `stroke` are the sphere (ocean and rim), `land` and
-  `coast` the countries (`borders` picks every border or the coasts alone),
-  `graticule` the parallels and meridians every `graticuleStep` degrees (empty
-  draws none), and `highlightFill` the countries in `highlight`. `start`/`end`
-  trim each of the four drawings along its own length.
-- **Commands:** `landTo`, `coastTo`, `graticuleTo` and `highlightFillTo` tween its own
-  paints, as `fillTo` and `strokeTo` do the sphere's. `turnTo` takes the shorter way round to a longitude and latitude,
-  either of which may be left out; `spin` turns it by any number of degrees,
-  positive the way the Earth turns.
-- **Cost:** the simplified world is cached by `detail` apart from the angle, so a
-  turning globe only projects it again each frame (about 10 ms at the
-  default `detail`); a still one costs nothing. It loads all 252 country files
-  (about 6 MB), and like `GeoBorder` draws once they have landed.
+- **Paints:** `fill` is the ocean, `land` and `coast` the countries (`borders`
+  picks every border or the coasts alone), `graticule` the parallels and
+  meridians every `graticuleStep` degrees, cut where they cross land, and
+  `highlightFill` the countries in `highlight`. `geoGlobe`'s `stroke` is its rim.
+  `start`/`end` draw the coast and the graticule on, each along its own length.
+- **The land is a picture on the sphere**, painted once (4096 × 2048,
+  equirectangular), so a grid or a gradient turns with the countries. Every
+  land part fills against one 360° square, so a `grid` has square cells in
+  degrees and lines up across countries; its cells narrow toward the poles,
+  as the parallels do. A fill's pixels and a line's `weight` are screen pixels
+  at the middle of a `geoGlobe`, and thousandths of a scene unit on a
+  `geoGlobe3d`, as for every 3D line.
+- **Looks:** `shading: "flat"` shows every colour exactly as set; `"lit"`
+  shades the ball under a light. `farSide: "shown"` sees through a translucent
+  ocean to the far side, a glass globe; `"hidden"` keeps it out of sight even
+  with no ocean at all.
+- **Commands:** `landTo`, `coastTo`, `graticuleTo` and `highlightFillTo` tween
+  its own paints, as `fillTo` does the ocean. `turnTo` takes the shorter way
+  round to a longitude and latitude, either of which may be left out; `spin`
+  turns it by any number of degrees, positive the way the Earth turns.
+- **Cost:** the picture and the lines are built once and kept while their
+  paints are unchanged, so turning only turns the sphere. A paint tween paints
+  the picture again each frame. It loads all 252 country files (about 6 MB),
+  and like `GeoBorder` draws once they have landed.
 
 ### Data sources
 

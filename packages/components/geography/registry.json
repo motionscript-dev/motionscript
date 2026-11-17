@@ -14,10 +14,18 @@
     },
     {
       "name": "geo-globe",
-      "description": "The whole world on an orthographic sphere that turns with a command, with coasts, a graticule and highlighted countries.",
+      "description": "The whole world painted on a sphere, square-on in its box, that turns with a command: land, coasts, a graticule over the sea and highlighted countries.",
       "root": "src/globe",
       "files": [
         "geo-globe.ts"
+      ]
+    },
+    {
+      "name": "geo-globe3d",
+      "description": "The same globe as a node in a 3D scene: placed, tilted and lit with the rest of it.",
+      "root": "src/globe",
+      "files": [
+        "geo-globe3d.ts"
       ]
     }
   ]

@@ -3,7 +3,6 @@ import {
     geoBounds,
     geoConicEqualArea,
     geoEquirectangular,
-    geoGraticule,
     geoMercator,
     geoOrthographic,
     geoPath,
@@ -488,119 +487,28 @@ export function geoGeometry(request: GeoGeometryRequest): GeoGeometry | null {
     return geometry
 }
 
-// Projected at this scale and then normalised, so d3's adaptive resampling
-// (measured in output units) still bends a long edge round the sphere.
-const GLOBE_SCALE = 512
-
-const RAD = Math.PI / 180
-
-/** A spherical cap holding a run of points: its centre as a unit vector, and its angular radius. */
-interface Cap {
-    x: number
-    y: number
-    z: number
-    radius: number
-}
-
-function capOf(points: readonly LonLat[]): Cap {
-    let x = 0
-    let y = 0
-    let z = 0
-    const vectors = points.map(([lon, lat]) => {
-        const cosLat = Math.cos(lat * RAD)
-        const v = [cosLat * Math.cos(lon * RAD), cosLat * Math.sin(lon * RAD), Math.sin(lat * RAD)] as const
-        x += v[0]
-        y += v[1]
-        z += v[2]
-        return v
-    })
-    const length = Math.hypot(x, y, z)
-    // A run spread round the whole sphere has no centre: it is never culled.
-    if (length < 1e-9) return { x: 1, y: 0, z: 0, radius: Math.PI }
-    x /= length
-    y /= length
-    z /= length
-    let radius = 0
-    for (const v of vectors) radius = Math.max(radius, Math.acos(Math.max(-1, Math.min(1, v[0] * x + v[1] * y + v[2] * z))))
-    return { x, y, z, radius }
-}
-
-const caps = new WeakMap<GeoOutlines, { polygons: Cap[]; lines: Cap[] }>()
-
-function capsOf(outlines: GeoOutlines) {
-    let found = caps.get(outlines)
-    if (!found) {
-        found = { polygons: outlines.polygons.map((polygon) => capOf(polygon[0])), lines: outlines.lines.map(capOf) }
-        caps.set(outlines, found)
-    }
-    return found
-}
-
-/** Whether any of a cap can show on the hemisphere centred on `view` (with a degree to spare). */
-const nearSide = (cap: Cap, view: readonly [number, number, number]) =>
-    Math.acos(Math.max(-1, Math.min(1, cap.x * view[0] + cap.y * view[1] + cap.z * view[2]))) < Math.PI / 2 + cap.radius + RAD
-
-/** What of `outlines` can show facing `view`: d3 projects and clips every point it is given, near side or not. */
-function facing(outlines: GeoOutlines, view: readonly [number, number, number]): GeoOutlines {
-    const { polygons, lines } = capsOf(outlines)
-    return {
-        polygons: outlines.polygons.filter((_, i) => nearSide(polygons[i], view)),
-        lines: outlines.lines.filter((_, i) => nearSide(lines[i], view)),
-        bytes: 0,
-    }
-}
-
-export interface GeoGlobeRequest {
-    land: GeoOutlines
-    highlight: GeoOutlines | null
-    /** The point that faces the viewer, in degrees. */
-    longitude: number
-    latitude: number
-    /** Degrees between graticule lines; 0 draws none. */
-    graticuleStep: number
-}
-
-/** A globe's drawing in unit space: the sphere's diameter is 1, centred on the origin, y up. */
-export interface GeoGlobeGeometry {
-    land: GeoContour[]
-    coast: GeoContour[]
-    highlight: GeoContour[]
-    graticule: GeoContour[]
-    landLength: number
-    coastLength: number
-    highlightLength: number
-    graticuleLength: number
-}
-
-/** The near side of the sphere turned to face `longitude`/`latitude`, cut at the horizon. */
-export function geoGlobeGeometry(request: GeoGlobeRequest): GeoGlobeGeometry {
+/**
+ * `outlines` on an equirectangular world map in unit space: 360° of longitude spans 1 and 180° of latitude 0.5,
+ * centred on the origin, y up. d3 cuts each ring at the antimeridian and closes a ring round a pole along the map's
+ * edge, so Antarctica fills to the bottom.
+ */
+export function geoWorldMap(outlines: GeoOutlines): GeoContour[] {
+    const cached = worldMaps.get(outlines)
+    if (cached) return cached
     const frame: Frame = {
-        projection: geoOrthographic().scale(GLOBE_SCALE).translate([0, 0]).rotate([-request.longitude, -request.latitude]),
+        projection: geoEquirectangular().scale(1 / (2 * Math.PI)).translate([0, 0]),
         centerX: 0,
         centerY: 0,
-        size: 2 * GLOBE_SCALE,
+        size: 1,
         width: 1,
-        height: 1,
+        height: 0.5,
     }
-    const step = request.graticuleStep
-    const cosLat = Math.cos(request.latitude * RAD)
-    const view = [cosLat * Math.cos(request.longitude * RAD), cosLat * Math.sin(request.longitude * RAD), Math.sin(request.latitude * RAD)] as const
-    const near = facing(request.land, view)
-    const land = project(frame, multiPolygon(near.polygons), true)
-    const coast = near.lines.flatMap((line) => project(frame, lineString(line), false))
-    const highlight = request.highlight ? project(frame, multiPolygon(facing(request.highlight, view).polygons), true) : []
-    const graticule = step > 0 ? project(frame, geoGraticule().step([step, step])(), false) : []
-    return {
-        land,
-        coast,
-        highlight,
-        graticule,
-        landLength: totalLength(land),
-        coastLength: totalLength(coast),
-        highlightLength: totalLength(highlight),
-        graticuleLength: totalLength(graticule),
-    }
+    const contours = project(frame, multiPolygon(outlines.polygons), true)
+    worldMaps.set(outlines, contours)
+    return contours
 }
+
+const worldMaps = new WeakMap<GeoOutlines, GeoContour[]>()
 
 export function clearGeoGeometry(): void {
     frames.clear()

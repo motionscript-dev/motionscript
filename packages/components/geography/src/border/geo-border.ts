@@ -61,6 +61,18 @@ interface Selected {
     readonly detail: number
 }
 
+/**
+ * Every region as one shape, with two empty points at the box's corners: a fill measures itself against the node's box,
+ * so a pattern lines up across borders and stays put whatever the selection or its detail.
+ */
+function land(shape: Drawn, size: Size2D): Graphics2D {
+    const g = new Graphics2D()
+    for (const part of shape.fills) pathOp(g, part, size, 0, 1)
+    const x = size.width / 2
+    const y = size.height / 2
+    return g.path({ data: `M${-x} ${-y}L${-x} ${-y}M${x} ${y}L${x} ${y}`, centerBounds: [-x, -y, x, y] })
+}
+
 /** The selection's outlines cut into paths at `size`, or `null` while there is nothing to draw. */
 function drawnOf(state: Selected, size: Size2D): Drawn | null {
     const own = keptBy(state)
@@ -111,7 +123,9 @@ function drawnOf(state: Selected, size: Size2D): Drawn | null {
  * draws half a country. Fill and stroke are separate geometry: the fill is each
  * region's polygons, the stroke is every border once, which is why a border two
  * selected regions share is not drawn twice and why `stroke.align` does not
- * apply.
+ * apply. The fill is one shape measured against the node's box, so a grid or a
+ * gradient runs on across borders; `start`/`end` draw the borders on and leave
+ * the fill whole (fade it in with `fillTo`).
  */
 export const GeoBorder = component2d({
     key: "geoBorder",
@@ -141,14 +155,10 @@ export const GeoBorder = component2d({
 
         ctx.inFront(() => {
             const shape = drawn()
-            if (!shape || shape.fills.length === 0) return
-            const g = new Graphics2D()
-            for (const part of shape.fills) {
-                if (!pathOp(g, part, size, start, end)) continue
-                if (shadow.length > 0) g.shadow(shadow)
-                g.fill(fill)
-            }
-            ctx.draw(g)
+            if (!shape || shape.fills.length === 0 || fill.length === 0) return
+            const g = land(shape, size)
+            if (shadow.length > 0) g.shadow(shadow)
+            ctx.draw(g.fill(fill))
         })
 
         // The box, not the outline, confines the children and is what picking
@@ -160,11 +170,7 @@ export const GeoBorder = component2d({
             const overlay = state.overlay as FillResolved[]
             if (overlay.length > 0) {
                 const shape = drawn()
-                if (shape) {
-                    const g = new Graphics2D()
-                    for (const part of shape.fills) if (pathOp(g, part, size, start, end)) g.fill(overlay)
-                    ctx.draw(g)
-                }
+                if (shape && shape.fills.length > 0) ctx.draw(land(shape, size).fill(overlay))
             }
 
             const stroke = state.stroke as StrokeResolved[]
