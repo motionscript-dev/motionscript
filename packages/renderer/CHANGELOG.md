@@ -1,5 +1,16 @@
 # @motionscript/renderer
 
+## 0.1.1-alpha.5
+
+### Patch Changes
+
+- 5edc8b5: - **A conic gradient's `startAngle` rotates it.** The seam (the first stop) sits `startAngle` degrees clockwise from the box's three o'clock and the ramp runs a full turn from there. It used to stay at three o'clock, with the angles before `startAngle` clamped to the first stop and the ramp squeezed into what was left of the turn.
+- e0283cc: - **Large, detailed paths scale smoothly.** A `scaleTo` on a map of tens of thousands of points keeps its outlines: one made only of lines is built once for every scale, a curved one built for a larger scale also serves smaller ones, and reaching a new power of two of scale builds only the bands the shader reads. In a 120k-point test map, CPU time per scaling frame went from 42 ms to under 1 ms.
+  - **Thin strokes keep their authored width** unless they run round the renderer's own rect or ellipse, or along horizontal and vertical lines only. Those still sit on whole device pixels; any other stroke glides while scaling, where it used to step between 1 and 2 px. A stroke thinner than a device pixel fades with its coverage, where it used to draw 1 px wide.
+  - When the geometry cache is full it evicts the least recently used outlines, where it used to drop everything and rebuild the frame.
+  - `stats()` reports `banded`, the band sets built in the last frame.
+- 0b752d6: - **A 3D texture's `anisotropy` is drawn**: above 1 the sampler filters anisotropically, rounded up to 4x, 8x or 16x (the most WebGPU allows), so a texture seen at a glancing angle stays sharp instead of blurring. It needs linear filters; a `nearest` texture ignores it. It was accepted and never applied before.
+
 ## 0.1.1-alpha.4
 
 ### Patch Changes

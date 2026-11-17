@@ -1,5 +1,11 @@
 # @motionscript/charts
 
+## 0.1.1-alpha.5
+
+### Patch Changes
+
+- 8df3f21: - **`BarChart`'s `barStroke`**: an outline round every bar, a `Types.stroke` in the marks group of its style (empty, the default, draws none), so a patterned bar reads against the board.
+
 ## 0.1.1-alpha.4
 
 ## 0.1.1-alpha.3
