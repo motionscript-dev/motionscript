@@ -1,0 +1,6 @@
+{"kind":"composition","duration":6,"variables":[],"nodes":[
+{"id":"","type":"canvas2d","parentId":null,"layerOrder":0,"props":{"fill":[{"type":"solid","color":[0.05,0.06,0.09,1]}]}},
+{"id":"c3","type":"canvas3d","parentId":"","layerOrder":0,"props":{"width":1920,"height":1080,"orbit":90,"elevation":0,"zoom":6.5,"fov":35}},
+{"id":"a","type":"geoGlobe3d","parentId":"c3","layerOrder":0,"props":{"x":-1.4,"rotationZ":-23.4,"shading":"lit","fill":[{"type":"solid","color":[0.11,0.27,0.45,1]}],"land":[{"type":"solid","color":[0.36,0.55,0.32,1]}],"coast":[{"weight":4,"fill":"#e8f0e0"}],"graticule":[{"weight":3,"fill":"#ffffff30"}],"longitude":20,"latitude":10,"highlight":["BR","IN"],"highlightFill":"#f2c14e"}},
+{"id":"b","type":"geoGlobe3d","parentId":"c3","layerOrder":1,"props":{"x":1.4,"farSide":"shown","fill":[{"type":"solid","color":[0.6,0.8,1,0.12]}],"land":[{"type":"solid","color":[0.75,0.9,1,0.35]},{"type":"grid","divisions":120,"strokeWidth":2,"color":[1,1,1,0.5]}],"coast":[{"weight":3,"fill":"#cfe8ff"}],"graticule":[{"weight":2,"fill":"#ffffff40"}],"longitude":-60,"latitude":20}}
+],"commands":[{"id":"s1","type":"spin","targetId":"a","at":0,"duration":6,"easing":{"kind":"linear"},"args":{"degrees":120}},{"id":"s2","type":"spin","targetId":"b","at":0,"duration":6,"easing":{"kind":"linear"},"args":{"degrees":-90}}]}
