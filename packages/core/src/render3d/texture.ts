@@ -25,7 +25,7 @@ export interface TextureOptions3D {
     center?: Vector2 | readonly [number, number];
     magFilter?: TextureFilter3D;
     minFilter?: TextureFilter3D;
-    /** Sharpness at grazing angles. Clamped to the GPU's maximum. */
+    /** Sharpness at grazing angles: 1 is off, and anything above is rounded up to 4, 8 or 16 (the most WebGPU allows). Needs linear filters. */
     anisotropy?: number;
     flipY?: boolean;
     colorSpace?: TextureColorSpace3D;

@@ -441,7 +441,13 @@ function writeMap(w: Writer, map: Texture3D | undefined, textures: TextureTable 
     // plain data textures keep three's DataTexture default, false.
     const flip = t.flipY ?? !("data" in t);
     w.u((WRAP[t.wrapS ?? "clamp"] ?? 0) | ((WRAP[t.wrapT ?? "clamp"] ?? 0) << 2) | (flip ? 16 : 0)
-        | (t.magFilter === "nearest" ? 32 : 0) | (t.minFilter === "nearest" ? 64 : 0));
+        | (t.magFilter === "nearest" ? 32 : 0) | (t.minFilter === "nearest" ? 64 : 0) | (anisotropyLevel(t.anisotropy) << 7));
+}
+
+/** `anisotropy` as the sampler's two bits: 1x, or rounded up to 4x, 8x or 16x (the most WebGPU allows). */
+function anisotropyLevel(anisotropy: number | undefined): number {
+    const a = anisotropy ?? 1;
+    return a <= 1 ? 0 : a <= 4 ? 1 : a <= 8 ? 2 : 3;
 }
 
 function writeMaterial(w: Writer, m: Material3D, report: EncodeReport, textures?: TextureTable): void {

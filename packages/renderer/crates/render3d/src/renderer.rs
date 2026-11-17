@@ -564,6 +564,8 @@ impl Shared3D {
                     min_filter: filter(key & 32 != 0),
                     mipmap_filter: if key & 32 != 0 { wgpu::MipmapFilterMode::Nearest } else { wgpu::MipmapFilterMode::Linear },
                     lod_max_clamp: if key & 32 != 0 { 0.0 } else { 32.0 },
+                    // WebGPU takes anisotropy only with every filter linear.
+                    anisotropy_clamp: if key & 48 != 0 { 1 } else { [1, 4, 8, 16][(key >> 6) as usize & 3] },
                     ..Default::default()
                 })
             })
@@ -661,7 +663,7 @@ impl Renderer3D {
     }
 
     fn sampler_key(m: &MapDesc) -> u8 {
-        m.wrap_s | (m.wrap_t << 2) | ((m.mag_nearest as u8) << 4) | ((m.min_nearest as u8) << 5)
+        m.wrap_s | (m.wrap_t << 2) | ((m.mag_nearest as u8) << 4) | ((m.min_nearest as u8) << 5) | (m.anisotropy << 6)
     }
 
     fn map_group(&mut self, key: MapKey) {

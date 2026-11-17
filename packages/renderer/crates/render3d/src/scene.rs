@@ -100,6 +100,8 @@ pub struct MapDesc {
     pub flip_y: bool,
     pub mag_nearest: bool,
     pub min_nearest: bool,
+    /// Anisotropic filtering: 0 off, then 4x, 8x, 16x.
+    pub anisotropy: u8,
 }
 
 #[derive(Clone, Debug)]
@@ -591,6 +593,7 @@ fn read_map(r: &mut Reader) -> Result<Option<MapDesc>, String> {
         flip_y: map_flags & 16 != 0,
         mag_nearest: map_flags & 32 != 0,
         min_nearest: map_flags & 64 != 0,
+        anisotropy: ((map_flags >> 7) & 3) as u8,
     }))
 }
 
