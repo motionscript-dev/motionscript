@@ -1,5 +1,29 @@
 # @motionscript/geography
 
+## 0.2.0
+
+### Patch Changes
+
+- bb3234f: **Breaking:** `GeoBorder`'s `start`/`end` draw only its borders on, leaving the fill and the overlay whole (they used to be trimmed too, into partial polygons closed by a chord). Its fill is now one shape measured against the node's box, so a `grid` or a gradient lines up across borders instead of restarting in each part.
+
+  Migration: a stored document needs nothing done to it, but a border that drew its fill on with `progressTo` now shows the whole fill from the start: fade it in with `fillTo` (or `fadeTo`) beside the `progressTo`. A fill pattern sized for one region is now measured against the whole node box.
+
+- b823495: - **`GeoGlobe`** (`geoGlobe`) and **`GeoGlobe3d`** (`geoGlobe3d`): the whole world painted on a sphere, a 2D node square-on in its box and the same globe as a node of a 3D scene. The land is a picture on the sphere, so a pattern or a gradient turns with the countries, and every land part fills against one 360° square (a `grid` lines up across countries). `turnTo` takes the shorter way to a longitude and latitude and `spin` turns any number of degrees. `fill` is the ocean (and `geoGlobe`'s `stroke` its rim); `land`, `coast`, `graticule` (every `graticuleStep` degrees, cut where it crosses land) and `highlightFill` over the countries in `highlight` are its own paints, each with a command to tween it. `shading` is `flat` or `lit`, and `farSide: "shown"` makes a glass globe of a translucent ocean. `GEO_WORLD` lists every country file, for a world `GeoBorder` too.
+  - **`GeoBorder` draws a selection once all its files have landed**, keyed on those files alone: a world selection no longer refits as each of its 252 files arrives, nor when another node's file lands.
+  - **A polygon two selected regions both carry is filled once** (Guadeloupe in `FR` and `GP`), and its coast stays in `borders: "outline"`.
+  - `geoOutlines` (a selection simplified, before projection), `geoWorldMap` (on an equirectangular map), the globe's scene builder `drawGlobe` with its paints `globeState`, and the path helpers `geoChunks`, `geoChunkPath` and `geoChoice` are exported for components that draw geography.
+- e279864: **Breaking:** the component kits drop exports nothing used.
+
+  - **math:** the hand-mirrored `*Props` interfaces of 24 components (`AngleMarkProps`, `CurlyBraceProps`, `EmphasisMarkProps`, `CurveAreaProps`, `DropLinesProps`, `PlotPointProps`, `RiemannSumProps`, `TangentLineProps`, `VectorArrowProps`, `PointsPlotProps`, `StreamLinesProps`, `TracedPathProps`, `VectorFieldProps`, `NetworkGraphProps`, `SampleSpaceProps`, `NumberLineProps`, `NumberPlaneProps`, `PolarPlaneProps`, `LatexMatrixProps`, `Axes3dProps`, `CurvePlot3dProps`, `PlotPoint3dProps`, `SurfacePlot3dProps`, `VectorArrow3dProps`), `FILL_PAINT`, `STROKE_PAINT`, `OUTLINE_TRIM` and `spaceOf` from `./kit`, and `LatexPathResult.commands`.
+  - **charts:** `LineChartProps`, `BarChartProps`, `PieChartProps`, `PieRingProps`, `PieLegendProps`, `ChartBarsProps`, `CategoryAxisProps`, `ChartBorderProps`, `ChartCanvasProps`, `ChartLegendProps`, `VerticalAxisProps`, and from `./kit` `axisTweenTarget`, `resolvePalettePaint`, `legendShows`, `MarkerLabel`, `clampUnit` (use the SDK's `clamp`). `niceStep` and `enterBudget` stay reachable from `@motionscript/sdk/component`.
+  - **audio:** `FullWaveformProps`, `LiveWaveformProps`, and `clamp01` from `./kit`.
+  - **patterns:** `DotGridPatternProps`, `GridPatternProps`, `LineGridPatternProps`.
+  - **code:** `DEFAULT_THEMES`, `splitTokensAt`, `LINE_ALIGN_CELLS`, `EDIT_ALIGN_CELLS`, and `phasesFor` (use `defaultCodePhases`). `ensureHighlighter`, `loadCodeLanguage`, `initSyntaxHighlighter` and `canHighlight` lose their ignored theme argument.
+  - **grids:** the `findNode2D` and `frameIn` re-exports (import them from `@motionscript/sdk`), `ArrangementKind`, `PathGridShape`, `RectangularGridProps`, `RadialGridProps`, `PathGridProps`, `SphereGridProps`.
+  - **geography:** `GeoBorderProps`.
+
+  Migration: no stored document is affected; only TypeScript imports change. Code that imported a removed `*Props` interface states the props it passes inline, and code that used a removed helper uses the replacement named beside it above.
+
 ## 0.1.1-alpha.5
 
 ### Patch Changes

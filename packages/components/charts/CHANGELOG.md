@@ -1,5 +1,52 @@
 # @motionscript/charts
 
+## 0.2.0
+
+### Patch Changes
+
+- 8df3f21: - **`BarChart`'s `barStroke`**: an outline round every bar, a `Types.stroke` in the marks group of its style (empty, the default, draws none), so a patterned bar reads against the board.
+- 3050906: **Breaking:** every run of text a chart draws gets its own text style, the palette becomes `seriesFills`, and a chart has a background for the whole chart beside one for its grid.
+
+  - **`Types.typography(textStyle)`** (core, sdk): one text style as an entry (face, size, weight, style, spacing, paint). A partial is laid over the default or the value it replaces, so `{ fill }` recolours and keeps the rest; it tweens key by key. `describe()` reports `kind: "typography"` with its default.
+  - **Chart text** (charts): `foreground`, `muted`, `fontFamily`, `fontSize` and `fontWeight` are gone. Line and bar charts have `xLabelText`, `xTitleText`, `yLabelText`, `yTitleText`, `valueText` and `legendText`; a pie `labelText`, `valueText`, `centerText` and `legendText`; a radar `spokeText`; a radial `labelText` and `centerText`. Spacing that followed the one size now follows the text it sits beside.
+  - **Series fills**: `palette` is `seriesFills` (group `series`), each entry a fill that may stack paints.
+  - **Backgrounds**: `background` (group `background`) paints behind the whole chart on every chart; line, bar and radar charts add `gridBackground` for the plot (inside the web on a radar). A line or bar chart's old `background`, which painted the plot, is now `gridBackground`.
+  - **Bar corners**: `barRadius` is `barCornerRadius`, a `Types.cornerRadius` read as for a bar standing up (top pair at the far end, bottom pair at the base), with `barCornerStyle` (rounded or angled) beside it. `barWidth` reports itself as a percentage.
+  - Each chart's `migrate` hook (`migrateChartStyle`) carries a stored style across: the palette, the two inks and the shared type become the new fields as each chart derived them, a plot background becomes `gridBackground`, and a `barRadius` keeps rounding only the far end.
+
+  Migration: a stored document needs nothing done to it. Each chart's `migrate` hook converts its stored `style` (and a `to` command's) as the document opens: `palette` to `seriesFills`, `foreground`, `muted` and the font fields to the text fields as the chart derived them (titles 1.1× and a weight heavier, values as before), a line, bar or radar chart's `background` to `gridBackground`, and a number `barRadius` to `barCornerRadius` with only the top pair rounded. Code that sets these fields by hand, or a host that reads a chart's stored `style`, uses the new names; `migrateChartStyle(layout)` converts a style object the same way.
+
+- 2291209: **Breaking:** a chart's text fields sit in the style group of the part they label, so a host draws each beside it rather than in one text section: axis text in a new `axes` group with `axisStroke`, `showXAxis` and `showYAxis` (which leave `grid`), `valueText` (and a pie's or radial's other labels) in `labels`, `legendText` in `legend`, a radar's `spokeText` in `grid`. The kit exports `CARTESIAN_AXES` and `VALUE_TEXT` in place of `CARTESIAN_TEXT` and `LEGEND_TEXT` (`CHART_LEGEND` now holds `legendText`), and the radar's `RADAR_TEXT` is folded into `RADAR_GRID`.
+
+  Migration: no stored document is affected; field names and values are unchanged. Code that spread `CARTESIAN_TEXT`, `LEGEND_TEXT` or `RADAR_TEXT` into a style spreads `CARTESIAN_AXES`, `VALUE_TEXT`, `CHART_LEGEND` or `RADAR_GRID` instead.
+
+- 1810e8a: **Breaking:** the charts are rebuilt around one `style` entry, and the kit gains a radar and a radial chart.
+
+  - **One look entry.** Every chart's `theme` (and its `DEFAULT_*_THEME`, `resolve*Theme`, `lerp*Theme`) is gone, along with `showLegend` and the bar chart's `showValues`. Each chart has `style: Types.style("chart", …)` instead, with fields grouped as colours (`palette`, `foreground`, `muted`, `background`), text (`fontFamily`, `fontSize`, `fontWeight`), grid (`horizontalGrid`, `verticalGrid` and `axisStroke` on a line or bar chart, `gridStroke` and `spokeStroke` on a radar, all strokes, so weight, colour, dash and caps come with them and an empty one draws nothing), marks, labels and legend (`legend`: bottom, top, right or none; `swatch`: square, circle or line). A chart takes only the fields it draws, and one style dresses any chart. `CHART_STYLE_PRESETS` (midnight, paper, ember, neon, ocean, sunset, pastel, mono) are partial looks to spread in; `to({ style })` tweens a restyle.
+  - **Line and area are one chart.** `lineChart` draws curves `smooth` (monotone, never overshooting), `linear` or `step`, optional dots, and `style.area` of `none`, `solid` or `gradient` under each line. `stack` is `none`, `stacked` or `percent`. Up to twelve categorical or dated samples each get a tick.
+  - **Bars.** `barChart` takes `orientation` (`vertical` or `horizontal`) and `stack` (`none`, `stacked` or `percent`; replaces `stacked`). Negative values grow from zero, only a stack's outer end is rounded, and `style.values` puts figures at the `end` of a bar or `inside` it.
+  - **Pie.** `style.innerRadius` makes a donut; `sliceGap`, `sliceRadius` and `labelPlacement` (`inside`, `outside`, `none`) are style fields.
+  - **New: `radarChart`.** One spoke per row, one polygon per series, a `polygon` or `circle` grid, with `enter` and the series commands.
+  - **A line is a stroke, an area is a fill.** A radial's `track` is a fill (empty for none). There is no grid width, dash, axis-line, spoke or track switch, and no `gridColor`. A series' `label` is optional: the legend shows `label || field`.
+  - **New: `radialChart`.** One ring per row, swept by `value / max` over `style.sweep` degrees from `style.startAngle`, with tracks, round caps, ring labels, a centre summary, `enter`, `selectRing`, `clearSelection` and `revealCenter`.
+  - **The kit** draws no plot border by default, puts each legend swatch before its caption, and moves `HorizontalAxis`, the polar helpers (`kit/polar`) and `PieLegend` behind the kit barrel, so a copied chart reaches only the kit. Removed from `./kit`: `ChartBorder`, `CHART_PALETTE`, `DEFAULT_PLOT_AREA`, `PlotAreaConfig`, `DEFAULT_SERIES_COLORS` (use `CHART_PALETTE_DEFAULT`), `DEFAULT_SERIES_STROKES`, `DEFAULT_SERIES_FILLS`, `LegendTheme`, and the theme helpers `resolveAxisConfig`, `lerpAxisConfig`, `resolvePlotArea`, `lerpPlotArea`, `resolveLegendConfig`, `lerpLegendConfig`, `resolveSeriesStrokes`, `lerpSeriesStrokes`, `resolveSeriesFills`, `lerpSeriesFills`, `resolveSeriesStroke` and `resolveSeriesFill` (a chart's colours come from `seriesFill`/`paletteFill` over its style).
+
+  The renderer's path and paint cache keys no longer collide for shapes mirrored through the origin, which drew two symmetric grid rules as one.
+
+  Migration: nothing converts a stored chart. A document row's `theme`, `showLegend`, `showValues` and `stacked` are dropped on open and the chart draws in the default style; a host with stored charts rewrites them: `theme` → a `style` partial (series colours to `palette`, text colours to `foreground`/`muted`), `showLegend: false` → `style.legend: "none"`, `showValues: true` → `style.values: "end"`, `stacked: true` → `stack: "stacked"`, `gridColor`/`gridWidth`/`gridDashed` → `horizontalGrid`/`verticalGrid` (or `gridStroke` on a radar), `grid: "vertical"` → `verticalGrid` on and `horizontalGrid: []`, `axisLine` → `axisStroke`, `spokes: false` → `spokeStroke: []`, a radial's `track: false` → `track: []`, and a pie's `labelPlacement` → `style.labelPlacement` (`leader` is now `outside`).
+
+- e279864: **Breaking:** the component kits drop exports nothing used.
+
+  - **math:** the hand-mirrored `*Props` interfaces of 24 components (`AngleMarkProps`, `CurlyBraceProps`, `EmphasisMarkProps`, `CurveAreaProps`, `DropLinesProps`, `PlotPointProps`, `RiemannSumProps`, `TangentLineProps`, `VectorArrowProps`, `PointsPlotProps`, `StreamLinesProps`, `TracedPathProps`, `VectorFieldProps`, `NetworkGraphProps`, `SampleSpaceProps`, `NumberLineProps`, `NumberPlaneProps`, `PolarPlaneProps`, `LatexMatrixProps`, `Axes3dProps`, `CurvePlot3dProps`, `PlotPoint3dProps`, `SurfacePlot3dProps`, `VectorArrow3dProps`), `FILL_PAINT`, `STROKE_PAINT`, `OUTLINE_TRIM` and `spaceOf` from `./kit`, and `LatexPathResult.commands`.
+  - **charts:** `LineChartProps`, `BarChartProps`, `PieChartProps`, `PieRingProps`, `PieLegendProps`, `ChartBarsProps`, `CategoryAxisProps`, `ChartBorderProps`, `ChartCanvasProps`, `ChartLegendProps`, `VerticalAxisProps`, and from `./kit` `axisTweenTarget`, `resolvePalettePaint`, `legendShows`, `MarkerLabel`, `clampUnit` (use the SDK's `clamp`). `niceStep` and `enterBudget` stay reachable from `@motionscript/sdk/component`.
+  - **audio:** `FullWaveformProps`, `LiveWaveformProps`, and `clamp01` from `./kit`.
+  - **patterns:** `DotGridPatternProps`, `GridPatternProps`, `LineGridPatternProps`.
+  - **code:** `DEFAULT_THEMES`, `splitTokensAt`, `LINE_ALIGN_CELLS`, `EDIT_ALIGN_CELLS`, and `phasesFor` (use `defaultCodePhases`). `ensureHighlighter`, `loadCodeLanguage`, `initSyntaxHighlighter` and `canHighlight` lose their ignored theme argument.
+  - **grids:** the `findNode2D` and `frameIn` re-exports (import them from `@motionscript/sdk`), `ArrangementKind`, `PathGridShape`, `RectangularGridProps`, `RadialGridProps`, `PathGridProps`, `SphereGridProps`.
+  - **geography:** `GeoBorderProps`.
+
+  Migration: no stored document is affected; only TypeScript imports change. Code that imported a removed `*Props` interface states the props it passes inline, and code that used a removed helper uses the replacement named beside it above.
+
 ## 0.1.1-alpha.5
 
 ### Patch Changes
