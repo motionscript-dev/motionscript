@@ -725,6 +725,8 @@ export {
     SeedGenerator,
     parseCSV,
     parseData,
+    deprecate,
+    warnDeprecated,
 } from '../util';
 export type {
     Reference,
@@ -732,6 +734,7 @@ export type {
     Context,
     DataRecord,
     ParseCSVOptions,
+    Deprecation,
 } from '../util';
 
 // Pure functions over a scene's node tree, in viewport space (origin at the viewport centre, y-up); a player

@@ -158,6 +158,9 @@ jobs:
       - name: Breaking changesets say so and give a migration
         run: node scripts/check-changesets.mjs
 
+      - name: Kit deprecations are removed by their release
+        run: node scripts/check-deprecations.mjs
+
       - name: Typecheck
         run: pnpm typecheck --only
 

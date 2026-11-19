@@ -83,7 +83,9 @@ all supported. See the
 - **Audio**: the `SoundNode` and `AudioBus` nodes, and `ramp`/`hold` for
   JSON automation of their levels, speed and effects.
 - **Utilities**: `createRef`, `clamp`, `generateList`, `createContext`,
-  `Random`.
+  `Random`, and `deprecate` / `warnDeprecated` (with the `Deprecation` notice),
+  which keep a retired export working while warning once, in development, what
+  replaces it and which release removes it.
 - **Component machinery**: `@motionscript/sdk/component`, what a component
   package needs beyond the barrel: number formatting, text defaults, the named
   shape outlines and the orbit-camera lerps. It is a subpath because a scene

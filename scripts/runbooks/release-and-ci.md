@@ -71,7 +71,8 @@ built once and the tests fan out over that build:
   install and unpack):
   - **`lint-typecheck`**: `pnpm lint`; `sync-notice --check` (every published
     package carries the root `NOTICE`); `check-changesets` (the breaking marker,
-    below); `pnpm typecheck`; and `node --test scripts/*.test.mjs`.
+    below); `check-deprecations` (a kit's `@deprecated` export is gone by the
+    release it names); `pnpm typecheck`; and `node --test scripts/*.test.mjs`.
   - **`test-node`**: `pnpm -r test` without `browser`, `react` and `headless`.
   - **`test-browser`** (2 jobs): `browser`'s vitest in `--shard i/2`, plus `react`
     in one job and `headless` in the other. They run in real Chromium, headed

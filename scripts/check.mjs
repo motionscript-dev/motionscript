@@ -29,6 +29,7 @@ const steps = [
   ["build", "pnpm build:lib"],
   ["notices", "node scripts/sync-notice.mjs --check"],
   ["changesets", "node scripts/check-changesets.mjs"],
+  ["deprecations", "node scripts/check-deprecations.mjs"],
   ["lint", "pnpm lint"],
   ["typecheck", "pnpm typecheck"],
   // CI makes every vitest run once instead of watching.

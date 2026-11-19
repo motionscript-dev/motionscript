@@ -1,6 +1,8 @@
 export * from './clamp'
 export * from './context'
 export * from './csv'
+export { deprecate, deprecationMessage, warnDeprecated } from './deprecate'
+export type { Deprecation } from './deprecate'
 export * from './generateList'
 export * from './metrics'
 export * from './reference'
