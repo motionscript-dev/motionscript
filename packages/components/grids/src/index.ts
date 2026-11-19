@@ -1,6 +1,6 @@
-export * from "./rectangular-grid"
-export * from "./radial-grid"
-export * from "./path-grid"
-export * from "./sphere-grid"
-export * from "./engine"
+// The public surface, named one by one; everything else is `./kit` (`unstable.ts`).
+export { RectangularGrid } from "./rectangular-grid"
+export { RadialGrid } from "./radial-grid"
+export { PathGrid } from "./path-grid"
+export { SphereGrid } from "./sphere-grid"
 export { NODES } from "./nodes"

@@ -24,6 +24,12 @@ takes as a peer dependency.
 npm install @motionscript/geography @motionscript/sdk
 ```
 
+| Entry | What |
+| --- | --- |
+| `@motionscript/geography` | The public surface: the three nodes, `NODES`, and the data-source setup (`geoRegistry`, `geoUrlSource`, `geoLoaderSource`, `GeoSource`, `GeoDefinition`, `GeoShape`). A name leaves it only after a deprecation, in the next major (the next minor while on 0.x). |
+| `@motionscript/geography/kit` | Everything (`src/unstable.ts`): the border and globe modules, the file cache, the geometry and the globe's scene, which a copied node imports. **Unstable**: any release may change it. |
+| `@motionscript/geography/data/*` | The data files (see [The data](#the-data)). |
+
 ## GeoBorder
 
 - **`start` and `end` draw the borders on and leave the fill whole.** Each

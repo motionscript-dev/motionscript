@@ -2,7 +2,7 @@
  * The chart kit: what the five charts share, and what a copied chart does not
  * copy. A chart finds its parts by component identity (`VerticalAxis.is`), so a
  * second copy of `VerticalAxis` would be a second component that the chart never
- * finds, with no error. Copies import the kit from `@motionscript/charts`.
+ * finds, with no error. Copies import the kit from `@motionscript/charts/kit`.
  */
 export * from "./kit/shared"
 export * from "./kit/style"

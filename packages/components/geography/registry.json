@@ -1,7 +1,7 @@
 {
   "kit": {
-    "barrel": "src/index.ts",
-    "specifier": "@motionscript/geography"
+    "barrel": "src/unstable.ts",
+    "specifier": "@motionscript/geography/kit"
   },
   "items": [
     {

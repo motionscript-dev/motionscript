@@ -18,8 +18,8 @@ export const nodes = NODES;
 
 | Entry | Holds |
 | --- | --- |
-| `@motionscript/math` | Every component, `NODES`, and the kit below |
-| `@motionscript/math/kit` | What the nodes share and a copied node imports rather than copies: the systems' and marks' helpers (`systemLayout`, `traced`, `drawMark`, the plane a system hands its marks), the coordinate map, the equation language, the sampler, and the LaTeX helpers |
+| `@motionscript/math` | The public surface: every component, `NODES` and `loadMathJax`. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x) |
+| `@motionscript/math/kit` | Everything (`src/unstable.ts`): every component's module and what the nodes share and a copied node imports rather than copies (`src/engine.ts`): the systems' and marks' helpers (`systemLayout`, `traced`, `drawMark`, the plane a system hands its marks), the coordinate map, the equation language, the sampler, and the LaTeX helpers. **Unstable**: any release may change it |
 | `@motionscript/math/tex` | The typeset-math half alone: `Latex`, `TEX_NODES` and its helpers |
 
 ## Nodes

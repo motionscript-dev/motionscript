@@ -1,5 +1,5 @@
 // Everything node.ts imports besides its own declaration, so a copy of the node can take
-// just node.ts and import this from `@motionscript/code`. registry.test.ts checks that
+// just node.ts and import this from `@motionscript/code/kit`. registry.test.ts checks that
 // whatever node.ts reaches for is copied alongside it or re-exported from here.
 export * from './transitions';
 export * from './layout';

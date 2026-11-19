@@ -69,6 +69,11 @@ later change to `stroke` leaves it as it was.
 npm install @motionscript/patterns @motionscript/sdk
 ```
 
+| Entry | What |
+| --- | --- |
+| `@motionscript/patterns` | The public surface: the three patterns and `NODES`. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x). |
+| `@motionscript/patterns/kit` | Everything (`src/unstable.ts`): `ViewportPattern`, the tiling helpers (`src/engine.ts`) and the pattern modules. **Unstable**: any release may change it. |
+
 A copy of `line-grid-pattern`, `dot-grid-pattern` or `grid-pattern`
 (`registry.json`) keeps importing `ViewportPattern` and the tiling
 helpers from `@motionscript/patterns/kit`.

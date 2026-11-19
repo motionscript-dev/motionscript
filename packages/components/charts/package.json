@@ -36,8 +36,8 @@
       "default": "./dist/index.js"
     },
     "./kit": {
-      "types": "./dist/engine.d.ts",
-      "default": "./dist/engine.js"
+      "types": "./dist/unstable.d.ts",
+      "default": "./dist/unstable.js"
     }
   },
   "scripts": {

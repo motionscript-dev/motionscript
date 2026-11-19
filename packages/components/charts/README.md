@@ -25,8 +25,8 @@ npm install @motionscript/charts @motionscript/sdk
 
 | Path | Source | What |
 |---|---|---|
-| `@motionscript/charts` | `src/index.ts` | the five chart barrels, `src/engine.ts` and `NODES` |
-| `@motionscript/charts/kit` | `src/engine.ts` | the shared kit (`src/kit/*`, including `kit/style`, `kit/polar` and `PieLegend`) and all of `@motionscript/sdk/component` |
+| `@motionscript/charts` | `src/index.ts` | the public surface: the five charts, `NODES`, `CHART_STYLE_PRESETS` and its `ChartStylePreset` type. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x) |
+| `@motionscript/charts/kit` | `src/unstable.ts` | everything: the shared kit (`src/engine.ts`: `src/kit/*`, including `kit/style`, `kit/polar` and `PieLegend`, and all of `@motionscript/sdk/component`) and the five chart barrels. **Unstable**: any release may change it |
 
 Each chart folder (`line-chart/`, `bar-chart/`, `pie-chart/`, `radar-chart/`,
 `radial-chart/`) has an `index.ts` barrel with the node, its parts and its pure
@@ -122,7 +122,7 @@ steps rather than tweens, and a document edit rebuilds the node.
 ## Rules worth knowing
 
 - **The kit stays an import.** A copy of `line-chart` takes only `line-chart/*` and
-  rewrites its kit imports to `@motionscript/charts` (`registry.json`): a second
+  rewrites its kit imports to `@motionscript/charts/kit` (`registry.json`): a second
   copy of `VerticalAxis` would render as nothing, with no error. The kit includes
   `kit/polar` and `PieLegend`, which the pie, radar and radial charts reach for, so
   a copy of any chart reaches only the kit.

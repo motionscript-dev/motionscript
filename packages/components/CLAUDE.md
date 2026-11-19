@@ -28,10 +28,25 @@ dependency, or copied into a project from the same source (the files each
   engine (`nodes: NODES`). A factory's `key` only declares the type. An import
   kept for its side effect is shaken out under `sideEffects: false` and a
   document names its types by string, so list the components. See `packages/core/docs/why.md#one-registry-per-engine-a-decorator-declares-it-does-not-register`.
-- **`./kit` is the shared half** of a kit: `audio` exports `dist/kit.js`;
-  `charts`, `grids`, `math`, `patterns` export `dist/engine.js`; the rest have none.
-  What several components share is a module there (patterns' `ViewportPattern`:
-  `state`, `commands` and helpers to spread in and call), never a base to extend.
+- **The root barrel is the public surface, named one by one** (`export { X } from`,
+  never `export *`): the components, `NODES`, and only the helpers and types a
+  host's setup or an author's code needs (code's `lines`, geography's
+  `geoRegistry`, math's `loadMathJax`). Everything else goes to **`./kit`**
+  (`src/unstable.ts`, every kit), which is all of the package and may change in
+  any release. A new export goes to `./kit` unless an author needs it. Each
+  kit's `tests/surface.test.ts` (code's `tests/barrel.test.ts`) pins the root.
+- **What several components share** is a module behind the kit barrel
+  (`src/engine.ts`; audio's `src/kit.ts`; geography's is `unstable.ts` itself),
+  such as patterns' `ViewportPattern` (`state`, `commands` and helpers to spread
+  in and call), never a base to extend. A folder `src/kit/` sits beside it in
+  charts, grids, math and patterns, so never add a `src/kit.ts` there: it would
+  capture `./kit` imports.
+- **Retiring a root name** keeps it working for one release line: wrap a function
+  in the SDK's `deprecate(fn, { name, use, removeIn })`, and give the export a
+  `/** @deprecated Use … Remove in X.Y.Z. */` comment naming the same release (a
+  constant or type takes the comment alone). `removeIn` is the next major (the
+  next minor while on 0.x); `scripts/check-deprecations.mjs` fails CI once the
+  kit reaches it. A name in `./kit` needs none of this.
 
 ## Naming
 

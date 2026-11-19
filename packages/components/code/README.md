@@ -125,7 +125,7 @@ scene, such as [`@motionscript/browser`](https://github.com/motionscript-dev/mot
   token ids are shared by every `Code` in it.
 - **A copy of `code` takes only `node.ts`** (`registry.json`). The highlighter,
   diff, layout and drawing stay in this package behind `src/engine.ts`, which the
-  copy imports from `@motionscript/code`; the grammars are dynamic imports, so a
+  copy imports from `@motionscript/code/kit`; the grammars are dynamic imports, so a
   host's bundler must resolve `@lezer/*` from where the package is installed.
 
 ## The monospaced face is yours to supply
@@ -160,6 +160,11 @@ use another face, set `fontFamily` on the node and list that family instead.
 ```bash
 npm install @motionscript/code @motionscript/sdk
 ```
+
+| Entry | What |
+| --- | --- |
+| `@motionscript/code` | The public surface: `Code`, `NODES`, `defineCode` and `CodeStrategies`, the range helpers (`lines`, `word`, `CodeRanges`, `CodeRange`), `registerCodeTheme`, `initSyntaxHighlighter` and the theme types. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x). |
+| `@motionscript/code/kit` | Everything (`src/unstable.ts`): `node.ts` and the engine (`src/engine.ts`) that a copied node imports. **Unstable**: any release may change it. |
 
 See the
 [docs](https://motionscript.dev/docs) for the full feature set and API

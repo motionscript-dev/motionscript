@@ -37,6 +37,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./kit": {
+      "types": "./dist/unstable.d.ts",
+      "default": "./dist/unstable.js"
+    },
     "./package.json": "./package.json",
     "./data/*": "./data/*"
   },
