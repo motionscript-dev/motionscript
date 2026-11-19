@@ -19,6 +19,7 @@ export const nodes = NODES;
 | Entry | Holds |
 | --- | --- |
 | `@motionscript/math` | The public surface: every component, `NODES` and `loadMathJax`. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x) |
+| `@motionscript/math/v1` | The v1 public surface, the same names as the root today. A custom component imports this path, so a later major keeps it linking; the bare path follows the latest API. |
 | `@motionscript/math/kit` | Everything (`src/unstable.ts`): every component's module and what the nodes share and a copied node imports rather than copies (`src/engine.ts`): the systems' and marks' helpers (`systemLayout`, `traced`, `drawMark`, the plane a system hands its marks), the coordinate map, the equation language, the sampler, and the LaTeX helpers. **Unstable**: any release may change it |
 | `@motionscript/math/tex` | The typeset-math half alone: `Latex`, `TEX_NODES` and its helpers |
 

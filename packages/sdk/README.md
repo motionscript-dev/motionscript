@@ -116,6 +116,17 @@ that drift. A name an author would reasonably reach for is added to core's
 One that only a host or a test needs stays in core. `FillChain` is a class in
 core but exported as a type here: named, never constructed.
 
+### Versioned paths
+
+`./v1` and `./v1/component` are the v1 component API, today exactly `.` and
+`./component`. A custom component imports `@motionscript/sdk/v1` (and each kit's
+`@motionscript/<kit>/v1`); a bare `@motionscript/sdk` means the latest API, for
+npm users who follow the newest release. A later major keeps `/v1` working by
+shipping a v1 shim in the same engine, so a page still runs one core and
+`instanceof` holds. v1 only grows: a name may join it, but removing or renaming
+one needs v2, and core's `src/sdk/tests/v1-freeze.test.ts` fails if one goes.
+`src/tests/v1.test.ts` here checks each `/v1` path hands out what its bare path does.
+
 The types and values resolve through core's built `dist/`, so nothing imports
 until core has been built. `src/tests/sdk-parity.test.ts` in core compares this
 barrel's value names with core's `sdk/index.ts`; it fails when core's `dist/` is
@@ -147,7 +158,10 @@ The factory generates the node class, declares its key and writes its entries
 and commands where the registry reads them, so a document can name `gauge`
 once it is handed to an engine. Calling `Gauge({ value: 0.4 })` builds one in
 code, typed by its entries. No decorators and no JSX are needed: a component
-compiles with plain TypeScript. The guide is the
+compiles with plain TypeScript. Built into your own app, it can import the
+bare `@motionscript/sdk` and move with each release; a custom component that a
+host loads as source imports `@motionscript/sdk/v1` instead (see
+[Versioned paths](#versioned-paths)). The guide is the
 [custom node docs](https://motionscript.dev/docs/custom-node/introduction).
 
 ## Loading from a CDN

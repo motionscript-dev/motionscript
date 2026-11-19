@@ -26,6 +26,7 @@ npm install @motionscript/charts @motionscript/sdk
 | Path | Source | What |
 |---|---|---|
 | `@motionscript/charts` | `src/index.ts` | the public surface: the five charts, `NODES`, `CHART_STYLE_PRESETS` and its `ChartStylePreset` type. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x) |
+| `@motionscript/charts/v1` | `src/v1.ts` | the v1 public surface, the same names as the root today. A custom component imports this path, so a later major keeps it linking; the bare path follows the latest API |
 | `@motionscript/charts/kit` | `src/unstable.ts` | everything: the shared kit (`src/engine.ts`: `src/kit/*`, including `kit/style`, `kit/polar` and `PieLegend`, and all of `@motionscript/sdk/component`) and the five chart barrels. **Unstable**: any release may change it |
 
 Each chart folder (`line-chart/`, `bar-chart/`, `pie-chart/`, `radar-chart/`,

@@ -164,6 +164,7 @@ npm install @motionscript/code @motionscript/sdk
 | Entry | What |
 | --- | --- |
 | `@motionscript/code` | The public surface: `Code`, `NODES`, `defineCode` and `CodeStrategies`, the range helpers (`lines`, `word`, `CodeRanges`, `CodeRange`), `registerCodeTheme`, `initSyntaxHighlighter` and the theme types. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x). |
+| `@motionscript/code/v1` | The v1 public surface, the same names as the root today. A custom component imports this path, so a later major keeps it linking; the bare path follows the latest API. |
 | `@motionscript/code/kit` | Everything (`src/unstable.ts`): `node.ts` and the engine (`src/engine.ts`) that a copied node imports. **Unstable**: any release may change it. |
 
 See the

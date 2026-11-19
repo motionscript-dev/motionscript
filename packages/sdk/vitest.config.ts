@@ -9,12 +9,8 @@ export default defineConfig({
     },
     test: {
         include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
-        // Recorded exemption (RULES.md VI): this package is four re-export
-        // files, with no logic of its own, and no test file here yet. Its names
-        // are checked by core's `sdk-parity.test.ts`. A surface and pack test of
-        // its own does not exist; until one lands, an empty include has to pass,
-        // and the first test file ends this.
-        passWithNoTests: true,
+        // This package is re-export files with no logic of its own. Its test checks that each `/v1` path is its
+        // bare path; what the names are is core's to test (`src/sdk/tests/v1-freeze.test.ts`).
         environment: 'node',
     },
 });

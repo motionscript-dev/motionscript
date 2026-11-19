@@ -8,7 +8,7 @@ A dynamic node is a node type authored as a TS source string, compiled and linke
 
 | Field | Meaning | Browser default (`resolveDynamicNodes`) |
 |---|---|---|
-| `sdk` (required) | what `require("@motionscript/sdk")`, `"motionscript"` and `"motion-script"` return, as one object | `@motionscript/core/sdk` |
+| `sdk` (required) | what `require("@motionscript/sdk/v1")`, `"@motionscript/sdk"`, `"motionscript"` and `"motion-script"` return, as one object | `@motionscript/core/sdk` |
 | `modules` | further modules by exact specifier, own keys only, consulted after the sdk specifiers (which it cannot shadow) | none |
 | `compile` (required) | `(source) => Promise<string>`: TS to CommonJS text, called once per registration, result not validated | esbuild-wasm, loaded on its first call |
 
@@ -26,7 +26,9 @@ A dynamic node is a node type authored as a TS source string, compiled and linke
 | top-level `this` | `undefined` (strict mode) |
 | everything else | the host realm's globals and intrinsics, unchanged |
 
-`require` resolves in this order and throws for anything else (relative paths, Node built-ins, `…/jsx-runtime` and `…/jsx-dev-runtime`, a `modules` key that is not an own property such as `constructor`): the three SDK specifiers (`SDK_SPECIFIERS`) to `sdk`; an own key of `modules`. The error is `"<specifier>" isn't available to a custom node. It can require "@motionscript/sdk"[, <each modules key>]; …`. `@motionscript/sdk/component` links only when a host lists it in `modules`.
+`require` resolves in this order and throws for anything else (relative paths, Node built-ins, `…/jsx-runtime` and `…/jsx-dev-runtime`, a `modules` key that is not an own property such as `constructor`): the four SDK specifiers (`SDK_SPECIFIERS`) to `sdk`; an own key of `modules`. The error is `"<specifier>" isn't available to a custom node. It can require "@motionscript/sdk/v1"[, <each modules key>]; …`. `@motionscript/sdk/component` and `@motionscript/sdk/v1/component` link only when a host lists them in `modules`, as does every kit path.
+
+**Versioned paths.** A custom component imports `@motionscript/sdk/v1`, `@motionscript/sdk/v1/component` and `@motionscript/<kit>/v1`; a bare specifier means the latest API, for npm users who follow the newest release. While v1 is the latest, a host links each `/v1` path to the same object as its bare path. A later major ships a v1 shim inside the same engine, so a page still runs one core and `instanceof` holds; that is when `sdk` and the `/v1` entries of `modules` stop being one object. v1 only grows: `sdk/tests/v1-freeze.test.ts` fails when a v1 name leaves the sdk barrels. A kit's `/kit` path is unstable and unversioned.
 
 **One key, one class per registry.** The same class again is a no-op. A different class under a held key throws unless `{ replace: true }` (the host's flag; a script cannot set it); then the class, commands and descriptor swap together, nodes already built keep the old class, and a built-in key can be replaced. A throw at any earlier step (compile, evaluate, link, export check) leaves the key as it was; the script's own top-level code may have run.
 

@@ -71,6 +71,7 @@ gradient or an image, so a voice declares no asset.
 | Entry | What |
 | --- | --- |
 | `@motionscript/audio` | The public surface: the two nodes, `NODES`, the `AudioEnvelope` type and `EMPTY_ENVELOPE`. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x). |
+| `@motionscript/audio/v1` | The v1 public surface, the same names as the root today. A custom component imports this path, so a later major keeps it linking; the bare path follows the latest API. |
 | `@motionscript/audio/kit` | Everything (`src/unstable.ts`): the nodes plus the pure helpers (`sampleEnvelope`, `forSpeaker`, `layOutBars`, `paintBars`, `groupByPaint`, `voiceColor`, `livePaintKey`). **Unstable**: any release may change it. |
 
 A copy of `full-waveform` or

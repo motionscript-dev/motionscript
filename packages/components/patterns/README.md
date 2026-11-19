@@ -72,6 +72,7 @@ npm install @motionscript/patterns @motionscript/sdk
 | Entry | What |
 | --- | --- |
 | `@motionscript/patterns` | The public surface: the three patterns and `NODES`. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x). |
+| `@motionscript/patterns/v1` | The v1 public surface, the same names as the root today. A custom component imports this path, so a later major keeps it linking; the bare path follows the latest API. |
 | `@motionscript/patterns/kit` | Everything (`src/unstable.ts`): `ViewportPattern`, the tiling helpers (`src/engine.ts`) and the pattern modules. **Unstable**: any release may change it. |
 
 A copy of `line-grid-pattern`, `dot-grid-pattern` or `grid-pattern`

@@ -12,6 +12,15 @@ dependency, or copied into a project from the same source (the files each
   `^@motionscript/core(/.*)?$` with `no-restricted-imports`. When the SDK lacks a
   name, add it to `packages/core/src/sdk/index.ts` if an author would reach for
   it and rebuild core; otherwise the kit is wrong. Do not import core to get round it.
+- **A custom component imports versioned paths**: `@motionscript/sdk/v1`,
+  `@motionscript/sdk/v1/component` and `@motionscript/<kit>/v1`. A bare import
+  means the latest API, for npm users who follow the newest release. A later
+  major ships a v1 shim inside the same engine, so a `/v1` component keeps
+  linking against one core. v1 is frozen: a name may join it, but removing or
+  renaming one needs v2 (core's `src/sdk/tests/v1-freeze.test.ts` holds the sdk,
+  each kit's surface test its `/v1`). A kit's own source keeps the bare
+  imports: it ships in the same release as the sdk it imports. `/kit` stays
+  unstable and unversioned; there is no `/v1/kit`.
 - **Tests may take exactly seven names from `@motionscript/core`**, no subpath:
   `AssetDeclaration`, `CanvasRenderContext2D`, `ManifestAssetCatalog`,
   `NullRenderContext`, `ClipTimeline`, `sampleTree`, `TextState` (the override

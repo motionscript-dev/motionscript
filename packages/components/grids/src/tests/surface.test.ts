@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as root from "..";
+import * as v1 from "../v1";
 import * as kit from "../unstable";
 import * as shared0 from "../engine";
 
@@ -20,6 +21,11 @@ const values = (module: object) => module as Record<string, unknown>;
 describe("the package surface", () => {
     it("exports the stable names from the root, and nothing else", () => {
         expect(Object.keys(root).sort()).toEqual([...STABLE].sort());
+    });
+
+    it("exports the same names from /v1, each the root's own value", () => {
+        expect(Object.keys(v1).sort()).toEqual([...STABLE].sort());
+        for (const name of STABLE) expect(values(v1)[name], name).toBe(values(root)[name]);
     });
 
     it("hands out each stable value from the kit too", () => {

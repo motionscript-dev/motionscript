@@ -17,10 +17,11 @@ import type { NodePropertyDescriptor, NodeTypeDescriptor } from "./node-descript
 import type { NodeSpec } from "./types";
 
 /**
- * Resolve to the host's sdk barrel. The published name comes first; the two after it are earlier unscoped
- * names, kept so older scripts still compile.
+ * Resolve to the host's sdk barrel. `/v1` is what a custom component imports; the bare name means the latest API,
+ * which is v1 too. The last two are earlier unscoped names, kept so older scripts still compile.
+ * `@motionscript/sdk/v1/component` is not here: like `/component`, it links only through `modules`.
  */
-const SDK_SPECIFIERS: readonly string[] = ["@motionscript/sdk", "motionscript", "motion-script"];
+const SDK_SPECIFIERS: readonly string[] = ["@motionscript/sdk/v1", "@motionscript/sdk", "motionscript", "motion-script"];
 
 export type NodeConstructor = new (props?: Record<string, unknown>) => Node;
 
@@ -511,7 +512,7 @@ export class Registry {
         const require = (specifier: string): unknown => {
             if (SDK_SPECIFIERS.includes(specifier)) return sdk;
             if (modules && Object.hasOwn(modules, specifier)) return modules[specifier];
-            const available = ["@motionscript/sdk", ...Object.keys(modules ?? {})];
+            const available = ["@motionscript/sdk/v1", ...Object.keys(modules ?? {})];
             throw new Error(
                 `"${specifier}" isn't available to a custom node. It can require ` +
                 `${available.map((s) => `"${s}"`).join(", ")}; a host supplies more through \`dynamicNodes.modules\`.`,

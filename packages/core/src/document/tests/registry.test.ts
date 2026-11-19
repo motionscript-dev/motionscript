@@ -610,9 +610,9 @@ describe("Registry.addNodeFromSource", () => {
             .rejects.toThrow(/"\.\/sibling" isn't available/);
     });
 
-    // The scoped name is the published one; the dashed and no-dash spellings are
-    // the package's earlier names, and a script written against either still works.
-    it.each(["@motionscript/sdk", "motion-script", "motionscript"])("require(%j) returns exactly the injected sdk object", async (specifier) => {
+    // `/v1` is what a component imports and the bare scoped name is the latest API; the dashed and no-dash
+    // spellings are the package's earlier names, and a script written against either still works.
+    it.each(["@motionscript/sdk/v1", "@motionscript/sdk", "motion-script", "motionscript"])("require(%j) returns exactly the injected sdk object", async (specifier) => {
         const r = dynamicRegistry();
         const source = `
             const sdkBarrel = require("${specifier}");
@@ -680,11 +680,11 @@ describe("Registry.addNodeFromSource", () => {
     it("an unknown specifier still throws, naming what can be required and where more comes from", async () => {
         const unknown = `require("@motionscript/plot/kit"); module.exports.default = class {};`;
         await expect(dynamicRegistry().addNodeFromSource(unknown))
-            .rejects.toThrow(/"@motionscript\/plot\/kit" isn't available.*"@motionscript\/sdk";.*dynamicNodes\.modules/);
+            .rejects.toThrow(/"@motionscript\/plot\/kit" isn't available.*"@motionscript\/sdk\/v1";.*dynamicNodes\.modules/);
 
         const r = dynamicRegistry({ modules: { "@motionscript/sdk/component": {} } });
         await expect(r.addNodeFromSource(unknown))
-            .rejects.toThrow(/"@motionscript\/plot\/kit" isn't available.*"@motionscript\/sdk", "@motionscript\/sdk\/component"/);
+            .rejects.toThrow(/"@motionscript\/plot\/kit" isn't available.*"@motionscript\/sdk\/v1", "@motionscript\/sdk\/component"/);
         // Own keys only: the map's prototype is not a way out to `Object`.
         await expect(r.addNodeFromSource(`require("constructor"); module.exports.default = class {};`))
             .rejects.toThrow(/"constructor" isn't available/);

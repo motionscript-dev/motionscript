@@ -225,17 +225,17 @@ describe("what a script may require", () => {
 
     it("names what is available", async () => {
         const message = await dynamicRegistry().addNodeFromSource('require("fs");').catch((error: Error) => error.message);
-        expect(message).toContain('"@motionscript/sdk"');
+        expect(message).toContain('"@motionscript/sdk/v1"');
         expect(message).not.toContain("jsx");
     });
 
-    it("resolves the component subpath only through `modules`", async () => {
+    it.each(["@motionscript/sdk/component", "@motionscript/sdk/v1/component"])("resolves %s only through `modules`", async (specifier) => {
         const component = { seekable: true };
-        const source = nodeSource("dyn-component", 'Source.component = require("@motionscript/sdk/component");');
+        const source = nodeSource("dyn-component", `Source.component = require("${specifier}");`);
         await expect(dynamicRegistry().addNodeFromSource(source))
-            .rejects.toThrow(/"@motionscript\/sdk\/component" isn't available to a custom node/);
+            .rejects.toThrow(`"${specifier}" isn't available to a custom node`);
 
-        const Linked = await dynamicRegistry({ modules: { "@motionscript/sdk/component": component } }).addNodeFromSource(source);
+        const Linked = await dynamicRegistry({ modules: { [specifier]: component } }).addNodeFromSource(source);
         expect(statics(Linked).component).toBe(component);
     });
 });

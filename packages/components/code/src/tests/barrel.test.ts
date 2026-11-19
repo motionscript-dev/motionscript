@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Registry } from '@motionscript/sdk';
 import * as barrel from '..';
+import * as v1 from '../v1';
 import * as kit from '../unstable';
 import * as engine from '../engine';
 import { Code } from '../node';
@@ -56,6 +57,11 @@ const ENGINE = [
 describe('the root barrel', () => {
     it('exports the stable surface and nothing else', () => {
         expect(Object.keys(barrel).sort()).toEqual([...STABLE].sort());
+    });
+
+    it('exports the same names from /v1, each the value the root exports', () => {
+        expect(Object.keys(v1).sort()).toEqual([...STABLE].sort());
+        for (const name of STABLE) expect((v1 as Record<string, unknown>)[name], name).toBe((barrel as Record<string, unknown>)[name]);
     });
 
     it('hands out the same values as the kit', () => {

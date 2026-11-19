@@ -26,6 +26,7 @@ npm install @motionscript/grids @motionscript/sdk
 | Path | Source | What |
 |---|---|---|
 | `@motionscript/grids` | `src/index.ts` | the public surface: the four grids and `NODES`. A name leaves it only after a deprecation, in the next major (the next minor while on 0.x) |
+| `@motionscript/grids/v1` | `src/v1.ts` | the v1 public surface, the same names as the root today. A custom component imports this path, so a later major keeps it linking; the bare path follows the latest API |
 | `@motionscript/grids/kit` | `src/unstable.ts` | everything: the `ItemGrid` module and what it uses (`src/engine.ts`, over `src/kit/`: slot functions per arrangement, stagger, reveal and wave styles, order helpers, seeded random) and the four grid barrels (`PATH_GRID_SHAPES`, …). **Unstable**: any release may change it |
 
 ## Nodes

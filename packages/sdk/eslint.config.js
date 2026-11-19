@@ -63,8 +63,9 @@ export default defineConfig([
   },
   {
     // Barrel files legitimately re-export from other modules — exempt them from
-    // the barrel-import restriction (every other rule still applies).
-    files: ["**/index.ts"],
+    // the barrel-import restriction (every other rule still applies). `v1.ts` is
+    // the same barrel under its versioned path.
+    files: ["**/index.ts", "src/v1.ts"],
     rules: {
       "import-x/no-internal-modules": "off",
     },
