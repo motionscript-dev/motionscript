@@ -1,0 +1,26 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "@motionscript/app-engine": "0.0.0",
+    "@motionscript/app-react": "0.0.0",
+    "@motionscript/shaders": "0.0.0",
+    "@motionscript/browser": "0.3.0",
+    "@motionscript/audio": "0.3.0",
+    "@motionscript/charts": "0.3.0",
+    "@motionscript/code": "0.3.0",
+    "@motionscript/geography": "0.3.0",
+    "@motionscript/grids": "0.3.0",
+    "@motionscript/math": "0.3.0",
+    "@motionscript/patterns": "0.3.0",
+    "@motionscript/core": "0.3.0",
+    "@motionscript/e2e": "0.0.0",
+    "@motionscript/headless": "0.3.0",
+    "@motionscript/react": "0.3.0",
+    "@motionscript/renderer": "0.3.0",
+    "@motionscript/sdk": "0.3.0"
+  },
+  "changesets": [
+    "versioned-component-api"
+  ]
+}
