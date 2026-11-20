@@ -1,0 +1,75 @@
+{
+  "kind": "project",
+  "name": "shape-start-end-polygon",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "shape-start-end-polygon",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "polygon0",
+            "type": "polygon",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "sides": 6,
+              "width": 280,
+              "height": 280,
+              "stroke": {
+                "weight": 14,
+                "cap": "round",
+                "join": "round",
+                "fill": "primary"
+              },
+              "start": 0,
+              "end": 0
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "polygon0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "end": 1
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}

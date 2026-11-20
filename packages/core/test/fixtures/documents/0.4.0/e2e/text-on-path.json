@@ -1,0 +1,71 @@
+{
+  "kind": "project",
+  "name": "text-on-path",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "text-on-path",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "text0",
+            "type": "text",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "text": "Curving Along the Arc",
+              "fontFamily": "Inter",
+              "fontWeight": 700,
+              "fontSize": 40,
+              "fill": "primary",
+              "path": "M -320 80 Q 0 -260 320 80",
+              "scale": 0
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "text0",
+            "at": 0,
+            "duration": 1.2,
+            "easing": {
+              "kind": "inOut",
+              "args": "back"
+            },
+            "args": {
+              "scale": 1
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}
