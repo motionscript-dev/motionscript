@@ -320,6 +320,10 @@ export {
 } from '../render3d';
 export type { Canvas3DProps } from '../components/builtins/three/canvas3d';
 export type {
+    StageLight3D, StageLightType3D, StageShadow3D, AmbientStageLight3D, SunStageLight3D, SkyStageLight3D,
+    LampStageLight3D, SpotStageLight3D, SoftBoxStageLight3D, StageLightResolved3D,
+} from '../components/modules/lights3d';
+export type {
     // A 3D parent's own coordinates for its children's position: see `Node3D._spaceOf`.
     ChildSpace3D,
     Node3DProps,

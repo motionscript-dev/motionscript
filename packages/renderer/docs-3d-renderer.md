@@ -312,7 +312,8 @@ the 2D path's per-frame cost at 3840×2160, not 3D: `rect-basic` has it with no
 
 **Done:** box (incl. rounded via core), sphere, plane, cylinder, cone,
 torus, torus knot, circle, ring, capsule, the four polyhedra, lathe, tube,
-edges, wireframe, buffer, parametric; groups and every transform
+edges, wireframe, buffer, parametric, extrude (evaluated to a buffer by core's
+`evaluateExtrude`); groups and every transform
 field; perspective/orthographic/default camera with bounds-derived clip planes;
 basic, standard, physical (ior, clearcoat, transmission with three's
 pre-pass), Lambert, Phong, toon (gradient map or two-tone), normal, depth,
@@ -332,7 +333,6 @@ them):
 - texture maps other than `map` (normal, roughness, metalness, ao, alpha,
   emission, light, displacement, env); a map on points (`gl_PointCoord`);
 - glTF models and skinning (`model`, `modelGeometry`);
-- geometry: extrude (three's `ExtrudeGeometry` plus core's path-to-shape);
 - environment `src`/`faces` (HDR/EXR/cube) and real IBL prefiltering (core
   itself only renders `preset: "studio"`, which is done); `blur`;
 - physical extras: sheen, iridescence, anisotropy, dispersion, specular

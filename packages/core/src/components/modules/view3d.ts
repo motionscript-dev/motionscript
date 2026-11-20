@@ -13,15 +13,21 @@ import type { Canvas3DFillResolved } from "@/attributes/shape/fill/implementatio
 import { isSurfaceTexture3D, resolveSurfaceSource } from "@/render3d/texture";
 import { forEachTexture3D } from "@/render3d/walk";
 import type { Loader, RenderContext2D, Type, Values } from "@/components/factory/api";
+import { commandsFor } from "@/components/factory/commands-for";
 import { Types } from "@/components/factory/types";
 import { internalsOf } from "@/components/factory/views";
 import * as Corners from "@/components/modules/corners";
 import * as Paint from "@/components/modules/paint";
-import { optional } from "@/components/modules/three-entries";
+import { lightsEntry, lightStage, lightTo, lightToFrame, stageRig } from "@/components/modules/lights3d";
+
+export { STAGE_LIGHT_DEFAULTS, STAGE_LIGHT_TYPES, stageRig } from "@/components/modules/lights3d";
+import { optional, optionalVector3 } from "@/components/modules/three-entries";
 
 /**
- * A viewport onto its 3D children: the default camera and light rig a scene
- * gets when it has none of its own, the floor grid, and the render settings.
+ * A viewport onto its 3D children, and everything scene-wide about them: the
+ * camera, the lights, the air (fog) and the sky (environment), the floor grid
+ * and the render settings. A child camera, light, fog or environment node still
+ * takes over its part, as it always has; those nodes are deprecated.
  */
 
 function color3D(initial: Color): Type<Color, NormalizedColor> {
@@ -33,10 +39,18 @@ export const state = {
     elevation: Types.number(20, { min: -89, max: 89, step: 1, unit: "°" }),
     zoom: Types.number(12, { min: 0.01, step: 0.1 }),
     fov: Types.custom(45),
-    ambientIntensity: Types.custom(0.45),
-    ambientColor: color3D("#ffffff"),
-    keyIntensity: Types.custom(2.4),
-    keyColor: color3D("#ffffff"),
+    /** Perspective, or orthographic: parallel rays, `frustumHeight` units tall. */
+    projection: Types.oneOf(["perspective", "orthographic"] as const),
+    frustumHeight: Types.number(10, { min: 0.01, step: 0.1 }),
+    /** The point the camera looks at and orbits; the origin while unset. */
+    target: optionalVector3("origin"),
+    lights: lightsEntry(),
+    /** The air: its first solid colour, thickening from `fogNear` to `fogFar` away from the camera. Empty is clear air. */
+    fog: Types.fill,
+    fogNear: Types.number(8, { min: 0, step: 0.5 }),
+    fogFar: Types.number(30, { min: 0, step: 0.5 }),
+    /** The sky that lights the scene: an image fill's picture (a 360° panorama). Empty is none. */
+    environment: Types.fill,
     showGrid: Types.custom(false),
     gridSize: Types.custom(40),
     gridDivisions: Types.custom(40),
@@ -56,9 +70,41 @@ export const state = {
     post: optional<PostEffect3D | readonly PostEffect3D[]>(),
 };
 
-export const commands = {
+export const commands = commandsFor(state, {
     /** Swing the default camera: only the angles given move. */
-    orbitTo: { args: ["orbit", "elevation", "zoom"] as const },
+    orbitTo: { args: ["orbit", "elevation", "zoom"] },
+    lookTo: { args: ["target"] },
+    /** Move one of the lights, by its place in the list: only the fields given move, each from where it stands. */
+    lightTo: {
+        args: lightTo.args,
+        run: (timeline, s) => {
+            const from = s.lights;
+            const { light, ...fields } = timeline.args;
+            return timeline.animate((t) => ({ lights: lightToFrame(from, light, fields, t) }));
+        },
+    },
+});
+
+/** The four lighting keys before `lights`: each becomes the whole list a row's four described, so they agree in any order. */
+export const renamed = {
+    ambientIntensity: "lights",
+    ambientColor: "lights",
+    keyIntensity: "lights",
+    keyColor: "lights",
+} as const;
+
+const fromRig = (_value: unknown, row: Readonly<Record<string, unknown>>) => stageRig({
+    ambient: typeof row.ambientIntensity === "number" ? row.ambientIntensity : undefined,
+    ambientColor: row.ambientColor as never,
+    key: typeof row.keyIntensity === "number" ? row.keyIntensity : undefined,
+    keyColor: row.keyColor as never,
+});
+
+export const migrate = {
+    ambientIntensity: fromRig,
+    ambientColor: fromRig,
+    keyIntensity: fromRig,
+    keyColor: fromRig,
 };
 
 type ViewState = Values<typeof state> & { readonly fill: FillResolved[] };
@@ -95,9 +141,13 @@ export function scene(ctx: RenderContext2D, s: ViewState, extend?: (scene: Scene
     if (shadows) scene.shadows(shadows);
     if (s.tone !== undefined || s.exposure !== undefined) scene.tone({ mapping: s.tone, exposure: s.exposure });
     if (s.post !== undefined) scene.post(s.post);
+    const air = firstSolid(s.fog);
+    if (air !== undefined && scene.fogDescriptor() === null) scene.fog({ color: air, near: s.fogNear, far: s.fogFar });
+    const sky = s.environment.find((layer) => (layer as { type?: string } | null)?.type === "image") as { src?: string } | undefined;
+    if (sky?.src && scene.environmentDescriptor() === null) scene.environment({ src: sky.src });
     const fog = scene.fogDescriptor();
     if (fog && fog.color === undefined) {
-        const base = baseColor(s.fill);
+        const base = firstSolid(s.fill);
         if (base !== undefined) scene.fog({ ...fog, color: base });
     }
     if (s.showGrid) {
@@ -109,14 +159,11 @@ export function scene(ctx: RenderContext2D, s: ViewState, extend?: (scene: Scene
     }
     if (!extend && scene.isEmpty() && !hasChildren) return null;
     if (scene.cameraDescriptor() === null) {
-        scene.perspective({ fov: s.fov, orbit: cameraOrbit(s.orbit), elevation: s.elevation, distance: s.zoom });
+        const place = { orbit: cameraOrbit(s.orbit), elevation: s.elevation, distance: s.zoom, ...(s.target ? { target: s.target } : {}) };
+        if (s.projection === "orthographic") scene.orthographic({ ...place, frustumHeight: s.frustumHeight });
+        else scene.perspective({ ...place, fov: s.fov });
     }
-    if (!scene.ops().some((op) => op.kind === "light")) {
-        scene
-            .light({ type: "ambient", intensity: s.ambientIntensity, color: s.ambientColor })
-            .light({ type: "directional", intensity: s.keyIntensity, color: s.keyColor }, { position: [4, 6, 3] })
-            .light({ type: "directional", intensity: s.keyIntensity * 0.35, color: s.keyColor }, { position: [-5, -2, -4] });
-    }
+    if (!scene.ops().some((op) => op.kind === "light")) lightStage(scene, s.lights);
     extend?.(scene);
     return scene.isEmpty() ? null : scene;
 }
@@ -169,7 +216,7 @@ function fadeColor(s: ViewState): Color {
     return s.gridFadeColor;
 }
 
-function baseColor(fill: readonly FillResolved[]): Color | undefined {
+function firstSolid(fill: readonly FillResolved[]): Color | undefined {
     for (const layer of fill) {
         if (layer && (layer as { type?: string }).type === "solid") return (layer as unknown as { color: Color }).color;
     }

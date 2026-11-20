@@ -98,17 +98,28 @@ describe('the geometry nodes', () => {
         ['Capsule3D', () => new Capsule3D(), { type: 'capsule' }],
         // The one node whose parameter has a default of its own.
         ['Polyhedron3D', () => new Polyhedron3D(), { type: 'polyhedron', shape: 'icosahedron' }],
-        ['Extrude3D', () => new Extrude3D(), { type: 'extrude' }],
-        ['Lathe3D', () => new Lathe3D(), { type: 'lathe' }],
-        ['Tube3D', () => new Tube3D(), { type: 'tube' }],
     ];
 
     it.each(cases)('%s records only its discriminant when no parameter is set', (_name, make, expected) => {
         expect(meshOf(make()).geometry).toEqual(expected);
     });
 
-    it('covers all 14 geometry nodes', () => {
-        expect(cases).toHaveLength(14);
+    it('covers the 11 geometry nodes that draw with no parameter set', () => {
+        expect(cases).toHaveLength(11);
+    });
+
+    it('draws no extrusion, lathe or tube until it has an outline or points to sweep', () => {
+        const scene = new Scene3D();
+        for (const node of [new Extrude3D(), new Extrude3D({ path: '' }), new Lathe3D({ points: [{ x: 1, y: 0 }] }), new Tube3D({ points: [[0, 0, 0]] })]) {
+            (node as unknown as { render(scene: Scene3D): void }).render(scene);
+        }
+        expect(scene.ops().filter((o) => o.kind === 'mesh')).toEqual([]);
+    });
+
+    it('turns a lathe profile of { x, y } points about the vertical axis', () => {
+        expect(meshOf(new Lathe3D({ points: [{ x: 1, y: 0 }, { x: 0.5, y: 2 }] })).geometry).toMatchObject({
+            type: 'lathe', points: [[1, 0, 0], [0.5, 2, 0]],
+        });
     });
 
     // [node, props set, the geometry that must be recorded]

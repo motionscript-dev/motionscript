@@ -391,3 +391,56 @@ describe("opening a document", () => {
             .toThrow(DocumentTooNewError);
     });
 });
+
+describe("format 3 to 4: a 3D stage's scene-wide nodes become its entries", () => {
+    const node = (id: string, type: string, props: Record<string, unknown> = {}, parentId: string | null = "s", layerOrder = 0) =>
+        ({ id, type, parentId, layerOrder, props });
+    const comp = (nodes: object[], commands: object[] = []) =>
+        frozen({ kind: "composition", formatVersion: 3, duration: 2, nodes, commands }) as unknown as CompositionDocument;
+    const stage = node("s", "canvas3d", { keyIntensity: 3, fill: "#101820" }, null);
+
+    it("moves the lights, the fog and the camera, and the camera's own commands onto the canvas", () => {
+        const { document } = migrateDocument(comp([
+            stage,
+            node("a", "ambient-light3d", { intensity: 0.5 }, "s", 1),
+            node("d", "directional-light3d", { intensity: 2, x: 0, y: 5, z: 5, shadow: { softness: 0.4 } }, "s", 2),
+            node("f", "fog3d", { near: 4, far: 20 }),
+            node("c", "camera3d", { type: "orthographic", frustumHeight: 8, orbit: 0, elevation: 30, distance: 12 }),
+            node("b", "box3d"),
+        ], [
+            { id: "o", type: "orbitTo", targetId: "c", at: 0, duration: 1, args: { orbit: 30, distance: 9 } },
+            { id: "m", type: "moveTo", targetId: "b", at: 0, args: { x: 1 } },
+        ])) as { document: CompositionDocument };
+        expect(document.nodes.map((n) => n.id)).toEqual(["s", "b"]);
+        expect(document.nodes[0].props).toEqual({
+            fill: "#101820",
+            lights: [
+                { type: "ambient", color: "#ffffff", intensity: 0.5 },
+                { type: "sun", color: "#ffffff", intensity: 2, orbit: 90, elevation: 45, shadow: { softness: 0.4 } },
+            ],
+            fog: "#101820", fogNear: 4, fogFar: 20,
+            orbit: 90, elevation: 30, zoom: 12, fov: 50, projection: "orthographic", frustumHeight: 8,
+        });
+        expect(document.commands[0]).toMatchObject({ targetId: "s", args: { orbit: 60, zoom: 9 } });
+        expect(document.commands[1]).toMatchObject({ targetId: "b" });
+    });
+
+    it("keeps every light node when one of them does what `lights` can't say", () => {
+        const { document } = migrateDocument(comp([
+            stage,
+            node("a", "ambient-light3d", { intensity: 0.5 }),
+            node("p", "point-light3d", { decay: 1 }),
+        ])) as { document: CompositionDocument };
+        expect(document.nodes.map((n) => n.id)).toEqual(["s", "a", "p"]);
+        expect(document.nodes[0].props).toEqual(stage.props);
+    });
+
+    it("keeps a node something animates, or that has a span", () => {
+        const { document } = migrateDocument(comp([
+            stage,
+            { ...node("a", "ambient-light3d"), startAt: 1 },
+            node("f", "fog3d", { color: "#000" }),
+        ], [{ id: "t", type: "to", targetId: "f", at: 0, args: { near: 2 } }])) as { document: CompositionDocument };
+        expect(document.nodes.map((n) => n.id)).toEqual(["s", "a", "f"]);
+    });
+});

@@ -6,27 +6,27 @@ import type { Texture3D } from "@/render3d/texture";
 import type { Blend3D, Faces3D } from "@/render3d/transform";
 import type { Values } from "@/components/factory/api";
 import { Types } from "@/components/factory/types";
-import { optional, optionalColor } from "@/components/modules/three-entries";
+import { optional, optionalBoolean, optionalColor, optionalNumber } from "@/components/modules/three-entries";
 
 /** `Mesh3D`'s surface: a material, or the shorthand entries one is built from. */
 export const state = {
     material: optional<Material3D | readonly Material3D[]>(),
     fill: Types.custom<Fill3D>("white", { lerp: lerpFill3D }),
-    opacity: optional<number>(),
-    roughness: optional<number>(),
-    metalness: optional<number>(),
+    opacity: optionalNumber({ min: 0, max: 1, step: 0.01 }),
+    roughness: optionalNumber({ min: 0, max: 1, step: 0.01 }),
+    metalness: optionalNumber({ min: 0, max: 1, step: 0.01 }),
     emission: optionalColor(),
-    emissionStrength: optional<number>(),
+    emissionStrength: optionalNumber({ min: 0, step: 0.1 }),
     normalMap: optional<Texture3D>(),
     roughnessMap: optional<Texture3D>(),
     metalnessMap: optional<Texture3D>(),
     aoMap: optional<Texture3D>(),
     alphaMap: optional<Texture3D>(),
-    envMapIntensity: optional<number>(),
-    wireframe: optional<boolean>(),
+    envMapIntensity: optionalNumber({ min: 0, step: 0.05 }),
+    wireframe: optionalBoolean(),
     shading: optional<Shading3D>(),
     faces: optional<Faces3D>(),
-    vertexColors: optional<boolean>(),
+    vertexColors: optionalBoolean(),
     blend: optional<Blend3D>(),
     unlit: Types.custom(false),
 };

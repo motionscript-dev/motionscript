@@ -30,7 +30,7 @@ export interface CoreSpec {
     readonly defaults?: Record<string, unknown>;
     readonly renamed?: Readonly<Record<string, string>>;
     readonly deprecated?: Readonly<Record<string, string>>;
-    readonly migrate?: Readonly<Record<string, (value: unknown) => unknown>>;
+    readonly migrate?: Readonly<Record<string, (value: unknown, row: Readonly<Record<string, unknown>>) => unknown>>;
     readonly commands?: Record<string, unknown>;
     readonly children?: (state: never) => unknown;
     readonly provide?: (state: never, inherited: <T>(context: { readonly id: symbol; readonly defaultValue: T }) => T) => readonly Provided[];

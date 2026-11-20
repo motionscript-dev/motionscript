@@ -1,4 +1,4 @@
-import { Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Box3D } from '@motionscript/sdk';
+import { Canvas3D, Box3D } from '@motionscript/sdk';
 import { easeInOut, el, scene, variableTo } from '../doc';
 import { holdTail } from './_lib';
 
@@ -20,20 +20,22 @@ export default scene((stage) => {
     stage.variable('spin', 0);
 
     stage.add(
-        el(Canvas3D, { width: 480, height: 320, cornerRadius: 16, children: [
-            el(Camera3D, { position: [0, 1.6, 5], target: 0, fov: 45 }),
-            el(AmbientLight3D, { intensity: 0.35 }),
-            el(DirectionalLight3D, { intensity: 2.2, position: [3, 5, 4] }),
-            el(Box3D, {
-                width: 2,
-                height: 2,
-                depth: 2,
-                fill: '#e0533d',
-                roughness: 0.4,
-                metalness: 0.1,
-                rotation: [0, '=[spin]', 0] as never,
-            }),
-        ] }),
+        el(Canvas3D, {
+            width: 480, height: 320, cornerRadius: 16,
+            orbit: 90, elevation: 17.7447, zoom: 5.2498, fov: 45,
+            lights: [{ type: 'ambient', intensity: 0.35 }, { type: 'sun', intensity: 2.2, orbit: 53.1301, elevation: 45 }],
+            children: [
+                el(Box3D, {
+                    width: 2,
+                    height: 2,
+                    depth: 2,
+                    fill: '#e0533d',
+                    roughness: 0.4,
+                    metalness: 0.1,
+                    rotation: [0, '=[spin]', 0] as never,
+                }),
+            ],
+        }),
     );
 }, [
     () => variableTo('spin', 180, 1.4, easeInOut('quad')),

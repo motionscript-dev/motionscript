@@ -436,7 +436,7 @@ export interface Spec2D<K extends string, All, S, C, A, B> {
     /** Entries that still work but should no longer be set: why, and what to use instead. */
     readonly deprecated?: Readonly<Record<string, string>>;
     /** Value hooks by entry, or by an old key in `renamed` to convert only what was stored under it (`migrateNodeProps`). */
-    readonly migrate?: Readonly<Record<string, (value: unknown) => unknown>>;
+    readonly migrate?: Readonly<Record<string, (value: unknown, row: Readonly<Record<string, unknown>>) => unknown>>;
     readonly allowedChildren?: A;
     /** The components it goes only inside; unsaid, wherever its tree allows. A row elsewhere fails its build. */
     readonly allowedParents?: readonly AnyComponent[];
@@ -468,7 +468,7 @@ export interface SpecAudio<K extends string, All, S, C, A, B> {
     /** Entries that still work but should no longer be set: why, and what to use instead. */
     readonly deprecated?: Readonly<Record<string, string>>;
     /** Value hooks by entry, or by an old key in `renamed` to convert only what was stored under it (`migrateNodeProps`). */
-    readonly migrate?: Readonly<Record<string, (value: unknown) => unknown>>;
+    readonly migrate?: Readonly<Record<string, (value: unknown, row: Readonly<Record<string, unknown>>) => unknown>>;
     readonly allowedChildren?: A;
     /** The components it goes only inside; unsaid, wherever its tree allows. A row elsewhere fails its build. */
     readonly allowedParents?: readonly AnyComponent[];
@@ -531,7 +531,7 @@ export interface Spec3D<K extends string, All, S, C, A, B> {
     /** Entries that still work but should no longer be set: why, and what to use instead. */
     readonly deprecated?: Readonly<Record<string, string>>;
     /** Value hooks by entry, or by an old key in `renamed` to convert only what was stored under it (`migrateNodeProps`). */
-    readonly migrate?: Readonly<Record<string, (value: unknown) => unknown>>;
+    readonly migrate?: Readonly<Record<string, (value: unknown, row: Readonly<Record<string, unknown>>) => unknown>>;
     readonly allowedChildren?: A;
     /** The components it goes only inside; unsaid, wherever its tree allows. A row elsewhere fails its build. */
     readonly allowedParents?: readonly AnyComponent[];

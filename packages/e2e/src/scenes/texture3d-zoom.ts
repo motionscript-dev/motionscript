@@ -1,4 +1,4 @@
-import { Canvas3D, Camera3D, AmbientLight3D, DirectionalLight3D, Box3D } from '@motionscript/sdk';
+import { Canvas3D, Box3D } from '@motionscript/sdk';
 import { easeInOut, el, scene, variableTo } from '../doc';
 import { holdTail } from './_lib';
 
@@ -12,12 +12,14 @@ export default scene((stage) => {
     stage.variable('fov', 60);
 
     stage.add(
-        el(Canvas3D, { width: 480, height: 320, cornerRadius: 16, children: [
-            el(Camera3D, { position: [0, 0, 5], target: 0, fov: '=[fov]' as never }),
-            el(AmbientLight3D, { intensity: 1.2 }),
-            el(DirectionalLight3D, { intensity: 0.8, position: [1, 2, 4] }),
-            el(Box3D, { width: 3, height: 2, depth: 0.05, fill: 'kingfisher.jpg', roughness: 1 }),
-        ] }),
+        el(Canvas3D, {
+            width: 480, height: 320, cornerRadius: 16,
+            orbit: 90, elevation: 0, zoom: 5, fov: '=[fov]' as never,
+            lights: [{ type: 'ambient', intensity: 1.2 }, { type: 'sun', intensity: 0.8, orbit: 75.9638, elevation: 25.8767 }],
+            children: [
+                el(Box3D, { width: 3, height: 2, depth: 0.05, fill: 'kingfisher.jpg', roughness: 1 }),
+            ],
+        }),
     );
 }, [
     () => variableTo('fov', 8, 1.4, easeInOut('quad')),

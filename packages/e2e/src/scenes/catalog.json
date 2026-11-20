@@ -1698,6 +1698,12 @@
     "description": "Thin plates, grid bars and beams a hair apart, seen from about 20 units: depth precision"
   },
   {
+    "id": "view3d-extrude",
+    "name": "View3dExtrude",
+    "section": "3D",
+    "description": "A bevelled star and a square with a round hole, extruded: cap triangulation, creased and smooth walls, bevel rings"
+  },
+  {
     "id": "view3d-translucent",
     "name": "View3dTranslucent",
     "section": "3D",

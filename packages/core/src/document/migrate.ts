@@ -1,5 +1,6 @@
 import type { ProjectDocument } from "./project";
 import type { ClipDocument } from "./types";
+import { stageEntries } from "./migrate-stage3d";
 
 /**
  * Saved documents outlive the engine that wrote them, so each carries its format and this module carries every
@@ -9,7 +10,7 @@ import type { ClipDocument } from "./types";
  */
 
 /** The format this engine reads natively and writes. A document without `formatVersion` is format 0. */
-export const DOCUMENT_FORMAT_VERSION = 3;
+export const DOCUMENT_FORMAT_VERSION = 4;
 
 export class DocumentTooNewError extends Error {
     readonly version: number;
@@ -87,6 +88,13 @@ export const DOCUMENT_MIGRATIONS: readonly DocumentMigration[] = [
         from: 2,
         description: "An image or video fill's retired `filters` prop moves into `preset.adjustments`.",
         clip: (clip, note) => retireFillFilters(clip, "", note) as JsonDocument,
+    },
+    {
+        from: 3,
+        description:
+            "A `canvas3d`'s light, fog, environment and camera child nodes become its `lights`, `fog`, `environment` " +
+            "and camera fields, where those say exactly what the nodes did.",
+        clip: stageEntries,
     },
 ];
 

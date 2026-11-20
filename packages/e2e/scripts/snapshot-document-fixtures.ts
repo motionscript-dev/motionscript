@@ -126,6 +126,12 @@ const fills = [
             row('polygon', { width: 80, height: 80, sides: 6, fill: 'accent', cornerRadius: 6 }, group.id),
             row('polygram', { width: 80, height: 80, points: 5, ratio: 0.5, fill: 'primary' }, group.id),
             row('path', { width: 80, height: 80, data: 'M0 0 L1 0 L0.5 1 Z', fill: 'accent' }, group.id),
+            row('triangle', { width: 80, height: 70, fill: 'primary', cornerRadius: 4 }, group.id),
+            row('rightTriangle', { width: 80, height: 70, fill: 'accent' }, group.id),
+            row('pentagon', { width: 80, height: 80, fill: 'primary' }, group.id),
+            row('hexagon', { width: 80, height: 80, fill: 'accent', cornerStyle: 'angled', cornerRadius: 6 }, group.id),
+            row('octagon', { width: 80, height: 80, fill: 'primary' }, group.id),
+            row('star', { width: 80, height: 80, points: 6, ratio: 0.45, fill: 'accent' }, group.id),
             boolean,
             row('rect', { width: 60, height: 60 }, boolean.id),
             row('ellipse', { width: 40, height: 40 }, boolean.id),
@@ -208,6 +214,17 @@ const fills = [
     const group = row('group3d', { y: 0.5 }, view.id);
     const camera = row('camera3d', { orbit: 30, elevation: 20, distance: 6 }, view.id);
     const cube = row('box3d', { fill: 'primary' }, group.id);
+    // A stage that says its own lights, air and camera, with no scene-wide nodes.
+    const stage = row('canvas3d', {
+        width: 400, height: 300, projection: 'orthographic', frustumHeight: 6, target: [0, 0.5, 0],
+        lights: [
+            { type: 'ambient', intensity: 0.3 }, { type: 'sun', orbit: 40, elevation: 50, shadow: true },
+            { type: 'sky', sky: '#bcd', ground: '#432' }, { type: 'lamp', position: [1, 2, 1] },
+            { type: 'spot', position: [0, 4, 2], angle: 25 }, { type: 'softBox', position: [0, 3, 3], width: 2 },
+        ],
+        fog: 'bg', fogNear: 4, fogFar: 20, shadows: true,
+    });
+    const onStage = row('line3d', { points: [[0, 0, 0], [1, 1, 0], [2, 0, 0]], stroke: [{ fill: 'accent', weight: 20 }] }, stage.id);
     const three = [
         'sphere3d', 'plane3d', 'circle3d', 'cylinder3d', 'cone3d', 'capsule3d', 'torus3d', 'torus-knot3d', 'ring3d',
         'polyhedron3d', 'points3d', 'sprite3d', 'instances3d', 'mesh3d',
@@ -217,7 +234,7 @@ const fills = [
         duration: 2,
         nodes: [
             { id: '', type: 'canvas2d', parentId: null, layerOrder: 0, props: { fill: 'bg' } },
-            view, group, camera, cube, ...three,
+            view, group, camera, cube, ...three, stage, onStage,
             row('lathe3d', { points: [[0, 0], [0.5, 0.5], [0.2, 1]] }, group.id),
             row('tube3d', { points: [[0, 0, 0], [1, 1, 0], [2, 0, 1]], radius: 0.1 }, group.id),
             row('extrude3d', { path: 'M0 0 L1 0 L1 1 Z', depth: 0.2 }, group.id),
@@ -239,6 +256,9 @@ const fills = [
             command('orbitTo', camera.id, 0, { orbit: 90, elevation: 30 }, { duration: 2 }),
             command('lookTo', camera.id, 1, { target: [0, 1, 0] }),
             command('orbitTo', view.id, 0, { orbit: 10 }),
+            command('lightTo', stage.id, 0, { light: 1, orbit: 120, intensity: 1 }, { duration: 1 }),
+            command('lookTo', stage.id, 1, { target: [0, 0, 0] }),
+            command('strokeTo', onStage.id, 0, { stroke: [{ fill: 'primary', weight: 10 }] }),
         ],
     };
     write('coverage', 'three', project('three', comp));

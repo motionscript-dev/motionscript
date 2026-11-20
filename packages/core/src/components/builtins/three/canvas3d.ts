@@ -7,6 +7,9 @@ import * as View3D from "@/components/modules/view3d";
 import type { PostEffect3D, Shadows3D, ToneMapping3D } from "@/render3d/scene-settings";
 import type { RectProps } from "@/components/builtins/geometry/geometry";
 import type { Color } from "@/attributes/shape/fill/color/parser";
+import type { Fill } from "@/attributes/shape/fill/chain";
+import type { StageLight3D } from "@/components/modules/lights3d";
+import type { Vector3Input } from "@/render3d/vector3";
 
 /**
  * The 3D viewport: a rect whose top fill layer is its 3D children's scene, seen
@@ -16,6 +19,8 @@ export const Canvas3D = component2d({
     key: "canvas3d",
     state: { ...Paint.state, ...Flow.state, ...Corners.state, ...View3D.state },
     defaults: { width: "fill", height: "fill" },
+    renamed: View3D.renamed,
+    migrate: View3D.migrate,
     commands: { ...Paint.commands, ...View3D.commands },
     allowedChildren: ["2d", "3d"],
     load: (loader) => View3D.load(loader),
@@ -51,14 +56,20 @@ export interface Canvas3DProps extends RectProps {
   zoom: number;
   /** Vertical field of view, in **degrees**. */
   fov: number;
-  /** Strength of the ambient fill. */
-  ambientIntensity: number;
-  /** Colour of the ambient fill. White leaves the meshes' own colours alone. */
-  ambientColor: Color;
-  /** Strength of the key light; the rim light is derived from it. */
-  keyIntensity: number;
-  /** Colour of the key light, and of the rim derived from it. */
-  keyColor: Color;
+  /** Perspective (default), or orthographic: parallel rays, {@link frustumHeight} units tall. */
+  projection: "perspective" | "orthographic";
+  /** Orthographic only: the visible height, in scene units. */
+  frustumHeight: number;
+  /** The point the camera looks at and orbits. Default the origin. */
+  target: Vector3Input;
+  /** The lights, as a list of differently shaped items (ambient, sun, sky, lamp, spot, soft box). Default an ambient fill, a key and a rim. A light node among the children replaces them all. */
+  lights: StageLight3D[];
+  /** The air: its first solid colour, thickening from {@link fogNear} to {@link fogFar}. Empty is clear air. */
+  fog: Fill;
+  fogNear: number;
+  fogFar: number;
+  /** The sky that lights the scene: an image fill's picture. Empty is none. **Inert today**, as an environment's `src` is. */
+  environment: Fill;
 
   /** Whether the ground plane is drawn. **Off by default**: it is an authoring reference, not part of the picture. */
   showGrid: boolean;

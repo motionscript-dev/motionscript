@@ -1,4 +1,6 @@
-import { cylinderRadii, type Geometry3D } from "./geometry";
+import { bounds } from "@/attributes/shape/path/walk";
+import { pathDataOf } from "./extrude";
+import { cylinderRadii, resolveBevel3D, type Geometry3D } from "./geometry";
 import { applyMatrix4, type Matrix4 } from "./matrix4";
 import { resolveVector3, type Vector3 } from "./vector3";
 
@@ -180,9 +182,21 @@ export function geometryBounds3D(geometry: Geometry3D | undefined): Box3 | null 
         case "wireframe":
             return geometryBounds3D(geometry.source);
 
-        // Three that need what this package hasn't got: a rasterized 2D path, a
-        // callback that may read the clock, and a file off the network.
-        case "extrude":
+        // The outline's own box, pushed out by a bevel, from the front bevel to the back one.
+        case "extrude": {
+            const box = bounds(pathDataOf(geometry.path));
+            if (!box) return null;
+            const bevel = resolveBevel3D(geometry.bevel);
+            const out = bevel ? Math.max(0, bevel.size + bevel.offset) : 0;
+            const depth = geometry.depth ?? 1;
+            return {
+                min: { x: box.minX - out, y: box.minY - out, z: bevel ? -bevel.thickness : 0 },
+                max: { x: box.maxX + out, y: box.maxY + out, z: depth + (bevel?.thickness ?? 0) },
+            };
+        }
+
+        // Two that need what this package hasn't got: a callback that may read
+        // the clock, and a file off the network.
         case "parametric":
         case "modelGeometry":
         default:

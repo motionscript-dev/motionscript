@@ -7,6 +7,8 @@ import * as Corners from "@/components/modules/corners";
 import * as Flow from "@/components/modules/flow";
 import * as Paint from "@/components/modules/paint";
 import * as View3D from "@/components/modules/view3d";
+import { lightToFrame, stageRig } from "@/components/modules/lights3d";
+import { applyPropEvolution } from "@/document/prop-evolution";
 import { Graphics3D } from '@/render3d/graphics3d';
 import { Scene3D, type Scene3DOp } from '@/render3d/scene3d';
 import { resetInertWarnings3D } from '@/render3d/inert';
@@ -74,9 +76,10 @@ describe('Canvas3D defaults', () => {
         expect(canvas.post).toBeUndefined();
 
         expect([canvas.orbit, canvas.elevation, canvas.zoom, canvas.fov]).toEqual([35, 20, 12, 45]);
-        expect([canvas.ambientIntensity, canvas.keyIntensity]).toEqual([0.45, 2.4]);
-        expect(canvas.ambientColor).toEqual(parseColor('#ffffff'));
-        expect(canvas.keyColor).toEqual(parseColor('#ffffff'));
+        expect(canvas.lights.map((l) => [l.type, l.intensity])).toEqual([['ambient', 0.45], ['sun', 2.4], ['sun', 0.84]]);
+        expect(canvas.lights[0]).toMatchObject({ color: parseColor('#ffffff') });
+        expect([canvas.projection, canvas.frustumHeight, canvas.target]).toEqual(['perspective', 10, undefined]);
+        expect([canvas.fog, canvas.environment]).toEqual([[], []]);
 
         expect([canvas.showGrid, canvas.gridSize, canvas.gridDivisions, canvas.gridMajorEvery]).toEqual([false, 40, 40, 5]);
         expect([canvas.showAxes, canvas.gridFade]).toEqual([false, 0.55]);
@@ -131,28 +134,66 @@ describe('Canvas3D scene composition', () => {
     it('builds the default rig: an ambient fill, a key from the front-right and a weaker rim from behind', () => {
         const rig = lights(new Canvas3D({ children: [new Box3D()] })._scene3D());
         expect(rig).toHaveLength(3);
-
         const [ambient, key, rim] = rig;
         expect(ambient.light).toEqual({ type: 'ambient', intensity: 0.45, color: parseColor('#ffffff') });
         expect(ambient.transform).toBeUndefined();
 
         expect(key.light).toEqual({ type: 'directional', intensity: 2.4, color: parseColor('#ffffff') });
-        expect(key.transform).toEqual({ position: [4, 6, 3] });
-
-        expect(rim.light).toMatchObject({ type: 'directional' });
-        expect((rim.light as { intensity: number }).intensity).toBeCloseTo(2.4 * 0.35, 12);
-        expect(rim.transform).toEqual({ position: [-5, -2, -4] });
+        expect(rim.light).toMatchObject({ type: 'directional', intensity: 0.84 });
+        // The key and rim keep the directions of the rig's old positions.
+        const along = (at: unknown, to: [number, number, number]) => {
+            const p = at as { x: number; y: number; z: number };
+            const n = Math.hypot(...to) / Math.hypot(p.x, p.y, p.z);
+            return [p.x * n, p.y * n, p.z * n].map((v, i) => Math.abs(v - to[i]) < 0.01);
+        };
+        expect(along(key.transform?.position, [4, 6, 3])).toEqual([true, true, true]);
+        expect(along(rim.transform?.position, [-5, -2, -4])).toEqual([true, true, true]);
     });
 
-    it('derives the rim from the key: same colour, 0.35 of its strength', () => {
-        const rig = lights(new Canvas3D({
-            keyIntensity: 4, keyColor: '#ff0000', ambientIntensity: 0.1, ambientColor: '#00ff00',
+    it('lights the scene with each kind of stage light', () => {
+        const scene = new Canvas3D({
+            lights: [
+                { type: 'sky', sky: '#88aaff', ground: '#443322', intensity: 0.5 },
+                { type: 'lamp', position: [1, 2, 3] },
+                { type: 'spot', position: [0, 5, 0], angle: 20, shadow: true },
+                { type: 'softBox', position: [0, 3, 3] },
+                { type: 'nope' } as never,
+            ],
             children: [new Box3D()],
-        })._scene3D());
-        const [ambient, key, rim] = rig;
-        expect(ambient.light).toMatchObject({ intensity: 0.1, color: parseColor('#00ff00') });
-        expect(key.light).toMatchObject({ intensity: 4, color: parseColor('#ff0000') });
-        expect(rim.light).toMatchObject({ intensity: 4 * 0.35, color: parseColor('#ff0000') });
+        })._scene3D();
+        const recorded = lights(scene);
+        expect(recorded.map((l) => l.light.type)).toEqual(['hemisphere', 'point', 'spot', 'area']);
+        expect(recorded[1].transform).toEqual({ position: { x: 1, y: 2, z: 3 } });
+        expect(recorded[2].light).toMatchObject({ angle: 20, penumbra: 0.3, shadow: {} });
+        expect(recorded[3].transform).toMatchObject({ lookAt: { x: 0, y: 0, z: 0 } });
+    });
+
+    it('draws fog from its first solid colour, and an orthographic camera when asked', () => {
+        const scene = new Canvas3D({ fog: '#112233', fogNear: 2, fogFar: 9, projection: 'orthographic', frustumHeight: 6, children: [new Box3D()] })._scene3D();
+        expect(scene.fogDescriptor()).toEqual({ color: parseColor('#112233'), near: 2, far: 9 });
+        expect(scene.cameraDescriptor()).toMatchObject({ type: 'orthographic', frustumHeight: 6 });
+        expect(new Canvas3D({ children: [new Box3D()] })._scene3D().fogDescriptor()).toBeNull();
+    });
+
+    it('moves one light with lightTo, from where it stands', () => {
+        const from = new Canvas3D().lights;
+        const mid = View3D.commands.lightTo;
+        expect(mid.args.light).toBeDefined();
+        const half = lightToFrame(from, 1, { orbit: 36.87 + 90, intensity: 0 }, 0.5);
+        expect(half[1]).toMatchObject({ type: 'sun', orbit: 36.87 + 45, intensity: 1.2 });
+        expect(half[0]).toBe(from[0]);
+    });
+
+    it('reads the four lighting keys it had before `lights` as the rig they described', () => {
+        const { props } = applyPropEvolution(
+            { renamed: View3D.renamed, deprecated: {}, migrate: View3D.migrate },
+            { keyIntensity: 4, keyColor: '#ff0000', ambientIntensity: 0.1, ambientColor: '#00ff00', orbit: 3 },
+        );
+        expect(props).toEqual({ orbit: 3, lights: stageRig({ key: 4, keyColor: '#ff0000', ambient: 0.1, ambientColor: '#00ff00' }) });
+        const rig = lights(new Canvas3D({ ...props, children: [new Box3D()] })._scene3D());
+        expect(rig[0].light).toMatchObject({ intensity: 0.1, color: parseColor('#00ff00') });
+        expect(rig[1].light).toMatchObject({ intensity: 4, color: parseColor('#ff0000') });
+        expect(rig[2].light).toMatchObject({ intensity: 1.4, color: parseColor('#ff0000') });
     });
 
     it('leaves the rig out as soon as any child records a light', () => {

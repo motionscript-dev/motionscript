@@ -9,6 +9,8 @@ export * from './components/builtins/audio/audio';
 export * from './components/builtins/media/media';
 export * from './components/builtins/three/three';
 export * from './components/builtins/three/canvas3d';
+export { STAGE_LIGHT_DEFAULTS, STAGE_LIGHT_TYPES, stageRig } from './components/modules/lights3d';
+export type { StageLight3D, StageLightResolved3D, StageLightType3D, StageShadow3D } from './components/modules/lights3d';
 export * from './project';
 export * from './document';
 export * from './render';

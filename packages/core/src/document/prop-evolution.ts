@@ -15,10 +15,13 @@ export interface PropEvolution {
     /**
      * Keyed by an old key from {@link renamed}, it converts only what was stored under that key (a unit change
      * rides on a rename); keyed by an entry, it runs on every stored value and must hand a current one back
-     * unchanged. `undefined` drops the prop back to its default.
+     * unchanged. `undefined` drops the prop back to its default. `row` is the row as stored, for a value that
+     * several old keys made together (each hook then answers the same).
      */
-    readonly migrate: Readonly<Record<string, (value: unknown) => unknown>>;
+    readonly migrate: Readonly<Record<string, MigrateHook>>;
 }
+
+export type MigrateHook = (value: unknown, row: Readonly<Record<string, unknown>>) => unknown;
 
 export interface PropNote {
     prop: string;
@@ -71,7 +74,7 @@ export function applyPropEvolution(evolution: PropEvolution, props: Record<strin
             changes.push({ prop: at, message: `"${at}" is an expression, so its value was left as written.` });
             return value;
         }
-        return hook(value);
+        return hook(value, props);
     };
 
     for (const [from, to] of Object.entries(evolution.renamed)) {

@@ -126,7 +126,7 @@ The wgpu renderer (`packages/renderer`) became the primary backend with CanvasKi
 - A browser without WebGPU cannot play or export a scene. A host checks `isWgpuSupported()` and says so.
 - Building the engine needs Rust and `wasm-bindgen-cli`: `pnpm build:lib` builds the renderer's WASM before `browser`.
 - On Linux, anything that reads a frame back (browser tests, e2e, headless) runs headed under Xvfb, since a headless page reads a SwiftShader WebGPU canvas back empty.
-- 3D that only three.js drew is skipped and reported as `missing` until the renderer implements it: glTF models and their clips, `extrude` geometry, `matcap` and GLSL `shader` materials, texture maps other than `map` and a toon `gradientMap`, and a physical material's sheen, iridescence, anisotropy and dispersion.
+- 3D that only three.js drew is skipped and reported as `missing` until the renderer implements it: glTF models and their clips, `matcap` and GLSL `shader` materials, texture maps other than `map` and a toon `gradientMap`, and a physical material's sheen, iridescence, anisotropy and dispersion.
 - The image decode-resolution ladder and the CanvasKit-specific tests went with `skia-render`; the renderer decodes at its own texture limit.
 - Every package is Apache-2.0; the BSD-3 split is gone. The two npm packages stay published at their last version and are deprecated there.
 

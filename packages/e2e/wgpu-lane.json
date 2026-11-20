@@ -35,6 +35,7 @@
     "view3d-basic": {},
     "space3d-flip": {},
     "view3d-thin-stack": {},
+    "view3d-extrude": {},
     "math-axes-plot": {},
     "latex-basic": {},
     "wgsl-fill-custom": {},

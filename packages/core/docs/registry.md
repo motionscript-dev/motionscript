@@ -36,10 +36,10 @@ Five tables, one value per key:
 | Text | `text`, `richtext`, `number` |
 | Media | `video` |
 | Audio | `audioBus`, `sound` |
-| 3D scene | `canvas3d`, `group3d`, `mesh3d`, `camera3d`, `fog3d`, `environment3d` |
+| 3D scene | `canvas3d`, `group3d`, `mesh3d`; deprecated (removed in 0.5.0, now `canvas3d` entries): `camera3d`, `fog3d`, `environment3d` |
 | 3D geometry | `box3d`, `sphere3d`, `plane3d`, `circle3d`, `cylinder3d`, `cone3d`, `capsule3d`, `torus3d`, `torus-knot3d`, `tube3d`, `lathe3d`, `extrude3d`, `ring3d`, `polyhedron3d` |
 | 3D drawables | `points3d`, `line3d`, `sprite3d`, `instances3d`, `model3d` |
-| 3D lights | `ambient-light3d`, `directional-light3d`, `point-light3d`, `spot-light3d`, `hemisphere-light3d`, `area-light3d` |
+| 3D lights (deprecated: a `canvas3d`'s `lights`; removed in 0.5.0) | `ambient-light3d`, `directional-light3d`, `point-light3d`, `spot-light3d`, `hemisphere-light3d`, `area-light3d` |
 
 `path` is `PathShape` (`components/builtins/geometry/geometry.ts`), the unit-box path whose `data` is a fraction of the node's own box, so a resize is a `width`/`height` write. `Path` (face-value, key `facePath`) and the named outlines (`triangle`, `rightTriangle`, `pentagon`, `hexagon`, `octagon`, `star`) are exported and declare their keys, but are not built in: a host that wants one hands it to the registry. The mixed casing (`audioBus`, `orbitCamera` beside `theme-provider`) is what stored documents contain.
 

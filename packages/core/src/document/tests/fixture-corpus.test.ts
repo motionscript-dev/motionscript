@@ -31,7 +31,8 @@ describe("the saved-document corpus", () => {
         expect(releases.length).toBeGreaterThan(0);
     });
 
-    // A document never adds, removes or reparents a node, so the lifecycle commands are no row's.
+    // A document never adds, removes or reparents a node, so the lifecycle commands are no row's. A type the
+    // newest set's vocabulary lacks is new since that release; its coverage row joins the corpus at the next one, and so does a command it lacks.
     it("names every built-in node type and every command a document can", () => {
         const types = new Set<string>();
         const commands = new Set<string>();
@@ -46,8 +47,10 @@ describe("the saved-document corpus", () => {
         }
         const every = new Set(registry.commandKeys());
         for (const type of registry.nodeKeys()) for (const key of registry.commandKeys(type)) every.add(key);
-        expect(registry.nodeKeys().filter((type) => !types.has(type))).toEqual([]);
-        expect([...every].filter((key) => !commands.has(key)).sort()).toEqual(["addChildAt", "removeChildAt", "reparent"]);
+        const known = (JSON.parse(readFileSync(join(root, releases.at(-1)!, "vocabulary.json"), "utf8")) as RegistryVocabulary).nodes;
+        expect(registry.nodeKeys().filter((type) => !types.has(type) && type in known)).toEqual([]);
+        const said = new Set(Object.values(known).flatMap((node) => node.commands));
+        expect([...every].filter((key) => !commands.has(key) && said.has(key)).sort()).toEqual(["addChildAt", "removeChildAt", "reparent"]);
     });
 
     // A sparse row leaves most props at their default, so a changed default changes saved

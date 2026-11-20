@@ -45,6 +45,7 @@ export type { Box3 } from "./bounds3d";
 /** @internal */ export type { Matrix4, Vector4 } from "./matrix4";
 
 export { evaluateParametric, cylinderRadii, resolveBevel3D } from "./geometry";
+export { evaluateExtrude } from "./extrude";
 export type {
     Geometry3D, Passthrough3D, Sweep3D, Bevel3D,
     BoxGeometry3D, SphereGeometry3D, PlaneGeometry3D, CylinderGeometry3D,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Scene3D, type Scene3DOp } from '@/render3d/scene3d';
 import { Instances3D, Line3D, Model3D, ModelView3D, Points3D, Sprite3D } from "@/components/builtins/three/three";
 import { Mat, Geo } from '@/render3d/builders';
+import { applyPropEvolution, propEvolutionOf } from '@/document/prop-evolution';
 import type { Node3D } from '@/components/trees/three/node3d';
 
 /** Every op a node records, group scope included. */
@@ -81,36 +82,36 @@ describe('Points3D', () => {
 });
 
 describe('Line3D', () => {
-    it('draws a strip through its points, with the default lineBasic material', () => {
-        const [op] = drawn(new Line3D({ points: [[0, 0, 0], [1, 1, 1]] }));
-        expect(op).toMatchObject({
-            kind: 'line',
-            mode: 'strip',
-            geometry: { type: 'buffer', position: new Float32Array([0, 0, 0, 1, 1, 1]) },
-            material: { type: 'lineBasic' },
-        });
+    it('paints its points as bars, a 2D stroke\'s layers in thousandths of a unit', () => {
+        const [op] = drawn(new Line3D({ points: [[0, 0, 0], [1, 0, 0], [1, 1, 0]] }));
+        expect(op).toMatchObject({ kind: 'instances' });
+        expect(op.kind === 'instances' && op.instances).toHaveLength(2);
     });
 
-    it('maps closed and segments onto the recorded mode, segments first', () => {
-        const mode = (props: Record<string, unknown>) => {
-            const [op] = drawn(new Line3D({ points: [[0, 0, 0], [1, 0, 0]], ...props } as never));
-            return op.kind === 'line' ? op.mode : undefined;
+    it('closes the loop, or pairs the points into separate segments', () => {
+        const bars = (props: Record<string, unknown>) => {
+            const [op] = drawn(new Line3D({ points: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], ...props } as never));
+            return op.kind === 'instances' ? op.instances.length : 0;
         };
-        expect(mode({ closed: true })).toBe('loop');
-        expect(mode({ segments: true })).toBe('segments');
-        expect(mode({ closed: true, segments: true })).toBe('segments');
+        expect(bars({})).toBe(3);
+        expect(bars({ closed: true })).toBe(4);
+        expect(bars({ segments: true })).toBe(2);
     });
 
-    it('draws a dashed stroke and an opacity through the line material', () => {
-        const [op] = drawn(new Line3D({
-            points: [[0, 0, 0], [1, 0, 0]], stroke: { fill: 'white', dash: [0.2, 0.1] }, opacity: 0.5,
-        }));
-        expect(op.kind === 'line' && op.material).toMatchObject({
-            type: 'lineDashed', color: 'white', dashSize: 0.2, gapSize: 0.1, opacity: 0.5,
-        });
+    it('draws each stroke layer, and nothing for an empty stroke', () => {
+        const points = [[0, 0, 0], [1, 0, 0]];
+        expect(drawn(new Line3D({ points, stroke: [{ fill: 'red', weight: 5 }, { fill: 'blue', weight: 2 }] } as never))).toHaveLength(2);
+        expect(drawn(new Line3D({ points, stroke: [] } as never))).toEqual([]);
     });
 
-    it('prefers a geometry over points', () => {
+    it('reads a stroke written as the old LineStroke3D: pixel weight, world-unit dash', () => {
+        const { props } = applyPropEvolution(propEvolutionOf(Line3D.node)!, { stroke: { fill: 'white', dash: [0.2, 0.1] } });
+        expect(props.stroke).toEqual([{ fill: 'white', weight: 10, dash: [200, 100] }]);
+        const current = [{ fill: 'white', weight: 3 }];
+        expect(applyPropEvolution(propEvolutionOf(Line3D.node)!, { stroke: current }).props.stroke).toBe(current);
+    });
+
+    it('prefers a geometry over points, drawn as a GPU line in the stroke\'s colour', () => {
         const geometry = Geo.edges(Geo.box());
         const [op] = drawn(new Line3D({ geometry, points: [[0, 0, 0], [1, 1, 1]] }));
         expect(op.kind === 'line' && op.geometry).toBe(geometry);

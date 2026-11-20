@@ -1,7 +1,8 @@
 import type { Color } from "@/attributes/shape/fill/color/parser";
+import type { Stroke } from "@/attributes/shape/stroke/stroke";
 import { ORBIT_CAMERA_DEFAULTS, type CameraData3D } from "@/render3d/camera";
 import { lerpFill3D, type Fill3D } from "@/render3d/fill3d";
-import type { Geometry3D, PolyhedronGeometry3D, BoxGeometry3D, CapsuleGeometry3D, CircleGeometry3D, ConeGeometry3D, CylinderGeometry3D, ExtrudeGeometry3D, LatheGeometry3D, PlaneGeometry3D, RingGeometry3D, SphereGeometry3D, TorusGeometry3D, TorusKnotGeometry3D, TubeGeometry3D } from "@/render3d/geometry";
+import type { Bevel3D, Geometry3D, PolyhedronGeometry3D, BoxGeometry3D, CapsuleGeometry3D, CircleGeometry3D, ConeGeometry3D, CylinderGeometry3D, ExtrudeGeometry3D, LatheGeometry3D, PlaneGeometry3D, RingGeometry3D, SphereGeometry3D, TorusGeometry3D, TorusKnotGeometry3D, TubeGeometry3D } from "@/render3d/geometry";
 import { Graphics3D, type LineStroke3D, type ModelAnimation3D } from "@/render3d/graphics3d";
 import type { LightData3D, AmbientLightData3D, AreaLightData3D, DirectionalLightData3D, HemisphereLightData3D, PointLightData3D, SpotLightData3D } from "@/render3d/light";
 import type { Material3D, Shading3D } from "@/render3d/material";
@@ -9,11 +10,14 @@ import type { EnvironmentData3D, FogData3D } from "@/render3d/scene-settings";
 import type { Segments3D } from "@/render3d/segments";
 import type { Transform3D, Blend3D, Faces3D } from "@/render3d/transform";
 import type { Vector3Input } from "@/render3d/vector3";
-import type { NodeOf } from "@/components/factory/api";
+import type { NodeOf, Type } from "@/components/factory/api";
 import { component3d } from "@/components/factory/component3d";
 import { Types } from "@/components/factory/types";
 import * as Material from "@/components/modules/material";
-import { defined, optional, optionalColor, optionalNumber, optionalVector3, stated } from "@/components/modules/three-entries";
+import * as Paint3D from "@/components/modules/paint3d";
+import { defined, optional, optionalBoolean, optionalColor, optionalNumber, optionalNumeric, optionalPath, optionalPoints, optionalVector3, stated } from "@/components/modules/three-entries";
+import type { Vector2 } from "@/attributes/layout/vector2";
+import { resolveVector3 } from "@/render3d/vector3";
 import type { Node3DProps } from "@/components/trees/three/node3d";
 import type { Texture3D } from "@/render3d/texture";
 
@@ -31,11 +35,14 @@ export const Mesh3D = component3d({
 });
 export type Mesh3D = NodeOf<typeof Mesh3D>;
 
-const sweep = { startAngle: optional<number>(), sweep: optional<number>() };
+const size = () => optionalNumber({ min: 0, step: 0.1 });
+const angle = () => optionalNumber({ step: 1, unit: "°" });
+const segments = () => optionalNumeric<Segments3D>({ min: 1, step: 1 });
+const sweep = { startAngle: angle(), sweep: angle() };
 const SWEEP_KEYS = ["startAngle", "sweep"] as const;
 
 /** A mesh of one built-in shape: `keys` are the entries its geometry descriptor takes. */
-function shape3d<const K extends string, const S extends Record<string, ReturnType<typeof optional>>>(
+function shape3d<const K extends string, const S extends Record<string, Type<unknown>>>(
     key: K, type: Geometry3D["type"], own: S, keys: readonly string[],
 ) {
     return component3d({
@@ -46,79 +53,104 @@ function shape3d<const K extends string, const S extends Record<string, ReturnTy
 }
 
 export const Box3D = shape3d("box3d", "box", {
-    width: optional<number>(), height: optional<number>(), depth: optional<number>(),
-    cornerRadius: optional<number>(), segments: optional<Segments3D>(),
+    width: size(), height: size(), depth: size(),
+    cornerRadius: optionalNumber({ min: 0, step: 0.01 }), segments: segments(),
 }, ["width", "height", "depth", "cornerRadius", "segments"]);
 export type Box3D = NodeOf<typeof Box3D>;
 
 export const Sphere3D = shape3d("sphere3d", "sphere", {
-    radius: optional<number>(), segments: optional<Segments3D>(), ...sweep,
-    startLatitude: optional<number>(), latitudeSweep: optional<number>(),
+    radius: size(), segments: segments(), ...sweep,
+    startLatitude: angle(), latitudeSweep: angle(),
 }, ["radius", "segments", "startLatitude", "latitudeSweep", ...SWEEP_KEYS]);
 export type Sphere3D = NodeOf<typeof Sphere3D>;
 
 export const Plane3D = shape3d("plane3d", "plane", {
-    width: optional<number>(), height: optional<number>(), segments: optional<Segments3D>(),
+    width: size(), height: size(), segments: segments(),
 }, ["width", "height", "segments"]);
 export type Plane3D = NodeOf<typeof Plane3D>;
 
 export const Cylinder3D = shape3d("cylinder3d", "cylinder", {
-    radius: optional<number | readonly [number, number]>(), height: optional<number>(),
-    segments: optional<Segments3D>(), capped: optional<boolean>(), ...sweep,
+    radius: optionalNumeric<number | readonly [number, number]>({ min: 0, step: 0.1 }), height: size(),
+    segments: segments(), capped: optionalBoolean(), ...sweep,
 }, ["radius", "height", "segments", "capped", ...SWEEP_KEYS]);
 export type Cylinder3D = NodeOf<typeof Cylinder3D>;
 
 export const Cone3D = shape3d("cone3d", "cone", {
-    radius: optional<number>(), height: optional<number>(), segments: optional<Segments3D>(), capped: optional<boolean>(), ...sweep,
+    radius: size(), height: size(), segments: segments(), capped: optionalBoolean(), ...sweep,
 }, ["radius", "height", "segments", "capped", ...SWEEP_KEYS]);
 export type Cone3D = NodeOf<typeof Cone3D>;
 
 export const Torus3D = shape3d("torus3d", "torus", {
-    radius: optional<number>(), thickness: optional<number>(), segments: optional<Segments3D>(), ...sweep,
+    radius: size(), thickness: optionalNumber({ min: 0, step: 0.05 }), segments: segments(), ...sweep,
 }, ["radius", "thickness", "segments", ...SWEEP_KEYS]);
 export type Torus3D = NodeOf<typeof Torus3D>;
 
 export const TorusKnot3D = shape3d("torus-knot3d", "torusKnot", {
-    radius: optional<number>(), thickness: optional<number>(), segments: optional<Segments3D>(),
-    windings: optional<readonly [number, number]>(),
+    radius: size(), thickness: optionalNumber({ min: 0, step: 0.05 }), segments: segments(),
+    windings: optionalNumeric<readonly [number, number]>({ min: 1, step: 1 }),
 }, ["radius", "thickness", "segments", "windings"]);
 export type TorusKnot3D = NodeOf<typeof TorusKnot3D>;
 
 export const Circle3D = shape3d("circle3d", "circle", {
-    radius: optional<number>(), segments: optional<Segments3D>(), ...sweep,
+    radius: size(), segments: segments(), ...sweep,
 }, ["radius", "segments", ...SWEEP_KEYS]);
 export type Circle3D = NodeOf<typeof Circle3D>;
 
 export const Ring3D = shape3d("ring3d", "ring", {
-    radius: optional<number>(), innerRadius: optional<number>(), segments: optional<Segments3D>(), ...sweep,
+    radius: size(), innerRadius: size(), segments: segments(), ...sweep,
 }, ["radius", "innerRadius", "segments", ...SWEEP_KEYS]);
 export type Ring3D = NodeOf<typeof Ring3D>;
 
 export const Capsule3D = shape3d("capsule3d", "capsule", {
-    radius: optional<number>(), height: optional<number>(), segments: optional<Segments3D>(),
+    radius: size(), height: size(), segments: segments(),
 }, ["radius", "height", "segments"]);
 export type Capsule3D = NodeOf<typeof Capsule3D>;
 
 export const Polyhedron3D = component3d({
     key: "polyhedron3d",
-    state: { ...mesh, shape: Types.custom<PolyhedronGeometry3D["shape"]>("icosahedron"), radius: optional<number>(), segments: optional<Segments3D>() },
+    state: { ...mesh, shape: Types.oneOf(["tetrahedron", "octahedron", "icosahedron", "dodecahedron"] as const, { default: "icosahedron" }), radius: size(), segments: optionalNumeric<Segments3D>({ min: 0, step: 1 }) },
     render: (ctx, s) => ctx.draw(Material.mesh(s, stated<Geometry3D>("polyhedron", s, ["shape", "radius", "segments"]))),
 });
 export type Polyhedron3D = NodeOf<typeof Polyhedron3D>;
 
-export const Extrude3D = shape3d("extrude3d", "extrude", {
-    path: optional<unknown>(), depth: optional<number>(), segments: optional<Segments3D>(), bevel: optional<unknown>(),
-}, ["path", "depth", "segments", "bevel"]);
+/** A 2D outline swept into a solid `depth` deep; a path with no outline draws nothing. */
+export const Extrude3D = component3d({
+    key: "extrude3d",
+    state: {
+        ...mesh, path: optionalPath(), depth: optionalNumber({ min: 0, step: 0.05 }), segments: segments(),
+        bevel: optionalNumeric<number | Bevel3D>({ min: 0, step: 0.01 }),
+    },
+    render: (ctx, s) => {
+        if (typeof s.path === "string" ? s.path.trim() === "" : !s.path) return;
+        ctx.draw(Material.mesh(s, stated<Geometry3D>("extrude", s, ["path", "depth", "segments", "bevel"])));
+    },
+});
 export type Extrude3D = NodeOf<typeof Extrude3D>;
 
-export const Lathe3D = shape3d("lathe3d", "lathe", {
-    points: optional<readonly unknown[]>(), segments: optional<Segments3D>(), ...sweep,
-}, ["points", "segments", ...SWEEP_KEYS]);
+/** A profile of `{ x, y }` points (`x` the radius, `y` the height) turned about the vertical axis. */
+export const Lathe3D = component3d({
+    key: "lathe3d",
+    state: { ...mesh, points: optionalPoints<Vector2 | Vector3Input>("vector2"), segments: segments(), ...sweep },
+    render: (ctx, s) => {
+        if ((s.points?.length ?? 0) < 2) return;
+        const points = s.points!.map((p): Vector3Input => {
+            const v = resolveVector3(p as Vector3Input);
+            return [v.x, v.y, 0];
+        });
+        ctx.draw(Material.mesh(s, { ...stated<Geometry3D>("lathe", s, ["segments", ...SWEEP_KEYS]), points } as Geometry3D));
+    },
+});
 export type Lathe3D = NodeOf<typeof Lathe3D>;
 
-export const Tube3D = shape3d("tube3d", "tube", {
-    points: optional<readonly Vector3Input[]>(), radius: optional<number>(), segments: optional<Segments3D>(), closed: optional<boolean>(),
-}, ["points", "radius", "segments", "closed"]);
+/** A round cross-section `radius` wide swept along `points`. */
+export const Tube3D = component3d({
+    key: "tube3d",
+    state: { ...mesh, points: optionalPoints<Vector3Input>("vector3"), radius: size(), segments: segments(), closed: optionalBoolean() },
+    render: (ctx, s) => {
+        if ((s.points?.length ?? 0) < 2) return;
+        ctx.draw(Material.mesh(s, stated<Geometry3D>("tube", s, ["points", "radius", "segments", "closed"])));
+    },
+});
 export type Tube3D = NodeOf<typeof Tube3D>;
 
 export const Instances3D = component3d({
@@ -140,23 +172,72 @@ export const Points3D = component3d({
 });
 export type Points3D = NodeOf<typeof Points3D>;
 
+/** How thick a line drawn before `stroke` was a paint is, in thousandths of a unit: about a pixel at a stage's default framing. */
+const LEGACY_LINE_WEIGHT = 10;
+
+/**
+ * `stroke` was one `LineStroke3D` (a pixel `weight`, a world-unit `dash`); it is a paint now, a list of layers in
+ * thousandths of a unit. A single object of only those three keys is the old form; anything else is current.
+ */
+function legacyLineStroke(value: unknown): unknown {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+    const keys = Object.keys(value);
+    if (keys.length === 0 || keys.some((key) => key !== "fill" && key !== "weight" && key !== "dash")) return value;
+    const old = value as { fill?: unknown; weight?: number; dash?: readonly [number, number?] };
+    const dash = Array.isArray(old.dash) && old.dash.length > 0 ? [old.dash[0] * 1000, (old.dash[1] ?? old.dash[0]) * 1000] : undefined;
+    return [{ fill: old.fill ?? "#ffffff", weight: (old.weight ?? 1) * LEGACY_LINE_WEIGHT, ...(dash ? { dash } : {}) }];
+}
+
+/** Consecutive points as segments (pairs of them with `pairs`), and the last back to the first when `closed`. */
+function lineSegments(points: readonly Vector3Input[], closed: boolean, pairs: boolean): Paint3D.Segment3D[] {
+    const at = points.map((p): Paint3D.Vec3 => {
+        const v = resolveVector3(p);
+        return [v.x, v.y, v.z];
+    });
+    const out: Paint3D.Segment3D[] = [];
+    for (let i = 0; i + 1 < at.length; i += pairs ? 2 : 1) out.push([at[i], at[i + 1]]);
+    if (closed && !pairs && at.length > 2) out.push([at[at.length - 1], at[0]]);
+    return out;
+}
+
+/** The first solid colour a stroke's layers name: what a line drawn from a geometry takes. */
+function strokeColor(stroke: readonly { readonly fill: readonly unknown[] }[]): Color | undefined {
+    for (const layer of stroke) {
+        for (const fill of layer.fill) {
+            if ((fill as { type?: string }).type === "solid") return (fill as { color: Color }).color;
+        }
+    }
+    return undefined;
+}
+
+/** A polyline through `points`, painted with `stroke` as a 3D component's lines are; a `geometry` or `material` draws it as a GPU line instead. */
 export const Line3D = component3d({
     key: "line3d",
     state: {
-        points: optional<readonly Vector3Input[]>(),
+        points: optionalPoints<Vector3Input>("vector3"),
         geometry: optional<Geometry3D>(),
         closed: Types.custom(false),
         segments: Types.custom(false),
-        stroke: optional<LineStroke3D>(),
-        opacity: optional<number>(),
+        stroke: Paint3D.state.stroke,
+        opacity: optionalNumber({ min: 0, max: 1, step: 0.01 }),
         material: optional<Material3D>(),
     },
+    defaults: { stroke: { fill: "#ffffff", weight: 20 } },
+    migrate: { stroke: legacyLineStroke },
+    commands: { strokeTo: Paint3D.commands.strokeTo },
     render: (ctx, s) => {
-        if (!s.geometry && !s.points?.length) return;
-        ctx.draw(new Graphics3D().line({
-            points: s.geometry ? undefined : s.points, geometry: s.geometry, closed: s.closed, segments: s.segments,
-            stroke: s.stroke, opacity: s.opacity, material: s.material,
-        }));
+        if (s.geometry || s.material) {
+            if (!s.geometry && !s.points?.length) return;
+            const color = strokeColor(s.stroke);
+            const stroke: LineStroke3D | undefined = color === undefined ? undefined : { fill: color };
+            ctx.draw(new Graphics3D().line({
+                points: s.geometry ? undefined : s.points, geometry: s.geometry, closed: s.closed, segments: s.segments,
+                stroke, opacity: s.opacity, material: s.material,
+            }));
+            return;
+        }
+        if ((s.points?.length ?? 0) < 2) return;
+        ctx.draw(Paint3D.lines(new Graphics3D(), s.stroke, lineSegments(s.points!, s.closed, s.segments)));
     },
 });
 export type Line3D = NodeOf<typeof Line3D>;
@@ -164,8 +245,8 @@ export type Line3D = NodeOf<typeof Line3D>;
 export const Sprite3D = component3d({
     key: "sprite3d",
     state: {
-        fill: Types.custom<Fill3D | undefined>(undefined, { lerp: lerpFill3D as never }),
-        opacity: optional<number>(),
+        fill: Types.custom<Fill3D | undefined>(undefined, { lerp: lerpFill3D as never, kind: "fills" }),
+        opacity: optionalNumber({ min: 0, max: 1, step: 0.01 }),
         material: optional<Material3D>(),
     },
     render: (ctx, s) => ctx.draw(new Graphics3D().sprite({ fill: s.fill as Fill3D, opacity: s.opacity, material: s.material })),
@@ -225,50 +306,56 @@ function modelClip(clip: string): string | number | undefined {
 /** A light that casts no shadow unless asked: shadow maps cost a render each. */
 const castsNoShadow = { shadow: false } as const;
 
+/** @deprecated Use an `ambient` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
 export const AmbientLight3D = component3d({
     key: "ambient-light3d",
-    state: { color: optionalColor(), intensity: optional<number>() },
+    state: { color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }) },
     render: (ctx, s) => ctx.light(stated<LightData3D>("ambient", s, ["color", "intensity"])),
 });
 export type AmbientLight3D = NodeOf<typeof AmbientLight3D>;
 
+/** @deprecated Use a `sky` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
 export const HemisphereLight3D = component3d({
     key: "hemisphere-light3d",
-    state: { sky: optionalColor(), ground: optionalColor(), intensity: optional<number>() },
+    state: { sky: optionalColor(), ground: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }) },
     render: (ctx, s) => ctx.light(stated<LightData3D>("hemisphere", s, ["sky", "ground", "intensity"])),
 });
 export type HemisphereLight3D = NodeOf<typeof HemisphereLight3D>;
 
+/** @deprecated Use a `sun` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
 export const DirectionalLight3D = component3d({
     key: "directional-light3d",
-    state: { color: optionalColor(), intensity: optional<number>(), target: optionalVector3("origin") },
+    state: { color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }), target: optionalVector3("origin") },
     defaults: castsNoShadow,
     render: (ctx, s) => ctx.light(stated<LightData3D>("directional", s, ["color", "intensity", "target", "shadow"])),
 });
 export type DirectionalLight3D = NodeOf<typeof DirectionalLight3D>;
 
+/** @deprecated Use a `lamp` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
 export const PointLight3D = component3d({
     key: "point-light3d",
-    state: { color: optionalColor(), intensity: optional<number>(), distance: optional<number>(), decay: optional<number>() },
+    state: { color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }), distance: optionalNumber({ min: 0, step: 0.1 }), decay: optionalNumber({ min: 0, step: 0.1 }) },
     defaults: castsNoShadow,
     render: (ctx, s) => ctx.light(stated<LightData3D>("point", s, ["color", "intensity", "distance", "decay", "shadow"])),
 });
 export type PointLight3D = NodeOf<typeof PointLight3D>;
 
+/** @deprecated Use a `spot` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
 export const SpotLight3D = component3d({
     key: "spot-light3d",
     state: {
-        color: optionalColor(), intensity: optional<number>(), distance: optional<number>(), angle: optional<number>(),
-        penumbra: optional<number>(), decay: optional<number>(), target: optionalVector3("origin"),
+        color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }), distance: optionalNumber({ min: 0, step: 0.1 }), angle: optionalNumber({ min: 0, max: 90, step: 1, unit: "°" }),
+        penumbra: optionalNumber({ min: 0, max: 1, step: 0.05 }), decay: optionalNumber({ min: 0, step: 0.1 }), target: optionalVector3("origin"),
     },
     defaults: castsNoShadow,
     render: (ctx, s) => ctx.light(stated<LightData3D>("spot", s, ["color", "intensity", "distance", "angle", "penumbra", "decay", "target", "shadow"])),
 });
 export type SpotLight3D = NodeOf<typeof SpotLight3D>;
 
+/** @deprecated Use a `softBox` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
 export const AreaLight3D = component3d({
     key: "area-light3d",
-    state: { color: optionalColor(), intensity: optional<number>(), width: optional<number>(), height: optional<number>() },
+    state: { color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }), width: size(), height: size() },
     render: (ctx, s) => ctx.light(stated<LightData3D>("area", s, ["color", "intensity", "width", "height"])),
 });
 export type AreaLight3D = NodeOf<typeof AreaLight3D>;
@@ -276,19 +363,20 @@ export type AreaLight3D = NodeOf<typeof AreaLight3D>;
 const CAMERA_KEYS = ["target", "orbit", "elevation", "distance", "fov", "frustumHeight", "near", "far", "zoom"] as const;
 const ORBIT_KEYS = ["orbit", "elevation", "distance"] as const;
 
+/** @deprecated Use a `Canvas3D`'s camera fields (`orbit`, `elevation`, `zoom`, `fov`, `projection`, `target`). Remove in 0.5.0. */
 export const Camera3D = component3d({
     key: "camera3d",
     state: {
-        type: Types.custom<CameraData3D["type"]>("perspective"),
+        type: Types.oneOf(["perspective", "orthographic"] as const),
         target: optionalVector3("origin"),
-        orbit: optional<number>(),
-        elevation: optional<number>(),
-        distance: optional<number>(),
-        fov: optional<number>(),
-        frustumHeight: optional<number>(),
-        near: optional<number>(),
-        far: optional<number>(),
-        zoom: optional<number>(),
+        orbit: angle(),
+        elevation: optionalNumber({ min: -90, max: 90, step: 1, unit: "°" }),
+        distance: optionalNumber({ min: 0, step: 0.1 }),
+        fov: optionalNumber({ min: 1, max: 179, step: 1, unit: "°" }),
+        frustumHeight: optionalNumber({ min: 0, step: 0.1 }),
+        near: optionalNumber({ min: 0, step: 0.1 }),
+        far: optionalNumber({ min: 0, step: 0.1 }),
+        zoom: optionalNumber({ min: 0.01, step: 0.05 }),
     },
     commands: {
         /** Only the given angles move, each from where it stands (the orbit default while unset). */
@@ -324,9 +412,10 @@ export const Camera3D = component3d({
 });
 export type Camera3D = NodeOf<typeof Camera3D>;
 
+/** @deprecated Use a `Canvas3D`'s `fog`, `fogNear` and `fogFar`. Remove in 0.5.0. */
 export const Fog3D = component3d({
     key: "fog3d",
-    state: { color: optionalColor(), near: optional<number>(), far: optional<number>(), density: optional<number>() },
+    state: { color: optionalColor(), near: optionalNumber({ min: 0, step: 0.1 }), far: optionalNumber({ min: 0, step: 0.1 }), density: optionalNumber({ min: 0, step: 0.001 }) },
     render: (ctx, s) => {
         const out: FogData3D = {};
         if (s.color !== undefined) out.color = s.color as Color;
@@ -340,15 +429,16 @@ export const Fog3D = component3d({
 });
 export type Fog3D = NodeOf<typeof Fog3D>;
 
+/** @deprecated Use a `Canvas3D`'s `environment`. Remove in 0.5.0. */
 export const Environment3D = component3d({
     key: "environment3d",
     state: {
         src: optional<string>(),
         faces: optional<readonly string[]>(),
         preset: optional<"studio">(),
-        intensity: optional<number>(),
-        background: optional<boolean>(),
-        blur: optional<number>(),
+        intensity: optionalNumber({ min: 0, step: 0.05 }),
+        background: optionalBoolean(),
+        blur: optionalNumber({ min: 0, max: 1, step: 0.05 }),
     },
     render: (ctx, s) => {
         if (s.src === undefined && s.faces === undefined && s.preset === undefined) return ctx.environment(null);
@@ -424,7 +514,10 @@ export interface Polyhedron3DProps extends Mesh3DProps, Partial<ParamsOf<Polyhed
 
 export interface Extrude3DProps extends Mesh3DProps, Partial<ParamsOf<ExtrudeGeometry3D>> { }
 
-export interface Lathe3DProps extends Mesh3DProps, Partial<ParamsOf<LatheGeometry3D>> { }
+export interface Lathe3DProps extends Mesh3DProps, Partial<Omit<ParamsOf<LatheGeometry3D>, "points">> {
+    /** The profile: `x` is the radius, `y` the height. */
+    points: readonly (Vector2 | Vector3Input)[];
+}
 
 export interface Tube3DProps extends Mesh3DProps, Partial<ParamsOf<TubeGeometry3D>> { }
 
@@ -444,7 +537,8 @@ export interface Line3DProps extends Node3DProps {
     geometry: Geometry3D;
     closed: boolean;
     segments: boolean;
-    stroke: LineStroke3D | undefined;
+    /** A paint, as a 2D stroke: each layer's weight and dash in thousandths of a scene unit. */
+    stroke: Stroke;
     opacity: number | undefined;
     material: Material3D | undefined;
 }
@@ -465,16 +559,22 @@ export interface Model3DProps extends Node3DProps {
     override: Readonly<Record<string, Material3D>> | undefined;
 }
 
+/** @deprecated Use an `ambient` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
 export interface AmbientLight3DProps extends Node3DProps, Partial<LightParamsOf<AmbientLightData3D>> { }
 
+/** @deprecated Use a `sky` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
 export interface HemisphereLight3DProps extends Node3DProps, Partial<LightParamsOf<HemisphereLightData3D>> { }
 
+/** @deprecated Use a `sun` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
 export interface DirectionalLight3DProps extends Node3DProps, Partial<LightParamsOf<DirectionalLightData3D>> { }
 
+/** @deprecated Use a `lamp` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
 export interface PointLight3DProps extends Node3DProps, Partial<LightParamsOf<PointLightData3D>> { }
 
+/** @deprecated Use a `spot` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
 export interface SpotLight3DProps extends Node3DProps, Partial<LightParamsOf<SpotLightData3D>> { }
 
+/** @deprecated Use a `softBox` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
 export interface AreaLight3DProps extends Node3DProps, Partial<LightParamsOf<AreaLightData3D>> { }
 
 /**
@@ -491,6 +591,8 @@ export interface AreaLight3DProps extends Node3DProps, Partial<LightParamsOf<Are
  * `near`/`far` come from the scene bounds unless set, and aspect always tracks the viewport's layout box. An
  * asymmetric orthographic frustum is a `params` override. A scene with no camera gets a default framing; with
  * several, the last wins.
+ *
+ * @deprecated Use a `Canvas3D`'s camera fields. Remove in 0.5.0.
  */
 export interface Camera3DProps extends Node3DProps {
     /** `"perspective"` (default) or `"orthographic"`. */
@@ -513,6 +615,7 @@ export interface Camera3DProps extends Node3DProps {
 
 /** The two scene-wide nodes, fog and environment. Nodes because they are about the space (fog the air, environment the sky); positionless, so declaring two of a kind is not an error but only the last takes effect. Shadows, tone mapping and post effects are `Canvas3D` props, and the backdrop is the viewport's 2D `fill`. */
 
+/** @deprecated Use a `Canvas3D`'s `fog`. Remove in 0.5.0. */
 export interface Fog3DProps extends Node3DProps {
     /** Defaults to the viewport's own fill. */
     color: Color | undefined;
@@ -524,6 +627,7 @@ export interface Fog3DProps extends Node3DProps {
     density: number | undefined;
 }
 
+/** @deprecated Use a `Canvas3D`'s `environment`. Remove in 0.5.0. */
 export interface Environment3DProps extends Node3DProps {
     /**
      * A 360° panorama — `.hdr`/`.exr` for real IBL, or a plain image.

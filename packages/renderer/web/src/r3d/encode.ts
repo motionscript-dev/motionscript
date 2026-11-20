@@ -5,12 +5,12 @@
 // unset number, so the renderer applies three's defaults), parses colours
 // with core's parseColor (gamma-encoded sRGB; the renderer linearizes), and
 // calls core's own helpers where core already owns the answer: camera
-// placement, cylinder radii, rounded boxes and parametric surfaces (both
-// evaluate to buffers here).
+// placement, cylinder radii, rounded boxes, extrusions and parametric surfaces
+// (all evaluate to buffers here).
 
 import {
     resolveTexture3D, type Texture3D, type ImageTexture3D, type DataTexture3D, type SurfaceTexture3D,
-    cylinderRadii, evaluateParametric, evaluateRoundedBox, parseColor,
+    cylinderRadii, evaluateExtrude, evaluateParametric, evaluateRoundedBox, parseColor,
     resolveCameraPlacement, resolveShadowOptions3D, segmentsOf,
     type BufferGeometry3D, type CameraData3D, type Color, type Geometry3D,
     type LightData3D, type Material3D, type Scene3D, type Transform3D,
@@ -235,6 +235,9 @@ function writeGeometry(w: Writer, g: Geometry3D, report: EncodeReport): void {
         case "parametric":
             writeBuffer(w, evaluateParametric(g));
             return;
+        case "extrude":
+            writeBuffer(w, evaluateExtrude(g));
+            return;
         case "capsule":
             w.u(GEOMETRY.capsule); w.f(g.radius); w.f(g.height); w.segments(g.segments);
             return;
@@ -269,15 +272,27 @@ function writeGeometry(w: Writer, g: Geometry3D, report: EncodeReport): void {
     }
 }
 
-/** Fixed: keyed by its own words. Rounded: a box evaluated to a buffer, keyed
- *  by its parameters. Slot: buffer data, keyed by where it is drawn. */
+/** Fixed: keyed by its own words. Rounded: a box or an extrusion evaluated to a
+ *  buffer, keyed by its parameters. Slot: buffer data, keyed by where it is drawn. */
 function classify(g: Geometry3D): "fixed" | "rounded" | "slot" {
     switch (g.type) {
         case "buffer": case "parametric": return "slot";
         case "box": return (g.cornerRadius ?? 0) > 0 ? "rounded" : "fixed";
+        case "extrude": return "rounded";
         case "edges": case "wireframe": return classify(g.source) === "fixed" ? "fixed" : "slot";
         default: return "fixed";
     }
+}
+
+/** What a geometry evaluated to a buffer is made from, so an unchanged one is neither evaluated nor written again. */
+function paramsKey(g: Geometry3D): string {
+    if (g.type === "extrude") {
+        const path = g.path as { toCommands?: () => unknown };
+        const data = typeof path.toCommands === "function" ? path.toCommands() : g.path;
+        return `extrude|${JSON.stringify([data, g.depth, g.segments, g.bevel])}`;
+    }
+    const b = g as Extract<Geometry3D, { type: "box" }>;
+    return `rounded|${b.width}|${b.height}|${b.depth}|${b.cornerRadius}|${JSON.stringify(b.segments)}`;
 }
 
 /** A geometry's structure without its data, as the reconciler's `geometrySignature`. */
@@ -352,8 +367,7 @@ export class GeometryTable {
         if (shape !== "slot") {
             let key: string | undefined;
             if (shape === "rounded") {
-                const b = g as Extract<Geometry3D, { type: "box" }>;
-                key = `rounded|${b.width}|${b.height}|${b.depth}|${b.cornerRadius}|${JSON.stringify(b.segments)}`;
+                key = paramsKey(g);
                 const known = this.byKey.get(key);
                 if (known !== undefined) return this.use(known);
             }

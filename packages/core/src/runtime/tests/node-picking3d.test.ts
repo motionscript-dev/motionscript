@@ -79,10 +79,14 @@ describe('geometryBounds3D', () => {
         });
     });
 
-    it('declines the three it cannot measure from the descriptor alone', () => {
+    it('declines the two it cannot measure from the descriptor alone', () => {
         expect(geometryBounds3D({ type: 'modelGeometry', src: 'robot.glb' })).toBeNull();
-        expect(geometryBounds3D({ type: 'extrude', path: 'M0 0 L1 1' })).toBeNull();
         expect(geometryBounds3D({ type: 'parametric', segments: 4, vertex: () => ({ x: 0, y: 0, z: 0 }) })).toBeNull();
+    });
+
+    it('boxes an extrusion by its outline and depth, and nothing for an empty outline', () => {
+        expect(geometryBounds3D({ type: 'extrude', path: 'M0 0 L1 1 L0 1 Z', depth: 0.5 })).toEqual({ min: { x: 0, y: 0, z: 0 }, max: { x: 1, y: 1, z: 0.5 } });
+        expect(geometryBounds3D({ type: 'extrude', path: '' })).toBeNull();
     });
 });
 

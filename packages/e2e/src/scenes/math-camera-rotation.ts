@@ -1,4 +1,5 @@
 import { Axes3d, CurvePlot3d, PlotPoint3d } from '@motionscript/math';
+import { View3D } from '@motionscript/sdk';
 import { createRef, easeInOut, el, scene } from '../doc';
 import { holdTail } from './_lib';
 
@@ -19,7 +20,7 @@ export default scene((stage) => {
             zoom: 11,
             orbit: 20,
             elevation: 24,
-            ambientIntensity: 0.9,
+            lights: View3D.stageRig({ ambient: 0.9 }),
             fill: [],
             fontFamily: 'Inter',
             xRange: [-3, 3],

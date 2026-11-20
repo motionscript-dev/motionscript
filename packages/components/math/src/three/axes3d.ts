@@ -35,6 +35,8 @@ import {
     type Shadow as _Shadow,
     type ShadowResolved as _ShadowResolved,
     type Shadows3D as _Shadows3D,
+    type StageLight3D as _StageLight3D,
+    type StageLightResolved3D as _StageLightResolved3D,
     type Stroke as _Stroke,
     type StrokeResolved as _StrokeResolved,
     type ToneMapping3D as _ToneMapping3D,
@@ -100,6 +102,8 @@ export const Axes3d = component2d({
     key: "axes3d",
     state: { ...Paint.state, ...Flow.state, ...Shapes.corners, ...View3D.state, ...own },
     defaults: { width: "fill", height: "fill" },
+    renamed: View3D.renamed,
+    migrate: View3D.migrate,
     commands: {
         ...Paint.commands,
         ...View3D.commands,
