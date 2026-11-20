@@ -1,5 +1,8 @@
 # @motionscript/patterns
 
+> **Deprecated.** The patterns kit is retired and is removed in 0.5.0. It gets no
+> further changes; pin a 0.4 release if a project still uses it.
+
 Grid backgrounds for [Motion Script](https://motionscript.dev): `LineGridPattern`
 and `DotGridPattern` fill a box of their own, and `GridPattern` is an infinite
 grid that fills whatever a `Camera` can currently see.

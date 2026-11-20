@@ -55,7 +55,14 @@ dependency, or copied into a project from the same source (the files each
   `/** @deprecated Use … Remove in X.Y.Z. */` comment naming the same release (a
   constant or type takes the comment alone). `removeIn` is the next major (the
   next minor while on 0.x); `scripts/check-deprecations.mjs` fails CI once the
-  kit reaches it. A name in `./kit` needs none of this.
+  kit reaches it. A name in `./kit` needs none of this. A re-export takes the
+  comment inside its braces (`export { /** @deprecated … */ X } from …`): above
+  the `export` line, TypeScript ignores it.
+- **Retiring a whole kit**: `"motionscript": { "deprecated": { "removeIn", "message" } }`
+  in its `package.json`, every root-barrel name tagged as above, a
+  `> **Deprecated.** …` banner opening the README, and a patch changeset (a
+  minor reaches `removeIn` at once). The check enforces all three and prints the
+  `npm deprecate` command a maintainer runs by hand once that release is out.
 
 ## Naming
 

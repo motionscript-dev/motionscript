@@ -1,5 +1,8 @@
 # @motionscript/grids
 
+> **Deprecated.** The grids kit is retired and is removed in 0.5.0. It gets no
+> further changes; pin a 0.4 release if a project still uses it.
+
 Grid layouts for [Motion Script](https://motionscript.dev): a node that places
 its children in a rectangular, radial, path or spherical arrangement, with
 staggered reveals, waves, focus, reordering and morphs between arrangements.

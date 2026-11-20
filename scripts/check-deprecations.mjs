@@ -1,7 +1,8 @@
 /**
  * Holds every component kit's deprecations to their removal date. Exits 1 when a `@deprecated` doc comment or a
  * `deprecate(…)` call names no `Remove in X.Y.Z.` / `removeIn`, or names a release the kit has already reached.
- * A prerelease of that version counts as reached, so the removal lands before the stable one.
+ * A prerelease of that version counts as reached, so the removal lands before the stable one. A kit retired whole
+ * (`motionscript.deprecated` in its package.json) is held to the same release, and its `npm deprecate` is printed.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs"
@@ -42,6 +43,64 @@ export function deprecationProblems(source, version) {
   return problems
 }
 
+/**
+ * Every problem with a kit retired whole by `"motionscript": { "deprecated": { removeIn, message } }` in its
+ * package.json: the README must open with a deprecation banner and every root-barrel export carry `@deprecated`.
+ */
+export function retiredKitProblems(pkg, readme, barrel) {
+  const marker = pkg.motionscript?.deprecated
+  if (!marker) return []
+  const { removeIn, message } = marker
+  if (!removeIn || !VERSION.test(removeIn)) return ["package.json: motionscript.deprecated names no removeIn release"]
+  const problems = []
+  if (!message) problems.push("package.json: motionscript.deprecated has no message for npm deprecate")
+  if (compareRelease(pkg.version, removeIn) >= 0) {
+    problems.push(`package.json: the kit was due for removal in ${removeIn} (package is ${pkg.version}): delete it`)
+  }
+  const opening = readme?.split("\n").find((l) => l.trim() !== "" && !l.startsWith("# "))
+  if (!opening || !/^>\s*\*\*Deprecated\b/.test(opening)) {
+    problems.push("README.md: opens with no `> **Deprecated.** …` banner")
+  }
+  for (const m of barrel.matchAll(/^export\b.*$/gm)) {
+    const at = `src/index.ts line ${line(barrel, m.index)}`
+    const braces = /^export\s+(?:type\s+)?\{([^}]*)\}/.exec(m[0])
+    if (!braces) {
+      const before = barrel.slice(0, m.index).trimEnd()
+      const doc = before.endsWith("*/") ? before.slice(before.lastIndexOf("/**")) : ""
+      if (!/@deprecated\b/.test(doc)) problems.push(`${at}: \`${m[0]}\` is not @deprecated`)
+      continue
+    }
+    // TypeScript reads a re-export's @deprecated only from inside the braces, one per name.
+    const names = braces[1].replace(/\/\*\*[\s\S]*?\*\//g, (doc) => (/@deprecated\b/.test(doc) ? "@deprecated " : ""))
+    for (const name of names.split(",").map((s) => s.trim()).filter(Boolean)) {
+      if (!name.startsWith("@deprecated ")) problems.push(`${at}: \`${name}\` is not @deprecated inside the braces`)
+    }
+  }
+  return problems
+}
+
+const readText = (path) => {
+  try {
+    return readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  } catch {
+    return undefined
+  }
+}
+
+function kits(kitsDir) {
+  return readdirSync(kitsDir).flatMap((kit) => {
+    const text = readText(join(kitsDir, kit, "package.json"))
+    return text === undefined ? [] : [{ dir: join(kitsDir, kit), pkg: JSON.parse(text) }]
+  })
+}
+
+/** The `npm deprecate` command for each kit retired whole, which a maintainer runs once it has published. */
+export function retiredKitCommands(kitsDir = join(root, "packages", "components")) {
+  return kits(kitsDir)
+    .filter(({ pkg }) => pkg.motionscript?.deprecated)
+    .map(({ pkg }) => `npm deprecate ${pkg.name} ${JSON.stringify(pkg.motionscript.deprecated.message ?? "")}`)
+}
+
 function sources(dir) {
   return readdirSync(dir).flatMap((entry) => {
     const path = join(dir, entry)
@@ -52,19 +111,14 @@ function sources(dir) {
 
 export function checkKits(kitsDir = join(root, "packages", "components")) {
   const problems = []
-  for (const kit of readdirSync(kitsDir)) {
-    const pkgPath = join(kitsDir, kit, "package.json")
-    let pkg
-    try {
-      pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
-    } catch {
-      continue
+  const shown = (path) => relative(root, path).split("\\").join("/")
+  for (const { dir, pkg } of kits(kitsDir)) {
+    for (const file of sources(join(dir, "src"))) {
+      for (const problem of deprecationProblems(readText(file), pkg.version)) problems.push(`${shown(file)} ${problem}`)
     }
-    for (const file of sources(join(kitsDir, kit, "src"))) {
-      const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n")
-      for (const problem of deprecationProblems(text, pkg.version)) {
-        problems.push(`${relative(root, file).split("\\").join("/")} ${problem}`)
-      }
+    const barrel = readText(join(dir, "src", "index.ts")) ?? ""
+    for (const problem of retiredKitProblems(pkg, readText(join(dir, "README.md")), barrel)) {
+      problems.push(`${shown(dir)}/${problem}`)
     }
   }
   return problems
@@ -72,6 +126,10 @@ export function checkKits(kitsDir = join(root, "packages", "components")) {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const problems = checkKits()
+  const commands = retiredKitCommands()
+  if (commands.length > 0) {
+    console.log(`Retired kits: once their deprecation release is on npm, run by hand (Trusted Publishing has no token):\n${commands.join("\n")}`)
+  }
   if (problems.length > 0) {
     console.error(problems.join("\n"))
     process.exit(1)

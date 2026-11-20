@@ -61,6 +61,12 @@
   ],
   "license": "Apache-2.0",
   "author": "Motionscript",
+  "motionscript": {
+    "deprecated": {
+      "removeIn": "0.5.0",
+      "message": "@motionscript/grids is retired and is removed in 0.5.0. It gets no further changes."
+    }
+  },
   "peerDependencies": {
     "@motionscript/sdk": "workspace:^"
   },
