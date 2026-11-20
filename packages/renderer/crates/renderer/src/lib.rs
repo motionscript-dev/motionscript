@@ -620,6 +620,7 @@ pub fn validate_shader(kind: u32, source: &str) -> String {
     report_json(&user_shader::compile(kind, source))
 }
 
+#[cfg(target_arch = "wasm32")]
 fn report_json(r: &Result<user_shader::Compiled, Vec<user_shader::Diagnostic>>) -> String {
     fn esc(s: &str) -> String {
         let mut o = String::with_capacity(s.len() + 2);
