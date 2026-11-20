@@ -188,8 +188,8 @@ export function component2d<
         }
 
         override _localBounds(): BoxBounds {
-            const bounds = this._observed()?.bounds;
-            return (bounds && childInkBounds(this, bounds)) ?? super._localBounds();
+            const r = this._observed();
+            return (r?.bounds && childInkBounds(this, r.bounds, r.copies)) ?? super._localBounds();
         }
 
         override _cameraScope(): CameraScope | null {

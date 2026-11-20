@@ -384,6 +384,18 @@
     "description": "Mask in alpha mode (soft edge via gradient)"
   },
   {
+    "id": "repeater-radial",
+    "name": "RepeaterRadial",
+    "section": "Control Nodes",
+    "description": "Repeater as a radial burst: turned about the centre, opacity ramp, fractional count"
+  },
+  {
+    "id": "repeater-row",
+    "name": "RepeaterRow",
+    "section": "Control Nodes",
+    "description": "Repeater in a row: composite below vs above, compounding scale, animated offset"
+  },
+  {
     "id": "mask-vector",
     "name": "MaskVector",
     "section": "Control Nodes",

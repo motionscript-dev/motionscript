@@ -12,6 +12,7 @@ import {
     Ellipse, Hexagon, Octagon, PathShape, Pentagon, Polygon, Polygram, Rect, RightTriangle, Star, Triangle,
 } from "@/components/builtins/geometry/geometry";
 import { Camera, OrbitCamera, RotatedBox } from "@/components/builtins/layout/layout";
+import { Repeater } from "@/components/builtins/layout/repeater";
 import { Video } from "@/components/builtins/media/media";
 import { AudioBus, SoundNode } from "@/components/builtins/audio/audio";
 import { Canvas2D } from "@/components/trees/root/canvas2d-node";
@@ -63,6 +64,7 @@ const NODE_TYPES: Record<string, NodeConstructor> = {
     star: Star as unknown as NodeConstructor,
     boolean: BooleanGroup as unknown as NodeConstructor,
     mask: MaskGroup as unknown as NodeConstructor,
+    repeater: Repeater as unknown as NodeConstructor,
 
     camera: Camera as unknown as NodeConstructor,
     orbitCamera: OrbitCamera as unknown as NodeConstructor,

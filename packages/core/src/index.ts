@@ -3,6 +3,7 @@ export * from './components/trees';
 export * from './components/builtins/geometry/geometry';
 export * from './components/builtins/geometry/composite';
 export * from './components/builtins/layout/layout';
+export * from './components/builtins/layout/repeater';
 export * from './components/builtins/text/text';
 export * from './components/builtins/providers/providers';
 export * from './components/builtins/audio/audio';

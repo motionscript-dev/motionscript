@@ -112,6 +112,7 @@ const fills = [
     const card = row('rect', { width: 120, height: 80, fill: '=[tint]', stroke: { weight: 2, fill: 'accent' }, shadow: { blur: 8, y: 4, color: 'black/40' } }, group.id, { key: 'card' });
     const boolean = row('boolean', { op: 'subtract', fill: 'accent' }, group.id);
     const mask = row('mask', { mode: 'alpha' }, group.id);
+    const repeater = row('repeater', { copies: 4, stepPosition: { x: 20, y: 0 }, stepRotation: 15, endOpacity: 0.5 }, group.id);
     const camera = row('camera', { width: 200, height: 120, zoom: 1.5 }, group.id);
     const theme = row('theme-provider', { theme: { colors: { ink: '#ffcc00' } } }, group.id);
     const textStyle = row('default-text-style', { fontSize: 18, fill: 'white' }, theme.id);
@@ -138,6 +139,8 @@ const fills = [
             mask,
             row('ellipse', { width: 60, height: 60 }, mask.id),
             row('rect', { width: 60, height: 60, fill: fills[1] }, mask.id),
+            repeater,
+            row('ellipse', { width: 30, height: 30, fill: 'accent' }, repeater.id),
             camera,
             row('rect', { width: 40, height: 40, fill: 'primary', x: '=[card.x] + 10' }, camera.id),
             row('orbitCamera', { orbit: 20, elevation: 10 }, group.id),

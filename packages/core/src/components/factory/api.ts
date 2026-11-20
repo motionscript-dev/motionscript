@@ -7,6 +7,7 @@ import type { Effect } from "@/attributes/shape/effects/chain";
 import type { NodeEffect } from "@/attributes/shape/effects/union";
 import type { NodeBlendMode } from "@/attributes/shape/fill/blend";
 import type { BoxBounds } from "@/layout/bounds";
+import type { Matrix2D } from "@/attributes/layout/matrix2d";
 import type { PropInputs } from "@/attributes/properties/inputs";
 import type { CameraScope, ChildPlane, Node2D, Node2DProps } from "@/components/trees/2d/node2d";
 import type { Node } from "@/components/trees/node/node";
@@ -263,6 +264,8 @@ export interface RenderContext2D {
     draw(graphics: Graphics2D | readonly Graphics2D[] | null | undefined): void;
     /** Draws your children here. */
     children(): void;
+    /** Draws your children once per copy, in order, each through its own transform (y down, from your centre) and opacity. */
+    repeat(copies: readonly RepeatCopy[]): void;
     /** Your first child is the stencil; the rest draw through it. */
     mask(options: MaskOptions): void;
     /** Your children become one shape by `op`, painted with `paint`. */
@@ -290,6 +293,12 @@ export interface RenderContext2D {
     readonly inSpace: boolean;
     /** Your nearest ancestor that `component` built, read-only, or `null` when none is above you. */
     ancestor<K extends string, S, C>(component: Component<K, S, C, any, any, any>): NodeView<Element<K, S, C>> | null;
+}
+
+/** One pass over your children in `repeat`. */
+export interface RepeatCopy {
+    readonly matrix: Matrix2D;
+    readonly opacity: number;
 }
 
 /** Another node as a component reads it: its id, its resolved state and the size it was laid out at. */

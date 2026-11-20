@@ -1,7 +1,7 @@
 import { Node2D } from "@/components/trees/2d/node2d";
 import { BoxBounds } from "@/layout/bounds";
 import { Vector2 } from "@/attributes/layout/vector2";
-import { multiply, translation } from "@/attributes/layout/matrix2d";
+import { multiply, translation, type Matrix2D } from "@/attributes/layout/matrix2d";
 import { worldAnchors } from "@/components/trees/2d/node-transform";
 
 /**
@@ -36,9 +36,9 @@ interface Span {
 }
 
 /** The four corners of `child`'s ink in its **parent's** local space (y-up from the parent's centre): shift the child's matrix onto the ink's own centre (canvas y-down vs y-up bounds, hence the sign), then read the corners, as `nodeBox` does. Correct for rotated, scaled or off-centre ink. */
-function inkCorners(child: Node2D): Vector2[] {
+function inkCorners(child: Node2D, copy?: Matrix2D): Vector2[] {
     const b = child._localBounds();
-    const local = child._localMatrix();
+    const local = copy ? multiply(copy, child._localMatrix()) : child._localMatrix();
     const m =
         b.x === 0 && b.y === 0 ? local : multiply(local, translation(b.x, -b.y));
     const a = worldAnchors(m, b.width / 2, b.height / 2);
@@ -70,10 +70,17 @@ function toBounds(span: Span): BoxBounds {
 /** The extent of `node`'s children's ink in its own local space, or `null` with nothing to measure (no children, or an `intersect` whose parts don't overlap). `null` is the caller's cue to keep the layout cell: it stays put and grabbable, which a node you need to drop another child into must be. */
 export function childInkBounds(
     node: Node2D,
-    mode: ChildBoundsMode
+    mode: ChildBoundsMode,
+    copies?: readonly Matrix2D[],
 ): BoxBounds | null {
     const children = node.children;
     if (children.length === 0) return null;
+
+    // Drawn once per copy: every child under every copy.
+    if (copies) {
+        const span = spanOf(copies.flatMap((copy) => children.flatMap((child) => inkCorners(child, copy))));
+        return span ? toBounds(span) : null;
+    }
 
     if (mode === "first") {
         const span = spanOf(inkCorners(children[0]));
@@ -81,7 +88,7 @@ export function childInkBounds(
     }
 
     if (mode === "union") {
-        const span = spanOf(children.flatMap(inkCorners));
+        const span = spanOf(children.flatMap((child) => inkCorners(child)));
         return span ? toBounds(span) : null;
     }
 

@@ -16,7 +16,8 @@ import type { MaskOptions } from "@/attributes/mask/mask";
 import type { ChildBoundsMode } from "@/components/trees/2d/group-bounds";
 import type { SpaceCamera } from "@/attributes/layout/space3d";
 import type { TextStyle } from "@/attributes/text/types";
-import type { MergePaint, ChildView, Clock, Component, Element, FontSpec, Max, Measurer, NodeFrame, NodeView, Piece, RenderContext2D } from "@/components/factory/api";
+import type { Matrix2D } from "@/attributes/layout/matrix2d";
+import type { MergePaint, RepeatCopy, ChildView, Clock, Component, Element, FontSpec, Max, Measurer, NodeFrame, NodeView, Piece, RenderContext2D } from "@/components/factory/api";
 import { clipOf } from "@/components/factory/clip-of";
 import type { PropHost } from "@/props/host";
 import type { PropLayout } from "@/props/layout";
@@ -28,6 +29,8 @@ import type { PropLayout } from "@/props/layout";
  */
 export interface Composite {
     readonly bounds?: ChildBoundsMode;
+    /** The transforms `repeat` drew the children through: their ink under each is the node's. */
+    readonly copies?: readonly Matrix2D[];
     readonly camera?: CameraScope;
     readonly space?: SpaceCamera;
     /** The scene its 3D children were rendered into: what picking projects through. */
@@ -373,6 +376,23 @@ export class RenderContextImpl implements RenderContext2D {
         // Drawn plainly, so a space or composite the last frame declared no longer holds for them.
         if (!this.composite) this.host._record = null;
         this.host._renderOwnChildren(this.target());
+    }
+
+    repeat(copies: readonly RepeatCopy[]): void {
+        this._declare({ bounds: "union", copies: copies.map((c) => c.matrix) });
+        if (this.probing) return;
+        const out = this.target();
+        for (const copy of copies) {
+            if (out.drawsVisibleOnly && copy.opacity <= 0) continue;
+            out.begin(this.host._scopeState(out));
+            try {
+                // Isolated only when faded, so a copy fades as one layer, never part over part.
+                out.transform({ matrix: copy.matrix, opacity: copy.opacity, blend: copy.opacity < 1 ? "normal" : "pass-through" });
+                this.host._renderOwnChildren(out);
+            } finally {
+                out.end();
+            }
+        }
     }
 
     /** What this render has declared so far. Its host's record follows at once, so the children it draws see it. */
