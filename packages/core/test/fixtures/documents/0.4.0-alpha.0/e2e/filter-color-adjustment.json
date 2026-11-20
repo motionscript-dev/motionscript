@@ -1,0 +1,127 @@
+{
+  "kind": "project",
+  "name": "filter-color-adjustment",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "filter-color-adjustment",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "flow": "freeform",
+              "align": {
+                "x": 0,
+                "y": 0
+              }
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "width": 320,
+              "height": 320,
+              "cornerRadius": 24,
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "preset": {
+                    "adjustments": [
+                      {
+                        "type": "colorAdjustment",
+                        "brightness": 0,
+                        "contrast": 1,
+                        "saturation": 1,
+                        "vibrance": 0,
+                        "shadows": 0,
+                        "highlights": 0,
+                        "temperature": 0,
+                        "tint": 0,
+                        "vignette": 0
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "rect1",
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "fill": [
+                {
+                  "type": "image",
+                  "src": "kingfisher.jpg",
+                  "fit": "fill",
+                  "preset": {
+                    "adjustments": [
+                      {
+                        "type": "colorAdjustment",
+                        "brightness": 0.2,
+                        "contrast": 1.5,
+                        "saturation": 1.8,
+                        "vibrance": 0.6,
+                        "shadows": 0.3,
+                        "highlights": -0.3,
+                        "temperature": 0.4,
+                        "tint": -0.2,
+                        "vignette": 0.6
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 3
+}
