@@ -8,7 +8,9 @@ import type { Node } from "@/components/trees/node/node";
 import type { Node2D } from "@/components/trees/2d/node2d";
 
 import { BooleanGroup, MaskGroup } from "@/components/builtins/geometry/composite";
-import { Ellipse, PathShape, Polygon, Polygram, Rect } from "@/components/builtins/geometry/geometry";
+import {
+    Ellipse, Hexagon, Octagon, PathShape, Pentagon, Polygon, Polygram, Rect, RightTriangle, Star, Triangle,
+} from "@/components/builtins/geometry/geometry";
 import { Camera, OrbitCamera, RotatedBox } from "@/components/builtins/layout/layout";
 import { Video } from "@/components/builtins/media/media";
 import { AudioBus, SoundNode } from "@/components/builtins/audio/audio";
@@ -53,6 +55,12 @@ const NODE_TYPES: Record<string, NodeConstructor> = {
     path: PathShape as unknown as NodeConstructor,
     polygon: Polygon as unknown as NodeConstructor,
     polygram: Polygram as unknown as NodeConstructor,
+    triangle: Triangle as unknown as NodeConstructor,
+    rightTriangle: RightTriangle as unknown as NodeConstructor,
+    pentagon: Pentagon as unknown as NodeConstructor,
+    hexagon: Hexagon as unknown as NodeConstructor,
+    octagon: Octagon as unknown as NodeConstructor,
+    star: Star as unknown as NodeConstructor,
     boolean: BooleanGroup as unknown as NodeConstructor,
     mask: MaskGroup as unknown as NodeConstructor,
 

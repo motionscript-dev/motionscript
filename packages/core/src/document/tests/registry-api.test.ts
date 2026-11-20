@@ -596,7 +596,10 @@ describe("the built-in vocabulary", () => {
     /** The keys in `packages/core/docs/registry.md`, group by group. */
     const CONTRACT: Record<string, string[]> = {
         "clip root and structural": ["canvas2d", "provider", "theme-provider", "default-text-style"],
-        geometry: ["rect", "ellipse", "path", "polygon", "polygram", "boolean", "mask"],
+        geometry: [
+            "rect", "ellipse", "path", "polygon", "polygram", "boolean", "mask",
+            "triangle", "rightTriangle", "pentagon", "hexagon", "octagon", "star",
+        ],
         layout: ["camera", "orbitCamera", "rotated-box"],
         text: ["text", "richtext", "number"],
         media: ["video"],
@@ -615,8 +618,8 @@ describe("the built-in vocabulary", () => {
     const keys = Object.values(CONTRACT).flat();
     const registry = new Registry();
 
-    it("is exactly the contract's 51 keys", () => {
-        expect(keys).toHaveLength(51);
+    it("is exactly the contract's 57 keys", () => {
+        expect(keys).toHaveLength(57);
         expect(registry.nodeKeys()).toEqual([...keys].sort());
     });
 

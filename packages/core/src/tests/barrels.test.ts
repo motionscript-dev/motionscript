@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { expressionOps } from "../document/expression/ops";
 import { ExpressionError } from "../document/expression/types";
 import * as component from "../component";
+import { Registry } from "../document/registry";
 
 // The barrels are loaded by a dynamic import with a computed specifier: lint
 // forbids importing an index file from a non-barrel (and the type surface is
@@ -33,6 +34,18 @@ const typesOf = <T extends unknown[]>(): T | undefined => undefined;
  * tweens (004) and dynamic nodes (014). `sdk-parity.test.ts` checks that the
  * published SDK and this curated surface agree; this checks what is on them.
  */
+
+describe("the SDK's components", () => {
+    // A component an author can import but no registry holds builds as an empty placeholder in a document.
+    it("are all registered, except the code-only face-value Path", () => {
+        const registry = new Registry();
+        const unregistered = Object.entries(sdk)
+            .filter(([, value]) => typeof (value as { key?: unknown } | null)?.key === "string")
+            .map(([name, value]) => `${name}=${(value as { key: string }).key}`)
+            .filter((entry) => !registry.hasNode(entry.split("=")[1]));
+        expect(unregistered).toEqual(["Path=facePath"]);
+    });
+});
 
 const has = (barrel: object, name: string): boolean => name in barrel;
 const missing = (barrel: object, names: readonly string[]): string[] => names.filter((name) => !has(barrel, name));
