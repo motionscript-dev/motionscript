@@ -140,7 +140,7 @@ export type { Attribute, EntryOptions, NumberOptions, TextOptions } from '../com
 export type { StyleGroups, StyleInput, StyleOptions, StyleShape, StyleValues } from '../components/factory/style';
 export type {
     Box2DState, BoxAudioState, CallProps, ChildView, Children2D, Component, Element, Entry, InOf, Inputs, Loader,
-    Measurer, MergePaint, NodeOf, NodeView, OutOf, Piece, Placement2D, Provided, SoundOptions, StateSpec,
+    Measurer, MergePaint, RepeatCopy, NodeOf, NodeView, OutOf, Piece, Placement2D, Provided, SoundOptions, StateSpec,
     Timeline, Type, Values, Writes,
     // Named in every component's type, so a package exporting one can declare it.
     Merge, BuiltNode,
@@ -225,6 +225,9 @@ export type {
     CameraProps,
     OrbitCameraProps,
 } from '../components/builtins/layout/layout';
+// Its children drawn again and again, each copy one step further.
+export { Repeater, repeaterCopies } from '../components/builtins/layout/repeater';
+export type { RepeaterProps, RepeaterStep } from '../components/builtins/layout/repeater';
 
 export { Text, RichText, NumberNode, DefaultTextStyle } from '../components/builtins/text/text';
 export type {

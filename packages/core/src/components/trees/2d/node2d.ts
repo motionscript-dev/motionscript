@@ -863,7 +863,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     // difference, on every advanced frame (not just rendered ones) so velocity stays right through a scrub.
     // ellapse() runs before the frame's generator.next(), so x/y hold the previous frame's value: velocity trails
     // the rendered position by one constant frame. Layout-dependent fields (rects) can't resolve here, since layout
-    // hasn't run for advanced-but-unrendered frames; renderState() fills them at draw time.
+    // hasn't run for advanced-but-unrendered frames; _scopeState() fills them at draw time.
 
     /** Allocated once; mutated in place by {@link _sampleMotion}. */
     private readonly _motionHistory: MotionHistory = createMotionHistory();
@@ -1069,7 +1069,8 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
     }
 
     /** Per-frame render state for the scope {@link render} opens. Motion was sampled when the clock advanced; only layout-dependent fields are filled here. */
-    private renderState(ctx: RenderContext2D): NodeRenderState {
+    /** @internal */
+    _scopeState(ctx: RenderContext2D): NodeRenderState {
         const s = this._renderState;
         // Skipped when the context never resolves `space:'parent'` fills: the precomp pass walks every node purely to discover assets, so this would be a per-node per-frame allocation nothing reads.
         s.rects = ctx.readsSpaceRects ? this._spaceRects() : NO_SPACE_RECTS;
@@ -1101,7 +1102,7 @@ export class Node2D<P extends Node2DProps = Node2DProps> extends Node<P> {
         if (ctx.drawsVisibleOnly && frame && !frame.paints && !this._rendersChildrenInSpace()) return;
 
         try {
-            ctx.begin(this.renderState(ctx));
+            ctx.begin(this._scopeState(ctx));
             try {
                 this.renderContent(ctx);
             } finally {

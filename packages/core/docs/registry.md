@@ -24,7 +24,7 @@ Five tables, one value per key:
 - **Command resolution** (`ClipTimeline._buildPlaced`): the node-less table first (`registry.command(type)`), then the target type's own table (`nodeCommand(typeKey, commandKey)`). Type commands are keyed per type, so two types may publish the same key; only the nine node-less keys are global, and a type's own `command` method named like one of them (`fillTo`) is never consulted by a document: the node-less factory calls the node's method of that name. `nodeCommand` dispatches by calling the method named in `NodeCommandEntry.method`, never by `instanceof`, so a forked component class works. Only keys listed in `command({ args })` reach the method's `data`; other document `args` are dropped. A component's commands list their args from the spec: a list command's entry names, a record command's own `args` entries.
 - **Dynamic nodes.** `addNodeFromSource(source)` registers a node type authored as a source string; it needs `RegistryOptions.dynamicNodes`. The evaluation is hardened (`DENIED_GLOBALS`), not sandboxed; mechanics and the `require` rules are in [dynamic-nodes.md](dynamic-nodes.md).
 
-### Built-in node types (51)
+### Built-in node types (52)
 
 `installBuiltins` (`document/builtins.ts`) writes each key out in `NODE_TYPES`; keys are document API, never derived from class names.
 
@@ -32,7 +32,7 @@ Five tables, one value per key:
 |---|---|
 | Clip root and structural | `canvas2d`, `provider`, `theme-provider`, `default-text-style` |
 | Geometry | `rect`, `ellipse`, `path`, `polygon`, `polygram`, `boolean`, `mask` |
-| Layout | `camera`, `orbitCamera`, `rotated-box` |
+| Layout | `camera`, `orbitCamera`, `rotated-box`, `repeater` |
 | Text | `text`, `richtext`, `number` |
 | Media | `video` |
 | Audio | `audioBus`, `sound` |
@@ -71,5 +71,5 @@ Lerps: `number`, `vector2`, `vector3`, `color` (parses both ends with `parseColo
 ## Where to look
 
 - `document/builtins.ts`: the built-in vocabulary; the types themselves are in `components/builtins/`. `components/factory/factory.ts`: how a spec becomes a registered class. `document/node-decorator.ts`, `node-descriptor.ts`: `node` and the descriptor. `tween/command-decorator.ts`: `command`.
-- `document/tests/registry-api.test.ts` pins the 51-key list above (`the built-in vocabulary`) and the nine node-less commands; `registry.test.ts`, `builtins.test.ts`, `dynamic-nodes.test.ts`, `deny-globals.test.ts` pin the rest.
+- `document/tests/registry-api.test.ts` pins the 52-key list above (`the built-in vocabulary`) and the nine node-less commands; `registry.test.ts`, `builtins.test.ts`, `dynamic-nodes.test.ts`, `deny-globals.test.ts` pin the rest.
 - `src/tests/barrels.test.ts` pins what is exported: `Registry` and `node` on the root and `/sdk` barrels, `installBuiltins` and `DENIED_GLOBALS` on neither.

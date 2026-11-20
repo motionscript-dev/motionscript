@@ -597,7 +597,7 @@ describe("the built-in vocabulary", () => {
     const CONTRACT: Record<string, string[]> = {
         "clip root and structural": ["canvas2d", "provider", "theme-provider", "default-text-style"],
         geometry: ["rect", "ellipse", "path", "polygon", "polygram", "boolean", "mask"],
-        layout: ["camera", "orbitCamera", "rotated-box"],
+        layout: ["camera", "orbitCamera", "rotated-box", "repeater"],
         text: ["text", "richtext", "number"],
         media: ["video"],
         audio: ["audioBus", "sound"],
@@ -615,8 +615,8 @@ describe("the built-in vocabulary", () => {
     const keys = Object.values(CONTRACT).flat();
     const registry = new Registry();
 
-    it("is exactly the contract's 51 keys", () => {
-        expect(keys).toHaveLength(51);
+    it("is exactly the contract's 52 keys", () => {
+        expect(keys).toHaveLength(52);
         expect(registry.nodeKeys()).toEqual([...keys].sort());
     });
 
