@@ -5,8 +5,8 @@ import type { JsonDocument, NoteChange } from "./migrate";
  * them or none, since any light node replaced the whole default rig), a `fog3d` its `fog`, an `environment3d` its
  * `environment`, and a `camera3d` its camera fields, with that camera's `orbitTo` and `lookTo` commands moved onto
  * the canvas. A node is moved only when the canvas entry says exactly what it did: one with a span, an expression, a
- * command of another kind, children, a rotation or a field the canvas has no room for stays as it is, and still
- * works until the node types are removed.
+ * command of another kind, children, a rotation or a field the canvas has no room for stays as it is, and builds as
+ * a placeholder since 0.5.0 removed the node types. Format 4 → 5 runs the same move on documents 0.4.x wrote.
  */
 
 type Json = Record<string, unknown>;

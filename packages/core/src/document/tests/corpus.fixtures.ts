@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { AssetManifest } from "@/assets/manifest";
+import type { ProjectDocument } from "../project";
 
 // Documents as each release wrote them (`packages/e2e/scripts/snapshot-document-fixtures.ts`).
 // A set is never edited or removed: a document a user saved under that release
@@ -39,6 +40,18 @@ export function manifestFor(doc: unknown): AssetManifest {
     };
     visit(doc);
     return manifest;
+}
+
+/** Node types 0.5.0 removed for a `Canvas3D`'s own fields: a saved row the migration could not fold in opens as a placeholder. */
+const REMOVED_TYPES = new Set([
+    "ambient-light3d", "hemisphere-light3d", "directional-light3d", "point-light3d", "spot-light3d", "area-light3d",
+    "camera3d", "fog3d", "environment3d",
+]);
+
+/** Each row of `document` naming a removed type, with the path validation reports it at. */
+export function removedRows(document: ProjectDocument): { id: string; type: string; path: string }[] {
+    return document.tracks.flatMap(({ clip }, k) => clip.nodes.flatMap((node, i) =>
+        REMOVED_TYPES.has(node.type) ? [{ id: node.id, type: node.type, path: `tracks[${k}].clip.nodes[${i}].type` }] : []));
 }
 
 export const releases = readdirSync(root, { withFileTypes: true })

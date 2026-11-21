@@ -84,12 +84,12 @@ describe('space3d – camera', () => {
         closeTo(project(cam, nodeSpaceMatrix(0, 0, 0, 1, 0, 0, p3({ depth: -800 })), 100, 0).x, 100);
     });
 
-    it('orbit and elevation place the camera where Camera3D places it', () => {
+    it('orbit and elevation place the camera where the 3D camera places it', () => {
         for (const [orbit, elevation] of [[0, 0], [90, 0], [-35, 20], [140, -60]]) {
             const view = spaceViewMatrix(camera({ orbit, elevation }));
             const { position } = resolveCameraPlacement({ type: 'perspective', orbit, elevation, distance: 1 });
             // The view's third row is the direction from the target to the camera,
-            // in the root's y-down frame; Camera3D's world is y-up.
+            // in the root's y-down frame; the 3D world is y-up.
             closeTo(view[8], position.x, 1e-9);
             closeTo(view[9], -position.y, 1e-9);
             closeTo(view[10], position.z, 1e-9);

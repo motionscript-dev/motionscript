@@ -1,14 +1,14 @@
 # CLAUDE.md — `packages/components`
 
-Seven published kits (`audio`, `charts`, `code`, `geography`, `grids`, `math`,
-`patterns`): components plus helpers, installed as a
+Four published kits (`charts`, `code`, `geography`, `math`): components plus
+helpers, installed as a
 dependency, or copied into a project from the same source (the files each
 `registry.json` item lists).
 
 ## Imports
 
 - **A kit imports `@motionscript/sdk` and `@motionscript/sdk/component`, never
-  `@motionscript/core`.** Each `eslint.config.js` (eight identical files) bans
+  `@motionscript/core`.** Each `eslint.config.js` (four identical files) bans
   `^@motionscript/core(/.*)?$` with `no-restricted-imports`. When the SDK lacks a
   name, add it to `packages/core/src/sdk/index.ts` if an author would reach for
   it and rebuild core; otherwise the kit is wrong. Do not import core to get round it.
@@ -45,10 +45,9 @@ dependency, or copied into a project from the same source (the files each
   any release. A new export goes to `./kit` unless an author needs it. Each
   kit's `tests/surface.test.ts` (code's `tests/barrel.test.ts`) pins the root.
 - **What several components share** is a module behind the kit barrel
-  (`src/engine.ts`; audio's `src/kit.ts`; geography's is `unstable.ts` itself),
-  such as patterns' `ViewportPattern` (`state`, `commands` and helpers to spread
-  in and call), never a base to extend. A folder `src/kit/` sits beside it in
-  charts, grids, math and patterns, so never add a `src/kit.ts` there: it would
+  (`src/engine.ts`; geography's is `unstable.ts` itself): `state`, `commands`
+  and helpers to spread in and call, never a base to extend. A folder `src/kit/`
+  sits beside it in charts and math, so never add a `src/kit.ts` there: it would
   capture `./kit` imports.
 - **Retiring a root name** keeps it working for one release line: wrap a function
   in the SDK's `deprecate(fn, { name, use, removeIn })`, and give the export a
@@ -175,7 +174,7 @@ dependency, or copied into a project from the same source (the files each
   module belongs behind the kit barrel, not in an item's `files`: a part is told
   apart by its component's identity, so a second copy of a component is a second
   component under one name, and a second copy of a module that keeps a
-  register (grids' `ItemGrid`) is a second register. Copies import it by
+  register is a second register. Copies import it by
   `kit.specifier`.
 - **The docs site's registry builder (it reads the published kit) fails on:** a relative import that
   leaves the copied set and is not reached from the kit barrel; a bare import

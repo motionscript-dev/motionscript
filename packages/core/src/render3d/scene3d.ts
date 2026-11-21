@@ -11,7 +11,7 @@ import { warnInert3D } from "./inert";
 import type { Shadow3D, Transform3D } from "./transform";
 import type { Color } from "@/attributes/shape/fill/color/parser";
 
-/** Options accepted by every `Camera3D` node and by {@link Scene3D.perspective}. */
+/** Options accepted by {@link Scene3D.perspective}. */
 type ParamsOf<T extends { type: string }> = Omit<T, "type">;
 
 /** One recorded operation: everything a node draws ({@link Graphics3DOp}) plus `push`/`pop` nesting, lights and the camera. */

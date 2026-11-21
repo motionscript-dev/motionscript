@@ -10,7 +10,7 @@ import type { ProjectDocument } from "../project";
 import { Registry } from "../registry";
 import { validateProjectDocument } from "../validate";
 import { registryVocabulary, vocabularyBreaks, type RegistryVocabulary } from "../vocabulary";
-import { jsonFiles, manifestFor, releases, root } from "./corpus.fixtures";
+import { jsonFiles, manifestFor, releases, removedRows, root } from "./corpus.fixtures";
 
 /** The notes of every changeset not yet released that start `**Breaking:**`. */
 function pendingBreakingNotes(): string {
@@ -25,6 +25,7 @@ function pendingBreakingNotes(): string {
         .join("\n");
 }
 const registry = new Registry({ strict: true });
+const lenient = new Registry();
 
 describe("the saved-document corpus", () => {
     it("has a set from at least one release", () => {
@@ -33,6 +34,7 @@ describe("the saved-document corpus", () => {
 
     // A document never adds, removes or reparents a node, so the lifecycle commands are no row's. A type the
     // newest set's vocabulary lacks is new since that release; its coverage row joins the corpus at the next one, and so does a command it lacks.
+    // Reads every saved release, which takes over the default 5 s beside the rest of the suite.
     it("names every built-in node type and every command a document can", () => {
         const types = new Set<string>();
         const commands = new Set<string>();
@@ -51,7 +53,7 @@ describe("the saved-document corpus", () => {
         expect(registry.nodeKeys().filter((type) => !types.has(type) && type in known)).toEqual([]);
         const said = new Set(Object.values(known).flatMap((node) => node.commands));
         expect([...every].filter((key) => !commands.has(key) && said.has(key)).sort()).toEqual(["addChildAt", "removeChildAt", "reparent"]);
-    });
+    }, 30_000);
 
     // A sparse row leaves most props at their default, so a changed default changes saved
     // documents as surely as a removed prop does. Each must be named by a pending breaking changeset.
@@ -71,12 +73,18 @@ describe("the saved-document corpus", () => {
                     const stored = JSON.parse(readFileSync(file, "utf8")) as ProjectDocument;
                     const { document, to } = migrateDocument(stored);
                     expect(to).toBe(DOCUMENT_FORMAT_VERSION);
-                    expect(validateProjectDocument(document, { registry }).issues).toEqual([]);
+                    const removed = removedRows(document);
+                    expect(validateProjectDocument(document, { registry }).issues)
+                        .toEqual(removed.map(({ type, path }) => ({ path, message: `node type "${type}" is not registered.` })));
 
                     const assets = new ManifestAssetCatalog(manifestFor(document));
-                    const scope = { registry, assets, fps: document.fps!, viewport: document.viewport! };
+                    const scope = { registry: removed.length > 0 ? lenient : registry, assets, fps: document.fps!, viewport: document.viewport! };
                     const result = precompFor(document, scope).run();
-                    expect(result.buildErrors).toEqual([]);
+                    const ids = new Set(removed.map(({ id }) => id));
+                    expect(result.buildErrors.filter((e) => e.code === "unknown-node-type").map((e) => e.nodeId)).toEqual([...ids]);
+                    // A command aimed at a removed row is skipped with it.
+                    expect(result.buildErrors.filter((e) => e.code !== "unknown-node-type" && !(e.code === "unknown-command" && ids.has(e.nodeId!))))
+                        .toEqual([]);
 
                     const evaluator = evaluatorFor(document, scope);
                     for (const frame of new Set([0, Math.floor(result.totalFrames / 2), Math.max(0, result.totalFrames - 1)])) {

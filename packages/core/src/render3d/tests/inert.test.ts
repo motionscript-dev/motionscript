@@ -3,7 +3,8 @@ import { Graphics3D } from '@/render3d/graphics3d';
 import { Scene3D } from '@/render3d/scene3d';
 import { Mat } from '@/render3d/builders';
 import { resetInertWarnings3D } from '@/render3d/inert';
-import { Environment3D, Model3D, Points3D, Box3D } from "@/components/builtins/three/three";
+import { Model3D, Points3D, Box3D } from "@/components/builtins/three/three";
+import { SceneEnvironment } from "@/components/builtins/three/tests/scene-wide.fixtures";
 import { Canvas3D } from "@/components/builtins/three/canvas3d";
 
 /**
@@ -54,7 +55,7 @@ describe('inert 3D inputs', () => {
         expect(messages()[0]).toContain('`src` and `faces`');
 
         const scene = new Scene3D();
-        new Environment3D({ src: '/sky.exr' }).render(scene);
+        new SceneEnvironment({ src: '/sky.exr' }).render(scene);
         expect(scene.environmentDescriptor()).toMatchObject({ src: '/sky.exr' });
     });
 

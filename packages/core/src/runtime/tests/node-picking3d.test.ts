@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Canvas3D } from "@/components/builtins/three/canvas3d";
-import { Group3D, Box3D, Sphere3D, Camera3D, Instances3D, Sprite3D } from "@/components/builtins/three/three";
+import { Group3D, Box3D, Sphere3D, Instances3D, Sprite3D } from "@/components/builtins/three/three";
+import { SceneCamera } from "@/components/builtins/three/tests/scene-wide.fixtures";
 import { Text } from "@/components/builtins/text/text";
 import { Canvas2D } from '@/components/trees/root/canvas2d-node';
 import { Node2D } from '@/components/trees/2d/node2d';
@@ -93,7 +94,7 @@ describe('geometryBounds3D', () => {
 describe('collectBoxes – 3D', () => {
     it('projects a mesh into the viewport, centred where the camera looks', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0, fov: 45 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0, fov: 45 }),
             new Box3D({ width: 2, height: 2, depth: 2 }),
         ]);
 
@@ -119,11 +120,11 @@ describe('collectBoxes – 3D', () => {
 
     it('moves the box when the mesh moves', () => {
         const centred = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1 }),
         ]);
         const shifted = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1, position: [2, 0, 0] }),
         ]);
 
@@ -143,7 +144,7 @@ describe('collectBoxes – 3D', () => {
 
     it('gives a group the union of what is inside it', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 20], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 20], lookAt: 0 }),
             new Group3D({
                 children: [
                     new Box3D({ width: 1, position: [-3, 0, 0] }),
@@ -166,7 +167,7 @@ describe('collectBoxes – 3D', () => {
 
     it('skips a hidden node and everything under it', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1, visible: false }),
             new Sphere3D({ radius: 0.5 }),
         ]);
@@ -196,7 +197,7 @@ describe('collectBoxes – 3D', () => {
     it('reports nothing for a scene whose meshes are all behind the camera', () => {
         const canvas = viewport([
             // Looking away from the cube: the camera sits at −Z aimed further −Z.
-            new Camera3D({ position: [0, 0, -10], lookAt: [0, 0, -20] }),
+            new SceneCamera({ position: [0, 0, -10], lookAt: [0, 0, -20] }),
             new Box3D({ width: 1 }),
         ]);
 
@@ -212,7 +213,7 @@ describe('nodeBoxAt – 3D', () => {
         // mesh is not in the 2D child list at all, so this is the case a plain
         // `nodeBox` walk cannot answer.
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 2 }),
         ]);
 
@@ -228,7 +229,7 @@ describe('nodeBoxAt – 3D', () => {
 
     it('reaches a mesh nested inside a group', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Group3D({ children: [new Box3D({ width: 1 })] } as any),
         ]);
 
@@ -248,7 +249,7 @@ describe('pickNode – 3D', () => {
 
     it('picks the mesh under the pointer', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 12], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 12], lookAt: 0 }),
             new Box3D({ width: 2, position: [-3, 0, 0] }),
             new Box3D({ width: 2, position: [3, 0, 0] }),
         ]);
@@ -259,7 +260,7 @@ describe('pickNode – 3D', () => {
 
     it('picks the nearer of two overlapping meshes', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 12], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 12], lookAt: 0 }),
             new Box3D({ width: 2, position: [0, 0, -4] }),
             new Box3D({ width: 2, position: [0, 0, 4] }),
         ]);
@@ -277,7 +278,7 @@ describe('pickNode – 3D', () => {
             width: 400,
             height: 300,
             children: [
-                new Camera3D({ position: [0, 0, 12], lookAt: 0 }),
+                new SceneCamera({ position: [0, 0, 12], lookAt: 0 }),
                 new Box3D({ width: 1 }),
             ],
         } as any);
@@ -294,7 +295,7 @@ describe('pickNode – 3D', () => {
     it('lets a 2D HUD child win over the mesh behind it', () => {
         const label = new Text({ text: 'FPS', x: 0, y: 0 }) as unknown as Node2D;
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 12], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 12], lookAt: 0 }),
             new Box3D({ width: 4 }),
             label,
         ]);
@@ -308,7 +309,7 @@ describe('pickNode – 3D', () => {
 describe('projectNode3DAt', () => {
     it('agrees with the box centre for a mesh with no rotation of its own', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 2 }),
         ]);
 
@@ -330,7 +331,7 @@ describe('projectNode3DAt', () => {
         // `localPoints` request should barely move sideways at all, since the
         // mesh's own +X no longer points sideways.
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Group3D({
                 children: [new Box3D({ width: 1, position: [2, 0, 0], rotation: [0, 90, 0] })],
             } as any),
@@ -354,7 +355,7 @@ describe('projectNode3DAt', () => {
 
     it('reports a point behind the camera as null without dropping the rest', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1 }),
         ]);
 
@@ -372,7 +373,7 @@ describe('projectNode3DAt', () => {
 
     it('is null for a path that resolves to a 2D node', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1 }),
             new Text({ text: 'FPS', x: 0, y: 0 }),
         ]);
@@ -382,7 +383,7 @@ describe('projectNode3DAt', () => {
 
     it('is null for a path that does not resolve', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 1 }),
         ]);
 
@@ -393,7 +394,7 @@ describe('projectNode3DAt', () => {
         // World-aligned, the turned box would measure 3 deep; in its own frame
         // it is still 3 × 1 × 1, before the scale its own matrix applies.
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Box3D({ width: 3, position: [2, 0, 0], rotation: [0, 90, 0], scale: 2 }),
         ]);
 
@@ -406,7 +407,7 @@ describe('projectNode3DAt', () => {
 
     it('takes its children into the bounds, placed where they sit', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Group3D({
                 children: [
                     new Box3D({ width: 1 }),
@@ -425,7 +426,7 @@ describe('projectNode3DAt', () => {
 
     it('has no bounds for a node that draws nothing', () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Group3D({ children: [] } as any),
             new Box3D({ width: 1 }),
         ]);
@@ -449,7 +450,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
 
     describe('an orthographic camera', () => {
         it('maps a world unit to a fixed number of viewport units', () => {
-            const canvas = viewport([new Camera3D(ORTHO), new Box3D({ width: 2, height: 2, depth: 2 })]);
+            const canvas = viewport([new SceneCamera(ORTHO), new Box3D({ width: 2, height: 2, depth: 2 })]);
             const box = at(boxesOf(canvas), '1');
             closeTo(box.width, 2 * PX_PER_UNIT, 1e-9);
             closeTo(box.height, 2 * PX_PER_UNIT, 1e-9);
@@ -458,21 +459,21 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
         });
 
         it('does not shrink a box with distance, unlike a perspective camera', () => {
-            const sizeAt = (z: number, camera: Camera3D) =>
+            const sizeAt = (z: number, camera: SceneCamera) =>
                 at(boxesOf(viewport([camera, new Box3D({ width: 1, position: [0, 0, z] })])), '1').width;
 
-            const orthoNear = sizeAt(4, new Camera3D(ORTHO));
-            const orthoFar = sizeAt(-30, new Camera3D(ORTHO));
+            const orthoNear = sizeAt(4, new SceneCamera(ORTHO));
+            const orthoFar = sizeAt(-30, new SceneCamera(ORTHO));
             closeTo(orthoNear, orthoFar, 1e-9);
 
-            const perspective = () => new Camera3D({ position: [0, 0, 10], lookAt: 0, fov: 45 });
+            const perspective = () => new SceneCamera({ position: [0, 0, 10], lookAt: 0, fov: 45 });
             expect(sizeAt(-30, perspective())).toBeLessThan(sizeAt(4, perspective()));
         });
 
         it('tracks the viewport aspect: the frustum height is fixed and the width follows', () => {
             const canvas = new Canvas3D({
                 width: 800, height: 300,
-                children: [new Camera3D(ORTHO), new Box3D({ width: 1, height: 1, depth: 1 })],
+                children: [new SceneCamera(ORTHO), new Box3D({ width: 1, height: 1, depth: 1 })],
             } as any);
             canvas.layout({ x: 0, y: 0, width: 800, height: 300 } as BoxBounds, scope);
             const box = at(boxesOf(canvas), '1');
@@ -482,20 +483,20 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
         });
 
         it('folds the camera zoom into the frustum', () => {
-            const zoomed = viewport([new Camera3D({ ...ORTHO, zoom: 2 }), new Box3D({ width: 1, height: 1, depth: 1 })]);
+            const zoomed = viewport([new SceneCamera({ ...ORTHO, zoom: 2 }), new Box3D({ width: 1, height: 1, depth: 1 })]);
             closeTo(at(boxesOf(zoomed), '1').width, 2 * PX_PER_UNIT, 1e-9);
         });
     });
 
     describe('a sprite', () => {
         it('is measured as a unit quad scaled by its transform', () => {
-            const canvas = viewport([new Camera3D(ORTHO), new Sprite3D({ fill: 'red' })]);
+            const canvas = viewport([new SceneCamera(ORTHO), new Sprite3D({ fill: 'red' })]);
             const box = at(boxesOf(canvas), '1');
             expect(box.type).toBe('Sprite3d');
             closeTo(box.width, PX_PER_UNIT, 1e-9);
             closeTo(box.height, PX_PER_UNIT, 1e-9);
 
-            const scaled = viewport([new Camera3D(ORTHO), new Sprite3D({ fill: 'red', scale: 3 })]);
+            const scaled = viewport([new SceneCamera(ORTHO), new Sprite3D({ fill: 'red', scale: 3 })]);
             closeTo(at(boxesOf(scaled), '1').width, 3 * PX_PER_UNIT, 1e-9);
         });
     });
@@ -503,7 +504,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
     describe('instances', () => {
         it('are measured as the union of every instance placed inside the node', () => {
             const canvas = viewport([
-                new Camera3D(ORTHO),
+                new SceneCamera(ORTHO),
                 new Instances3D({
                     geometry: { type: 'box' },
                     instances: [{ position: [-3, 0, 0] }, { position: [3, 0, 0] }],
@@ -518,7 +519,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
 
         it('are placed inside the node\'s own transform as well', () => {
             const canvas = viewport([
-                new Camera3D(ORTHO),
+                new SceneCamera(ORTHO),
                 new Instances3D({
                     geometry: { type: 'box' },
                     position: [0, 2, 0],
@@ -530,7 +531,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
 
         it('give no box when there are no instances to measure', () => {
             const canvas = viewport([
-                new Camera3D(ORTHO),
+                new SceneCamera(ORTHO),
                 new Instances3D({ geometry: { type: 'box' }, instances: [] } as any),
             ]);
             expect(boxesOf(canvas).some((box) => box.path === '1')).toBe(false);
@@ -541,7 +542,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
         it('carries its child\'s box with it', () => {
             // Turning the group 90 degrees about Z swings the child from +X to +Y.
             const canvas = viewport([
-                new Camera3D(ORTHO),
+                new SceneCamera(ORTHO),
                 new Group3D({
                     rotation: [0, 0, 90],
                     children: [new Box3D({ width: 1, height: 1, depth: 1, position: [2, 0, 0] })],
@@ -559,7 +560,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
 
         it('encloses a box turned 45 degrees by its axis-aligned extent', () => {
             const canvas = viewport([
-                new Camera3D(ORTHO),
+                new SceneCamera(ORTHO),
                 new Box3D({ width: 1, height: 1, depth: 1, rotation: [0, 0, 45] }),
             ]);
             // The world AABB of a unit cube turned 45 degrees about Z is sqrt(2) wide.
@@ -572,7 +573,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
             const locked = new Box3D({ width: 1, position: [-2, 0, 0] });
             const free = new Box3D({ width: 1, position: [2, 0, 0] });
             locked._setEditorState(false, true);
-            const canvas = viewport([new Camera3D(ORTHO), locked, free]);
+            const canvas = viewport([new SceneCamera(ORTHO), locked, free]);
 
             const boxes = boxesOf(canvas);
             expect(at(boxes, '1').locked).toBe(true);
@@ -580,7 +581,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
         });
 
         it('does not take the flag from the viewport it sits in', () => {
-            const canvas = viewport([new Camera3D(ORTHO), new Box3D({ width: 1 })]);
+            const canvas = viewport([new SceneCamera(ORTHO), new Box3D({ width: 1 })]);
             canvas._setEditorState(false, true);
             const boxes: NodeBox[] = [];
             collectBoxes(canvas, '', boxes, true);
@@ -591,7 +592,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
     describe('far off screen', () => {
         it('clamps a box to 8 viewport sizes about the centre instead of reporting its true place', () => {
             // 1000 units to the side is 50000 viewport units, far past the clamp.
-            const canvas = viewport([new Camera3D(ORTHO), new Box3D({ width: 1, position: [1000, 0, 0] })]);
+            const canvas = viewport([new SceneCamera(ORTHO), new Box3D({ width: 1, position: [1000, 0, 0] })]);
             const box = at(boxesOf(canvas), '1');
             // Half the 400-wide viewport is 200, and the limit is 8 times that.
             closeTo(box.center.x, 8 * 200, 1e-6);
@@ -601,7 +602,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
         });
 
         it('keeps a box that only partly leaves the viewport at its true size', () => {
-            const canvas = viewport([new Camera3D(ORTHO), new Box3D({ width: 2, height: 2, depth: 2, position: [4, 0, 0] })]);
+            const canvas = viewport([new SceneCamera(ORTHO), new Box3D({ width: 2, height: 2, depth: 2, position: [4, 0, 0] })]);
             const box = at(boxesOf(canvas), '1');
             // 4 +- 1 units -> 150 .. 250, past the 200 edge but nowhere near the clamp.
             closeTo(box.center.x, 4 * PX_PER_UNIT, 1e-6);
@@ -610,7 +611,7 @@ describe('collectBoxes – 3D: the other camera and drawable cases', () => {
     });
 
     describe('straddling the eye plane', () => {
-        const eye = () => new Camera3D({ position: [0, 0, 5], lookAt: 0, fov: 50 });
+        const eye = () => new SceneCamera({ position: [0, 0, 5], lookAt: 0, fov: 50 });
 
         it('reports the visible span instead of dropping the box or reflecting it', () => {
             // The camera sits at z = 5, inside this slab, which runs from z = -15 to 25.
@@ -646,7 +647,7 @@ describe('pickNode – a locked mesh', () => {
     it.skip('does not return a locked mesh, as it does not return a locked 2D node', () => {
         const mesh = new Box3D({ width: 2, height: 2, depth: 2 });
         mesh._setEditorState(false, true);
-        const canvas = viewport([new Camera3D({ position: [0, 0, 10], lookAt: 0 }), mesh]);
+        const canvas = viewport([new SceneCamera({ position: [0, 0, 10], lookAt: 0 }), mesh]);
 
         expect(pickNode(canvas, { x: 0, y: 0 })).toBeNull();
     });
@@ -660,7 +661,7 @@ describe('projectNode3DAt under a parent with coordinates of its own', () => {
 
     it("reads parentPoints in the coordinates the node's position is in", () => {
         const canvas = viewport([
-            new Camera3D({ position: [0, 0, 10], lookAt: 0 }),
+            new SceneCamera({ position: [0, 0, 10], lookAt: 0 }),
             new Graph({ children: [new Box3D({ width: 0.5, x: 0, y: 1.5, z: 1 })] } as any),
         ]);
 

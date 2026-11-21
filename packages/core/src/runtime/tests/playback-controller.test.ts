@@ -1013,10 +1013,9 @@ describe("PlaybackController – text layout, 3D projection and plane points", (
     describe("projectNode3D", () => {
         const view3d = () => openController(
             project([track("a", comp([
-                node("view", "canvas3d", { width: 400, height: 300 }),
-                node("cam", "camera3d", { position: [0, 0, 10], lookAt: 0 }, "view", 0),
-                node("cube", "box3d", { width: 2 }, "view", 1),
-                node("label", "text", { text: "hi" }, "view", 2),
+                node("view", "canvas3d", { width: 400, height: 300, orbit: 90, elevation: 0, zoom: 10 }),
+                node("cube", "box3d", { width: 2 }, "view", 0),
+                node("label", "text", { text: "hi" }, "view", 1),
             ], [1]))], { viewport }),
         );
 
@@ -1024,7 +1023,7 @@ describe("PlaybackController – text layout, 3D projection and plane points", (
             const { controller } = view3d();
             await controller.seek(0);
 
-            const frame = controller.projectNode3D("0.1", [], []);
+            const frame = controller.projectNode3D("0.0", [], []);
 
             expect(frame).not.toBeNull();
             expect(frame!.origin!.x).toBeCloseTo(0, 6);
@@ -1037,7 +1036,7 @@ describe("PlaybackController – text layout, 3D projection and plane points", (
             const { controller } = view3d();
             await controller.seek(0);
 
-            const frame = controller.projectNode3D("0.1", [{ x: 1, y: 0, z: 0 }], [{ x: 0, y: 1, z: 0 }])!;
+            const frame = controller.projectNode3D("0.0", [{ x: 1, y: 0, z: 0 }], [{ x: 0, y: 1, z: 0 }])!;
 
             expect(frame.parentPoints[0]!.x).toBeGreaterThan(frame.origin!.x);
             expect(frame.localPoints[0]!.y).toBeGreaterThan(frame.origin!.y);
@@ -1047,14 +1046,14 @@ describe("PlaybackController – text layout, 3D projection and plane points", (
             const { controller } = view3d();
             await controller.seek(0);
 
-            expect(controller.projectNode3D("0.2", [], [])).toBeNull();
+            expect(controller.projectNode3D("0.1", [], [])).toBeNull();
             expect(controller.projectNode3D("0.9", [], [])).toBeNull();
             expect(controller.projectNode3D("0", [], [])).toBeNull();
         });
 
         it("is null before any frame has been built", () => {
             const { controller } = view3d();
-            expect(controller.projectNode3D("0.1", [], [])).toBeNull();
+            expect(controller.projectNode3D("0.0", [], [])).toBeNull();
         });
     });
 

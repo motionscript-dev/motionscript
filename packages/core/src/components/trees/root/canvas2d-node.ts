@@ -32,9 +32,9 @@ export interface Canvas2DProps extends Node2DProps, FlowProps {
     heading: number;
     /** Places the children in one 3D space seen through this camera, rather than each projecting through its own perspective: their `depth` and tilt become positions and turns in that space and siblings paint far to near. A switch, not read off the camera's numbers, so turning it on can't jump a tween. While on, `perspective` is the camera's distance from {@link lookAt} at `dolly: 0` (CSS's convention: that plane draws 1:1, `0` is parallel) and the stage's own tilt and depth are unused. */
     space3D: boolean;
-    /** Degrees about the vertical axis through {@link lookAt}. 0 is head-on; positive moves the camera to the right. Same as `Camera3D`. */
+    /** Degrees about the vertical axis through {@link lookAt}. 0 is head-on; positive moves the camera to the right. Same as a `Canvas3D`'s. */
     orbit: number;
-    /** Degrees above the layers. Positive looks down on them. Same as `Camera3D`. */
+    /** Degrees above the layers. Positive looks down on them. Same as a `Canvas3D`'s. */
     elevation: number;
     /** Px the camera has moved in toward {@link lookAt}. Inert with no perspective, as depth is. */
     dolly: number;

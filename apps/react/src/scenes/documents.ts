@@ -263,22 +263,13 @@ const view3dDocument: CompositionDocument = {
         root({ fill: 'bg' }),
         {
             id: 'view', type: 'canvas3d', parentId: null, layerOrder: 0,
-            props: { width: 760, height: 460, cornerRadius: 24, fill: 'card' },
+            props: {
+                width: 760, height: 460, cornerRadius: 24, fill: 'card', elevation: 16, fov: 45,
+                lights: [{ type: 'ambient', intensity: 0.35 }, { type: 'sun', intensity: 2.2, orbit: 37, elevation: 45 }],
+            },
         },
         {
-            id: 'camera', type: 'camera3d', parentId: 'view', layerOrder: 0,
-            props: { position: [0, 1.6, 5.5], target: 0, fov: 45 },
-        },
-        {
-            id: 'ambient', type: 'ambient-light3d', parentId: 'view', layerOrder: 1,
-            props: { intensity: 0.35 },
-        },
-        {
-            id: 'key', type: 'directional-light3d', parentId: 'view', layerOrder: 2,
-            props: { intensity: 2.2, position: [3, 5, 4] },
-        },
-        {
-            id: 'box', type: 'box3d', parentId: 'view', layerOrder: 3,
+            id: 'box', type: 'box3d', parentId: 'view', layerOrder: 0,
             props: {
                 width: 2, height: 2, depth: 2, cornerRadius: 0.08,
                 fill: 'primary', roughness: 0.4, metalness: 0.1,

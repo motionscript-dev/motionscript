@@ -43,7 +43,7 @@ a project document (JSON: tracks of still / composition / audio clips)
 | `browser` | The browser platform: `createBrowserEngine`, stills, the export frame loop and encoding, audio; draws with `renderer`, a dependency. |
 | `react` | `useMotionPlayer` and `MotionStage`: a session, its transport and a canvas. |
 | `headless` | Renders from Node by driving the browser engine in headless Chromium. |
-| `components/*` | Seven published kits of scene components (audio, charts, code, geography, grids, math, patterns), built on the SDK. `geography` also carries the Natural Earth outlines its `GeoBorder` draws. |
+| `components/*` | Four published kits of scene components (charts, code, geography, math), built on the SDK. `geography` also carries the Natural Earth outlines its `GeoBorder` draws. |
 | `renderer` | The renderer, in Rust/wgpu (WebGPU): a retained 2D/3D renderer compiled to WASM, its storage and text measurement, and an adapter implementing `RenderContext2D` that drives core's render path. Imports nothing from `browser`. Building it needs Rust. |
 | `e2e` | Visual regression: renders scenes through `headless` on SwiftShader's WebGPU adapter and pixel-diffs them against the committed `wgpu-baseline/` (not published). |
 | `apps/*` | `react` (a Vite player page) and `engine` (an HTTP render server) run against built `dist/`; `shaders` is the demo kit of custom nodes on custom WGSL shaders they import. |
@@ -82,7 +82,7 @@ Terms that carry a specific meaning in this repo.
 | **Node** | A row naming a type, a parent, a layer order and props. Its node type (the code half, a component) is registered under the row's `type` key. Three trees: `Node2D`, `Node3D`, `NodeAudio`. |
 | **Component** | A node type written as one spec object handed to a factory: `component2d` (in a box), `component3d` (in space) or `componentAudio` (a sound or a bus). The factory generates a subclass of that tree's node class, declares its type key (what a row's `type` names), and writes its entries and commands where the registry reads them. Calling it builds a node. |
 | **State entry** | A field of a component's `state`: a plain number, string or boolean, or a `Types` builder that knows how its value resolves and interpolates. Public entries are the node's props; a private one (`{ private: true }`) is written only by its commands. |
-| **Module** | A plain ES module of `state`, `commands` and pure helpers that a component spreads in and calls (`Paint`, `Flow`, `Shapes`, `View3D`, a kit's `ViewportPattern`). What a base class was. |
+| **Module** | A plain ES module of `state`, `commands` and pure helpers that a component spreads in and calls (`Paint`, `Flow`, `Shapes`, `View3D`). What a base class was. |
 | **Piece** | What a component's command returns: a timed part (`tween`, `animate`, `sound`, `wait`) or a composition of parts (`together`, `sequence`, `stagger`), built from the `timeline` the command is handed. |
 | **Command** | A row that animates a node or variable: a declared `duration` plus a pure `at(t)`, placed at a time. A document's command rows never add, remove or reparent nodes (a node type may still expose tree-editing commands such as `addChildAt` for scenes built in code). |
 | **Variable** | A named value with no place in the tree. Props follow it through expressions; one command can drive many nodes. A constant is a variable no command drives. |

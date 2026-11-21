@@ -13,13 +13,10 @@
       "@motionscript/renderer",
       "@motionscript/react",
       "@motionscript/headless",
-      "@motionscript/audio",
       "@motionscript/charts",
       "@motionscript/code",
       "@motionscript/geography",
-      "@motionscript/grids",
       "@motionscript/math",
-      "@motionscript/patterns",
       "@motionscript/sdk"
     ]
   ],

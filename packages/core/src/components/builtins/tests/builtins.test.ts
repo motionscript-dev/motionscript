@@ -36,12 +36,6 @@ describe("what the built-ins describe", () => {
         expect((new OrbitCamera({}) as Node2D).perspective).toBe(1000);
     });
 
-    it("reports a shadow-casting light's shadow default", () => {
-        for (const key of ["directional-light3d", "point-light3d", "spot-light3d"]) {
-            expect(described(key).properties!.shadow, key).toMatchObject({ default: false });
-        }
-    });
-
     it("gives a sound and a video a play command", () => {
         const registry = new Registry();
         expect(registry.node("sound")!.commands.has("play")).toBe(true);

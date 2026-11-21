@@ -16,7 +16,6 @@
   "dependencies": {
     "@motionscript/sdk": "workspace:*",
     "@motionscript/core": "workspace:^",
-    "@motionscript/patterns": "workspace:^",
     "@motionscript/code": "workspace:^",
     "@motionscript/math": "workspace:^",
     "@motionscript/charts": "workspace:^"

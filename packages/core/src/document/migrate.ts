@@ -10,7 +10,7 @@ import { stageEntries } from "./migrate-stage3d";
  */
 
 /** The format this engine reads natively and writes. A document without `formatVersion` is format 0. */
-export const DOCUMENT_FORMAT_VERSION = 4;
+export const DOCUMENT_FORMAT_VERSION = 5;
 
 export class DocumentTooNewError extends Error {
     readonly version: number;
@@ -94,6 +94,13 @@ export const DOCUMENT_MIGRATIONS: readonly DocumentMigration[] = [
         description:
             "A `canvas3d`'s light, fog, environment and camera child nodes become its `lights`, `fog`, `environment` " +
             "and camera fields, where those say exactly what the nodes did.",
+        clip: stageEntries,
+    },
+    {
+        from: 4,
+        description:
+            "The same move again for documents 0.4.x wrote, which were already format 4 and could still hold those " +
+            "nodes; 0.5.0 removed the node types.",
         clip: stageEntries,
     },
 ];

@@ -1,5 +1,4 @@
 import { Camera, Rect, Ellipse, Fills } from '@motionscript/sdk';
-import { GridPattern } from '@motionscript/patterns';
 import { createRef, easeInOut, el, scene } from '../doc';
 import { holdTail } from './_lib';
 
@@ -21,12 +20,13 @@ export default scene((stage) => {
             heading: 0,
             lookAt: { x: -260, y: 0 },
             children: [
-                el(GridPattern, {
-                    cellSize: 120,
-                    subdivisions: 2,
-                    fill: Fills.color('bg'),
-                    stroke: { weight: 3, fill: Fills.color('primary', { opacity: 0.5 }) },
-                    subStroke: { weight: 1.5, fill: Fills.color('primary', { opacity: 0.25 }) },
+                el(Rect, {
+                    width: 3600,
+                    height: 3600,
+                    fill: [
+                        Fills.color('bg'),
+                        { type: 'grid', divisions: 30, subdivisions: 2, strokeWidth: 3, subdivisionWidth: 1.5, color: 'primary', opacity: 0.5 },
+                    ],
                 }),
                 el(Rect, { width: 150, height: 150, cornerRadius: 20, fill: 'primary', x: -260, y: -30 }),
                 el(Ellipse, { width: 150, height: 150, fill: 'accent', x: 0, y: 60 }),

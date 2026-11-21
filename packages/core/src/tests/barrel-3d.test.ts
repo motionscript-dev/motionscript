@@ -33,8 +33,6 @@ const SDK_3D_VALUES = [
     'Box3D', 'Sphere3D', 'Plane3D', 'Cylinder3D', 'Cone3D', 'Torus3D', 'TorusKnot3D',
     'Circle3D', 'Ring3D', 'Capsule3D', 'Polyhedron3D', 'Extrude3D', 'Lathe3D', 'Tube3D',
     'Instances3D', 'Points3D', 'Line3D', 'Sprite3D', 'Model3D',
-    'AmbientLight3D', 'HemisphereLight3D', 'DirectionalLight3D', 'PointLight3D', 'SpotLight3D', 'AreaLight3D',
-    'Camera3D', 'Fog3D', 'Environment3D',
     'Graphics3D', 'Scene3D', 'RenderContext3D', 'Geo', 'Mat', 'Tex',
     'lerpVector3', 'lerpEuler3', 'slerpQuaternion', 'quaternionFromEuler', 'normalizeQuaternion',
     'resolveVector3', 'evaluateParametric', 'evaluateRoundedBox', 'resolveSurfaceSource',
@@ -104,17 +102,13 @@ describe('the built-in registry and the 3D classes', () => {
         cylinder3d: 'Cylinder3D', cone3d: 'Cone3D', capsule3d: 'Capsule3D', torus3d: 'Torus3D',
         'torus-knot3d': 'TorusKnot3D', tube3d: 'Tube3D', lathe3d: 'Lathe3D', extrude3d: 'Extrude3D',
         ring3d: 'Ring3D', polyhedron3d: 'Polyhedron3D', points3d: 'Points3D', line3d: 'Line3D',
-        sprite3d: 'Sprite3D', instances3d: 'Instances3D', model3d: 'Model3D', camera3d: 'Camera3D',
-        'ambient-light3d': 'AmbientLight3D', 'directional-light3d': 'DirectionalLight3D',
-        'point-light3d': 'PointLight3D', 'spot-light3d': 'SpotLight3D',
-        'hemisphere-light3d': 'HemisphereLight3D', 'area-light3d': 'AreaLight3D',
-        fog3d: 'Fog3D', environment3d: 'Environment3D',
+        sprite3d: 'Sprite3D', instances3d: 'Instances3D', model3d: 'Model3D',
     };
 
-    it('registers exactly the 31 documented 3D keys', () => {
+    it('registers exactly the 22 documented 3D keys', () => {
         const registry = new Registry();
         const found = registry.nodeKeys().filter((key) => /3d$/.test(key));
-        expect(Object.keys(KEYS)).toHaveLength(31);
+        expect(Object.keys(KEYS)).toHaveLength(22);
         expect(found.sort()).toEqual(Object.keys(KEYS).sort());
     });
 

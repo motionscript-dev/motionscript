@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Canvas3D as Canvas3DComponent } from "@/components/builtins/three/canvas3d";
-import { Box3D, AmbientLight3D, PointLight3D, Camera3D, Fog3D } from "@/components/builtins/three/three";
+import { Box3D } from "@/components/builtins/three/three";
+import { SceneCamera, SceneFog, SceneLight } from "@/components/builtins/three/tests/scene-wide.fixtures";
 import { component2d } from "@/components/factory/component2d";
 import { component3d } from "@/components/factory/component3d";
 import * as Corners from "@/components/modules/corners";
@@ -123,9 +124,9 @@ describe('Canvas3D scene composition', () => {
         });
     });
 
-    it('does not add a default camera when a Camera3D child states one', () => {
+    it('does not add a default camera when a child states one', () => {
         const scene = new Canvas3D({
-            children: [new Box3D(), new Camera3D({ fov: 30, position: [0, 0, 9] })],
+            children: [new Box3D(), new SceneCamera({ fov: 30, position: [0, 0, 9] })],
         })._scene3D();
         expect(cameras(scene)).toHaveLength(1);
         expect(scene.cameraDescriptor()).toMatchObject({ type: 'perspective', fov: 30 });
@@ -197,11 +198,11 @@ describe('Canvas3D scene composition', () => {
     });
 
     it('leaves the rig out as soon as any child records a light', () => {
-        const withAmbient = new Canvas3D({ children: [new Box3D(), new AmbientLight3D({ intensity: 1 })] })._scene3D();
+        const withAmbient = new Canvas3D({ children: [new Box3D(), new SceneLight({ type: 'ambient', intensity: 1 })] })._scene3D();
         expect(lights(withAmbient)).toHaveLength(1);
         expect(lights(withAmbient)[0].light).toMatchObject({ type: 'ambient', intensity: 1 });
 
-        const withPoint = new Canvas3D({ children: [new PointLight3D({ intensity: 3 })] })._scene3D();
+        const withPoint = new Canvas3D({ children: [new SceneLight({ type: 'point', intensity: 3 })] })._scene3D();
         expect(lights(withPoint).map((l) => l.light.type)).toEqual(['point']);
         // The camera default still applies: only the slot a child filled is skipped.
         expect(cameras(withPoint)).toHaveLength(1);
@@ -260,7 +261,7 @@ describe('Canvas3D render settings', () => {
 });
 
 describe('Canvas3D fog colour', () => {
-    const fogOf = (props: Record<string, unknown>, fog = new Fog3D({ near: 5, far: 30 })) =>
+    const fogOf = (props: Record<string, unknown>, fog = new SceneFog({ near: 5, far: 30 })) =>
         new Canvas3D({ ...props, children: [fog, new Box3D()] } as never)._scene3D().fogDescriptor();
 
     it('gives a fog with no colour the first solid layer of the viewport fill', () => {
@@ -277,11 +278,11 @@ describe('Canvas3D fog colour', () => {
     });
 
     it('keeps a fog colour the author stated', () => {
-        const fog = fogOf({ fill: '#102030' }, new Fog3D({ color: '#ffffff', near: 1, far: 2 }));
+        const fog = fogOf({ fill: '#102030' }, new SceneFog({ color: '#ffffff', near: 1, far: 2 }));
         expect(fog?.color).toEqual(parseColor('#ffffff'));
     });
 
-    it('records no fog at all when no Fog3D child exists, whatever the fill', () => {
+    it('records no fog at all when no child sets one, whatever the fill', () => {
         expect(new Canvas3D({ fill: '#102030', children: [new Box3D()] })._scene3D().fogDescriptor()).toBeNull();
     });
 });

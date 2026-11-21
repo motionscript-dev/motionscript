@@ -213,9 +213,8 @@ const fills = [
 
 // Every 3D built-in under a viewport, with the 3D commands.
 {
-    const view = row('canvas3d', { width: 800, height: 450 });
+    const view = row('canvas3d', { width: 800, height: 450, orbit: 30, elevation: 20 });
     const group = row('group3d', { y: 0.5 }, view.id);
-    const camera = row('camera3d', { orbit: 30, elevation: 20, distance: 6 }, view.id);
     const cube = row('box3d', { fill: 'primary' }, group.id);
     // A stage that says its own lights, air and camera, with no scene-wide nodes.
     const stage = row('canvas3d', {
@@ -237,27 +236,19 @@ const fills = [
         duration: 2,
         nodes: [
             { id: '', type: 'canvas2d', parentId: null, layerOrder: 0, props: { fill: 'bg' } },
-            view, group, camera, cube, ...three, stage, onStage,
+            view, group, cube, ...three, stage, onStage,
             row('lathe3d', { points: [[0, 0], [0.5, 0.5], [0.2, 1]] }, group.id),
             row('tube3d', { points: [[0, 0, 0], [1, 1, 0], [2, 0, 1]], radius: 0.1 }, group.id),
             row('extrude3d', { path: 'M0 0 L1 0 L1 1 Z', depth: 0.2 }, group.id),
             row('line3d', { points: [[0, 0, 0], [1, 1, 1]], stroke: { color: 'accent', width: 2 } }, group.id),
-            row('ambient-light3d', { intensity: 0.3 }, view.id),
-            row('directional-light3d', { x: 2, y: 4, z: 3 }, view.id),
-            row('point-light3d', { y: 2 }, view.id),
-            row('spot-light3d', { y: 3 }, view.id),
-            row('hemisphere-light3d', {}, view.id),
-            row('area-light3d', {}, view.id),
-            row('fog3d', { color: 'bg', near: 4, far: 20 }, view.id),
-            row('environment3d', { preset: 'studio' }, view.id),
             row('model3d', { src: 'robot.glb', scaleX: 0.5, scaleY: 0.5, scaleZ: 0.5 }, group.id),
         ],
         commands: [
             command('moveTo', cube.id, 0, { x: 1, y: 0.5, z: 0 }),
             command('rotateTo', cube.id, 0.5, { rotationY: 90 }),
             command('scaleTo', cube.id, 1, { scale: 1.5 }),
-            command('orbitTo', camera.id, 0, { orbit: 90, elevation: 30 }, { duration: 2 }),
-            command('lookTo', camera.id, 1, { target: [0, 1, 0] }),
+            command('orbitTo', view.id, 0, { orbit: 90, elevation: 30 }, { duration: 2 }),
+            command('lookTo', view.id, 1, { target: [0, 1, 0] }),
             command('orbitTo', view.id, 0, { orbit: 10 }),
             command('lightTo', stage.id, 0, { light: 1, orbit: 120, intensity: 1 }, { duration: 1 }),
             command('lookTo', stage.id, 1, { target: [0, 0, 0] }),

@@ -1,12 +1,9 @@
 import type { Color } from "@/attributes/shape/fill/color/parser";
 import type { Stroke } from "@/attributes/shape/stroke/stroke";
-import { ORBIT_CAMERA_DEFAULTS, type CameraData3D } from "@/render3d/camera";
 import { lerpFill3D, type Fill3D } from "@/render3d/fill3d";
 import type { Bevel3D, Geometry3D, PolyhedronGeometry3D, BoxGeometry3D, CapsuleGeometry3D, CircleGeometry3D, ConeGeometry3D, CylinderGeometry3D, ExtrudeGeometry3D, LatheGeometry3D, PlaneGeometry3D, RingGeometry3D, SphereGeometry3D, TorusGeometry3D, TorusKnotGeometry3D, TubeGeometry3D } from "@/render3d/geometry";
 import { Graphics3D, type LineStroke3D, type ModelAnimation3D } from "@/render3d/graphics3d";
-import type { LightData3D, AmbientLightData3D, AreaLightData3D, DirectionalLightData3D, HemisphereLightData3D, PointLightData3D, SpotLightData3D } from "@/render3d/light";
 import type { Material3D, Shading3D } from "@/render3d/material";
-import type { EnvironmentData3D, FogData3D } from "@/render3d/scene-settings";
 import type { Segments3D } from "@/render3d/segments";
 import type { Transform3D, Blend3D, Faces3D } from "@/render3d/transform";
 import type { Vector3Input } from "@/render3d/vector3";
@@ -15,7 +12,7 @@ import { component3d } from "@/components/factory/component3d";
 import { Types } from "@/components/factory/types";
 import * as Material from "@/components/modules/material";
 import * as Paint3D from "@/components/modules/paint3d";
-import { defined, optional, optionalBoolean, optionalColor, optionalNumber, optionalNumeric, optionalPath, optionalPoints, optionalVector3, stated } from "@/components/modules/three-entries";
+import { optional, optionalBoolean, optionalNumber, optionalNumeric, optionalPath, optionalPoints, stated } from "@/components/modules/three-entries";
 import type { Vector2 } from "@/attributes/layout/vector2";
 import { resolveVector3 } from "@/render3d/vector3";
 import type { Node3DProps } from "@/components/trees/three/node3d";
@@ -303,157 +300,9 @@ function modelClip(clip: string): string | number | undefined {
     return Number.isInteger(index) && index >= 0 ? index : trimmed;
 }
 
-/** A light that casts no shadow unless asked: shadow maps cost a render each. */
-const castsNoShadow = { shadow: false } as const;
-
-/** @deprecated Use an `ambient` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
-export const AmbientLight3D = component3d({
-    key: "ambient-light3d",
-    state: { color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }) },
-    render: (ctx, s) => ctx.light(stated<LightData3D>("ambient", s, ["color", "intensity"])),
-});
-export type AmbientLight3D = NodeOf<typeof AmbientLight3D>;
-
-/** @deprecated Use a `sky` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
-export const HemisphereLight3D = component3d({
-    key: "hemisphere-light3d",
-    state: { sky: optionalColor(), ground: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }) },
-    render: (ctx, s) => ctx.light(stated<LightData3D>("hemisphere", s, ["sky", "ground", "intensity"])),
-});
-export type HemisphereLight3D = NodeOf<typeof HemisphereLight3D>;
-
-/** @deprecated Use a `sun` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
-export const DirectionalLight3D = component3d({
-    key: "directional-light3d",
-    state: { color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }), target: optionalVector3("origin") },
-    defaults: castsNoShadow,
-    render: (ctx, s) => ctx.light(stated<LightData3D>("directional", s, ["color", "intensity", "target", "shadow"])),
-});
-export type DirectionalLight3D = NodeOf<typeof DirectionalLight3D>;
-
-/** @deprecated Use a `lamp` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
-export const PointLight3D = component3d({
-    key: "point-light3d",
-    state: { color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }), distance: optionalNumber({ min: 0, step: 0.1 }), decay: optionalNumber({ min: 0, step: 0.1 }) },
-    defaults: castsNoShadow,
-    render: (ctx, s) => ctx.light(stated<LightData3D>("point", s, ["color", "intensity", "distance", "decay", "shadow"])),
-});
-export type PointLight3D = NodeOf<typeof PointLight3D>;
-
-/** @deprecated Use a `spot` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
-export const SpotLight3D = component3d({
-    key: "spot-light3d",
-    state: {
-        color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }), distance: optionalNumber({ min: 0, step: 0.1 }), angle: optionalNumber({ min: 0, max: 90, step: 1, unit: "°" }),
-        penumbra: optionalNumber({ min: 0, max: 1, step: 0.05 }), decay: optionalNumber({ min: 0, step: 0.1 }), target: optionalVector3("origin"),
-    },
-    defaults: castsNoShadow,
-    render: (ctx, s) => ctx.light(stated<LightData3D>("spot", s, ["color", "intensity", "distance", "angle", "penumbra", "decay", "target", "shadow"])),
-});
-export type SpotLight3D = NodeOf<typeof SpotLight3D>;
-
-/** @deprecated Use a `softBox` light in a `Canvas3D`'s `lights`. Remove in 0.5.0. */
-export const AreaLight3D = component3d({
-    key: "area-light3d",
-    state: { color: optionalColor(), intensity: optionalNumber({ min: 0, step: 0.05 }), width: size(), height: size() },
-    render: (ctx, s) => ctx.light(stated<LightData3D>("area", s, ["color", "intensity", "width", "height"])),
-});
-export type AreaLight3D = NodeOf<typeof AreaLight3D>;
-
-const CAMERA_KEYS = ["target", "orbit", "elevation", "distance", "fov", "frustumHeight", "near", "far", "zoom"] as const;
-const ORBIT_KEYS = ["orbit", "elevation", "distance"] as const;
-
-/** @deprecated Use a `Canvas3D`'s camera fields (`orbit`, `elevation`, `zoom`, `fov`, `projection`, `target`). Remove in 0.5.0. */
-export const Camera3D = component3d({
-    key: "camera3d",
-    state: {
-        type: Types.oneOf(["perspective", "orthographic"] as const),
-        target: optionalVector3("origin"),
-        orbit: angle(),
-        elevation: optionalNumber({ min: -90, max: 90, step: 1, unit: "°" }),
-        distance: optionalNumber({ min: 0, step: 0.1 }),
-        fov: optionalNumber({ min: 1, max: 179, step: 1, unit: "°" }),
-        frustumHeight: optionalNumber({ min: 0, step: 0.1 }),
-        near: optionalNumber({ min: 0, step: 0.1 }),
-        far: optionalNumber({ min: 0, step: 0.1 }),
-        zoom: optionalNumber({ min: 0.01, step: 0.05 }),
-    },
-    commands: {
-        /** Only the given angles move, each from where it stands (the orbit default while unset). */
-        orbitTo: {
-            args: {
-                orbit: optionalNumber({ step: 1, unit: "°" }),
-                elevation: optionalNumber({ min: -89, max: 89, step: 1, unit: "°" }),
-                distance: optionalNumber({ min: 0.01, step: 0.1 }),
-            },
-            run: (timeline, s) => {
-                const from = {
-                    orbit: s.orbit ?? ORBIT_CAMERA_DEFAULTS.orbit,
-                    elevation: s.elevation ?? ORBIT_CAMERA_DEFAULTS.elevation,
-                    distance: s.distance ?? ORBIT_CAMERA_DEFAULTS.distance,
-                };
-                return timeline.animate((t) => {
-                    const out: Record<string, number> = {};
-                    for (const key of ORBIT_KEYS) {
-                        const end = timeline.args[key];
-                        if (end !== undefined) out[key] = from[key] + (end - from[key]) * t;
-                    }
-                    return out;
-                });
-            },
-        },
-        lookTo: { args: ["target"] },
-    },
-    render: (ctx, s) => {
-        const data: Record<string, unknown> = { type: s.type };
-        for (const key of CAMERA_KEYS) if (s[key] !== undefined) data[key] = s[key];
-        ctx.camera(data as unknown as CameraData3D);
-    },
-});
-export type Camera3D = NodeOf<typeof Camera3D>;
-
-/** @deprecated Use a `Canvas3D`'s `fog`, `fogNear` and `fogFar`. Remove in 0.5.0. */
-export const Fog3D = component3d({
-    key: "fog3d",
-    state: { color: optionalColor(), near: optionalNumber({ min: 0, step: 0.1 }), far: optionalNumber({ min: 0, step: 0.1 }), density: optionalNumber({ min: 0, step: 0.001 }) },
-    render: (ctx, s) => {
-        const out: FogData3D = {};
-        if (s.color !== undefined) out.color = s.color as Color;
-        if (s.density !== undefined) out.density = s.density;
-        else {
-            if (s.near !== undefined) out.near = s.near;
-            if (s.far !== undefined) out.far = s.far;
-        }
-        ctx.fog(out);
-    },
-});
-export type Fog3D = NodeOf<typeof Fog3D>;
-
-/** @deprecated Use a `Canvas3D`'s `environment`. Remove in 0.5.0. */
-export const Environment3D = component3d({
-    key: "environment3d",
-    state: {
-        src: optional<string>(),
-        faces: optional<readonly string[]>(),
-        preset: optional<"studio">(),
-        intensity: optionalNumber({ min: 0, step: 0.05 }),
-        background: optionalBoolean(),
-        blur: optionalNumber({ min: 0, max: 1, step: 0.05 }),
-    },
-    render: (ctx, s) => {
-        if (s.src === undefined && s.faces === undefined && s.preset === undefined) return ctx.environment(null);
-        const out = defined<EnvironmentData3D>(s, ["src", "faces", "preset", "intensity", "background", "blur"]);
-        if (s.rotationX || s.rotationY || s.rotationZ) out.rotation = [s.rotationX, s.rotationY, s.rotationZ];
-        ctx.environment(out);
-    },
-});
-export type Environment3D = NodeOf<typeof Environment3D>;
-
 // What code building a 3D node names its props as.
 
 type ParamsOf<G extends { type: string }> = Omit<G, "type">;
-/** A light's params, minus its discriminant and its shadow, which is a node prop of its own. */
-type LightParamsOf<L extends { type: string }> = Omit<L, "type" | "shadow">;
 
 export type Group3DProps = Node3DProps;
 
@@ -557,90 +406,4 @@ export interface Model3DProps extends Node3DProps {
     animation: readonly ModelAnimation3D[] | ModelAnimation3D | undefined;
     /** Replace materials on the loaded graph, keyed by mesh or material name. */
     override: Readonly<Record<string, Material3D>> | undefined;
-}
-
-/** @deprecated Use an `ambient` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
-export interface AmbientLight3DProps extends Node3DProps, Partial<LightParamsOf<AmbientLightData3D>> { }
-
-/** @deprecated Use a `sky` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
-export interface HemisphereLight3DProps extends Node3DProps, Partial<LightParamsOf<HemisphereLightData3D>> { }
-
-/** @deprecated Use a `sun` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
-export interface DirectionalLight3DProps extends Node3DProps, Partial<LightParamsOf<DirectionalLightData3D>> { }
-
-/** @deprecated Use a `lamp` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
-export interface PointLight3DProps extends Node3DProps, Partial<LightParamsOf<PointLightData3D>> { }
-
-/** @deprecated Use a `spot` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
-export interface SpotLight3DProps extends Node3DProps, Partial<LightParamsOf<SpotLightData3D>> { }
-
-/** @deprecated Use a `softBox` light in `Canvas3DProps.lights`. Remove in 0.5.0. */
-export interface AreaLight3DProps extends Node3DProps, Partial<LightParamsOf<AreaLightData3D>> { }
-
-/**
- * The camera: where the scene is viewed from. One node for both projections (`type="orthographic"` is the flat one),
- * as a perspective and an orthographic camera are one object with a projection setting.
- *
- *   Camera3D({ target: [0, 0.2, 0], orbit: -18, elevation: 12, distance: 13, fov: 42 })
- *
- * `target`/`orbit`/`elevation`/`distance` place the camera in polar coordinates around what it looks at, which is
- * what a camera move almost always is (via `position` it is a sin/cos pair recomputed every frame). `position` and
- * `lookAt` still work for a pinned shot; setting any polar field takes over, so the two are never half applied.
- * Parenting to a moving `Group3D` carries the shot with the rig.
- *
- * `near`/`far` come from the scene bounds unless set, and aspect always tracks the viewport's layout box. An
- * asymmetric orthographic frustum is a `params` override. A scene with no camera gets a default framing; with
- * several, the last wins.
- *
- * @deprecated Use a `Canvas3D`'s camera fields. Remove in 0.5.0.
- */
-export interface Camera3DProps extends Node3DProps {
-    /** `"perspective"` (default) or `"orthographic"`. */
-    type: CameraData3D["type"];
-    /** The point the camera looks at and orbits around: `lookAt` under a name that reads right beside `orbit`, and the centre they turn about when any polar field is set. */
-    target: Vector3Input | undefined;
-    /** Azimuth around {@link target}, in **degrees**. */
-    orbit: number | undefined;
-    /** Angle above the horizon, in **degrees**. */
-    elevation: number | undefined;
-    distance: number | undefined;
-    /** Perspective only: vertical field of view in **degrees**. Default 50. */
-    fov: number | undefined;
-    /** Orthographic only: visible world height. Default 10. */
-    frustumHeight: number | undefined;
-    near: number | undefined;
-    far: number | undefined;
-    zoom: number | undefined;
-}
-
-/** The two scene-wide nodes, fog and environment. Nodes because they are about the space (fog the air, environment the sky); positionless, so declaring two of a kind is not an error but only the last takes effect. Shadows, tone mapping and post effects are `Canvas3D` props, and the backdrop is the viewport's 2D `fill`. */
-
-/** @deprecated Use a `Canvas3D`'s `fog`. Remove in 0.5.0. */
-export interface Fog3DProps extends Node3DProps {
-    /** Defaults to the viewport's own fill. */
-    color: Color | undefined;
-    /** Distance at which fog starts. Linear fog. */
-    near: number | undefined;
-    /** Distance at which fog is total. Linear fog. */
-    far: number | undefined;
-    /** Exponential-squared falloff. Wins over {@link near}/{@link far}. */
-    density: number | undefined;
-}
-
-/** @deprecated Use a `Canvas3D`'s `environment`. Remove in 0.5.0. */
-export interface Environment3DProps extends Node3DProps {
-    /**
-     * A 360° panorama — `.hdr`/`.exr` for real IBL, or a plain image.
-     * **Inert today**: no backend loads it, so only `preset` renders.
-     */
-    src: string | undefined;
-    /** Six cubemap faces in three's order: +X, −X, +Y, −Y, +Z, −Z. **Inert today**: no backend loads them. */
-    faces: readonly string[] | undefined;
-    /** A generated studio interior. Needs no asset. The only environment that renders. */
-    preset: "studio" | undefined;
-    intensity: number | undefined;
-    /** Also draw it behind the scene, as an infinitely distant sky. */
-    background: boolean | undefined;
-    /** Blur the background only, 0–1. The lighting stays sharp. */
-    blur: number | undefined;
 }

@@ -17,7 +17,7 @@ export function lerpLookAt(from: LookAt, to: LookAt, t: number): LookAt {
 }
 
 /**
- * A space root's camera for one frame. `orbit`/`elevation` mean what they do on `Camera3D` (`render3d/camera.ts`):
+ * A space root's camera for one frame. `orbit`/`elevation` mean what they do on a `Canvas3D` (`render3d/camera.ts`):
  * orbit 0 is head-on, positive orbit moves toward +x, positive elevation lifts. `perspective` is the distance from
  * `lookAt` at `dolly: 0` (CSS convention, so the focus plane draws 1:1; `0` is parallel). `zoom` and `heading` apply
  * after projection: lens zoom and roll.

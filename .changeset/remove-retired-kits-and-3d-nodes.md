@@ -1,0 +1,8 @@
+---
+"@motionscript/core": minor
+"@motionscript/sdk": minor
+---
+
+**Breaking:** the removals promised for 0.5.0. `@motionscript/grids`, `@motionscript/patterns` and `@motionscript/audio` are no longer published (their last release is 0.4.x), so `rectangularGrid`, `radialGrid`, `pathGrid`, `sphereGrid`, `arcGridOfOurOwn`, `gridPattern`, `lineGridPattern`, `dotGridPattern`, `viewportProbe`, `fullWaveform` and `liveWaveform` are gone. Core drops the `AmbientLight3D`, `HemisphereLight3D`, `DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, `AreaLight3D`, `Camera3D`, `Fog3D` and `Environment3D` nodes (keys `ambient-light3d`, `hemisphere-light3d`, `directional-light3d`, `point-light3d`, `spot-light3d`, `area-light3d`, `camera3d`, `fog3d`, `environment3d`) and their props types, from the root and from `@motionscript/sdk/v1`. A `Canvas3D` holds all of it: `lights`, `fog` with `fogNear` and `fogFar`, `environment`, and the camera fields with `orbitTo` and `lookTo`. A component's `render` can still call `ctx.light`, `ctx.camera`, `ctx.fog` and `ctx.environment`.
+
+Migration: documents go to format 5 as they are read. The format 3 → 4 step, and a new format 4 → 5 step for documents 0.4.x wrote, move a `canvas3d`'s light, fog, environment and camera children (and the camera's `orbitTo` and `lookTo`) into its entries wherever the entries say exactly what the nodes did. A node that cannot be converted, and any node of a removed kit, now builds as an empty placeholder with an entry in `buildErrors` (a strict registry refuses the document); rewrite it as `canvas3d` entries, or keep the kit's 0.4.x source as a custom component.

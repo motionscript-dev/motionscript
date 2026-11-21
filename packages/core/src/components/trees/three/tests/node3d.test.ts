@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { Scene3D, type Scene3DOp } from '@/render3d/scene3d';
 import { Node3D } from '@/components/trees/three/node3d';
-import { Group3D, Box3D, Sphere3D, AmbientLight3D, DirectionalLight3D, Camera3D, Fog3D } from "@/components/builtins/three/three";
+import { Group3D, Box3D, Sphere3D } from "@/components/builtins/three/three";
+import { SceneCamera, SceneFog, SceneLight } from "@/components/builtins/three/tests/scene-wide.fixtures";
 import { Canvas3D as Canvas3DComponent } from "@/components/builtins/three/canvas3d";
 import { Rect } from "@/components/builtins/geometry/geometry";
 import { Text } from "@/components/builtins/text/text";
@@ -78,9 +79,9 @@ describe('Node3D → Scene3D', () => {
     it('a light, a camera and a fog each record their own kind of op', () => {
         const tree = new Group3D({
             children: [
-                new Camera3D({ fov: 45 }),
-                new AmbientLight3D({ intensity: 0.4 }),
-                new Fog3D({ color: '#0b0d12', near: 5, far: 30 }),
+                new SceneCamera({ fov: 45 }),
+                new SceneLight({ type: 'ambient', intensity: 0.4 }),
+                new SceneFog({ color: '#0b0d12', near: 5, far: 30 }),
                 new Box3D({ width: 2 }),
             ],
         });
@@ -112,7 +113,7 @@ describe('Node3D → Scene3D', () => {
     // the camera *inside* the group's push/pop and lets the renderer compose the
     // world matrix, rather than writing an absolute placement.
     it('records a nested camera inside its parent group\'s scope', () => {
-        const camera = new Camera3D({ position: [0, 0, 5] });
+        const camera = new SceneCamera({ position: [0, 0, 5] });
         const rig = new Group3D({ position: [0, 10, 0], children: [camera] });
 
         const kinds = record(rig).map((o) => o.kind);
@@ -172,8 +173,8 @@ describe('Node3D animation', () => {
     // `to` on them left the prop where it started with no error.
     it('interpolates lookAt, a camera target and a light target', () => {
         const box = attached(new Box3D({ lookAt: [0, 0, 0] }));
-        const camera = attached(new Camera3D({ target: [0, 0, 0] }));
-        const light = attached(new DirectionalLight3D({ target: [0, 0, 0] }));
+        const camera = attached(new SceneCamera({ target: [0, 0, 0] }));
+        const light = attached(new SceneLight({ type: 'directional', target: [0, 0, 0] }));
 
         box._prepareStep({ lookAt: [0, 10, 0] } as never, 1).seek(0.5);
         camera._prepareStep({ target: [4, 0, 0] } as never, 1).seek(0.5);
@@ -185,7 +186,7 @@ describe('Node3D animation', () => {
     });
 
     it('tweens an unset target from the origin, and holds an unset lookAt until the end', () => {
-        const camera = attached(new Camera3D());
+        const camera = attached(new SceneCamera());
         const box = attached(new Box3D());
 
         camera._prepareStep({ target: [0, 8, 0] } as never, 1).seek(0.5);
@@ -339,7 +340,7 @@ describe('mixing the two trees', () => {
 
     it('records only the 3D children into the scene', () => {
         const canvas = new Canvas3D({
-            children: [new AmbientLight3D(), new Box3D(), new Text({ text: 'hud' })],
+            children: [new SceneLight(), new Box3D(), new Text({ text: 'hud' })],
         });
 
         const scene = new Scene3D();
@@ -371,7 +372,7 @@ describe('mixing the two trees', () => {
     });
 
     it('shares the whole node vocabulary across both trees', () => {
-        const rig = new Group3D({ children: [new DirectionalLight3D({ intensity: 2 })] });
+        const rig = new Group3D({ children: [new Box3D({ width: 2 })] });
 
         // Same tree API, same props, same save/restore — inherited from `Node`.
         expect(rig.children).toHaveLength(1);

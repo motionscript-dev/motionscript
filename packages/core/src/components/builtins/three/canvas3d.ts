@@ -46,7 +46,7 @@ export interface Canvas3DProps extends RectProps {
     exposure: number;
     /** Post-processing inside the 3D composite: `bloom`, `ssao`, `dof`, `outline`. Short by design: the 2D `effects` chain already runs over the composited result, so only passes needing depth, object ids or pre-tone-mapping HDR radiance are here. **Inert today**: the chain is recorded and no pass is applied (the first set warns in development); use the viewport's 2D `effects`. */
     post: PostEffect3D | readonly PostEffect3D[];
-    /** The camera as three numbers rather than a `<Camera3D>` child, so a timeline `to` can tween it, a scrub reproduce it, and a drag-to-orbit write the values the timeline reads. Only read when the scene has no camera of its own. */
+    /** The camera as three numbers rather than a camera a child sets, so a timeline `to` can tween it, a scrub reproduce it, and a drag-to-orbit write the values the timeline reads. Only read when the scene has no camera of its own. */
 
   /** Camera orbit about the vertical axis, in **degrees**. Animate this to spin. */
   orbit: number;
@@ -62,7 +62,7 @@ export interface Canvas3DProps extends RectProps {
   frustumHeight: number;
   /** The point the camera looks at and orbits. Default the origin. */
   target: Vector3Input;
-  /** The lights, as a list of differently shaped items (ambient, sun, sky, lamp, spot, soft box). Default an ambient fill, a key and a rim. A light node among the children replaces them all. */
+  /** The lights, as a list of differently shaped items (ambient, sun, sky, lamp, spot, soft box). Default an ambient fill, a key and a rim. A child that adds a light (`ctx.light`) replaces them all. */
   lights: StageLight3D[];
   /** The air: its first solid colour, thickening from {@link fogNear} to {@link fogFar}. Empty is clear air. */
   fog: Fill;

@@ -444,30 +444,6 @@
     "description": "DefaultTextStyle node overriding font family for subtree"
   },
   {
-    "id": "line-grid-basic",
-    "name": "LineGridBasic",
-    "section": "Grid / Pattern",
-    "description": "LineGridPattern with major divisions only"
-  },
-  {
-    "id": "line-grid-subdivisions",
-    "name": "LineGridSubdivisions",
-    "section": "Grid / Pattern",
-    "description": "LineGridPattern with major and minor subdivisions"
-  },
-  {
-    "id": "grid-pattern-basic",
-    "name": "GridPatternBasic",
-    "section": "Grid / Pattern",
-    "description": "GridPattern (infinite world-space) with default cell size"
-  },
-  {
-    "id": "grid-pattern-subdivisions",
-    "name": "GridPatternSubdivisions",
-    "section": "Grid / Pattern",
-    "description": "GridPattern with sub-grid lines"
-  },
-  {
     "id": "code-basic",
     "name": "CodeBasic",
     "section": "Component Nodes",

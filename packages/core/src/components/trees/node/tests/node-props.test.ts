@@ -234,7 +234,7 @@ describe('a binding that reads undefined', () => {
 
         it('covers the families that dereference their input', () => {
             const keys = new Set(cases.map(([, key]) => key));
-            for (const key of ['padding', 'pivot', 'align', 'cornerRadius', 'cornerStyle', 'crop', 'anchor', 'fill', 'color', 'emission']) {
+            for (const key of ['padding', 'pivot', 'align', 'cornerRadius', 'cornerStyle', 'crop', 'anchor', 'fill', 'emission']) {
                 expect(keys.has(key), key).toBe(true);
             }
         });

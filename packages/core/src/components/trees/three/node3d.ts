@@ -76,7 +76,7 @@ const VECTOR_SUGAR: Readonly<Record<string, readonly [string, string, string]>> 
  * `to()`/`set()`, refs, context and clock inherited from {@link Node}. Only placement and drawing differ: there is no
  * `width`, `padding`, anchor or flex, since a 3D node's whole placement is its transform.
  *
- *   Canvas3D({ children: [Camera3D(...), AmbientLight3D(...), Group3D({ ref: rig, children: [Box3D(...)] })] })
+ *   Canvas3D({ orbit: 30, children: [Group3D({ ref: rig, children: [Box3D(...)] })] })
  *   rig().to({ data: { rotationY: 360, y: 1 }, duration: 2 });
  *
  * Axes are scalars and vectors are sugar: `x`/`y`/`z`, `rotationX/Y/Z` and `scaleX/Y/Z` are the real props (named as in

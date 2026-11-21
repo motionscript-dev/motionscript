@@ -170,8 +170,8 @@ commands: [
 - **Lines are tubes and labels are cards.** A `curvePlot3d`'s and an axis's
   `thickness`, a point's `radius` and a label's `labelSize` are scene units, so
   they keep their size when a range changes. A label always faces the camera.
-- **Moving the camera** is the canvas's `orbitTo({ orbit, elevation, zoom })`, or a
-  `camera3d`'s `orbitTo` and `lookTo` when the scene has one.
+- **Moving the camera** is the canvas's `orbitTo({ orbit, elevation, zoom })` and
+  `lookTo`.
 
 | Written as | Is | Variables |
 | --- | --- | --- |

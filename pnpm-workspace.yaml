@@ -9,11 +9,8 @@ packages:
   - "packages/e2e"
   - "packages/components/charts"
   - "packages/components/geography"
-  - "packages/components/audio"
   - "packages/components/code"
   - "packages/components/math"
-  - "packages/components/grids"
-  - "packages/components/patterns"
   - "packages/sdk"
   - "packages/renderer"
 

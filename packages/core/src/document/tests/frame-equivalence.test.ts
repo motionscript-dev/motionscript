@@ -15,7 +15,7 @@ import { migrateDocument } from "../migrate";
 import type { ProjectDocument } from "../project";
 import { Registry } from "../registry";
 import type { CommandSpec, CompositionDocument, TimedNodeSpec, VisualDocument } from "../types";
-import { jsonFiles, manifestFor, releases, root } from "./corpus.fixtures";
+import { jsonFiles, manifestFor, releases, removedRows, root } from "./corpus.fixtures";
 
 // Held evaluation against the reference (`evaluateAt(t, onWrite)` restores every
 // animated node and runs every started command): what each draws and what each
@@ -195,14 +195,16 @@ describe("held evaluation draws what running every command draws", () => {
 
     describe("in every saved document", () => {
         const strict = new Registry({ strict: true });
+        const lenient = new Registry();
         for (const release of releases) {
             for (const file of jsonFiles(join(root, release))) {
                 it(`${release}/${relative(join(root, release), file).replaceAll("\\", "/")}`, () => {
                     const { document } = migrateDocument(JSON.parse(readFileSync(file, "utf8")) as ProjectDocument);
                     const assets = new ManifestAssetCatalog(manifestFor(document));
+                    const registry = removedRows(document).length > 0 ? lenient : strict;
                     document.tracks.forEach(({ clip }, k) => {
                         if (clip.kind !== "composition") return;
-                        expectSameFrames(clip, { registry: strict, assets, viewport: document.viewport }, k + 1, `track ${k}`);
+                        expectSameFrames(clip, { registry, assets, viewport: document.viewport }, k + 1, `track ${k}`);
                     });
                 });
             }

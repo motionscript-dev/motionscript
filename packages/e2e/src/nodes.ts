@@ -7,7 +7,6 @@ import { ThemedRect } from '@/components/themed-rect';
 // differ from what the packages ship.
 import { Code } from '@motionscript/code';
 import { BarChart, LineChart, PieChart, RadarChart, RadialChart } from '@motionscript/charts';
-import { DotGridPattern, GridPattern, LineGridPattern } from '@motionscript/patterns';
 import {
     AngleMark, Axes2d, Axes3d, CurlyBrace, CurveArea, CurvePlot3d, DropLines, EmphasisMark, FunctionPlot, Latex, NumberLine,
     NumberPlane, PlotPoint, PlotPoint3d, PointsPlot, PolarPlane, RiemannSum, StreamLines, SurfacePlot3d, TangentLine, TracedPath, VectorArrow,
@@ -40,11 +39,7 @@ export const NODES: Record<string, unknown> = {
     spinBoxEllipse: SpinBoxEllipse,
     spinBoxStrokeRect: SpinBoxStrokeRect,
     lutRect: LutRect,
-    themedRect: ThemedRect,
-    'lineGridPattern': LineGridPattern,
-    'dotGridPattern': DotGridPattern,
-    'gridPattern': GridPattern,
-    numberLine: NumberLine,
+    themedRect: ThemedRect,    numberLine: NumberLine,
     axes2d: Axes2d,
     numberPlane: NumberPlane,
     functionPlot: FunctionPlot,

@@ -604,22 +604,18 @@ describe("the built-in vocabulary", () => {
         text: ["text", "richtext", "number"],
         media: ["video"],
         audio: ["audioBus", "sound"],
-        "3D scene": ["canvas3d", "group3d", "mesh3d", "camera3d", "fog3d", "environment3d"],
+        "3D scene": ["canvas3d", "group3d", "mesh3d"],
         "3D geometry": [
             "box3d", "sphere3d", "plane3d", "circle3d", "cylinder3d", "cone3d", "capsule3d",
             "torus3d", "torus-knot3d", "tube3d", "lathe3d", "extrude3d", "ring3d", "polyhedron3d",
         ],
         "3D drawables": ["points3d", "line3d", "sprite3d", "instances3d", "model3d"],
-        "3D lights": [
-            "ambient-light3d", "directional-light3d", "point-light3d",
-            "spot-light3d", "hemisphere-light3d", "area-light3d",
-        ],
     };
     const keys = Object.values(CONTRACT).flat();
     const registry = new Registry();
 
-    it("is exactly the contract's 58 keys", () => {
-        expect(keys).toHaveLength(58);
+    it("is exactly the contract's 49 keys", () => {
+        expect(keys).toHaveLength(49);
         expect(registry.nodeKeys()).toEqual([...keys].sort());
     });
 

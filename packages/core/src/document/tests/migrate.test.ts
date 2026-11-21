@@ -425,6 +425,18 @@ describe("format 3 to 4: a 3D stage's scene-wide nodes become its entries", () =
         expect(document.commands[1]).toMatchObject({ targetId: "b" });
     });
 
+    it("moves them from a document 0.4.x wrote, already at format 4", () => {
+        const { document, from } = migrateDocument(frozen({
+            kind: "composition", formatVersion: 4, duration: 2,
+            nodes: [node("s", "canvas3d", {}, null), node("c", "camera3d", { orbit: 20, elevation: 10 }), node("b", "box3d")],
+            commands: [{ id: "l", type: "lookTo", targetId: "c", at: 0, duration: 1, args: { target: [0, 1, 0] } }],
+        }) as unknown as CompositionDocument) as { document: CompositionDocument; from: number };
+        expect(from).toBe(4);
+        expect(document.nodes.map((n) => n.id)).toEqual(["s", "b"]);
+        expect(document.nodes[0].props).toMatchObject({ orbit: 70, elevation: 10 });
+        expect(document.commands[0]).toMatchObject({ targetId: "s" });
+    });
+
     it("keeps every light node when one of them does what `lights` can't say", () => {
         const { document } = migrateDocument(comp([
             stage,

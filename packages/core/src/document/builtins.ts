@@ -20,9 +20,8 @@ import { Provider, ThemeProvider } from "@/components/builtins/providers/provide
 import { DefaultTextStyle, NumberNode, RichText, Text } from "@/components/builtins/text/text";
 import { Canvas3D } from "@/components/builtins/three/canvas3d";
 import {
-    AmbientLight3D, AreaLight3D, Box3D, Camera3D, Capsule3D, Circle3D, Cone3D, Cylinder3D, DirectionalLight3D,
-    Environment3D, Extrude3D, Fog3D, Group3D, HemisphereLight3D, Instances3D, Lathe3D, Line3D, Mesh3D, Model3D,
-    Plane3D, PointLight3D, Points3D, Polyhedron3D, Ring3D, Sphere3D, SpotLight3D, Sprite3D, Torus3D, TorusKnot3D, Tube3D,
+    Box3D, Capsule3D, Circle3D, Cone3D, Cylinder3D, Extrude3D, Group3D, Instances3D, Lathe3D, Line3D, Mesh3D, Model3D,
+    Plane3D, Points3D, Polyhedron3D, Ring3D, Sphere3D, Sprite3D, Torus3D, TorusKnot3D, Tube3D,
 } from "@/components/builtins/three/three";
 
 import { lerpVector2 } from "@/attributes/layout/vector2";
@@ -102,15 +101,6 @@ const NODE_TYPES: Record<string, NodeConstructor> = {
     sprite3d: Sprite3D as unknown as NodeConstructor,
     instances3d: Instances3D as unknown as NodeConstructor,
     model3d: Model3D as unknown as NodeConstructor,
-    camera3d: Camera3D as unknown as NodeConstructor,
-    "ambient-light3d": AmbientLight3D as unknown as NodeConstructor,
-    "directional-light3d": DirectionalLight3D as unknown as NodeConstructor,
-    "point-light3d": PointLight3D as unknown as NodeConstructor,
-    "spot-light3d": SpotLight3D as unknown as NodeConstructor,
-    "hemisphere-light3d": HemisphereLight3D as unknown as NodeConstructor,
-    "area-light3d": AreaLight3D as unknown as NodeConstructor,
-    fog3d: Fog3D as unknown as NodeConstructor,
-    environment3d: Environment3D as unknown as NodeConstructor,
 };
 
 type EasedMethod = (args: CommandArgs) => Command<Record<string, unknown>>;

@@ -143,8 +143,8 @@ browser engine.
 
 ### Component kits
 
-`packages/components/*` holds the published component kits: `audio`, `charts`,
-`code`, `geo`, `grids`, `math` and `patterns`. A kit is
+`packages/components/*` holds the published component kits: `charts`,
+`code`, `geography` and `math`. A kit is
 written against `@motionscript/sdk` (and `@motionscript/sdk/component`), which
 it takes as a peer dependency; its lint config rejects imports from
 `@motionscript/core`. When a kit needs a name the SDK lacks and a component
@@ -263,7 +263,7 @@ Commits follow [Conventional Commits 1.0](https://www.conventionalcommits.org/en
 Scopes in use:
 
 - Packages: `core`, `renderer`, `browser`, `headless`, `react`, `sdk`, `cli`, `e2e`
-- Component kits: `charts`, `geography`, `audio`, `code`, `math`, `grids`, `patterns`
+- Component kits: `charts`, `geography`, `code`, `math`
 - Other workspaces: `apps` (`apps/engine`, `apps/react`, `apps/shaders`)
 - Repo-wide: `deps`, `release`, `changeset`, `ci`
 

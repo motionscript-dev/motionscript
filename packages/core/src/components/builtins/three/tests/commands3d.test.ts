@@ -4,7 +4,7 @@ import { documentDuration, type CommandSpec, type CompositionDocument } from "@/
 import { ClipInstance } from "@/runtime/clip-instance";
 import { runtimeScope } from "@/runtime/document.fixtures";
 import { Scene3D } from "@/render3d/scene3d";
-import { Box3D, type Camera3D, Group3D } from "@/components/builtins/three/three";
+import { Box3D, Group3D } from "@/components/builtins/three/three";
 import type { Canvas3D } from "@/components/builtins/three/canvas3d";
 import { Node3D, type ChildSpace3D } from "@/components/trees/three/node3d";
 import type { Node2D } from "@/components/trees/2d/node2d";
@@ -14,7 +14,6 @@ import { component3d } from "@/components/factory/component3d";
 interface Built {
     view: Canvas3D;
     box: Box3D;
-    camera: Camera3D;
 }
 
 function after(commands: CommandSpec[], at: number, props: Record<string, Record<string, unknown>> = {}): Built {
@@ -23,7 +22,6 @@ function after(commands: CommandSpec[], at: number, props: Record<string, Record
         nodes: [
             { id: "view", type: "canvas3d", parentId: null, layerOrder: 0, props: { width: 400, height: 300, ...props.view } },
             { id: "box", type: "box3d", parentId: "view", layerOrder: 0, props: { x: 1, ...props.box } },
-            { id: "camera", type: "camera3d", parentId: "view", layerOrder: 1, props: { ...props.camera } },
         ],
         commands,
     };
@@ -31,8 +29,8 @@ function after(commands: CommandSpec[], at: number, props: Record<string, Record
     instance.build();
     instance.evaluateAt(at);
     const view = instance.canvas.children[0] as Canvas3D;
-    const [box, camera] = view._allChildren.filter((c) => c instanceof Node3D) as unknown as [Box3D, Camera3D];
-    return { view, box, camera };
+    const [box] = view._allChildren.filter((c) => c instanceof Node3D) as unknown as [Box3D];
+    return { view, box };
 }
 
 function command(type: string, targetId: string, args: Record<string, unknown>): CommandSpec {
@@ -64,16 +62,9 @@ describe("framing a 3D scene", () => {
         expect(view.zoom).toBe(12);
     });
 
-    it("starts a camera with no polar placement from what an unset one reads as", () => {
-        const { camera } = after([command("orbitTo", "camera", { orbit: 90, distance: 6 })], 0.5);
-        expect(camera.orbit).toBe(45);
-        expect(camera.distance).toBe(8);
-        expect(camera.elevation).toBeUndefined();
-    });
-
-    it("turns a camera toward another point", () => {
-        const { camera } = after([command("lookTo", "camera", { target: [0, 2, 4] })], 0.5);
-        expect(camera.target).toEqual({ x: 0, y: 1, z: 2 });
+    it("turns the viewport's camera toward another point", () => {
+        const { view } = after([command("lookTo", "view", { target: [0, 2, 4] })], 0.5);
+        expect(view.target).toEqual({ x: 0, y: 1, z: 2 });
     });
 });
 

@@ -293,10 +293,6 @@ export {
     Box3D, Sphere3D, Plane3D, Cylinder3D, Cone3D, Torus3D, TorusKnot3D,
     Circle3D, Ring3D, Capsule3D, Polyhedron3D, Extrude3D, Lathe3D, Tube3D,
     Instances3D, Points3D, Line3D, Sprite3D, Model3D,
-    AmbientLight3D, HemisphereLight3D, DirectionalLight3D,
-    PointLight3D, SpotLight3D, AreaLight3D,
-    Camera3D,
-    Fog3D, Environment3D,
 } from '../components/builtins/three/three';
 export {
     Graphics3D,
@@ -337,10 +333,6 @@ export type {
     Torus3DProps, TorusKnot3DProps, Circle3DProps, Ring3DProps, Capsule3DProps,
     Polyhedron3DProps, Extrude3DProps, Lathe3DProps, Tube3DProps,
     Instances3DProps, Points3DProps, Line3DProps, Sprite3DProps, Model3DProps,
-    AmbientLight3DProps, HemisphereLight3DProps, DirectionalLight3DProps,
-    PointLight3DProps, SpotLight3DProps, AreaLight3DProps,
-    Camera3DProps,
-    Fog3DProps, Environment3DProps,
 } from '../components/builtins/three/three';
 export type {
     Node3DRenderState,

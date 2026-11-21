@@ -20,7 +20,8 @@ import {
 import { Rect, Ellipse } from "@/components/builtins/geometry/geometry";
 import { Text, RichText } from "@/components/builtins/text/text";
 import { Canvas3D } from "@/components/builtins/three/canvas3d";
-import { Box3D, Plane3D, Model3D, Environment3D, Fog3D, Camera3D, AmbientLight3D, Group3D } from "@/components/builtins/three/three";
+import { Box3D, Plane3D, Model3D, Group3D } from "@/components/builtins/three/three";
+import { SceneCamera, SceneEnvironment, SceneFog, SceneLight } from "@/components/builtins/three/tests/scene-wide.fixtures";
 
 /** `declareAssets`, node type by node type. A `Tex.surface` source has to be bound by the declaration itself. */
 
@@ -113,10 +114,10 @@ const fixtures: Record<string, { build: () => Node; expected: Record<string, str
         build: () => new Canvas3D({
             fill: Fills.image("photo.png"),
             children: [
-                new Camera3D({ orbit: 30 }),
-                new AmbientLight3D({ intensity: 0.4 }),
-                new Fog3D({ near: 5, far: 30 }),
-                new Environment3D({ src: "sky.hdr", faces: ["px.exr"] }),
+                new SceneCamera({ fov: 30 }),
+                new SceneLight({ type: "ambient", intensity: 0.4 }),
+                new SceneFog({ near: 5, far: 30 }),
+                new SceneEnvironment({ src: "sky.hdr", faces: ["px.exr"] }),
                 new Group3D({
                     children: [
                         new Box3D({ fill: "wood.png", normalMap: "normal.png" }),

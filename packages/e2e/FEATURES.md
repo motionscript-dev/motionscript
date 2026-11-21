@@ -92,13 +92,6 @@ Screenshots: first, mid, and last frame of each scene.
 - [ ] `default-text-style`: DefaultTextStyle node overriding font family for subtree
 - [ ] `default-text-style-graphics`: DefaultTextStyle reaching a custom node's raw `Graphics2D().text()` op (no `fontFamily` on the op), plus a `Code` block under the same provider keeping its own face
 
-### Grid / Pattern
-
-- [ ] `line-grid-basic`: LineGridPattern with major divisions only
-- [ ] `line-grid-subdivisions`: LineGridPattern with major and minor subdivisions
-- [ ] `grid-pattern-basic`: GridPattern (infinite world-space) with default cell size
-- [ ] `grid-pattern-subdivisions`: GridPattern with sub-grid lines
-
 ### Component Nodes
 
 - [ ] `code-basic`: Code node with TypeScript snippet, default theme

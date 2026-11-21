@@ -85,7 +85,7 @@ This is a pnpm + Turborepo monorepo. The published pieces:
 | [`@motionscript/browser`](packages/browser) | The browser platform: `createBrowserEngine`, the video exporter, stills, and audio playback, drawn by the renderer. |
 | [`@motionscript/react`](packages/react) | React bindings: a hook that owns a session and a component that draws it. |
 | [`@motionscript/headless`](packages/headless) | Renders projects to stills and video from Node, through the browser engine in a headless Chromium page. |
-| [`packages/components/*`](packages/components) | Component kits: `audio`, `charts`, `code`, `geography`, `grids`, `math` and `patterns`. |
+| [`packages/components/*`](packages/components) | Component kits: `charts`, `code`, `geography` and `math`. |
 
 Plus internal workspaces: [`e2e`](packages/e2e) (visual regression tests), and the example apps under
 [`apps/`](apps).
