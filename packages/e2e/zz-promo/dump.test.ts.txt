@@ -1,0 +1,17 @@
+import fs from "node:fs"
+import { it } from "vitest"
+
+import { PROMO_PRESET } from "@/features/editor/themes/lib/promo-preset"
+import { presetAsScenes, presetAsTheme } from "@/features/editor/themes/lib/template-catalog"
+import { templateSceneDocument } from "@/features/editor/themes/lib/template-preview"
+
+it("dumps the promo scenes", () => {
+  const theme = presetAsTheme(PROMO_PRESET)
+  for (const scene of presetAsScenes(PROMO_PRESET)) {
+    const built = templateSceneDocument({ scene, theme, describe: () => undefined })
+    if (!built) throw new Error("no document " + scene.name)
+    const slug = scene.name.toLowerCase().replace(/[^a-z]+/g, "-")
+    if (process.env.ZZ_ONLY && slug !== process.env.ZZ_ONLY) continue
+    fs.writeFileSync(`${process.env.ZZ_OUT}/tmpl-${slug}.json`, JSON.stringify({ ...built.document, duration: built.seconds }))
+  }
+})
