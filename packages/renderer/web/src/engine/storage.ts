@@ -4,7 +4,7 @@
 // the host's `loadBytes` (a plain fetch by default), so a local store is honoured.
 
 import { type AssetCatalog, type Size2D, StorageAdapter } from "@motionscript/core";
-import { ALL_FORMATS, BlobSource, Input, VideoSampleSink } from "mediabunny";
+import { ALL_FORMATS, BlobSource, Input, type InputVideoTrack, UrlSource, VideoSampleSink } from "mediabunny";
 import type { VideoFrames } from "../adapter/context";
 import { assetKey, type Decoded } from "../adapter/driver";
 
@@ -12,6 +12,8 @@ import { assetKey, type Decoded } from "../adapter/driver";
 const MAX_TEXTURE_EDGE = 8192;
 /** Decoded frames kept per video (scrubbing back and forth reuses them). */
 const FRAMES_PER_VIDEO = 12;
+/** Addresses a video is read from in ranges rather than downloaded whole. */
+const STREAMABLE = /^https?:/i;
 
 interface VideoTrack {
     duration: number;
@@ -45,6 +47,8 @@ async function fetchBytes(src: string): Promise<Blob> {
 }
 
 type LoadBytes = (src: string) => Promise<Blob>;
+/** Bytes the host holds for a source, or `null`: never the network. */
+export type LocalBytes = (src: string) => Promise<Blob | null>;
 
 const sharedLoaders = new WeakMap<LoadBytes, LoadBytes>();
 
@@ -85,7 +89,13 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
     private frameDecodes = new Map<string, Promise<void>>();
     private readonly loadBytes: LoadBytes;
 
-    constructor(catalog: AssetCatalog, viewport: Size2D, readonly fps: number, loadBytes: LoadBytes = fetchBytes) {
+    constructor(
+        catalog: AssetCatalog,
+        viewport: Size2D,
+        readonly fps: number,
+        loadBytes: LoadBytes = fetchBytes,
+        private readonly localBytes?: LocalBytes,
+    ) {
         super(catalog, viewport);
         this.loadBytes = sharedLoader(loadBytes);
     }
@@ -148,15 +158,38 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
     }
 
     private async openVideo(src: string, key: string): Promise<void> {
-        const url = this.url(src, (c) => c.getVideoMeta(src));
-        const input = new Input({ source: new BlobSource(await this.loadBytes(url)), formats: ALL_FORMATS });
+        const { input, track } = await this.openVideoInput(src, () => this.url(src, (c) => c.getVideoMeta(src)));
+        const duration = await input.computeDuration();
+        this.videos.set(key, { duration, sink: new VideoSampleSink(track), input, frames: new Map(), last: null });
+    }
+
+    /**
+     * Bytes the host holds are opened as they are. Anything else is read in ranges as frames are asked for, each
+     * request at the source's current address (a signed one may be re-minted in a long session), instead of being
+     * downloaded whole before the first frame; a server that will not serve ranges gets the whole download.
+     */
+    private async openVideoInput(src: string, address: () => string): Promise<{ input: Input; track: InputVideoTrack }> {
+        const url = address();
+        const local = this.localBytes ? await this.localBytes(url).catch(() => null) : null;
+        if (!local && STREAMABLE.test(url)) {
+            const streamed = new Input({
+                source: new UrlSource(url, {
+                    fetchFn: (_request, init) => fetch(address(), init),
+                    getRetryDelay: (attempts) => (attempts < 2 ? 0.5 : null),
+                }),
+                formats: ALL_FORMATS,
+            });
+            const track = await streamed.getPrimaryVideoTrack().catch(() => null);
+            if (track) return { input: streamed, track };
+            streamed.dispose();
+        }
+        const input = new Input({ source: new BlobSource(local ?? (await this.loadBytes(url))), formats: ALL_FORMATS });
         const track = await input.getPrimaryVideoTrack();
         if (!track) {
             input.dispose();
             throw new Error(`loadVideo(${src}): no video track`);
         }
-        const duration = await input.computeDuration();
-        this.videos.set(key, { duration, sink: new VideoSampleSink(track), input, frames: new Map(), last: null });
+        return { input, track };
     }
 
     videoFrame(src: string, time: number): ImageBitmap | null {

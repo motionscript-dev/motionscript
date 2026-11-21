@@ -57,7 +57,7 @@ export interface RenderStillOptions {
 
 export interface EncodeStillOptions {
     format?: ScreenshotFormat;
-    /** JPEG quality in [0,1]; ignored for png. Defaults to 0.92. */
+    /** JPEG or WebP quality in [0,1]; ignored for png. Defaults to 0.92. */
     quality?: number;
 }
 
@@ -71,7 +71,7 @@ export function stillFrameSpec(options: RenderStillOptions | undefined, fps: num
 }
 
 function mimeOf(format: ScreenshotFormat): string {
-    return format === "jpeg" ? "image/jpeg" : "image/png";
+    return format === "jpeg" ? "image/jpeg" : format === "webp" ? "image/webp" : "image/png";
 }
 
 /**

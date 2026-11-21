@@ -1,5 +1,5 @@
 import { createWgpuRenderer, isWgpuSupported, type WgpuRenderer } from "@motionscript/renderer";
-import { loadAssetBytes } from "./asset-bytes";
+import { loadAssetBytes, localAssetBytes } from "./asset-bytes";
 
 /** Where the renderer's WebAssembly is served, for every entry that draws. */
 export interface RendererWasmOption {
@@ -25,5 +25,5 @@ export class WebGpuUnavailableError extends Error {
  */
 export async function loadRenderer(options: RendererWasmOption = {}, { gpu = true } = {}): Promise<WgpuRenderer> {
     if (gpu && !(await isWgpuSupported())) throw new WebGpuUnavailableError();
-    return createWgpuRenderer({ wasmUrl: options.rendererWasmUrl, loadBytes: loadAssetBytes });
+    return createWgpuRenderer({ wasmUrl: options.rendererWasmUrl, loadBytes: loadAssetBytes, localBytes: localAssetBytes });
 }

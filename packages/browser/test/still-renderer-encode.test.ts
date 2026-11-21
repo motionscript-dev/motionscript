@@ -58,6 +58,17 @@ describe("encoding", () => {
         expect([...(await renderer.toBytes({ format: "jpeg" })).slice(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
     });
 
+    it("is a WebP when asked", async () => {
+        const renderer = await make();
+        await renderer.render(fullBleed("#ff0000"));
+
+        const webp = await renderer.toBlob({ format: "webp", quality: 0.8 });
+
+        expect(webp.type).toBe("image/webp");
+        const head = new Uint8Array(await webp.arrayBuffer()).slice(0, 12);
+        expect(new TextDecoder().decode(head.slice(8, 12))).toBe("WEBP");
+    });
+
     it("takes a JPEG quality, and ignores it for a PNG", async () => {
         const renderer = await make();
         await renderer.render(project([track("t", still(...Array.from({ length: 24 }, (_, i) =>

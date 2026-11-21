@@ -7,7 +7,7 @@ import {
 
 /** Rendering a timeline is portable; encoding is not, so the codec is injected as a `VideoFrameSink` (exporter.ts: mediabunny over WebCodecs). */
 
-export type ScreenshotFormat = "png" | "jpeg";
+export type ScreenshotFormat = "png" | "jpeg" | "webp";
 
 export type { FrameSpec };
 

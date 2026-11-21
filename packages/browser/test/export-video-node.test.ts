@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AssetManifest, VisualDocument } from "@motionscript/core";
 import { setAssetByteSource } from "../src/asset-bytes";
 import { comp, node, project, track } from "./document.fixtures";
@@ -11,7 +11,31 @@ import { serve } from "./media.fixtures";
  * as a clip — which is how a host exports scene by scene.
  */
 
-afterEach(() => setAssetByteSource(null));
+afterEach(() => {
+    setAssetByteSource(null);
+    vi.unstubAllGlobals();
+});
+
+/** `fetch` answering `url` from `blob`, ranges included, and what it was asked. */
+function serveRanges(url: string, blob: Blob): { ranges: string[] } {
+    const ranges: string[] = [];
+    const real = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+        const asked = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+        if (asked !== url) return real(input, init);
+        const range = new Headers(init?.headers).get("range");
+        const match = range && /bytes=(\d+)-(\d*)/.exec(range);
+        if (!match) return new Response(blob, { status: 200, headers: { "content-length": String(blob.size) } });
+        ranges.push(range!);
+        const start = Number(match[1]);
+        const end = match[2] ? Math.min(Number(match[2]), blob.size - 1) : blob.size - 1;
+        return new Response(blob.slice(start, end + 1), {
+            status: 206,
+            headers: { "content-range": `bytes ${start}-${end}/${blob.size}`, "content-length": String(end - start + 1) },
+        });
+    });
+    return { ranges };
+}
 
 const SRC = "clip.mp4";
 
@@ -68,6 +92,18 @@ describe("exportVideo — a Video node", () => {
         expectRed(
             await centres(await render({ document: scene(), manifest: described, fps: FPS, viewport: VIEWPORT, includeAudio: false })),
         );
+    });
+
+    it("reads a video at an http address in ranges when the host holds no bytes for it", async () => {
+        const { blob, manifest } = await redClip();
+        const url = "https://media.test/clip.mp4";
+        const served = serveRanges(url, blob);
+        const described = { ...manifest, video: { [SRC]: { ...manifest.video[SRC], src: url } } };
+
+        expectRed(
+            await centres(await render({ document: scene(), manifest: described, fps: FPS, viewport: VIEWPORT, includeAudio: false })),
+        );
+        expect(served.ranges.length).toBeGreaterThan(0);
     });
 
     it("draws the video when the scene is exported on its own, as a clip", async () => {

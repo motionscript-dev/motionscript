@@ -5,7 +5,7 @@ import type { MeasureContext2D, PlatformDeps, Size2D } from "@motionscript/core"
 import { NativeExportContext } from "../native/context";
 import { StreamWriter } from "../native/recorder";
 import { loadRendererWasm, prewarmDevice } from "../backend-wgpu";
-import { WgpuStorageAdapter } from "./storage";
+import { type LocalBytes, WgpuStorageAdapter } from "./storage";
 import { WgpuSurfaceContext } from "./surface";
 import { measureText, shaperFor } from "./text";
 
@@ -20,6 +20,8 @@ export interface WgpuRendererOptions {
     wasmUrl?: string | URL;
     /** Fetches an asset's bytes (images, video, audio, fonts); defaults to `fetch`, rejecting on a failed response. */
     loadBytes?: (src: string) => Promise<Blob>;
+    /** The bytes the host already holds for a source, or `null`; a video it holds none of is streamed from its URL. */
+    localBytes?: LocalBytes;
 }
 
 /** What a platform draws a session's frames with, and the storage and measurement they read from. */
@@ -30,15 +32,20 @@ export interface WgpuRenderer {
     dispose?(): void;
 }
 
-/** Whether this browser can run the renderer (WebGPU with an adapter). */
-export async function isWgpuSupported(): Promise<boolean> {
-    const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
-    if (!gpu) return false;
-    try {
-        return (await gpu.requestAdapter()) != null;
-    } catch {
-        return false;
-    }
+let supported: Promise<boolean> | null = null;
+
+/** Whether this browser can run the renderer (WebGPU with an adapter). Asked once per page: every entry that draws asks it. */
+export function isWgpuSupported(): Promise<boolean> {
+    supported ??= (async () => {
+        const gpu = (navigator as Navigator & { gpu?: { requestAdapter(): Promise<unknown> } }).gpu;
+        if (!gpu) return false;
+        try {
+            return (await gpu.requestAdapter()) != null;
+        } catch {
+            return false;
+        }
+    })();
+    return supported;
 }
 
 /**
@@ -50,10 +57,10 @@ export async function createWgpuRenderer(options: WgpuRendererOptions = {}): Pro
     // Started, not awaited: the device comes up while the host loads fonts and
     // builds its document, and the first mount waits for what is left.
     prewarmDevice().catch(() => {});
-    const { loadBytes } = options;
+    const { loadBytes, localBytes } = options;
     return {
         createStorageAdapter({ catalog, viewport, fps }: PlatformDeps): WgpuStorageAdapter {
-            return new WgpuStorageAdapter(catalog, viewport, fps, loadBytes);
+            return new WgpuStorageAdapter(catalog, viewport, fps, loadBytes, localBytes);
         },
         createRenderContext(storage: WgpuStorageAdapter): WgpuSurfaceContext {
             return new WgpuSurfaceContext(storage, storage.size);

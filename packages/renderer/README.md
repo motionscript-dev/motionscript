@@ -59,11 +59,11 @@ crate under any other fails it); run it whenever `Cargo.lock` changes.
 ## The entry
 
 `src/engine` (in `web/src/engine/`) is what `@motionscript/browser` builds in.
-`createWgpuRenderer({ wasmUrl, loadBytes })` loads the WASM and returns a
+`createWgpuRenderer({ wasmUrl, loadBytes, localBytes })` loads the WASM and returns a
 `WgpuRenderer`: `createStorageAdapter`, `createRenderContext` and
 `createMeasureContext` for a session, its exports and stills.
-`isWgpuSupported()` says whether the browser has a WebGPU adapter; there is no
-other backend to fall back to.
+`isWgpuSupported()` says whether the browser has a WebGPU adapter, asked once per
+page; there is no other backend to fall back to.
 
 `wasmUrl` is where `@motionscript/renderer/ms_renderer_bg.wasm` is served. It
 defaults to beside the module.
@@ -74,7 +74,11 @@ defaults to beside the module.
   asset store. A load in flight is joined, never repeated: per adapter by asset
   (a font by family, since every weight registers the family's files) and
   page-wide by source, so the sessions, stills and exports asking for one file
-  while it arrives share one download (`sharedLoader`).
+  while it arrives share one download (`sharedLoader`). A video the host holds no
+  bytes for (`localBytes` answers `null`) at an `http(s)` address is read in ranges
+  as frames are asked for (mediabunny `UrlSource`, each request at the source's
+  current address), not downloaded whole before its first frame; a server that
+  will not serve ranges gets the whole download.
 - `WgpuSurfaceContext` is the adapter's render context mounted on a canvas,
   with the preview knobs a host sets (`pixelRatio`, `view`, `frame`,
   `clipToFrame`, `frameBackground`). Mounting is asynchronous (WebGPU device

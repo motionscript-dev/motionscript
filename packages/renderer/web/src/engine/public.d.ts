@@ -6,6 +6,8 @@ export interface WgpuRendererOptions {
     wasmUrl?: string | URL;
     /** Fetches an asset's bytes (images, video, audio, fonts); defaults to `fetch`, rejecting on a failed response. */
     loadBytes?: (src: string) => Promise<Blob>;
+    /** The bytes the host already holds for a source, or `null`; a video it holds none of is streamed from its URL. */
+    localBytes?: (src: string) => Promise<Blob | null>;
 }
 
 /** The renderer's asset storage: decoded images and video frames, and font bytes. */
@@ -27,7 +29,7 @@ export interface WgpuRenderer {
     dispose?(): void;
 }
 
-/** Whether this browser can run the renderer (WebGPU with an adapter). */
+/** Whether this browser can run the renderer (WebGPU with an adapter). Asked once per page. */
 export declare function isWgpuSupported(): Promise<boolean>;
 
 /** A GPU fault on the page. Every surface shares one device, so each is news for all of them. */
