@@ -1,5 +1,17 @@
 # @motionscript/math
 
+## 0.4.1-alpha.0
+
+### Patch Changes
+
+- 48b5239: **Breaking:** `Canvas3D` is the stage: it owns the camera, the lights, the air and the sky. `canvas3d.ambientIntensity`, `canvas3d.ambientColor`, `canvas3d.keyIntensity` and `canvas3d.keyColor` became one `lights` entry, a list of differently shaped lights (`ambient`, `sun` aimed by `orbit` and `elevation`, `sky` with a sky and a ground colour, `lamp`, `spot` and `softBox` placed by `position`), whose default is the rig a stage always had: an ambient fill at 0.45, a key at 2.4 and a rim at 0.35 of the key. A new `lightTo` command moves one light's colour, strength, direction or position. The stage also takes `fog` (a paint, empty when the air is clear) with `fogNear` and `fogFar`, `environment` (an image fill), and `projection`, `frustumHeight` and `target` for its camera, with a `lookTo` command. `Axes3d` takes all of it. The light, fog, environment and camera nodes (`AmbientLight3D`, `HemisphereLight3D`, `DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, `AreaLight3D`, `Fog3D`, `Environment3D`, `Camera3D`) are deprecated, to be removed in 0.5.0; until then a light node among a stage's children still replaces its `lights`.
+
+  Every 3D builtin's entries now say what they are (a number, a switch, a path, a list of points), so a host can draw an editor for each. `extrude3d` takes its outline as a path, `lathe3d` a profile of `{ x, y }` points and `tube3d` a list of 3D points, and each draws nothing until it has them. `line3d.stroke` is a paint like a 2D stroke, drawn as a 3D component's lines are (weight and dash in thousandths of a scene unit), defaulting to a white line 20 thousandths wide.
+
+  Migration: stored rows convert as they are read. The four lighting keys become the `lights` they described, and a `line3d` stroke written as one `{ fill, weight, dash }` object becomes a one-layer paint at the old size. Documents go to format 4, which moves a `canvas3d`'s light, fog, environment and camera children into its entries (and the camera's `orbitTo` and `lookTo` onto the canvas) wherever the entries say exactly what the nodes did; the rest keep their nodes until 0.5.0.
+
+  - @motionscript/sdk@0.4.1-alpha.0
+
 ## 0.4.0
 
 ### Minor Changes

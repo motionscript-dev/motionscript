@@ -1,5 +1,16 @@
 # @motionscript/renderer
 
+## 0.4.1-alpha.0
+
+### Patch Changes
+
+- 48b5239: The WebGPU renderer draws extrusions. Core's new `evaluateExtrude` turns an `extrude` geometry into vertex buffers the way three's `ExtrudeGeometry` shapes it: the outline in the XY plane, a contour inside another a hole, curves flattened into `segments` steps, walls creased at sharp corners and smooth round curves, and an optional bevel rounding both rims. The renderer writes that buffer and sends it once while it stays the same. An extrusion also has bounds now, so an editor can box it.
+- Updated dependencies [48b5239]
+- Updated dependencies [48b5239]
+- Updated dependencies [eb66dc5]
+- Updated dependencies [321ceb0]
+  - @motionscript/core@0.4.1-alpha.0
+
 ## 0.4.0
 
 ## 0.4.0-alpha.0

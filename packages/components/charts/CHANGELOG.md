@@ -1,5 +1,11 @@
 # @motionscript/charts
 
+## 0.4.1-alpha.0
+
+### Patch Changes
+
+- @motionscript/sdk@0.4.1-alpha.0
+
 ## 0.4.0
 
 ### Minor Changes

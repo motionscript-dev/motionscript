@@ -1,5 +1,16 @@
 # @motionscript/browser
 
+## 0.4.1-alpha.0
+
+### Patch Changes
+
+- Updated dependencies [48b5239]
+- Updated dependencies [48b5239]
+- Updated dependencies [eb66dc5]
+- Updated dependencies [321ceb0]
+  - @motionscript/core@0.4.1-alpha.0
+  - @motionscript/renderer@0.4.1-alpha.0
+
 ## 0.4.0
 
 ### Patch Changes
