@@ -1,0 +1,87 @@
+{
+  "kind": "project",
+  "name": "repeater-radial",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "repeater-radial",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "repeater0",
+            "type": "repeater",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "copies": 1,
+              "stepPosition": {
+                "x": 0,
+                "y": 0
+              },
+              "stepRotation": 30,
+              "startOpacity": 1,
+              "endOpacity": 0.15
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "repeater0",
+            "layerOrder": 0,
+            "props": {
+              "y": 110,
+              "width": 18,
+              "height": 70,
+              "cornerRadius": 9,
+              "fill": "#28d6c8"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "repeater0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "copies": 12
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 4
+}

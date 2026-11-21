@@ -1,0 +1,132 @@
+{
+  "kind": "project",
+  "name": "repeater-row",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "repeater-row",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "repeater0",
+            "type": "repeater",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "y": 90,
+              "width": "fill",
+              "height": 200,
+              "copies": 6,
+              "composite": "below",
+              "stepPosition": {
+                "x": 70,
+                "y": 0
+              },
+              "stepScale": {
+                "x": 0.9,
+                "y": 0.9
+              },
+              "endOpacity": 0.5
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "repeater0",
+            "layerOrder": 0,
+            "props": {
+              "x": -240,
+              "width": 110,
+              "height": 110,
+              "fill": "#e83fd6",
+              "stroke": {
+                "weight": 4,
+                "fill": "#ffffff"
+              }
+            }
+          },
+          {
+            "id": "repeater1",
+            "type": "repeater",
+            "parentId": null,
+            "layerOrder": 1,
+            "props": {
+              "y": -90,
+              "width": "fill",
+              "height": 200,
+              "copies": 6,
+              "composite": "above",
+              "stepPosition": {
+                "x": 70,
+                "y": 0
+              },
+              "stepScale": {
+                "x": 0.9,
+                "y": 0.9
+              },
+              "endOpacity": 0.5
+            }
+          },
+          {
+            "id": "ellipse1",
+            "type": "ellipse",
+            "parentId": "repeater1",
+            "layerOrder": 0,
+            "props": {
+              "x": -240,
+              "width": 110,
+              "height": 110,
+              "fill": "#28d6c8",
+              "stroke": {
+                "weight": 4,
+                "fill": "#ffffff"
+              }
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "to",
+            "targetId": "repeater0",
+            "at": 0,
+            "duration": 1.4,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "offset": 1
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 4
+}
