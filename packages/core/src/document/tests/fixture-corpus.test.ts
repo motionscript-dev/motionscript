@@ -24,6 +24,19 @@ function pendingBreakingNotes(): string {
         .filter((note) => note.startsWith("**Breaking:**"))
         .join("\n");
 }
+/**
+ * The breaking entries of core's changelog for a version that has no snapshot yet. Versioning a release consumes
+ * its changesets and its snapshot is written only once it has published, so on the release commit the notes are here.
+ */
+function unsnapshottedBreakingNotes(): string {
+    const core = resolve(root, "../../..");
+    const { version } = JSON.parse(readFileSync(join(core, "package.json"), "utf8")) as { version: string };
+    if (releases.includes(version)) return "";
+    const changelog = readFileSync(join(core, "CHANGELOG.md"), "utf8").replace(/\r\n/g, "\n");
+    const section = changelog.split(/^## /m).find((part) => part.startsWith(`${version}\n`)) ?? "";
+    return section.split("\n").filter((line) => line.includes("**Breaking:**")).join("\n");
+}
+
 const registry = new Registry({ strict: true });
 const lenient = new Registry();
 
@@ -59,7 +72,7 @@ describe("the saved-document corpus", () => {
     // documents as surely as a removed prop does. Each must be named by a pending breaking changeset.
     it("takes nothing away from the newest set's vocabulary that no breaking changeset names", () => {
         const newest = JSON.parse(readFileSync(join(root, releases.at(-1)!, "vocabulary.json"), "utf8")) as RegistryVocabulary;
-        const notes = pendingBreakingNotes();
+        const notes = `${pendingBreakingNotes()}\n${unsnapshottedBreakingNotes()}`;
         const unannounced = vocabularyBreaks(newest, registryVocabulary(new Registry()))
             .filter(({ name }) => !notes.includes(`\`${name}\``))
             .map(({ name, what }) => `${name}: ${what}`);
