@@ -319,6 +319,7 @@ fn blend_state(i: usize) -> wgpu::BlendState {
 /// surface asks.
 #[derive(Clone)]
 struct SharedDevice {
+    id: u32,
     instance: wgpu::Instance,
     adapter: wgpu::Adapter,
     device: wgpu::Device,
@@ -346,8 +347,8 @@ struct Core {
 thread_local! {
     static SHARED: std::cell::RefCell<Option<SharedDevice>> = const { std::cell::RefCell::new(None) };
     static CORES: std::cell::RefCell<Vec<(wgpu::TextureFormat, Core)>> = const { std::cell::RefCell::new(Vec::new()) };
-    /// Moves on each forgotten device, so a late lost callback leaves its successor alone.
-    static GENERATION: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    /// Numbers each device made, so a lost callback forgets only its own.
+    static DEVICE_IDS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
 /// Gets the shared device ready, and the pipelines for the format a canvas
@@ -413,21 +414,24 @@ async fn shared_device() -> Result<SharedDevice, String> {
         .map_err(|e| format!("device: {e}"))?;
     // A lost device (a driver reset, the GPU process restarting) is dropped,
     // so the next surface to mount asks for a new one.
-    let generation = GENERATION.with(|g| g.get());
+    let id = DEVICE_IDS.with(|n| {
+        n.set(n.get() + 1);
+        n.get()
+    });
+    // Only the shared device's own loss forgets it: two surfaces that mounted together
+    // may both have asked, and the one that lost the race is dropped (its instance
+    // goes, so it reports lost) while the winner is still drawing.
     device.set_device_lost_callback(move |_, _| {
-        // Only if it is still the shared one: a host may have moved on already.
-        if GENERATION.with(|g| g.get()) == generation {
+        if SHARED.with(|s| s.borrow().as_ref().is_some_and(|d| d.id == id)) {
             forget_shared_device();
         }
     });
-    let d = SharedDevice { instance, adapter, device, queue };
-    // Two surfaces that mounted together may both have asked; the first stays.
+    let d = SharedDevice { id, instance, adapter, device, queue };
     Ok(SHARED.with(|s| s.borrow_mut().get_or_insert(d).clone()))
 }
 
 /// Forgets the shared device and every format's pipelines.
 pub fn forget_shared_device() {
-    GENERATION.with(|g| g.set(g.get().wrapping_add(1)));
     SHARED.with(|s| *s.borrow_mut() = None);
     CORES.with(|c| c.borrow_mut().clear());
 }
@@ -796,6 +800,8 @@ pub struct Gpu {
     user_group: Option<wgpu::BindGroup>,
     /// Output formats of `Pipelines::direct`, in order.
     direct_formats: Vec<wgpu::TextureFormat>,
+    /// Declared last so it drops last: the browser loses every device of an instance that goes.
+    _instance: wgpu::Instance,
 }
 
 /// A user program: its module, and once built its pipelines (an effect: the
@@ -843,7 +849,7 @@ impl Gpu {
     }
 
     async fn create(target: Option<wgpu::SurfaceTarget<'static>>, width: u32, height: u32) -> Result<Gpu, String> {
-        let SharedDevice { instance, adapter, device, queue } = shared_device().await?;
+        let SharedDevice { instance, adapter, device, queue, .. } = shared_device().await?;
         let surface = target.map(|t| instance.create_surface(t).map_err(|e| format!("surface: {e}"))).transpose()?;
         let info = adapter.get_info();
 
@@ -976,6 +982,7 @@ impl Gpu {
             user_effect_pl,
             user_group: None,
             direct_formats,
+            _instance: instance,
         })
     }
 
