@@ -1,5 +1,25 @@
 # @motionscript/core
 
+## 0.5.0
+
+### Minor Changes
+
+- 5c8f778: **Breaking:** the removals promised for 0.5.0. `@motionscript/grids`, `@motionscript/patterns` and `@motionscript/audio` are no longer published (their last release is 0.4.x), so `rectangularGrid`, `radialGrid`, `pathGrid`, `sphereGrid`, `arcGridOfOurOwn`, `gridPattern`, `lineGridPattern`, `dotGridPattern`, `viewportProbe`, `fullWaveform` and `liveWaveform` are gone. Core drops the `AmbientLight3D`, `HemisphereLight3D`, `DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, `AreaLight3D`, `Camera3D`, `Fog3D` and `Environment3D` nodes (keys `ambient-light3d`, `hemisphere-light3d`, `directional-light3d`, `point-light3d`, `spot-light3d`, `area-light3d`, `camera3d`, `fog3d`, `environment3d`) and their props types, from the root and from `@motionscript/sdk/v1`. A `Canvas3D` holds all of it: `lights`, `fog` with `fogNear` and `fogFar`, `environment`, and the camera fields with `orbitTo` and `lookTo`. A component's `render` can still call `ctx.light`, `ctx.camera`, `ctx.fog` and `ctx.environment`.
+
+  Migration: documents go to format 5 as they are read. The format 3 → 4 step, and a new format 4 → 5 step for documents 0.4.x wrote, move a `canvas3d`'s light, fog, environment and camera children (and the camera's `orbitTo` and `lookTo`) into its entries wherever the entries say exactly what the nodes did. A node that cannot be converted, and any node of a removed kit, now builds as an empty placeholder with an entry in `buildErrors` (a strict registry refuses the document); rewrite it as `canvas3d` entries, or keep the kit's 0.4.x source as a custom component.
+
+### Patch Changes
+
+- 48b5239: **Breaking:** `Canvas3D` is the stage: it owns the camera, the lights, the air and the sky. `canvas3d.ambientIntensity`, `canvas3d.ambientColor`, `canvas3d.keyIntensity` and `canvas3d.keyColor` became one `lights` entry, a list of differently shaped lights (`ambient`, `sun` aimed by `orbit` and `elevation`, `sky` with a sky and a ground colour, `lamp`, `spot` and `softBox` placed by `position`), whose default is the rig a stage always had: an ambient fill at 0.45, a key at 2.4 and a rim at 0.35 of the key. A new `lightTo` command moves one light's colour, strength, direction or position. The stage also takes `fog` (a paint, empty when the air is clear) with `fogNear` and `fogFar`, `environment` (an image fill), and `projection`, `frustumHeight` and `target` for its camera, with a `lookTo` command. `Axes3d` takes all of it. The light, fog, environment and camera nodes (`AmbientLight3D`, `HemisphereLight3D`, `DirectionalLight3D`, `PointLight3D`, `SpotLight3D`, `AreaLight3D`, `Fog3D`, `Environment3D`, `Camera3D`) are deprecated, to be removed in 0.5.0; until then a light node among a stage's children still replaces its `lights`.
+
+  Every 3D builtin's entries now say what they are (a number, a switch, a path, a list of points), so a host can draw an editor for each. `extrude3d` takes its outline as a path, `lathe3d` a profile of `{ x, y }` points and `tube3d` a list of 3D points, and each draws nothing until it has them. `line3d.stroke` is a paint like a 2D stroke, drawn as a 3D component's lines are (weight and dash in thousandths of a scene unit), defaulting to a white line 20 thousandths wide.
+
+  Migration: stored rows convert as they are read. The four lighting keys become the `lights` they described, and a `line3d` stroke written as one `{ fill, weight, dash }` object becomes a one-layer paint at the old size. Documents go to format 4, which moves a `canvas3d`'s light, fog, environment and camera children into its entries (and the camera's `orbitTo` and `lookTo` onto the canvas) wherever the entries say exactly what the nodes did; the rest keep their nodes until 0.5.0.
+
+- 48b5239: The WebGPU renderer draws extrusions. Core's new `evaluateExtrude` turns an `extrude` geometry into vertex buffers the way three's `ExtrudeGeometry` shapes it: the outline in the XY plane, a contour inside another a hole, curves flattened into `segments` steps, walls creased at sharp corners and smooth round curves, and an optional bevel rounding both rims. The renderer writes that buffer and sends it once while it stays the same. An extrusion also has bounds now, so an editor can box it.
+- eb66dc5: Register the named shapes: `triangle`, `rightTriangle`, `pentagon`, `hexagon`, `octagon` and `star` were exported but missing from the built-in registry, so a document naming one built an empty placeholder. A test now holds every SDK-exported component to being registered.
+- 321ceb0: Add `repeater`, a built-in node that draws its children again and again like After Effects' Repeater: `copies` (fractional fades the last copy in), `offset`, `composite` (`below` puts the first copy on top, or `above`), and a per-copy step of `stepPosition`, `stepRotation` and `stepScale` about `stepAnchor`, with opacity ramped from `startOpacity` to `endOpacity`. Components get `ctx.repeat(copies)` to draw their children once per transform.
+
 ## 0.4.1-alpha.1
 
 ## 0.4.1-alpha.0

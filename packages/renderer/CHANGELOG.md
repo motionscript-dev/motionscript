@@ -1,5 +1,12 @@
 # @motionscript/renderer
 
+## 0.5.0
+
+### Patch Changes
+
+- 48b5239: The WebGPU renderer draws extrusions. Core's new `evaluateExtrude` turns an `extrude` geometry into vertex buffers the way three's `ExtrudeGeometry` shapes it: the outline in the XY plane, a contour inside another a hole, curves flattened into `segments` steps, walls creased at sharp corners and smooth round curves, and an optional bevel rounding both rims. The renderer writes that buffer and sends it once while it stays the same. An extrusion also has bounds now, so an editor can box it.
+- 750861c: A video the host holds no bytes for is read in ranges as its frames are asked for, instead of being downloaded whole before the first frame: `createWgpuRenderer` takes `localBytes` (the host's bytes or `null`, never the network), which `@motionscript/browser` points at its asset byte source. `isWgpuSupported` asks for an adapter once per page. Still renderers and screenshots encode `webp` as well as `png` and `jpeg`.
+
 ## 0.4.1-alpha.1
 
 ### Patch Changes
