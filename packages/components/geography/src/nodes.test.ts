@@ -23,6 +23,12 @@ describe("the geo package's node types", () => {
         expect(Object.keys(props)).toEqual(expect.arrayContaining(["iso", "level", "detail", "projection", "frame", "borders"]))
     })
 
+    it("tweens GeoBorder's projection with projectTo, listing the projections as its options", () => {
+        expect([...(registry.node("geoBorder")?.commands.keys() ?? [])]).toContain("projectTo")
+        const projection = registry.describe("geoBorder")?.properties?.projection as { options?: readonly string[] } | undefined
+        expect(projection?.options).toEqual(["conic", "mercator", "equirectangular", "orthographic"])
+    })
+
     it("describes GeoGlobe's paints, angle and commands, its rim, and no overlay", () => {
         const props = Object.keys(registry.describe("geoGlobe")?.properties ?? {})
         expect(props).toEqual(expect.arrayContaining([...GLOBE_PROPS, "stroke"]))

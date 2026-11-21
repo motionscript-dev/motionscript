@@ -1,14 +1,22 @@
 import {
     geoArea,
     geoBounds,
+    geoClipAntimeridian,
+    geoClipCircle,
     geoConicEqualArea,
+    geoConicEqualAreaRaw,
     geoEquirectangular,
+    geoEquirectangularRaw,
     geoMercator,
+    geoMercatorRaw,
     geoOrthographic,
+    geoOrthographicRaw,
     geoPath,
+    geoProjection,
     geoStream,
     type GeoPermissibleObjects,
     type GeoProjection,
+    type GeoRawProjection,
 } from "d3-geo"
 
 import { ringCoordinates, type GeoArc, type GeoFeature, type GeoPolygon, type GeoRingRef } from "./format"
@@ -16,6 +24,31 @@ import type { GeoFrame } from "./selection"
 
 export type GeoProjectionKind = "conic" | "mercator" | "equirectangular" | "orthographic"
 export type GeoBorders = "all" | "outline"
+
+/** A projection part way through a tween from one kind to another. */
+export interface GeoProjectionBlend {
+    readonly from: GeoProjectionKind
+    readonly to: GeoProjectionKind
+    /** 0 at `from`, 1 at `to`. */
+    readonly t: number
+}
+
+export type GeoProjectionValue = GeoProjectionKind | GeoProjectionBlend
+
+const nearestKind = (value: GeoProjectionValue): GeoProjectionKind =>
+    typeof value === "string" ? value : value.t < 0.5 ? value.from : value.to
+
+/**
+ * Tweens one projection into another. A tween that starts part way through another one
+ * starts from whichever end that one was nearer.
+ */
+export function lerpGeoProjection(from: GeoProjectionValue, to: GeoProjectionValue, t: number): GeoProjectionValue {
+    if (t <= 0) return from
+    if (t >= 1) return to
+    const a = nearestKind(from)
+    const b = nearestKind(to)
+    return a === b ? a : { from: a, to: b, t }
+}
 
 export interface GeoContour {
     /** Interleaved x/y in unit space: the longer side spans 1, centred on the origin, y up. */
@@ -42,6 +75,9 @@ interface Part {
 
 interface Frame {
     projection: GeoProjection
+    /** The projection before rotation, scale and translation: what a blend between two frames mixes. */
+    raw: GeoRawProjection
+    kind: GeoProjectionKind
     centerX: number
     centerY: number
     size: number
@@ -93,22 +129,36 @@ function centerLongitude(west: number, east: number): number {
     return mid > 180 ? mid - 360 : mid
 }
 
-function makeProjection(kind: GeoProjectionKind, west: number, south: number, east: number, north: number): GeoProjection {
+const RADIANS = Math.PI / 180
+// Where Mercator's square world ends, as its own projection clips it.
+const MERCATOR_LAT = 2 * Math.atan(Math.exp(Math.PI)) - Math.PI / 2
+
+const mercatorRaw: GeoRawProjection = (lambda, phi) =>
+    geoMercatorRaw(lambda, phi > MERCATOR_LAT ? MERCATOR_LAT : phi < -MERCATOR_LAT ? -MERCATOR_LAT : phi)
+
+function makeProjection(
+    kind: GeoProjectionKind,
+    west: number,
+    south: number,
+    east: number,
+    north: number
+): { projection: GeoProjection; raw: GeoRawProjection } {
     const lon = centerLongitude(west, east)
     const lat = (south + north) / 2
     switch (kind) {
         case "mercator":
-            return geoMercator().rotate([-lon, 0])
+            return { projection: geoMercator().rotate([-lon, 0]), raw: mercatorRaw }
         case "equirectangular":
-            return geoEquirectangular().rotate([-lon, 0])
+            return { projection: geoEquirectangular().rotate([-lon, 0]), raw: geoEquirectangularRaw }
         case "orthographic":
-            return geoOrthographic().rotate([-lon, -lat])
+            return { projection: geoOrthographic().rotate([-lon, -lat]), raw: geoOrthographicRaw }
         case "conic": {
             const span = north - south
-            return geoConicEqualArea()
-                .rotate([-lon, 0])
-                .center([0, lat])
-                .parallels([south + span / 6, north - span / 6])
+            const parallels: [number, number] = [south + span / 6, north - span / 6]
+            return {
+                projection: geoConicEqualArea().rotate([-lon, 0]).center([0, lat]).parallels(parallels),
+                raw: geoConicEqualAreaRaw(parallels[0] * RADIANS, parallels[1] * RADIANS),
+            }
         }
     }
 }
@@ -122,12 +172,15 @@ function fitFrame(kind: GeoProjectionKind, parts: readonly Part[]): Frame | null
     const [[west, south], [east, north]] = geoBounds(shape)
 
     for (const candidate of [kind, "equirectangular"] as const) {
-        const projection = makeProjection(candidate, west, south, east, north).fitSize([FIT, FIT], shape)
+        const made = makeProjection(candidate, west, south, east, north)
+        const projection = made.projection.fitSize([FIT, FIT], shape)
         const [[x0, y0], [x1, y1]] = geoPath(projection).bounds(shape)
         const size = Math.max(x1 - x0, y1 - y0)
         if (!Number.isFinite(size) || size <= 0) continue
         return {
             projection,
+            raw: made.raw,
+            kind: candidate,
             centerX: (x0 + x1) / 2,
             centerY: (y0 + y1) / 2,
             size,
@@ -136,6 +189,58 @@ function fitFrame(kind: GeoProjectionKind, parts: readonly Part[]): Frame | null
         }
     }
     return null
+}
+
+/** The affine its fitted projection puts between `raw` and unit space, which is the same scale on both axes. */
+function unitAffine(frame: Frame): { k: number; x: number; y: number } {
+    const p = frame.projection
+    const k = p.scale()
+    const [tx, ty] = p.translate()
+    const [lambda, phi] = p.center()
+    const [cx, cy] = frame.raw(lambda * RADIANS, phi * RADIANS)
+    return { k: k / frame.size, x: (tx - k * cx - frame.centerX) / frame.size, y: (frame.centerY - ty - k * cy) / frame.size }
+}
+
+const wrap180 = (degrees: number) => ((((degrees + 180) % 360) + 360) % 360) - 180
+
+/**
+ * Two fitted frames mixed point by point in unit space, so the drawing at `t` 0 and 1 is
+ * each end's own. A blend with orthographic narrows the clip towards its hemisphere as it
+ * goes, and cuts at the antimeridian as the flat maps do.
+ */
+function blendFrames(a: Frame, b: Frame, t: number): Frame {
+    const ma = unitAffine(a)
+    const mb = unitAffine(b)
+    const s = 1 - t
+    const raw: GeoRawProjection = (lambda, phi) => {
+        const [xa, ya] = a.raw(lambda, phi)
+        const [xb, yb] = b.raw(lambda, phi)
+        return [s * (ma.k * xa + ma.x) + t * (mb.k * xb + mb.x), s * (ma.k * ya + ma.y) + t * (mb.k * yb + mb.y)]
+    }
+    const [la, pa, ga] = a.projection.rotate()
+    const [lb, pb, gb] = b.projection.rotate()
+    // d3 puts the raw projection's (0, 0) at the translate; here that point is not the origin.
+    const [ox, oy] = raw(0, 0)
+    const projection = geoProjection(raw)
+        .rotate([la + wrap180(lb - la) * t, pa + (pb - pa) * t, ga + (gb - ga) * t])
+        .scale(1)
+        .translate([ox, -oy])
+        .precision(Math.SQRT1_2 / FIT)
+    const globe = (a.kind === "orthographic" ? s : 0) + (b.kind === "orthographic" ? t : 0)
+    if (globe > 0) {
+        const circle = geoClipCircle((90 + 90 * (1 - globe)) * RADIANS)
+        projection.preclip((stream) => geoClipAntimeridian(circle(stream)))
+    }
+    return {
+        projection,
+        raw,
+        kind: t < 0.5 ? a.kind : b.kind,
+        centerX: 0,
+        centerY: 0,
+        size: 1,
+        width: s * a.width + t * b.width,
+        height: s * a.height + t * b.height,
+    }
 }
 
 function project(frame: Frame, object: GeoPermissibleObjects, closed: boolean): GeoContour[] {
@@ -437,6 +542,8 @@ class ByteCache<V extends { bytes: number }> {
 const frames = new ByteCache<Frame & { bytes: number }>(64)
 const outlinesCache = new ByteCache<GeoOutlines>(64 * 1024 * 1024)
 const geometries = new ByteCache<GeoGeometry>(64 * 1024 * 1024)
+// Apart from the ends', so the frames of one tween never push those out.
+const blends = new ByteCache<GeoGeometry>(16 * 1024 * 1024)
 
 const roundDetail = (detail: number) => Math.round(clamp01(detail) * 100) / 100
 
@@ -461,29 +568,49 @@ export function geoOutlines(request: GeoOutlinesRequest): GeoOutlines {
 }
 
 export interface GeoGeometryRequest extends GeoOutlinesRequest {
-    projection: GeoProjectionKind
+    projection: GeoProjectionValue
+}
+
+function fittedFrame(request: GeoGeometryRequest, kind: GeoProjectionKind): Frame | null {
+    const frameKey = `${request.selectionKey}|${kind}`
+    const cached = frames.get(frameKey)
+    if (cached) return cached
+    const made = fitFrame(kind, partsOf(request.features, request.frame))
+    if (made) frames.set(frameKey, { ...made, bytes: 1 })
+    return made
 }
 
 /**
  * The drawing for a selection, cached. The projection is fitted to the
  * selection at full detail, so a `detail` tween never moves or rescales it.
+ * A blend mixes the two ends' fits, extent included, so a box fitting the
+ * drawing scales smoothly from one end's shape to the other's.
  */
 export function geoGeometry(request: GeoGeometryRequest): GeoGeometry | null {
     const detail = roundDetail(request.detail)
-    const frameKey = `${request.selectionKey}|${request.projection}`
-    const key = `${frameKey}|${request.frame}|${request.borders}|${detail}`
-    const cached = geometries.get(key)
+    const { projection } = request
+    const blend = typeof projection === "string" ? null : projection
+    const t = blend ? Math.round(clamp01(blend.t) * 1000) / 1000 : 0
+    if (blend && (t === 0 || t === 1 || blend.from === blend.to)) {
+        return geoGeometry({ ...request, projection: t === 1 ? blend.to : blend.from })
+    }
+    const kinds = blend ? `${blend.from}>${blend.to}@${t}` : (projection as GeoProjectionKind)
+    const key = `${request.selectionKey}|${kinds}|${request.frame}|${request.borders}|${detail}`
+    const cache = blend ? blends : geometries
+    const cached = cache.get(key)
     if (cached) return cached
 
-    let fitted: Frame | undefined = frames.get(frameKey)
-    if (!fitted) {
-        const made = fitFrame(request.projection, partsOf(request.features, request.frame))
-        if (!made) return null
-        fitted = made
-        frames.set(frameKey, { ...made, bytes: 1 })
+    let fitted: Frame | null
+    if (blend) {
+        const a = fittedFrame(request, blend.from)
+        const b = fittedFrame(request, blend.to)
+        fitted = a && b ? blendFrames(a, b, t) : null
+    } else {
+        fitted = fittedFrame(request, projection as GeoProjectionKind)
     }
+    if (!fitted) return null
     const geometry = buildGeometry(geoOutlines({ ...request, detail }), fitted)
-    geometries.set(key, geometry)
+    cache.set(key, geometry)
     return geometry
 }
 
@@ -497,6 +624,8 @@ export function geoWorldMap(outlines: GeoOutlines): GeoContour[] {
     if (cached) return cached
     const frame: Frame = {
         projection: geoEquirectangular().scale(1 / (2 * Math.PI)).translate([0, 0]),
+        raw: geoEquirectangularRaw,
+        kind: "equirectangular",
         centerX: 0,
         centerY: 0,
         size: 1,
@@ -514,4 +643,5 @@ export function clearGeoGeometry(): void {
     frames.clear()
     outlinesCache.clear()
     geometries.clear()
+    blends.clear()
 }

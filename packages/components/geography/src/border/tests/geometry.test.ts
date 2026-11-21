@@ -1,7 +1,14 @@
 import { geoArea } from "d3-geo"
 import { beforeAll, describe, expect, it } from "vitest"
 
-import { clearGeoGeometry, geoGeometry, type GeoBorders, type GeoProjectionKind } from "../geometry"
+import {
+    clearGeoGeometry,
+    geoGeometry,
+    lerpGeoProjection,
+    type GeoBorders,
+    type GeoContour,
+    type GeoProjectionValue,
+} from "../geometry"
 import { countryFileKey, geoFileEntry, loadGeoFile, statesFileKey } from "../loader"
 import { geoRegistry } from "../registry"
 import { selectGeoFeatures, type GeoFrame, type GeoLevel } from "../selection"
@@ -19,7 +26,7 @@ interface Options {
     borders?: GeoBorders
     frame?: GeoFrame
     level?: GeoLevel
-    projection?: GeoProjectionKind
+    projection?: GeoProjectionValue
 }
 
 function draw(codes: string[], { detail = 1, borders = "all", frame = "all", level = "country", projection = "conic" }: Options = {}) {
@@ -134,5 +141,56 @@ describe("GeoBorder geometry", () => {
         const codes = ["US-CA", "US-NV", "US-OR"]
         expect(selectGeoFeatures(codes, "state", "mainland").features.map((f) => f.code)).toEqual(codes)
         expect(draw(codes).lineLength).toBeGreaterThan(draw(codes, { borders: "outline" }).lineLength)
+    })
+})
+
+/** The drawing's bounds in unit space, read off its points. */
+function boundsOf(contours: readonly GeoContour[]) {
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity]
+    for (const { points } of contours) {
+        for (let i = 0; i < points.length; i += 2) {
+            x0 = Math.min(x0, points[i])
+            x1 = Math.max(x1, points[i])
+            y0 = Math.min(y0, points[i + 1])
+            y1 = Math.max(y1, points[i + 1])
+        }
+    }
+    return { x0, y0, x1, y1 }
+}
+
+describe("GeoBorder projection tween", () => {
+    it("holds an end's own value at either end and blends between", () => {
+        expect(lerpGeoProjection("mercator", "conic", 0)).toBe("mercator")
+        expect(lerpGeoProjection("mercator", "conic", 1)).toBe("conic")
+        expect(lerpGeoProjection("mercator", "conic", 0.25)).toEqual({ from: "mercator", to: "conic", t: 0.25 })
+        expect(lerpGeoProjection("conic", "conic", 0.5)).toBe("conic")
+        // Interrupted part way, a tween starts from the nearer end.
+        expect(lerpGeoProjection({ from: "mercator", to: "conic", t: 0.8 }, "orthographic", 0.5)).toEqual({
+            from: "conic",
+            to: "orthographic",
+            t: 0.5,
+        })
+    })
+
+    it.each([
+        ["mercator", "conic"],
+        ["conic", "equirectangular"],
+        ["mercator", "orthographic"],
+    ] as const)("starts and ends on each projection's own drawing, %s to %s", (from, to) => {
+        for (const [t, end] of [[0.001, from], [0.999, to]] as const) {
+            const blend = boundsOf(draw(["FR", "DE"], { projection: { from, to, t } }).fills)
+            const own = boundsOf(draw(["FR", "DE"], { projection: end }).fills)
+            for (const side of ["x0", "y0", "x1", "y1"] as const) expect(Math.abs(blend[side] - own[side])).toBeLessThan(0.005)
+        }
+    })
+
+    it("moves the extent smoothly from one end's to the other's", () => {
+        const at = (t: number) => draw(["US-CA", "US-NV"], { level: "state", projection: { from: "mercator", to: "conic", t } })
+        const a = draw(["US-CA", "US-NV"], { level: "state", projection: "mercator" })
+        const b = draw(["US-CA", "US-NV"], { level: "state", projection: "conic" })
+        const half = at(0.5)
+        expect(half.width).toBeCloseTo((a.width + b.width) / 2, 6)
+        expect(half.height).toBeCloseTo((a.height + b.height) / 2, 6)
+        for (const contour of half.fills) expect(contour.points.every(Number.isFinite)).toBe(true)
     })
 })

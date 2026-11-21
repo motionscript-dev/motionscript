@@ -5,6 +5,7 @@ import {
     Shapes,
     Types,
     component2d,
+    type EntryOptions,
     type FillResolved,
     type NodeOf,
     // Named so this component's emitted type reaches the shape surface it spreads through the sdk, not core.
@@ -25,7 +26,14 @@ import {
 import { snapValue } from "@motionscript/sdk/component"
 
 import { geoChoice as choice, geoChunkPath as pathOp, geoChunks as chunk, type GeoChunk } from "./drawing"
-import { geoGeometry, type GeoBorders, type GeoGeometry, type GeoProjectionKind } from "./geometry"
+import {
+    geoGeometry,
+    lerpGeoProjection,
+    type GeoBorders,
+    type GeoGeometry,
+    type GeoProjectionKind,
+    type GeoProjectionValue,
+} from "./geometry"
 import { geoLoader } from "./loader"
 import { geoRegistry } from "./registry"
 import { geoFilesFor, normalizeIso, selectGeoFeatures, type GeoFrame, type GeoLevel } from "./selection"
@@ -44,6 +52,8 @@ interface Kept {
     readonly warned: Set<string>
 }
 
+const PROJECTIONS = ["conic", "mercator", "equirectangular", "orthographic"] as const
+
 const kept = new WeakMap<object, Kept>()
 
 function keptBy(state: object): Kept {
@@ -56,7 +66,7 @@ interface Selected {
     readonly iso: readonly string[]
     readonly level: GeoLevel
     readonly frame: GeoFrame
-    readonly projection: GeoProjectionKind
+    readonly projection: GeoProjectionValue
     readonly borders: GeoBorders
     readonly detail: number
 }
@@ -125,7 +135,8 @@ function drawnOf(state: Selected, size: Size2D): Drawn | null {
  * selected regions share is not drawn twice and why `stroke.align` does not
  * apply. The fill is one shape measured against the node's box, so a grid or a
  * gradient runs on across borders; `start`/`end` draw the borders on and leave
- * the fill whole (fade it in with `fillTo`).
+ * the fill whole (fade it in with `fillTo`). `projectTo` morphs the drawing
+ * from one projection into another, refitting it to the box as it goes.
  */
 export const GeoBorder = component2d({
     key: "geoBorder",
@@ -135,11 +146,17 @@ export const GeoBorder = component2d({
         iso: Types.custom<string | readonly string[], string[]>(["FR"], { resolve: normalizeIso, lerp: snapValue }),
         level: choice(["country", "state"], "country"),
         detail: Types.number(0.5, { min: 0, max: 1, step: 0.01 }),
-        projection: choice(["conic", "mercator", "equirectangular", "orthographic"], "conic"),
+        projection: Types.custom<GeoProjectionKind, GeoProjectionValue, EntryOptions & { readonly options: typeof PROJECTIONS }>(
+            "conic",
+            { lerp: lerpGeoProjection, options: PROJECTIONS }
+        ),
         frame: choice(["mainland", "all"], "mainland"),
         borders: choice(["all", "outline"], "all"),
     },
-    commands: { ...Paint.commands },
+    commands: {
+        ...Paint.commands,
+        projectTo: { args: ["projection"] },
+    },
     // The data gates the draw, not layout: the box never waits on it.
     load: (loader, state) => {
         for (const file of geoFilesFor(state.iso, state.level)) loader.task(`geo:${file}`, geoLoader(file))

@@ -48,6 +48,11 @@ npm install @motionscript/geography @motionscript/sdk
 - **`detail` never refits.** The files store a simplification bucket per point,
   `detail` is a draw-time threshold over it, and the projection is fitted at full
   detail and cached apart from it, so tweening `detail` does not move the drawing.
+- **`projection` tweens.** `projectTo` (or a `to` on `projection`) mixes the
+  two ends' fitted drawings point by point, extent included, so the drawing
+  morphs and refits smoothly and each end is exactly its own projection. With
+  `orthographic` at one end, the far side is clipped away as the tween nears
+  it. A tween begun part way through another starts from that one's nearer end.
 - **`iso` is a list of codes**, as an array or text split on spaces, commas and
   semicolons, upper-cased. A code is `AB` or `AB-XYZ`; one that is not, or that no
   loaded file has, draws nothing and warns once. A bare country code draws the
