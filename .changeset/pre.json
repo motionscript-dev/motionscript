@@ -25,6 +25,7 @@
     "draw-extrusions",
     "register-named-shapes",
     "repeater-node",
-    "retire-grids-patterns-audio"
+    "retire-grids-patterns-audio",
+    "stream-video-sources"
   ]
 }
