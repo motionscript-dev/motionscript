@@ -396,6 +396,18 @@
     "description": "Repeater in a row: composite below vs above, compounding scale, animated offset"
   },
   {
+    "id": "parallax-layers",
+    "name": "ParallaxLayers",
+    "section": "Control Nodes",
+    "description": "Parallax: four layers back to front and one scrollTo; far layers slide less than near ones"
+  },
+  {
+    "id": "parallax-wrap",
+    "name": "ParallaxWrap",
+    "section": "Control Nodes",
+    "description": "Parallax with wrap across: short layers tile edge to edge, so a long scroll never shows an edge"
+  },
+  {
     "id": "mask-vector",
     "name": "MaskVector",
     "section": "Control Nodes",

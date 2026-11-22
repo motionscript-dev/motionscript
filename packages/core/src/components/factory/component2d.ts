@@ -181,10 +181,10 @@ export function component2d<
         // What `render` does with the children, read from its last run: these are asked every frame,
         // so they never re-run it. Before its first frame, one probe answers.
 
-        /** A composite, or a camera, paints its children into its own plane: none of them stands in a space. */
+        /** A composite, a camera or tiles paint the children into its own plane: none of them stands in a space. */
         override _rendersChildrenInSpace(): boolean {
             const r = this._observed();
-            return !(r?.bounds || r?.camera) && super._rendersChildrenInSpace();
+            return !(r?.bounds || r?.camera || r?.tiled) && super._rendersChildrenInSpace();
         }
 
         override _localBounds(): BoxBounds {

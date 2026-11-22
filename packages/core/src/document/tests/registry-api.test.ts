@@ -600,7 +600,7 @@ describe("the built-in vocabulary", () => {
             "rect", "ellipse", "path", "polygon", "polygram", "boolean", "mask",
             "triangle", "rightTriangle", "pentagon", "hexagon", "octagon", "star",
         ],
-        layout: ["camera", "orbitCamera", "rotated-box", "repeater"],
+        layout: ["camera", "orbitCamera", "rotated-box", "repeater", "parallax"],
         text: ["text", "richtext", "number"],
         media: ["video"],
         audio: ["audioBus", "sound"],
@@ -614,8 +614,8 @@ describe("the built-in vocabulary", () => {
     const keys = Object.values(CONTRACT).flat();
     const registry = new Registry();
 
-    it("is exactly the contract's 49 keys", () => {
-        expect(keys).toHaveLength(49);
+    it("is exactly the contract's 50 keys", () => {
+        expect(keys).toHaveLength(50);
         expect(registry.nodeKeys()).toEqual([...keys].sort());
     });
 

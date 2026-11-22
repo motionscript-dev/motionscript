@@ -266,6 +266,8 @@ export interface RenderContext2D {
     children(): void;
     /** Draws your children once per copy, in order, each through its own transform (y down, from your centre) and opacity. */
     repeat(copies: readonly RepeatCopy[]): void;
+    /** Draws each child again edge to edge along `axis`, a copy per its own extent, until the copies cover your box; one child's copies before the next child. */
+    tile(axis: TileAxis): void;
     /** Your first child is the stencil; the rest draw through it. */
     mask(options: MaskOptions): void;
     /** Your children become one shape by `op`, painted with `paint`. */
@@ -300,6 +302,9 @@ export interface RepeatCopy {
     readonly matrix: Matrix2D;
     readonly opacity: number;
 }
+
+/** Which way `tile` repeats each child. */
+export type TileAxis = "horizontal" | "vertical" | "both";
 
 /** Another node as a component reads it: its id, its resolved state and the size it was laid out at. */
 export interface NodeView<out E extends Element = Element> {

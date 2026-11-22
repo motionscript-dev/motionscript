@@ -113,6 +113,7 @@ const fills = [
     const boolean = row('boolean', { op: 'subtract', fill: 'accent' }, group.id);
     const mask = row('mask', { mode: 'alpha' }, group.id);
     const repeater = row('repeater', { copies: 4, stepPosition: { x: 20, y: 0 }, stepRotation: 15, endOpacity: 0.5 }, group.id);
+    const parallax = row('parallax', { width: 200, height: 120, scroll: { x: 40, y: 0 }, farSpeed: 0.2, wrap: 'horizontal' }, group.id);
     const camera = row('camera', { width: 200, height: 120, zoom: 1.5 }, group.id);
     const theme = row('theme-provider', { theme: { colors: { ink: '#ffcc00' } } }, group.id);
     const textStyle = row('default-text-style', { fontSize: 18, fill: 'white' }, theme.id);
@@ -141,6 +142,9 @@ const fills = [
             row('rect', { width: 60, height: 60, fill: fills[1] }, mask.id),
             repeater,
             row('ellipse', { width: 30, height: 30, fill: 'accent' }, repeater.id),
+            parallax,
+            row('rect', { width: 200, height: 120, fill: 'card' }, parallax.id),
+            row('rect', { width: 120, height: 40, y: -40, fill: 'accent' }, parallax.id),
             camera,
             row('rect', { width: 40, height: 40, fill: 'primary', x: '=[card.x] + 10' }, camera.id),
             row('orbitCamera', { orbit: 20, elevation: 10 }, group.id),
@@ -166,6 +170,8 @@ const fills = [
     const count = row('number', { value: 0, fontSize: 24, fill: 'white' });
     const camera = row('camera', { width: 300, height: 200 });
     const orbit = row('orbitCamera', {});
+    const parallax = row('parallax', { width: 300, height: 200 });
+    const layer = row('rect', { width: 300, height: 60, fill: 'primary' }, parallax.id);
     const ease = (kind: string, extra: Record<string, unknown> = {}) => ({ easing: { kind, ...extra } as CommandSpec['easing'] });
     const comp: CompositionDocument = {
         kind: 'composition',
@@ -173,7 +179,7 @@ const fills = [
         variables: [{ id: 'progress', value: 0 }, { id: 'tint', value: '#ff0000', lerp: 'color' }],
         nodes: [
             { id: '', type: 'canvas2d', parentId: null, layerOrder: 0, props: { fill: 'bg', opacity: '=[progress] * 0.5 + 0.5' } },
-            box, shape, late, text, count, camera, orbit,
+            box, shape, late, text, count, camera, orbit, parallax, layer,
         ],
         commands: [
             command('moveTo', box.id, 0, { x: 120, y: -40 }, ease('inOut')),
@@ -202,6 +208,7 @@ const fills = [
             command('headingTo', camera.id, 1, { heading: 15 }),
             command('orbitTo', orbit.id, 0, { orbit: 30, elevation: 15 }),
             command('dollyTo', orbit.id, 1, { dolly: 0.5 }),
+            command('scrollTo', parallax.id, 0, { scroll: { x: 200, y: 0 } }, { duration: 2 }),
             command('zoomTo', null, 2, { zoom: 1.2 }),
             command('variableTo', 'progress', 0, { value: 1 }, { duration: 3 }),
             command('variableTo', 'tint', 0, { value: '#0000ff' }, { duration: 2 }),

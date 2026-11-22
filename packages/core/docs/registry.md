@@ -32,7 +32,7 @@ Five tables, one value per key:
 |---|---|
 | Clip root and structural | `canvas2d`, `provider`, `theme-provider`, `default-text-style` |
 | Geometry | `rect`, `ellipse`, `path`, `polygon`, `polygram`, `boolean`, `mask`, `triangle`, `rightTriangle`, `pentagon`, `hexagon`, `octagon`, `star` |
-| Layout | `camera`, `orbitCamera`, `rotated-box`, `repeater` |
+| Layout | `camera`, `orbitCamera`, `rotated-box`, `repeater`, `parallax` |
 | Text | `text`, `richtext`, `number` |
 | Media | `video` |
 | Audio | `audioBus`, `sound` |

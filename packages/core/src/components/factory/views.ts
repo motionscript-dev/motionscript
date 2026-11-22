@@ -16,8 +16,9 @@ import type { MaskOptions } from "@/attributes/mask/mask";
 import type { ChildBoundsMode } from "@/components/trees/2d/group-bounds";
 import type { SpaceCamera } from "@/attributes/layout/space3d";
 import type { TextStyle } from "@/attributes/text/types";
-import type { Matrix2D } from "@/attributes/layout/matrix2d";
-import type { MergePaint, RepeatCopy, ChildView, Clock, Component, Element, FontSpec, Max, Measurer, NodeFrame, NodeView, Piece, RenderContext2D } from "@/components/factory/api";
+import { translation, type Matrix2D } from "@/attributes/layout/matrix2d";
+import { worldAnchors } from "@/components/trees/2d/node-transform";
+import type { MergePaint, RepeatCopy, ChildView, Clock, Component, Element, FontSpec, Max, Measurer, NodeFrame, NodeView, Piece, RenderContext2D, TileAxis } from "@/components/factory/api";
 import { clipOf } from "@/components/factory/clip-of";
 import type { PropHost } from "@/props/host";
 import type { PropLayout } from "@/props/layout";
@@ -31,6 +32,8 @@ export interface Composite {
     readonly bounds?: ChildBoundsMode;
     /** The transforms `repeat` drew the children through: their ink under each is the node's. */
     readonly copies?: readonly Matrix2D[];
+    /** `tile` drew the children into this node's plane to cover its box, which stays its extent: the copies only fill it. */
+    readonly tiled?: true;
     readonly camera?: CameraScope;
     readonly space?: SpaceCamera;
     /** The scene its 3D children were rendered into: what picking projects through. */
@@ -395,6 +398,34 @@ export class RenderContextImpl implements RenderContext2D {
         }
     }
 
+    tile(axis: TileAxis): void {
+        const children = this.host.children.filter((child): child is Node2D => child instanceof Node2DClass);
+        const { width, height } = this.size;
+        this._declare({ tiled: true });
+        if (this.probing) return;
+        const out = this.target();
+        for (const child of children) {
+            // A walk that only discovers assets needs each child once.
+            if (!out.drawsVisibleOnly) {
+                child.render(out);
+                continue;
+            }
+            for (const matrix of tileCopies(child, axis, width / 2, height / 2)) {
+                if (matrix === HOME) {
+                    child.render(out);
+                    continue;
+                }
+                out.begin(this.host._scopeState(out));
+                try {
+                    out.transform({ matrix, opacity: 1, blend: "pass-through" });
+                    child.render(out);
+                } finally {
+                    out.end();
+                }
+            }
+        }
+    }
+
     /** What this render has declared so far. Its host's record follows at once, so the children it draws see it. */
     composite: Composite | null = null;
 
@@ -525,6 +556,37 @@ export class RenderContextImpl implements RenderContext2D {
 
 /** Where a probe's scoped calls (a clip, a camera) land: a pass that draws nothing. */
 const PROBE_PASS: RenderPass2D = new NullRenderContext();
+
+/** A child drawn where it was laid out, among its `tile` copies. */
+const HOME: Matrix2D = translation(0, 0);
+/** Copies each side of a child per axis, so a hair-thin child cannot flood a frame. */
+const MOST_STEPS = 32;
+
+/** `child`'s copies (y down, from the host's centre) whose laid-out box overlaps the host's half extents; `HOME` always among them. */
+function tileCopies(child: Node2D, axis: TileAxis, halfWidth: number, halfHeight: number): Matrix2D[] {
+    const box = child.layoutBounds;
+    if (!box) return [HOME];
+    const a = worldAnchors(child._localMatrix(), box.width / 2, box.height / 2);
+    const corners = [a.topLeft, a.topRight, a.bottomLeft, a.bottomRight];
+    const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
+    const across = axis === "vertical" ? [0] : tileSteps(Math.min(...xs), Math.max(...xs), halfWidth);
+    const down = axis === "horizontal" ? [0] : tileSteps(Math.min(...ys), Math.max(...ys), halfHeight);
+    const out: Matrix2D[] = [];
+    for (const dx of across) for (const dy of down) out.push(dx === 0 && dy === 0 ? HOME : translation(dx, -dy));
+    return out;
+}
+
+/** The whole multiples of `[min, max]`'s own length that bring it over `(-half, half)`, and 0. */
+function tileSteps(min: number, max: number, half: number): number[] {
+    const period = max - min;
+    if (!(period >= 1)) return [0];
+    const first = Math.max(-MOST_STEPS, Math.floor((-half - max) / period) + 1);
+    const last = Math.min(MOST_STEPS, Math.ceil((half - min) / period) - 1);
+    const steps: number[] = [];
+    for (let k = first; k <= last; k++) steps.push(k * period);
+    if (first > 0 || last < 0) steps.push(0);
+    return steps;
+}
 
 export function internalsOf(ctx: RenderContext2D): RenderContextImpl {
     if (!(ctx instanceof RenderContextImpl)) throw new TypeError("Paint.draw takes the render context its render field was given.");
