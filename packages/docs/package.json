@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/docs",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "The Motion Script documentation pages (MDX), as the docs site renders them, versioned with the engine they describe.",
   "license": "Apache-2.0",
   "repository": {

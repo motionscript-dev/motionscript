@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/geography",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "description": "Geography for Motion Script: GeoBorder, GeoGlobe and GeoGlobe3d, and the country and state outlines they draw by ISO 3166 code, derived from Natural Earth (public domain).",
   "repository": {
