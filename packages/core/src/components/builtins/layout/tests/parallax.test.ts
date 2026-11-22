@@ -3,9 +3,23 @@ import { Parallax, parallaxSpeed } from "@/components/builtins/layout/parallax";
 import { Rect } from "@/components/builtins/geometry/geometry";
 import { Registry } from "@/document/registry";
 import { childPlanePointAt, pickNode } from "@/runtime/node-picking";
-import { laidOut, recorded } from '@/components/trees/tests/recording-context.fixtures';
+import { laidOut, recorded, RecordingContext } from '@/components/trees/tests/recording-context.fixtures';
+import type { TileRect } from '@/render/render-context2d';
+
+/** A backend that paints a tile repeated itself, as the renderer does: it records each tile and draws it once. */
+class TilingContext extends RecordingContext {
+    readonly tiles: { tile: TileRect; cover: TileRect }[] = [];
+
+    override paintTiled(tile: TileRect, cover: TileRect, draw: () => void): boolean {
+        this.tiles.push({ tile, cover });
+        draw();
+        return true;
+    }
+}
 
 const BOX = { x: 0, y: 0, width: 400, height: 200 };
+/** The parallax's own box, y down from its centre: what every tile is painted over. */
+const BOX_COVER = { x: -200, y: -100, width: 400, height: 200 };
 
 const layer = (id: string, props: Record<string, unknown> = {}) => new Rect({ id, width: 100, height: 50, ...props } as never);
 
@@ -50,6 +64,22 @@ describe('Parallax layout', () => {
 });
 
 describe('Parallax render', () => {
+    it('hands a backend that repeats tiles one tile per layer, each drawn once', () => {
+        const ctx = new TilingContext();
+        parallax({ wrap: 'horizontal', scroll: { x: 30, y: 0 } }, [layer('a'), layer('b')]).render(ctx);
+        expect(ctx.events.filter((e) => e === 'begin:a')).toHaveLength(1);
+        expect(ctx.events.filter((e) => e === 'begin:b')).toHaveLength(1);
+        expect(ctx.tiles.map((t) => t.cover)).toEqual([BOX_COVER, BOX_COVER]);
+        // The far layer slid 3 px, the near one 30: each tile is its own box across, the parallax's down.
+        expect(ctx.tiles.map((t) => t.tile)).toEqual([
+            { x: -53, y: -100, width: 100, height: 200 },
+            { x: -80, y: -100, width: 100, height: 200 },
+        ]);
+        const both = new TilingContext();
+        parallax({ wrap: 'both' }).render(both);
+        expect(both.tiles[0].tile).toEqual({ x: -50, y: -25, width: 100, height: 50 });
+    });
+
     it('draws each layer once without wrap', () => {
         const ctx = recorded(parallax({ scroll: { x: 100, y: 0 } }));
         expect(ctx.events.filter((e) => e === 'begin:a')).toHaveLength(1);

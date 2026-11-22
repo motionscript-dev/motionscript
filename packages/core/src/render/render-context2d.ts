@@ -21,6 +21,14 @@ export interface RasterizedSurface {
     height: number;
 }
 
+/** A rect in the current space, y down: what {@link RenderContext2D.paintTiled} repeats, and where. */
+export interface TileRect {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 /** A box in the current node's local space (origin at the layout-cell centre); `left/top` are canvas y-down. */
 export interface SpaceRect {
     left: number;
@@ -149,6 +157,14 @@ export interface RenderContext2D extends MeasureContext2D {
         draw: () => void,
         pixelRatio?: number,
     ): RasterizedSurface | null;
+
+    /**
+     * Paints `cover` with `draw`'s drawing repeated edge to edge: `draw` runs once, into a buffer holding `tile`,
+     * and copies of that buffer sit one tile apart over `cover`. Copies drawn as shapes leave a faint seam where
+     * their antialiased edges meet; one drawing repeated leaves none. `false` when the backend can't, and `draw`
+     * has not run: the caller draws the copies itself.
+     */
+    paintTiled(tile: TileRect, cover: TileRect, draw: () => void): boolean;
 
     /**
      * Pushes a camera viewport: clips to `viewport` and applies the inverse camera transform so children render as

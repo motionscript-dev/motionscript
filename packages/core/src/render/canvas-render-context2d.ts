@@ -11,7 +11,7 @@ import { TextState } from "./descriptors/text";
 import { TextBlockLayout } from "./text-layout";
 import { EMPTY_TEXT_STYLE, textOps } from "@/attributes/text/ops";
 import { applyGraphicsTextDefaults } from "./text-defaults";
-import type { NodeRenderState, RasterizedSurface, RenderContext2D, RenderPass2D, SpaceRects, EffectTarget } from "./render-context2d";
+import type { NodeRenderState, RasterizedSurface, RenderContext2D, RenderPass2D, SpaceRects, EffectTarget, TileRect } from "./render-context2d";
 import type { NodeEffect } from "@/attributes/shape/effects/union";
 
 /** The base every {@link RenderContext2D} backend extends. Owns what is the same whatever is rasterized (text-default stack, node scope stack, disposal) plus the host-facing half (`execute`, `screenshot`, `unmount`) the interface leaves out. **`draw` is final by convention**: it resolves ambient text defaults onto the op list and hands it to {@link drawGraphics}; owning that step here keeps the real renderer and the precomp asset walk agreeing on which font an under-specified `text` op uses. */
@@ -105,6 +105,11 @@ export abstract class CanvasRenderContext2D implements RenderPass2D {
         pixelRatio?: number,
     ): RasterizedSurface | null {
         return null;
+    }
+
+    /** See {@link RenderContext2D.paintTiled}. Returns `false` by default, and the caller draws copies. */
+    paintTiled(tile: TileRect, cover: TileRect, draw: () => void): boolean {
+        return false;
     }
 
     abstract beginCamera(viewport: { x: number; y: number; width: number; height: number }, lookAt: Vector2, zoom: number, heading: number): void;

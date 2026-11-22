@@ -4,7 +4,7 @@ import type { Node2D, CameraScope } from "@/components/trees/2d/node2d";
 import type { Node } from "@/components/trees/node/node";
 import type { Graphics2D } from "@/render/graphics2d";
 import type { MeasureContext2D } from "@/render/measure-context";
-import type { RenderPass2D } from "@/render/render-context2d";
+import type { RenderPass2D, TileRect } from "@/render/render-context2d";
 import type { Clip } from "@/render/clip";
 import { NullRenderContext } from "@/render/null-render-context";
 import { Graphics2D as GraphicsClass } from "@/render/graphics2d";
@@ -404,12 +404,15 @@ export class RenderContextImpl implements RenderContext2D {
         this._declare({ tiled: true });
         if (this.probing) return;
         const out = this.target();
+        const cover: TileRect = { x: -width / 2, y: -height / 2, width, height };
         for (const child of children) {
             // A walk that only discovers assets needs each child once.
             if (!out.drawsVisibleOnly) {
                 child.render(out);
                 continue;
             }
+            const tile = tileRect(child, axis, width / 2, height / 2);
+            if (tile && out.paintTiled(tile, cover, () => child.render(out))) continue;
             for (const matrix of tileCopies(child, axis, width / 2, height / 2)) {
                 if (matrix === HOME) {
                     child.render(out);
@@ -562,15 +565,42 @@ const HOME: Matrix2D = translation(0, 0);
 /** Copies each side of a child per axis, so a hair-thin child cannot flood a frame. */
 const MOST_STEPS = 32;
 
-/** `child`'s copies (y down, from the host's centre) whose laid-out box overlaps the host's half extents; `HOME` always among them. */
-function tileCopies(child: Node2D, axis: TileAxis, halfWidth: number, halfHeight: number): Matrix2D[] {
+interface Span {
+    readonly minX: number;
+    readonly maxX: number;
+    readonly minY: number;
+    readonly maxY: number;
+}
+
+/** `child`'s laid-out box across the host's frame, y up from its centre: the extent a copy of it repeats by. */
+function tileSpan(child: Node2D): Span | null {
     const box = child.layoutBounds;
-    if (!box) return [HOME];
+    if (!box) return null;
     const a = worldAnchors(child._localMatrix(), box.width / 2, box.height / 2);
     const corners = [a.topLeft, a.topRight, a.bottomLeft, a.bottomRight];
     const xs = corners.map((p) => p.x), ys = corners.map((p) => p.y);
-    const across = axis === "vertical" ? [0] : tileSteps(Math.min(...xs), Math.max(...xs), halfWidth);
-    const down = axis === "horizontal" ? [0] : tileSteps(Math.min(...ys), Math.max(...ys), halfHeight);
+    return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+}
+
+/** One tile of `child` (y down, from the host's centre): its own span along each repeated axis, the host's box along the other; `null` under a pixel. */
+function tileRect(child: Node2D, axis: TileAxis, halfWidth: number, halfHeight: number): TileRect | null {
+    const s = tileSpan(child);
+    const across = axis !== "vertical", down = axis !== "horizontal";
+    if (!s || (across && !(s.maxX - s.minX >= 1)) || (down && !(s.maxY - s.minY >= 1))) return null;
+    return {
+        x: across ? s.minX : -halfWidth,
+        y: down ? -s.maxY : -halfHeight,
+        width: across ? s.maxX - s.minX : 2 * halfWidth,
+        height: down ? s.maxY - s.minY : 2 * halfHeight,
+    };
+}
+
+/** `child`'s copies (y down, from the host's centre) whose laid-out box overlaps the host's half extents; `HOME` always among them. */
+function tileCopies(child: Node2D, axis: TileAxis, halfWidth: number, halfHeight: number): Matrix2D[] {
+    const s = tileSpan(child);
+    if (!s) return [HOME];
+    const across = axis === "vertical" ? [0] : tileSteps(s.minX, s.maxX, halfWidth);
+    const down = axis === "horizontal" ? [0] : tileSteps(s.minY, s.maxY, halfHeight);
     const out: Matrix2D[] = [];
     for (const dx of across) for (const dy of down) out.push(dx === 0 && dy === 0 ? HOME : translation(dx, -dy));
     return out;

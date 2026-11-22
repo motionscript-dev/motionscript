@@ -7,7 +7,7 @@ import {
     alignmentOps, AUTOFIT_PROBE_SIZE, forEachTexture3D, isStrokeMarker, isSurfaceTexture3D, resolveSurfaceSource, resolveVideoTimestamp, withRichTextDescriptor,
     type Alignment, type BooleanOperation, CanvasRenderContext2D, type Clip, type FillResolved, fillOps, type FontStyle, type Graphics2D,
     type MaskOptions, type NodeRenderState, type RenderContext2D, type RenderIssue, type ShadowResolved, shadowOps, type Size2D, type StrokeResolved, strokeOps,
-    type TextSegment, type TransformState, type Vector2,
+    type TextSegment, type TileRect, type TransformState, type Vector2,
 } from "@motionscript/core";
 import { BLEND_MODES, type BlendMode, Doc, type ImageAsset, isAxisAligned, isProjective, type Mat, type Member, type MemberOp, mulX, type Node, type Paint, PathBuilder, type PathData, pathBounds, type Shadow, type TextRunSpec, type TextSpec, transformPath, type Xform } from "../doc";
 import { assetKey } from "./driver";
@@ -113,6 +113,9 @@ function invert(m: Xform): Mat | null {
 }
 
 let sceneVersion = 1 << 20;
+
+/** Device px along a tile's longer edge before it is drawn coarser: a 4K frame's width fits. */
+const MAX_TILE_EDGE = 4096;
 
 /** core's kebab-case blend names to the doc's ("color-dodge" → "colorDodge"). */
 function docBlend(b: string): BlendMode | null {
@@ -1300,4 +1303,31 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
         }
     }
     override rasterize(): null { this.missing.add("rasterize"); return null; }
+
+    /** `draw` recorded once into a surface whose size is whole device px, so the tile's edges land on pixel
+     *  edges and its edge pixels are whole, then `cover` painted with it repeating: the sampler wraps across
+     *  the tile edge, so copies meet with no seam. An error (an asset not in yet) leaves as it does elsewhere. */
+    override paintTiled(tile: TileRect, cover: TileRect, draw: () => void): boolean {
+        if (!(tile.width > 0 && tile.height > 0 && cover.width > 0 && cover.height > 0)) return true;
+        const scale = Math.max(this.assets.deviceScale(), 1e-3);
+        const fit = Math.min(1, MAX_TILE_EDGE / (tile.width * scale), MAX_TILE_EDGE / (tile.height * scale));
+        const pw = Math.max(1, Math.round(tile.width * scale * fit)), ph = Math.max(1, Math.round(tile.height * scale * fit));
+        const sx = pw / tile.width, sy = ph / tile.height;
+        const root = this.doc.detached({ transform: [sx, 0, 0, sy, -tile.x * sx, -tile.y * sy] });
+        const saved = { stack: this.stack, scopes: this.scopes, alpha: this.worldAlpha, shapes: this.shapes, painted: this.painted, shadows: this.shadows, masks: this.masks, clips: this.clips, cameras: this.cameras };
+        this.stack = [root]; this.scopes = []; this.worldAlpha = 1; this.masks = []; this.clips = []; this.cameras = [];
+        this.resetSurface();
+        try {
+            draw();
+        } finally {
+            Object.assign(this, { stack: saved.stack, scopes: saved.scopes, worldAlpha: saved.alpha, shapes: saved.shapes, painted: saved.painted, shadows: saved.shadows, masks: saved.masks, clips: saved.clips, cameras: saved.cameras });
+        }
+        const image = this.doc.addSurface(root, pw, ph);
+        image.version = ++sceneVersion;
+        const { x, y, width: w, height: h } = cover;
+        const path = new PathBuilder().moveTo(x, y).lineTo(x + w, y).lineTo(x + w, y + h).lineTo(x, y + h).close().build();
+        const fill: Paint = { kind: "image", image, box: [tile.x, tile.y, tile.width, tile.height], matrix: [1 / sx, 0, 0, 1 / sy, tile.x, tile.y], tile: "repeat" };
+        this.leaf(this.cur, { path }, { fill, opacity: this.worldAlpha });
+        return true;
+    }
 }

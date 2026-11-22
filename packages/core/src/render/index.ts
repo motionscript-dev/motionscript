@@ -22,7 +22,7 @@
 /** @internal */ export { containsClip, containsOps, pointInPolygon, nearPolyline, distanceToSegment, polygonVertices, polygramVertices } from './clip-contains';
 
 /** @internal */ export type { RenderContext2D, RenderPass2D } from './render-context2d';
-/** @internal */ export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget, RasterizedSurface } from './render-context2d';
+/** @internal */ export type { SpaceRect, SpaceRects, NodeRenderState, EffectTarget, RasterizedSurface, TileRect } from './render-context2d';
 /** @internal */ export { CanvasRenderContext2D } from './canvas-render-context2d';
 /** @internal */ export type { MeasureContext2D } from "./measure-context";
 // Public rather than internal: a host drawing its own text caret reads these off
