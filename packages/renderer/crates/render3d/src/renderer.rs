@@ -244,6 +244,8 @@ struct TransmissionTarget {
     mips: Vec<wgpu::TextureView>,
     /// Bind groups sampling level `i` (to draw level `i + 1`).
     blits: Vec<wgpu::BindGroup>,
+    /// The MSAA and resolved textures, destroyed with the target.
+    textures: [wgpu::Texture; 2],
 }
 
 const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -305,7 +307,8 @@ pub struct Renderer3D {
     trans_frame_group: Option<wgpu::BindGroup>,
     draw_group: wgpu::BindGroup,
     shadow_group: wgpu::BindGroup,
-    targets: Option<(u32, u32, wgpu::TextureView, wgpu::TextureView)>,
+    /// Width, height, MSAA colour and depth views, and their textures.
+    targets: Option<(u32, u32, wgpu::TextureView, wgpu::TextureView, [wgpu::Texture; 2])>,
     transmission: Option<TransmissionTarget>,
     geoms: HashMap<u64, GpuGeom>,
     /// Geometry the last frame stopped drawing, whose buffers a geometry of the
@@ -316,6 +319,30 @@ pub struct Renderer3D {
     frame_no: u64,
     scene: Scene,
     pub stats: Stats,
+}
+
+// On WebGPU a dropped texture or buffer is freed only when the browser collects
+// its JS object, which a WASM heap rarely prompts: what a scene owns goes with it.
+impl Drop for Renderer3D {
+    fn drop(&mut self) {
+        for b in [&self.frame_buf, &self.trans_frame_buf, &self.draw_buf, &self.inst_buf, &self.shadow_pass_buf] {
+            b.destroy();
+        }
+        for g in self.geoms.values().chain(&self.spare) {
+            g.vbuf.destroy();
+            g.cbuf.destroy();
+            g.ibuf.destroy();
+        }
+        if let Some((t, ..)) = &self.shadow_tex {
+            t.destroy();
+        }
+        if let Some((.., t)) = &self.targets {
+            t.iter().for_each(wgpu::Texture::destroy);
+        }
+        if let Some(t) = &self.transmission {
+            t.textures.iter().for_each(wgpu::Texture::destroy);
+        }
+    }
 }
 
 /// A material's textures: (id, sampler key) of the `map` and of the toon
@@ -1094,26 +1121,27 @@ impl Renderer3D {
     // ─── Targets ─────────────────────────────────────────────────────────────
 
     fn ensure_targets(&mut self, w: u32, h: u32) {
-        if matches!(&self.targets, Some((tw, th, _, _)) if *tw == w && *th == h) {
+        if matches!(&self.targets, Some((tw, th, ..)) if *tw == w && *th == h) {
             return;
         }
+        if let Some((.., old)) = self.targets.take() {
+            old.iter().for_each(wgpu::Texture::destroy);
+        }
         let make = |format, label| {
-            self.device
-                .create_texture(&wgpu::TextureDescriptor {
-                    label: Some(label),
-                    size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
-                    mip_level_count: 1,
-                    sample_count: SAMPLE_COUNT,
-                    dimension: wgpu::TextureDimension::D2,
-                    format,
-                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                    view_formats: &[],
-                })
-                .create_view(&Default::default())
+            self.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some(label),
+                size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+                mip_level_count: 1,
+                sample_count: SAMPLE_COUNT,
+                dimension: wgpu::TextureDimension::D2,
+                format,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            })
         };
         let color = make(self.format, "r3d-msaa");
         let depth = make(DEPTH_FORMAT, "r3d-depth");
-        self.targets = Some((w, h, color, depth));
+        self.targets = Some((w, h, color.create_view(&Default::default()), depth.create_view(&Default::default()), [color, depth]));
     }
 
     fn ensure_shadow_maps(&mut self, layers: u32, size: u32) {
@@ -1189,6 +1217,9 @@ impl Renderer3D {
         if matches!(&self.transmission, Some(t) if t.w == w && t.h == h) {
             return;
         }
+        if let Some(old) = self.transmission.take() {
+            old.textures.iter().for_each(wgpu::Texture::destroy);
+        }
         let levels = 32 - w.max(h).leading_zeros();
         let tex = |samples, levels, usage| {
             self.device.create_texture(&wgpu::TextureDescriptor {
@@ -1202,7 +1233,8 @@ impl Renderer3D {
                 view_formats: &[],
             })
         };
-        let msaa = tex(SAMPLE_COUNT, 1, wgpu::TextureUsages::RENDER_ATTACHMENT).create_view(&Default::default());
+        let msaa_tex = tex(SAMPLE_COUNT, 1, wgpu::TextureUsages::RENDER_ATTACHMENT);
+        let msaa = msaa_tex.create_view(&Default::default());
         let resolved = tex(1, levels, wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING);
         let mips: Vec<wgpu::TextureView> = (0..levels)
             .map(|l| {
@@ -1227,7 +1259,8 @@ impl Renderer3D {
                 })
             })
             .collect();
-        self.transmission = Some(TransmissionTarget { w, h, msaa, view: resolved.create_view(&Default::default()), mips, blits });
+        let view = resolved.create_view(&Default::default());
+        self.transmission = Some(TransmissionTarget { w, h, msaa, view, mips, blits, textures: [msaa_tex, resolved] });
         self.frame_group = None;
     }
 
@@ -1713,7 +1746,8 @@ impl Renderer3D {
         let draw_bytes = uniforms.len().max(1) as u64 * UNIFORM_STRIDE;
         if draw_bytes > self.draw_cap {
             self.draw_cap = draw_bytes.next_power_of_two();
-            self.draw_buf = buffer(&self.device, "r3d-draws", self.draw_cap, wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST);
+            let grown = buffer(&self.device, "r3d-draws", self.draw_cap, wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST);
+            std::mem::replace(&mut self.draw_buf, grown).destroy();
             self.draw_group =
                 make_dyn_group(&self.device, &self.shared.draw_layout, &self.draw_buf, "r3d-draw", std::mem::size_of::<DrawU>() as u64);
         }
@@ -1726,8 +1760,8 @@ impl Renderer3D {
         let inst_bytes = (instances.len().max(1) * std::mem::size_of::<InstanceU>()) as u64;
         if inst_bytes > self.inst_cap {
             self.inst_cap = inst_bytes.next_power_of_two();
-            self.inst_buf =
-                buffer(&self.device, "r3d-instances", self.inst_cap, wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST);
+            let grown = buffer(&self.device, "r3d-instances", self.inst_cap, wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST);
+            std::mem::replace(&mut self.inst_buf, grown).destroy();
         }
         if !instances.is_empty() {
             self.queue.write_buffer(&self.inst_buf, 0, bytemuck::cast_slice(&instances));
@@ -1785,7 +1819,7 @@ impl Renderer3D {
             }
         }
 
-        let (_, _, color, depth) = self.targets.as_ref().unwrap();
+        let (_, _, color, depth, _) = self.targets.as_ref().unwrap();
         let draw_items = |pass: &mut wgpu::RenderPass, items: &[&Item], hdr: bool| {
             for it in items {
                 pass.set_pipeline(&self.pipelines[&PipeKey { hdr, ..it.pipe }]);

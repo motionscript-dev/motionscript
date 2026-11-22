@@ -941,7 +941,7 @@ frame back).
 **Faults (2026-11-06).** With one device, a fault is every surface's.
 `engine/faults.ts` watches each device a surface mounts on: its `lost` promise
 forgets the device (`Renderer.forget_device`, gpu.rs `forget_shared_device`,
-generation-checked so wgpu's own late callback leaves a successor alone) and
+checked against the device's id so a late callback leaves a successor alone) and
 remounts every live surface, which rebuilds the format's `Core`, fonts and user
 programs and presents the last doc; its `uncapturederror` becomes a `gpu`
 issue. Each surface queues the fault for `takeRenderIssues()`, and the export
@@ -951,6 +951,22 @@ still remounting holds a settled frame through the storage adapter's
 settler. A panic (`panic = "abort"`) reaches the host through a hook
 (`set_panic_listener`) before the trap: the instance is never called again
 (a `RefCell` may be held), surfaces halt and report `crashed`.
+
+**Destroy, never just drop (2026-11-22).** On WebGPU wgpu's `Drop` for a
+texture or buffer does nothing: the memory goes when the browser collects the
+JS object, and a WASM heap gives the collector little reason to run. A
+`Tex.surface` image (a textured globe) redraws every frame, and each new image
+generation built a new 4096×2048 mip-chained 3D map (~42 MB) while the old one
+waited for GC: one 66 s export held 13.6 GB, the GPU process reached 13 GB of
+VRAM, and playback lost the device ("A valid external Instance reference no
+longer exists", then no adapter at all). Maps now rebuild into the same texture
+while the size holds, and everything replaced or forgotten (maps, a 3D scene's
+targets and grown buffers, a dropped `Renderer3D`, evicted distance fields,
+readbacks, a grown clip atlas) is `destroy()`ed. Image generations come from
+one counter, so a 3D binding never takes a recreated image for one it already
+bound, and `free_image` unbinds the maps it destroys. To check a change,
+wrap `GPUDevice.createTexture`/`createBuffer` and `destroy()` in a page init
+script and count bytes made but never destroyed, by label.
 
 **Adapter coverage (2026-11-02).** Beyond plain shapes, the adapter draws:
 

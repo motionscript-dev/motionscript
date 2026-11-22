@@ -471,14 +471,17 @@ mod api {
                 let b3 = buf.clone();
                 let keep = tex.clone();
                 buf.slice(..).map_async(wgpu::MapMode::Read, move |res| {
-                    let _ = &keep;
+                    // The copy out of it is done once the buffer maps.
+                    keep.destroy();
                     if res.is_err() {
+                        b3.destroy();
                         let _ = reject.call1(&JsValue::NULL, &JsValue::from_str("map failed"));
                         return;
                     }
                     let out = js_sys::Uint8Array::new_with_length(w * h * 4);
                     {
                         let Ok(data) = b3.slice(..).get_mapped_range() else {
+                            b3.destroy();
                             let _ = reject.call1(&JsValue::NULL, &JsValue::from_str("map range failed"));
                             return;
                         };
@@ -490,6 +493,7 @@ mod api {
                         out.copy_from(&packed);
                     }
                     b3.unmap();
+                    b3.destroy();
                     let _ = resolve.call1(&JsValue::NULL, &out);
                 });
             })

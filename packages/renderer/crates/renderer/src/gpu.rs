@@ -56,7 +56,8 @@ struct GpuImage {
     h: u32,
     mips: u32,
     group: wgpu::BindGroup,
-    /// Bumped whenever the pixels change (an upload, a surface render).
+    /// A new number from `Gpu::changes` whenever the pixels change (an upload, a surface render);
+    /// never reused, so a binding that saw it bound this content's map.
     generation: u64,
 }
 
@@ -769,12 +770,14 @@ pub struct Gpu {
     sampler_nearest: wgpu::Sampler,
     /// Effect bind groups by (input, blurred, extra, field) texture ids.
     effect_groups: crate::fxhash::FxHashMap<(u64, u64, u64, u64), wgpu::BindGroup>,
-    /// Distance-field textures by field id, with the render they were last used in.
-    fields: std::collections::HashMap<u64, (wgpu::TextureView, u64)>,
+    /// Distance-field textures by field id: view, the render they were last used in, texture.
+    fields: std::collections::HashMap<u64, (wgpu::TextureView, u64, wgpu::Texture)>,
     renders: u64,
     mip_layout: wgpu::BindGroupLayout,
     image_sampler: wgpu::Sampler,
     images: Vec<Option<GpuImage>>,
+    /// The last image generation handed out.
+    changes: u64,
     /// 3D scenes drawn into image textures (by image id), on this device.
     scenes3d: std::collections::HashMap<u32, ms_render3d::Renderer3D>,
     /// Scenes changed since they were last drawn.
@@ -822,6 +825,10 @@ fn storage(device: &wgpu::Device, label: &str, size: u64, usage: wgpu::BufferUsa
     })
 }
 
+// On WebGPU a dropped texture or buffer keeps its memory until the browser
+// collects its JS object, and a WASM heap gives the collector no reason to run:
+// everything replaced or forgotten is destroyed, or VRAM fills until the GPU
+// process dies.
 impl Drop for Gpu {
     fn drop(&mut self) {
         for b in [&self.prim_buf, &self.paint_buf, &self.stop_buf, &self.uniform_buf, &self.seg_buf, &self.band_buf, &self.clip_buf] {
@@ -832,6 +839,12 @@ impl Drop for Gpu {
         }
         for img in self.images.iter().flatten() {
             img.tex.destroy();
+        }
+        for m in self.maps3d.values() {
+            m.tex.destroy();
+        }
+        for f in self.fields.values() {
+            f.2.destroy();
         }
         self.clip_atlas._tex.destroy();
     }
@@ -968,6 +981,7 @@ impl Gpu {
             mip_layout,
             image_sampler,
             images: Vec::new(),
+            changes: 0,
             scenes3d: Default::default(),
             dirty3d: Vec::new(),
             bindings3d: Default::default(),
@@ -1191,10 +1205,16 @@ impl Gpu {
                 wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(f.w * 2), rows_per_image: Some(f.h) },
                 size,
             );
-            self.fields.insert(f.id, (tex.create_view(&Default::default()), now));
+            self.fields.insert(f.id, (tex.create_view(&Default::default()), now, tex));
         }
         let before = self.fields.len();
-        self.fields.retain(|_, e| now - e.1 < 120);
+        self.fields.retain(|_, e| {
+            let keep = now - e.1 < 120;
+            if !keep {
+                e.2.destroy();
+            }
+            keep
+        });
         if self.fields.len() != before {
             self.effect_groups.clear();
         }
@@ -1321,7 +1341,8 @@ impl Gpu {
                 }
                 let fresh = matches!(self.maps3d.get(&(image, srgb)), Some(m) if m.generation == generation);
                 if !fresh {
-                    let tex = self.build_map3d(&mut enc, image, srgb);
+                    let old = self.maps3d.remove(&(image, srgb)).map(|m| m.tex);
+                    let tex = self.build_map3d(&mut enc, image, srgb, old);
                     self.maps3d.insert((image, srgb), Map3d { tex, generation });
                     built = true;
                 }
@@ -1349,19 +1370,30 @@ impl Gpu {
     /// Image `image` as a straight-alpha map with a full mip chain, each level
     /// box-filtered from the one above (through an sRGB view for sRGB maps, so
     /// the average is taken in linear light).
-    fn build_map3d(&self, enc: &mut wgpu::CommandEncoder, image: u32, srgb: bool) -> wgpu::Texture {
+    /// `old` is the map this replaces: a surface redrawn every frame rebuilds
+    /// its map every frame, into the same texture while the size holds.
+    fn build_map3d(&self, enc: &mut wgpu::CommandEncoder, image: u32, srgb: bool, old: Option<wgpu::Texture>) -> wgpu::Texture {
         let img = self.images[image as usize].as_ref().unwrap();
-        let mips = 32 - img.w.max(img.h).max(1).leading_zeros();
-        let tex = self.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("map3d"),
-            size: wgpu::Extent3d { width: img.w.max(1), height: img.h.max(1), depth_or_array_layers: 1 },
-            mip_level_count: mips,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: IMAGE_FORMAT,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
-        });
+        let (w, h) = (img.w.max(1), img.h.max(1));
+        let mips = 32 - w.max(h).leading_zeros();
+        let tex = match old {
+            Some(t) if t.width() == w && t.height() == h && t.mip_level_count() == mips => t,
+            old => {
+                if let Some(t) = old {
+                    t.destroy();
+                }
+                self.device.create_texture(&wgpu::TextureDescriptor {
+                    label: Some("map3d"),
+                    size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+                    mip_level_count: mips,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: IMAGE_FORMAT,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::RENDER_ATTACHMENT,
+                    view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+                })
+            }
+        };
         let format = if srgb { wgpu::TextureFormat::Rgba8UnormSrgb } else { IMAGE_FORMAT };
         let level = |t: &wgpu::Texture, l: u32, f: wgpu::TextureFormat| {
             t.create_view(&wgpu::TextureViewDescriptor {
@@ -1423,9 +1455,17 @@ impl Gpu {
             };
             let view = img.tex.create_view(&Default::default());
             renderer.render(&mut enc, &view, img.w, img.h);
-            self.images[id as usize].as_mut().unwrap().generation += 1;
+            self.touch_image(id);
         }
         self.queue.submit([enc.finish()]);
+    }
+
+    /// Image `id`'s pixels changed.
+    fn touch_image(&mut self, id: u32) {
+        self.changes += 1;
+        if let Some(Some(img)) = self.images.get_mut(id as usize) {
+            img.generation = self.changes;
+        }
     }
 
     /// Image `id`'s texture and bind group, (re)made when its size or mip
@@ -1469,7 +1509,7 @@ impl Gpu {
 
     #[cfg(target_arch = "wasm32")]
     fn upload_external(&mut self, id: u32, source: wgpu::ExternalImageSource, w: u32, h: u32) {
-        self.images[id as usize].as_mut().unwrap().generation += 1;
+        self.touch_image(id);
         let img = self.images[id as usize].as_ref().unwrap();
         self.queue.copy_external_image_to_texture(
             &wgpu::CopyExternalImageSourceInfo { source, origin: wgpu::Origin2d::ZERO, flip_y: false },
@@ -1541,7 +1581,21 @@ impl Gpu {
 
     pub fn free_image(&mut self, id: u32) {
         self.drop_scene3d(id);
-        self.maps3d.retain(|(i, _), _| *i != id);
+        self.maps3d.retain(|(i, _), m| {
+            if *i == id {
+                m.tex.destroy();
+            }
+            *i != id
+        });
+        // Scenes sampling its (destroyed) maps let go of them, and bind afresh if the image returns.
+        for (scene, list) in &mut self.bindings3d {
+            for b in list.iter_mut().filter(|b| b.image == id) {
+                if let Some(r) = self.scenes3d.get_mut(scene) {
+                    r.remove_texture(b.tex);
+                }
+                b.seen = 0;
+            }
+        }
         if let Some(slot) = self.images.get_mut(id as usize)
             && let Some(img) = slot.take()
         {
@@ -1565,7 +1619,7 @@ impl Gpu {
         if self.clip_atlas.dim < dim || self.clip_atlas.layers < layers {
             let d = dim.max(self.clip_atlas.dim);
             let l = layers.max(self.clip_atlas.layers);
-            self.clip_atlas = ClipAtlas::new(&self.device, d, l);
+            std::mem::replace(&mut self.clip_atlas, ClipAtlas::new(&self.device, d, l))._tex.destroy();
             rebuild = true;
         }
         let table: Vec<ClipGpu> = frame
@@ -1615,7 +1669,7 @@ impl Gpu {
         let (w, h) = (img.w, img.h);
         let view = img.tex.create_view(&Default::default());
         self.render_sized(frame, geom, &view, w, h, true, [0.0; 4], None);
-        self.images[id as usize].as_mut().unwrap().generation += 1;
+        self.touch_image(id);
     }
 
     /// Image `id` sized `w`×`h`, for a surface to render into.
