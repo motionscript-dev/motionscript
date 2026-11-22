@@ -1,5 +1,13 @@
 # @motionscript/headless
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [fac631e]
+  - @motionscript/renderer@0.5.2
+  - @motionscript/browser@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes
