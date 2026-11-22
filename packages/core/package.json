@@ -1,6 +1,6 @@
 {
   "name": "@motionscript/core",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "type": "module",
   "description": "Engine-agnostic animation library for Motion Script: scenes, nodes, props, tweens and layout.",
   "repository": {

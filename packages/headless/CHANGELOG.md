@@ -1,5 +1,13 @@
 # @motionscript/headless
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [5c1a616]
+  - @motionscript/renderer@0.6.0
+  - @motionscript/browser@0.6.0
+
 ## 0.5.2
 
 ### Patch Changes
