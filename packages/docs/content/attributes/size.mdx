@@ -1,0 +1,202 @@
+---
+sidebar_position: 7
+---
+
+# Size
+
+`width` and `height` accept three value kinds: a fixed pixel number, `'fill'`, or `'hug'`.
+
+## Fixed size
+
+```ts
+Rect({ width: 300, height: 200, fill: 'royalblue' })
+```
+
+---
+
+## `'fill'`: expand to parent
+
+A node with `width: 'fill'` stretches to consume all available space along that axis in its parent container. Multiple `fill` siblings share the space equally (or by their `flex` ratio):
+
+```ts
+Rect({ flow: 'horizontal', gap: 16, padding: 24, fill: '#0f1117', width: 600, height: 100, children: [
+  Rect({ width: 'fill', height: 'fill', fill: 'royalblue' }), // takes half
+  Rect({ width: 'fill', height: 'fill', fill: 'tomato' }), // takes half
+] })
+```
+
+:::info Default sizing
+An unset `width`/`height` is resolved for you when the node is built — see [Default sizing](#default-sizing) below for the full rule, which differs between code and documents.
+:::
+
+---
+
+## `'hug'`: shrink to content
+
+A node with `width: 'hug'` measures its children and sizes itself to fit them exactly (plus any padding):
+
+```ts
+Rect({ flow: 'horizontal', gap: 12, width: 'hug', height: 'hug', padding: 20, fill: '#1e293b', children: [
+  Rect({ width: 60, height: 60, fill: 'tomato', cornerRadius: 8 }),
+  Rect({ width: 60, height: 60, fill: 'royalblue', cornerRadius: 8 }),
+] })
+```
+
+---
+
+## Default sizing
+
+An unset `width`/`height` on a layout container resolves to `'fill'` or `'hug'` **once, when the node is built, from the children it is built with**:
+
+| How the container is built | No children | Has children |
+|---|---|---|
+| `Rect` in code (`children` passed to the call: `Rect({ children })`) | `width: 'fill'`, `height: 'fill'` | `width: 'hug'`, `height: 'hug'` |
+| `rect` row in a document | `width: 'fill'`, `height: 'fill'` | `width: 'fill'`, `height: 'fill'` |
+
+An empty `Rect` fills: it is a shape as well as a container, so an empty one is a background or a spacer rather than nothing. Given children in code, it shrink-wraps them, like a Figma auto-layout frame.
+
+### Documents say `'hug'` explicitly
+
+A document row is built from its own `props` alone, before any child row has been attached, so the builder never sees children and every container row defaults like an empty one: `'fill'`. Rows that name a container as their `parentId` do not change that. Children added to a code-built `Rect` with `add()` after construction do not either. **A container in a document that should wrap its children sets both axes:**
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'row', type: 'rect', parentId: null, layerOrder: 0,
+      props: { flow: 'horizontal', width: 'hug', height: 'hug', gap: 12, padding: 20, fill: '#1e293b' } },
+    { id: 'a', type: 'rect', parentId: 'row', layerOrder: 0,
+      props: { width: 60, height: 60, fill: 'tomato', cornerRadius: 8 } },
+    { id: 'b', type: 'rect', parentId: 'row', layerOrder: 1,
+      props: { width: 60, height: 60, fill: 'royalblue', cornerRadius: 8 } },
+  ],
+};
+```
+
+Leave them off and the row fills its parent instead (the whole scene, for a root row). The rest of this page writes its containers as component calls, which build in code, so its examples hug without being told to.
+
+### A `'fill'` child needs somewhere to fill into
+
+`'hug'` and `'fill'` pull in opposite directions on the same axis: `'hug'` means "size me from my children," `'fill'` means "size me from my parent." If a container hugs an axis while a direct child fills that same axis, the child has nothing to fill into.
+
+To avoid that, a container built in code gets one refinement to its default: if a direct child is `'fill'` on the axis the container would otherwise hug — its **main axis**, the axis children are laid out along — the container's default for *that axis* becomes `'fill'` too, so the child has real space to expand into.
+
+| Container | Main axis | Cross axis |
+|---|---|---|
+| `Rect`, `flow: 'horizontal'` | width | height |
+| `Rect`, `flow: 'vertical'` | height | width |
+| `Rect`, `flow: 'grid'` | width (the axis its column tracks are cut from) | height |
+| `Rect`, `flow: 'freeform'` | width *and* height, checked independently | — |
+
+A fill child on the **cross** axis doesn't trigger this — it already anchors correctly to the size of the tallest/widest fixed sibling, which is what lets this column's tiles span its full hugged width without the column itself needing to fill:
+
+```ts
+Rect({ flow: 'vertical', gap: 16, padding: 20, fill: '#1e293b', children: [
+  Rect({ width: 'fill', height: 60, fill: 'tomato', cornerRadius: 8 }),
+  Rect({ width: 'fill', height: 60, fill: 'royalblue', cornerRadius: 8 }),
+] })
+```
+
+But a fill child on the **main** axis is the case that needs the container's own default to change. Here, the middle tile has no `width` — with children of its own it would hug, but it has none, so it defaults to `'fill'`. Because that's the row's main axis, the row's own default flips from `'hug'` to `'fill'` too, and the row spans all 1920px of available width instead of collapsing:
+
+```ts
+Rect({ flow: 'horizontal', padding: 48, gap: 48, children: [
+  Rect({ width: 400, height: 400, fill: '#6990DD' }),
+  Rect({ height: 400, fill: '#E8617C' }), // no width → defaults to 'fill'
+  Rect({ width: 400, height: 400, fill: '#F5C26B' }),
+] })
+```
+
+In a `1920`-wide scene, the two fixed tiles and the padding/gaps leave `928px` for the middle tile — it fills exactly that, and the row itself resolves to `'fill'` (`1920`px), not `'hug'`.
+
+This only changes the **inferred default**. An explicit `width`/`height` on the container always wins, even if it re-creates the hug + fill-with-nothing-to-fill-into combination:
+
+```ts
+Rect({ flow: 'horizontal', width: 'hug', padding: 48, gap: 48, children: [
+  Rect({ width: 400, height: 400, fill: '#6990DD' }),
+  Rect({ height: 400, fill: '#E8617C' }), // still defaults to 'fill'
+  Rect({ width: 400, height: 400, fill: '#F5C26B' }),
+] })
+```
+
+Forcing `width: 'hug'` here means the row genuinely has nothing to hug the middle tile to, so it collapses to `0` width. The row itself still hugs to a finite size from its fixed tiles, padding, and gaps — `992px` — rather than growing without bound.
+
+---
+
+## `flex`: proportional fill
+
+When multiple siblings use `width: 'fill'` (or `height: 'fill'`), the `flex` prop controls how much of the free space each one gets. The default is `1`, giving equal shares.
+
+```ts
+Rect({ flow: 'horizontal', gap: 8, fill: '#0f1117', width: 600, height: 80, children: [
+  Rect({ flex: 2, height: 'fill', fill: 'royalblue' }), // takes 2/3
+  Rect({ flex: 1, height: 'fill', fill: 'tomato' }), // takes 1/3
+] })
+```
+
+Setting `flex` without an explicit `width`/`height` defaults both to `'fill'` automatically.
+
+---
+
+## `size`: shorthand for both axes
+
+`size` is sugar for setting `width` and `height` to the same value at once. It accepts the same three value kinds — a fixed number, `'fill'`, or `'hug'`:
+
+```ts
+Rect({ size: 200, fill: 'royalblue' })
+Rect({ size: 'fill', fill: 'royalblue' })
+```
+
+An explicit `width` or `height` alongside `size` wins on that axis:
+
+```ts
+Rect({ size: 200, width: 100, fill: 'royalblue' }) // width: 100, height: 200
+```
+
+`size` works everywhere `width`/`height` do — in a node's props, a `set` stamp and a `to` tween:
+
+```tsx
+{ id: 'resize', type: 'set', targetId: 'box', at: 0, args: { size: 250 } },
+{ id: 'grow', type: 'to', targetId: 'box', at: 0.5, duration: 0.8,
+  easing: { kind: 'out' }, args: { size: 400 } },
+```
+
+---
+
+## Animating size
+
+Fixed sizes animate smoothly with a `to` command. Switching between fixed and `'fill'`/`'hug'` also cross-fades:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 100, height: 100, fill: 'royalblue' } },
+  ],
+  commands: [
+    // Grow
+    { id: 'grow', type: 'to', targetId: 'box', at: 0, duration: 0.8,
+      easing: { kind: 'out' }, args: { width: 400, height: 200 } },
+
+    // Then shrink back
+    { id: 'shrink', type: 'to', targetId: 'box', at: 0.8, duration: 0.6,
+      args: { width: 100, height: 100 } },
+  ],
+};
+```
+
+---
+
+## Measuring layout size
+
+After layout runs, a node reports its resolved pixel size. This is for code that holds the node itself: one built with `new`, which is typed as the node (a call returns an element to hand on, not a node to read):
+
+```ts
+const box = new Rect({ flow: 'horizontal', gap: 12, children: [/* … */] });
+
+const w = box.measuredWidth;
+const h = box.measuredHeight;
+```
+
+A binding that reads them is re-evaluated on every read, so it always sees the current layout.

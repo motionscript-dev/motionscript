@@ -1,0 +1,254 @@
+---
+sidebar_position: 8
+---
+
+# Layout
+
+`Rect` is both a shape and a flex layout container. Set `flow` to arrange its children automatically.
+
+## Layout modes
+
+| `flow` | Behavior |
+|---|---|
+| `'horizontal'` | Children placed side by side (left to right) |
+| `'vertical'` | Children stacked top to bottom |
+| `'freeform'` | Children overlapping, centered by default |
+| `'grid'` | Children placed into `columns` equal column tracks |
+
+---
+
+## Horizontal
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'row', type: 'rect', parentId: null, layerOrder: 0,
+      props: { flow: 'horizontal', width: 'hug', height: 'hug', gap: 24, padding: 32, fill: '#1e293b', cornerRadius: 16 } },
+    { id: 'red', type: 'rect', parentId: 'row', layerOrder: 0,
+      props: { width: 80, height: 80, fill: 'tomato', cornerRadius: 8 } },
+    { id: 'blue', type: 'rect', parentId: 'row', layerOrder: 1,
+      props: { width: 80, height: 80, fill: 'royalblue', cornerRadius: 8 } },
+    { id: 'green', type: 'rect', parentId: 'row', layerOrder: 2,
+      props: { width: 80, height: 80, fill: 'seagreen', cornerRadius: 8 } },
+  ],
+};
+```
+
+`parentId` puts the three squares inside the row, and `layerOrder` is the order the row lays them out in. The snippets below show only the node tree, as component calls for brevity: each call is one of these rows, with `parentId` naming the call whose `children` it sits in. A call builds in code, where a container with children hugs them unless told otherwise; as a row, a container that should hug sets `width: 'hug'` and `height: 'hug'` (see [Default sizing](/docs/attributes/size#default-sizing)).
+
+---
+
+## Vertical
+
+```ts
+Rect({ flow: 'vertical', gap: 16, padding: 24, fill: '#1e293b', cornerRadius: 12, children: [
+  Rect({ width: 'fill', height: 60, fill: 'royalblue', cornerRadius: 8 }),
+  Rect({ width: 'fill', height: 60, fill: 'tomato', cornerRadius: 8 }),
+  Rect({ width: 'fill', height: 60, fill: 'seagreen', cornerRadius: 8 }),
+] })
+```
+
+---
+
+## Freeform
+
+Children are layered in z-order, centered within the container:
+
+```ts
+Rect({ flow: 'freeform', width: 300, height: 300, children: [
+  Rect({ width: 300, height: 300, fill: 'royalblue', cornerRadius: 16 }),
+  Text({ text: 'Stacked', fontSize: 32, fontWeight: 700, fill: 'white' }),
+] })
+```
+
+---
+
+## Gap
+
+`gap` sets the space between children along the layout axis:
+
+```ts
+Rect({ flow: 'horizontal', gap: 32, children: [/* … */] })
+Rect({ flow: 'vertical', gap: 8, children: [/* … */] })
+```
+
+Pass `gap: 'auto'` to distribute children evenly (space-between):
+
+```ts
+Rect({ flow: 'horizontal', gap: 'auto', width: 600, height: 80, padding: 24, children: [
+  Rect({ width: 60, height: 60, fill: 'tomato' }),
+  Rect({ width: 60, height: 60, fill: 'royalblue' }),
+  Rect({ width: 60, height: 60, fill: 'seagreen' }),
+] })
+```
+
+`crossGap` is the same measurement on the other axis — the space between wrapped
+lines, and between a grid's rows. Leave it out and it follows `gap`.
+
+---
+
+## Wrapping
+
+`wrap` breaks a `horizontal` or `vertical` run onto a new line once it runs out
+of main-axis room:
+
+```ts
+Rect({
+  flow: 'horizontal', wrap: true, gap: 16, crossGap: 24, width: 640, height: 'hug',
+  children: tags.map((t) => Tag({ label: t })),
+})
+```
+
+Wrapping needs a bounded main axis to break against, so a run whose main axis is
+`'hug'` stays on one line. `fill` on the main axis isn't divided inside a wrapped
+run either — free space belongs to a line, and which line a child lands on is
+what the pass is still deciding — so a fill-main child takes a line to itself.
+Cross-axis `fill` *is* honoured, against its own line's thickness rather than the
+whole stack.
+
+---
+
+## Grid
+
+`flow: 'grid'` cuts `columns` equal column tracks out of the content box. Rows
+size to their tallest cell, or divide the height equally when the container has a
+bounded one. `gap` is the column gap and `crossGap` the row gap.
+
+```ts
+Rect({
+  flow: 'grid', columns: 3, gap: 16, crossGap: 16, width: 720, padding: 24,
+  children: cards.map((c) => Card(c)),
+})
+```
+
+Children auto-flow left to right. A child can place itself explicitly with
+`column`/`row` (1-based) or claim more than one cell with `colSpan`/`rowSpan`:
+
+```ts
+Rect({ flow: 'grid', columns: 3, gap: 16, children: [
+  Rect({ colSpan: 3, height: 120, fill: '#6990DD' }),
+  Rect({ height: 120, fill: '#E8617C' }),
+  Rect({ height: 120, fill: '#F5C26B' }),
+  Rect({ height: 120, fill: '#E8617C' }),
+] })
+```
+
+---
+
+## Alignment
+
+`align` controls child placement on the **cross axis**. Pass a named position
+(`'center'`, `'topLeft'`, `'topRight'`, `'bottomLeft'`, `'bottomRight'`,
+`'topCenter'`, `'bottomCenter'`, `'centerLeft'`, `'centerRight'`) or an explicit
+`{ x, y }` pivot. On each axis, `x` is `-1` (left) … `1` (right) and `y` is `-1`
+(bottom) … `1` (top); `0` centers. It defaults to `'center'`.
+
+```ts
+// Horizontal: cross axis is vertical — align children to the top
+Rect({ flow: 'horizontal', gap: 20, align: 'topCenter', children: [
+  Rect({ width: 60, height: 120, fill: 'tomato' }),
+  Rect({ width: 60, height: 60, fill: 'royalblue' }),
+] })
+
+// Vertical: cross axis is horizontal — x: 1 aligns children to the right
+Rect({ flow: 'vertical', gap: 12, align: { x: 1, y: 0 }, children: [
+  Rect({ width: 200, height: 50, fill: 'tomato' }),
+  Rect({ width: 100, height: 50, fill: 'royalblue' }),
+] })
+```
+
+---
+
+## Padding
+
+Inset the layout's content area from the container's edges:
+
+```ts
+// Uniform
+Rect({ flow: 'vertical', gap: 12, padding: 24, children: [/* … */] })
+
+// Per-side
+Rect({ flow: 'vertical', gap: 12, padding: { top: 32, bottom: 32, left: 16, right: 16 }, children: [/* … */] })
+
+// Symmetric shorthand
+Rect({ flow: 'horizontal', gap: 16, padding: { horizontal: 24, vertical: 16 }, children: [/* … */] })
+```
+
+---
+
+## Nesting layouts
+
+Layouts can be nested arbitrarily deep:
+
+```ts
+Rect({ flow: 'vertical', gap: 16, padding: 32, fill: '#0f1117', width: 'fill', height: 'fill', children: [
+  Rect({ flow: 'horizontal', gap: 16, width: 'fill', children: [
+    Rect({ width: 'fill', height: 200, fill: '#1e293b', cornerRadius: 12 }),
+    Rect({ width: 'fill', height: 200, fill: '#1e293b', cornerRadius: 12 }),
+  ] }),
+  Rect({ width: 'fill', height: 120, fill: '#1e293b', cornerRadius: 12 }),
+] })
+```
+
+---
+
+## Animating layout props
+
+All layout props are animatable with a `to` command:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'row', type: 'rect', parentId: null, layerOrder: 0,
+      props: { flow: 'horizontal', width: 'hug', height: 'hug', gap: 8, padding: 24, fill: '#1e293b', cornerRadius: 16 } },
+    { id: 'red', type: 'rect', parentId: 'row', layerOrder: 0,
+      props: { width: 80, height: 80, fill: 'tomato', cornerRadius: 8 } },
+    { id: 'blue', type: 'rect', parentId: 'row', layerOrder: 1,
+      props: { width: 80, height: 80, fill: 'royalblue', cornerRadius: 8 } },
+    { id: 'green', type: 'rect', parentId: 'row', layerOrder: 2,
+      props: { width: 80, height: 80, fill: 'seagreen', cornerRadius: 8 } },
+  ],
+  commands: [
+    // Expand gap
+    { id: 'widen', type: 'to', targetId: 'row', at: 0, duration: 0.6,
+      easing: { kind: 'out' }, args: { gap: 48 } },
+
+    // Then switch to a vertical layout
+    { id: 'stack', type: 'to', targetId: 'row', at: 0.6, duration: 0.5,
+      easing: { kind: 'out' }, args: { flow: 'vertical' } },
+  ],
+};
+```
+
+---
+
+## Adding and removing children
+
+A child joins a container through a node row whose `parentId` names the container. The row's `startAt` is when it arrives, and its `endAt` is when it leaves. Continuing the example above, in `nodes`:
+
+```tsx
+// Insert between red and blue at 1.2s: any layerOrder between theirs puts it there
+{ id: 'card', type: 'rect', parentId: 'row', layerOrder: 0.5, startAt: 1.2,
+  props: { width: 200, height: 80, fill: '#4f80ff', cornerRadius: 8 } },
+
+// Take red out at 2s
+{ id: 'red', type: 'rect', parentId: 'row', layerOrder: 0, endAt: 2,
+  props: { width: 80, height: 80, fill: 'tomato', cornerRadius: 8 } },
+```
+
+Both are instant — the layout reflows on the frame a child arrives or leaves. To ease one in, add it collapsed and tween it open from the same instant:
+
+```tsx
+nodes: [
+  { id: 'card', type: 'rect', parentId: 'row', layerOrder: 0.5, startAt: 1.2,
+    props: { width: 200, height: 0, opacity: 0, fill: '#4f80ff', cornerRadius: 8 } },
+],
+commands: [
+  { id: 'open-card', type: 'to', targetId: 'card', at: 1.2, duration: 0.4,
+    easing: { kind: 'out' }, args: { height: 80, opacity: 1 } },
+],
+```
+
+To ease one out, tween it closed and place its `endAt` where that tween ends.

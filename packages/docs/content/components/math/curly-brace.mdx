@@ -1,0 +1,90 @@
+---
+sidebar_position: 40
+---
+
+# CurlyBrace
+
+`CurlyBrace` draws a curly brace along one side of another node, or of one
+part of a formula, with an optional label at its tip. Naming nothing, it spans
+two points of its own. It ships in `@motionscript/math`; register the package's
+`NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'eq', type: 'latex', parentId: null, layerOrder: 0,
+      props: { latex: 'a^2 + b^2 = c^2', fontSize: 80, fill: 'white' } },
+    // Under the a^2 of the formula, labelled with a typeset formula.
+    { id: 'brace', type: 'curlyBrace', parentId: null, layerOrder: 1,
+      props: { on: 'eq', part: 'a^2', label: '$\\text{a term}$', end: 0 } },
+  ],
+  commands: [
+    { id: 'draw', type: 'progressTo', targetId: 'brace', at: 0, duration: 0.6, args: { end: 1 } },
+    // Slide it to the other term.
+    { id: 'move', type: 'retargetTo', targetId: 'brace', at: 1, duration: 0.8, args: { part: 'b^2' } },
+  ],
+};
+```
+
+A brace that follows nothing runs from `tail` to `head`, in pixels from its own
+position:
+
+```tsx
+{ id: 'span', type: 'curlyBrace', parentId: null, layerOrder: 0,
+  props: { x: 0, y: -120, tail: { x: 150, y: 0 }, head: { x: -150, y: 0 },
+    label: 'width', fontFamily: 'Inter' } },
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `side` | `'below' \| 'above' \| 'left' \| 'right'` | `'below'` | Which side of the target the brace runs along. Not animatable |
+| `tail` | `Vector2` | `{ x: -80, y: 0 }` | One end of a brace that follows nothing, in pixels from its own position |
+| `head` | `Vector2` | `{ x: 80, y: 0 }` | The other end. The brace bulges to the left of tail to head |
+| `clearance` | `number` | `8` | Pixels between the target and the brace |
+| `reach` | `number` | `18` | Pixels from the brace's ends to its tip (at least `2`) |
+| `label` | `string` | `''` | Text at the tip; written between dollar signs it is typeset. Not animatable |
+| `labelSize` | `number` | `28` | The label's size in pixels |
+| `labelColor` | `Color` | `'#e5e7eb'` | The label's colour |
+| `fontFamily` | `string` | `''` | The label's font, for plain text |
+| `stroke` | `StrokeProp \| StrokeProp[]` | 3 px, `'#e5e7eb'`, round caps and joins | The brace's line |
+
+Every mark drawn on another node shares these:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `on` | `string` | `''` | The id of the node the brace is drawn on. Left empty, it is the formula the brace sits inside |
+| `part` | `string` | `''` | One part of that node, by its source, where it has parts: `x^2` of a formula |
+| `occurrence` | `number` | `1` | Which of the places the part is written, counted from 1 |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `retargetTo` | `{ on?, part?, occurrence? }` | The brace sliding onto another node or part. Naming a new `on` without a `part` takes the whole node |
+| `progressTo` | `{ start?, end? }` | Drawing the brace on |
+| `flash` | `{ portion? }` | A stretch of the brace, `portion` of its length (default `0.25`), running along it |
+
+```tsx
+{ id: 'to-c', type: 'retargetTo', targetId: 'brace', at: 2, duration: 0.8,
+  args: { part: 'c^2' } },
+```
+
+## Notes
+
+- It is drawn where its target is, wherever the two are in the tree: at the root,
+  or inside the formula it marks with `on` left empty. It has no size of its own
+  and takes no place in a layout.
+- It takes a [`stroke`](/docs/attributes/strokes) and no `fill`.
+- `clearance`, `reach`, `labelSize`, `tail` and `head` are pixels, also inside
+  a coordinate system.
+- Only a brace that follows nothing offers `tail` and `head` as handles to drag.
+- A label between dollar signs is typeset; plain text needs a `fontFamily`, such as `'Inter'`.
+- Manim's `Brace`, `BraceLabel` and `BraceBetweenPoints`.
+- Related: [`emphasisMark`](/docs/components/math/emphasis-mark),
+  [`angleMark`](/docs/components/math/angle-mark),
+  [`latex`](/docs/components/math/latex).

@@ -262,7 +262,7 @@ Commits follow [Conventional Commits 1.0](https://www.conventionalcommits.org/en
 
 Scopes in use:
 
-- Packages: `core`, `renderer`, `browser`, `headless`, `react`, `sdk`, `cli`, `e2e`
+- Packages: `core`, `renderer`, `browser`, `headless`, `react`, `sdk`, `cli`, `e2e`, `docs`
 - Component kits: `charts`, `geography`, `code`, `math`
 - Other workspaces: `apps` (`apps/engine`, `apps/react`, `apps/shaders`)
 - Repo-wide: `deps`, `release`, `changeset`, `ci`

@@ -1,0 +1,95 @@
+---
+title: Overview
+sidebar_position: 1
+---
+
+# Math
+
+`@motionscript/math` draws mathematics: coordinate systems, plots of equations,
+the marks that go on a graph, formulas, diagrams and 3D graphs. Its components
+are composable. An `axes2d` is a container, and whatever you put inside it sits
+in its graph coordinates.
+
+```bash
+npm install @motionscript/math @motionscript/sdk
+```
+
+```ts title="src/project.ts"
+import { NODES } from '@motionscript/math/v1';
+
+export const nodes = NODES;
+```
+
+Coming from Manim? [Coming from Manim](/docs/components/math/coming-from-manim)
+maps its classes and animations to these components.
+
+## A graph
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 450, padding: 32, xRange: [-7, 7], yRange: [-2, 2], fontFamily: 'Inter' } },
+    { id: 'sine', type: 'functionPlot', parentId: 'axes', layerOrder: 0,
+      props: { expression: 'sin(x)', end: 0 } },
+    { id: 'note', type: 'text', parentId: 'axes', layerOrder: 1,
+      props: { x: 1.57, y: 1.4, text: 'peak', fontSize: 22, fontFamily: 'Inter', fill: 'white' } },
+  ],
+  commands: [
+    { id: 'draw', type: 'progressTo', targetId: 'sine', at: 0, duration: 1, args: { end: 1 } },
+    { id: 'zoom', type: 'rangeTo', targetId: 'axes', at: 1, duration: 1, args: { xRange: [0, 4] } },
+  ],
+};
+```
+
+The text's `x` and `y` are graph units. It keeps its font size, and when
+`rangeTo` zooms the axes it stays on `(1.57, 1.4)`. That is true of any node
+inside a coordinate system: a shape, an image, a formula.
+
+## Where a mark goes
+
+Where a mark is placed says what it reads:
+
+| Goes | Marks | |
+|---|---|---|
+| Inside a plot | `tangentLine`, and a `plotPoint` or `dropLines` that should follow the curve | It reads the plot it is in, and appears and leaves with it |
+| Beside the plots, in the coordinate system | `curveArea`, `riemannSum` | It names its plot in `on` (an area may name a second in `under`), and has its own life on the timeline |
+| In the coordinate system, on its own | `plotPoint`, `dropLines`, `vectorArrow`, `pointsPlot` | Free: placed by its own graph `x`/`y` |
+
+```tsx
+{ id: 'curve', type: 'functionPlot', parentId: 'axes', layerOrder: 0, props: { expression: '2(x - 5)^2' } },
+{ id: 'dot', type: 'plotPoint', parentId: 'curve', layerOrder: 0, props: { x: '=[t]' } },
+{ id: 'area', type: 'curveArea', parentId: 'axes', layerOrder: 1, props: { on: 'curve', domain: [4, 6] } },
+```
+
+The dot's height is the curve's. Its `x` follows the variable `t`, so one
+`variableTo` command slides it along the curve:
+
+```tsx
+variables: [{ id: 't', value: 0 }],
+commands: [{ id: 'slide', type: 'variableTo', targetId: 't', at: 0, duration: 2, args: { value: 5 } }],
+```
+
+Any number of props can follow the same variable. A `tangentLine`, a
+`dropLines` and a dot on a `numberLine` bound to `t` all move together.
+
+## Paints
+
+Each mark takes only the paints it draws. A plot, a tangent, drop lines and an
+arrow are a `stroke` with no `fill`; an area is a `fill` with no `stroke`; a
+Riemann sum and a dot take both; a field is one `stroke` for every arrow or line.
+A plot or an arrow draws on with `progressTo`; an area, a Riemann sum, a dot and a
+field have no outline trim, and a `tracedPath` appears with `traceTo`.
+
+## Components
+
+| Group | Components |
+|---|---|
+| Formulas | [Latex](/docs/components/math/latex), [LatexMatrix](/docs/components/math/latex-matrix) |
+| Coordinate systems | [NumberLine](/docs/components/math/number-line), [Axes2d](/docs/components/math/axes2d), [NumberPlane](/docs/components/math/number-plane), [PolarPlane](/docs/components/math/polar-plane) |
+| Plots | [FunctionPlot](/docs/components/math/function-plot), [PointsPlot](/docs/components/math/points-plot), [VectorField](/docs/components/math/vector-field), [StreamLines](/docs/components/math/stream-lines), [TracedPath](/docs/components/math/traced-path) |
+| Marks | [PlotPoint](/docs/components/math/plot-point), [VectorArrow](/docs/components/math/vector-arrow), [CurveArea](/docs/components/math/curve-area), [RiemannSum](/docs/components/math/riemann-sum), [TangentLine](/docs/components/math/tangent-line), [DropLines](/docs/components/math/drop-lines) |
+| Annotations | [CurlyBrace](/docs/components/math/curly-brace), [AngleMark](/docs/components/math/angle-mark), [EmphasisMark](/docs/components/math/emphasis-mark) |
+| Structures | [NetworkGraph](/docs/components/math/network-graph), [SampleSpace](/docs/components/math/sample-space) |
+| 3D | [Axes3d](/docs/components/math/axes3d), [SurfacePlot3d](/docs/components/math/surface-plot3d), [CurvePlot3d](/docs/components/math/curve-plot3d), [PlotPoint3d](/docs/components/math/plot-point3d), [VectorArrow3d](/docs/components/math/vector-arrow3d) |

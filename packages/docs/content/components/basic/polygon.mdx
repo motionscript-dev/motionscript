@@ -1,0 +1,69 @@
+---
+sidebar_position: 5
+---
+
+import { PolygonCanvas } from '@site/src/components/docs/node-scenes';
+
+# Polygon
+
+A regular convex polygon inscribed within the node's layout rect. All sides and angles are equal.
+
+<PolygonCanvas />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    // Hexagon
+    { id: 'hexagon', type: 'polygon', parentId: null, layerOrder: 0,
+      props: { sides: 6, width: 370, height: 370, fill: '#6990DD' } },
+
+    // Triangle with rounded vertices
+    { id: 'triangle', type: 'polygon', parentId: null, layerOrder: 1,
+      props: { sides: 3, width: 370, height: 370, fill: '#E8617C', cornerRadius: 12 } },
+
+    // Pentagon with chamfered corners
+    { id: 'pentagon', type: 'polygon', parentId: null, layerOrder: 2,
+      props: { sides: 5, width: 370, height: 370, fill: '#F5C26B',
+        cornerRadius: 16, cornerStyle: 'angled' } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sides` | `number` | `5` | Number of sides. Must be ≥ 3 |
+| `cornerRadius` | `number` | `0` | Vertex rounding radius in pixels |
+| `cornerStyle` | `'rounded' \| 'angled'` | `'rounded'` | Vertex shape: circular arc (`'rounded'`) or chamfer cut (`'angled'`) |
+
+## Animating
+
+All props animate with a `to` command. Animate `sides` to morph between polygon shapes, or `cornerRadius` to round out vertices:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'shape', type: 'polygon', parentId: null, layerOrder: 0,
+      props: { sides: 3, width: 370, height: 370, fill: '#6990DD' } },
+  ],
+  commands: [
+    // Triangle → hexagon
+    { id: 'to-hexagon', type: 'to', targetId: 'shape', at: 0, duration: 1.2,
+      easing: { kind: 'inOut' }, args: { sides: 6 } },
+
+    // Back to a triangle
+    { id: 'to-triangle', type: 'to', targetId: 'shape', at: 1.2, duration: 1.2,
+      easing: { kind: 'inOut' }, args: { sides: 3 } },
+  ],
+};
+```
+
+## Notes
+
+- `cornerStyle` takes a single scalar value (not the per-corner shorthand that `Rect` accepts) because polygon vertices don't map to named corners.
+- The polygon is always inscribed inside the node's bounding rect: the outermost vertices touch the edges of the rect.

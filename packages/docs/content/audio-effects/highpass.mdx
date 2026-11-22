@@ -1,0 +1,49 @@
+---
+sidebar_position: 2
+---
+
+# High-Pass
+
+Attenuates frequencies below the cutoff, letting the highs through. Useful for removing low-frequency rumble, thinning out a mix, or isolating vocals and high-pitched elements.
+
+## Usage
+
+```ts
+import { AudioEffects, SoundNode } from '@motionscript/sdk/v1';
+
+// Via AudioEffects builder — remove everything below 200 Hz
+SoundNode({ src: './voice.mp3', effects: AudioEffects.highpass(200) })
+
+// With resonance boost at the cutoff
+SoundNode({ src: './voice.mp3', effects: AudioEffects.highpass({ frequency: 300, q: 2 }) })
+
+// Via raw object
+SoundNode({ src: './voice.mp3', effects: [{ type: 'highpass', frequency: 200 }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'highpass'` | – | Effect identifier |
+| `frequency` | `number` | – | Cutoff frequency in Hz. Content below this is rolled off |
+| `q` | `number` | `1` | Resonance (Q factor) at the cutoff. Higher values add a peak just before the roll-off |
+
+## Animating
+
+Sweep the cutoff frequency to create a filter-open effect:
+
+```ts
+import { AudioEffects, SoundNode, ramp } from '@motionscript/sdk/v1';
+
+// Sweep cutoff from 2000 Hz down to 80 Hz over the first 3 seconds, then hold
+SoundNode({ src: './music.mp3', effects: AudioEffects.highpass(ramp(2000, 80, 3).hold()) })
+```
+
+An effect param is automated with a ramp rather than a tween: sound is scheduled once, ahead of playback, so a value written frame by frame never reaches it. See [Fades and automation](../attributes/audio#fades-and-automation) for how a ramp lines up with the clip.
+
+## Notes
+
+- A Q of `1` gives a gentle Butterworth-style roll-off. Values above `5` create a noticeable resonant peak that can be used as a creative effect.
+- High-pass and low-pass filters can be chained to form a band-pass: `AudioEffects.highpass(200).lowpass(3000)`.
+- Both `frequency` and `q` accept a ramp.

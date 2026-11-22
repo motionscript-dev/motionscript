@@ -1,0 +1,49 @@
+---
+sidebar_position: 3
+---
+
+# Low-Pass
+
+Attenuates frequencies above the cutoff, letting the lows through. Use it to muffle audio, simulate sound heard through a wall or underwater, or soften a harsh mix.
+
+## Usage
+
+```ts
+import { AudioEffects, SoundNode } from '@motionscript/sdk/v1';
+
+// Via AudioEffects builder — muffle everything above 1000 Hz
+SoundNode({ src: './music.mp3', effects: AudioEffects.lowpass(1000) })
+
+// With resonance boost at the cutoff
+SoundNode({ src: './music.mp3', effects: AudioEffects.lowpass({ frequency: 800, q: 3 }) })
+
+// Via raw object
+SoundNode({ src: './music.mp3', effects: [{ type: 'lowpass', frequency: 1000 }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'lowpass'` | – | Effect identifier |
+| `frequency` | `number` | – | Cutoff frequency in Hz. Content above this is rolled off |
+| `q` | `number` | `1` | Resonance (Q factor) at the cutoff. Higher values add a peak just before the roll-off |
+
+## Animating
+
+Animate the cutoff to move between muffled and clear — a common technique for scene transitions. Here the audio opens up as the clip begins:
+
+```ts
+import { AudioEffects, SoundNode, ramp, easeIn } from '@motionscript/sdk/v1';
+
+// Start muffled and open up over the first 2 seconds, then hold
+SoundNode({ src: './ambient.mp3', effects: AudioEffects.lowpass(ramp(400, 20000, 2, { ease: easeIn() }).hold()) })
+```
+
+An effect param is automated with a ramp rather than a tween: sound is scheduled once, ahead of playback, so a value written frame by frame never reaches it. See [Fades and automation](../attributes/audio#fades-and-automation) for how a ramp lines up with the clip.
+
+## Notes
+
+- `20000` Hz is effectively unfiltered for most audio content, so use it as the "pass-through" end of a sweep.
+- Pair with a high-pass filter to isolate a frequency band: `AudioEffects.highpass(200).lowpass(3000)`.
+- Both `frequency` and `q` accept a ramp.

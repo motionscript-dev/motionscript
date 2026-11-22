@@ -1,0 +1,124 @@
+---
+sidebar_position: 3
+---
+
+# BarChart
+
+A grouped, stacked or percent bar chart, vertical or horizontal: one slot per row
+of the table, one bar per series in each slot, with a value axis, category captions
+and a legend. Reach for it to compare amounts across categories. It ships in
+`@motionscript/charts`; register the package's `NODES`
+([overview](/docs/components/charts/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'chart', type: 'barChart', parentId: null, layerOrder: 0,
+      props: {
+        width: 760, height: 460,
+        data: [
+          { month: 'Jan', revenue: 10, cost: 4 },
+          { month: 'Feb', revenue: 14, cost: 6 },
+          { month: 'Mar', revenue: 12, cost: 9 },
+        ],
+        categoryField: 'month',
+        series: [
+          { field: 'revenue', label: 'Revenue' },
+          { field: 'cost', label: 'Cost' },
+        ],
+        valueAxis: { label: 'USD (k)', format: '$#,##0' },
+        // Figures at the end of each bar.
+        style: { fontFamily: 'Inter', values: 'end' },
+      } },
+  ],
+  commands: [
+    // Axes, then the bars rise from the baseline, then the legend.
+    { id: 'in', type: 'enter', targetId: 'chart', at: 0, duration: 1.4, args: {} },
+    // February stays full; January and March dim, captions and bars alike.
+    { id: 'feb', type: 'spotlightCategory', targetId: 'chart', at: 2, duration: 0.4,
+      args: { categoryIndex: 1 } },
+    { id: 'clear', type: 'clearCategory', targetId: 'chart', at: 3, duration: 0.4, args: {} },
+    // Cost narrows away and Revenue widens into its space.
+    { id: 'hide', type: 'hideSeries', targetId: 'chart', at: 4, duration: 0.35,
+      args: { seriesIndex: 1 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `data` | `DataRecord[]` | `[]` | The table, one row per category |
+| `categoryField` | `string` | `''` | The column captioning each slot |
+| `series` | `{ field, label?, fill?, enabled? }[]` | `[]` | One bar per entry in every slot: the column it plots, its legend caption (the column's name when left out), a paint override, and whether it shows at first |
+| `orientation` | `'vertical' \| 'horizontal'` | `'vertical'` | Columns rise from a row of categories, or bars grow right from a column of them. Read once, when the node is built |
+| `stack` | `'none' \| 'stacked' \| 'percent'` | `'none'` | `'none'` groups the series side by side; `'stacked'` stacks them into one bar per category; `'percent'` stacks them as shares of 100 |
+| `valueAxis` | `{ label?, range?, ticks?, format? }` | `{}` | The value axis's domain. `range` defaults to the data's bounds, zero included, rounded out to tidy values; `ticks` to five across it. `format` also writes the figures on the bars |
+| `categoryAxis` | `{ label? }` | `{}` | Only `label` is read: a caption beside the category axis. The slots are the rows |
+| `style` | chart style | the default style | Colours, type, grid, bars, value labels and legend; see [Style](#style) |
+| `growth` | `number` | `1` | How far every bar has risen from the baseline, `0` to `1`. `enter` tweens it |
+| `spotlight` | `number \| null` | `null` | The row index of the spotlit category, or none |
+| `spotlightReveal` | `number` | `0` | How far the category spotlight has dimmed the rest, `0` to `1` |
+
+The axis domain fields are described on the [overview](/docs/components/charts/overview#the-value-axis).
+
+## Style
+
+The bar chart draws the shared colour, text, grid and legend groups (see
+[Styling](/docs/components/charts/styling)) plus these:
+
+| Field | Default | |
+|---|---|---|
+| `barRadius` | `10` | Corner radius of a bar's far end, in px. Only a stack's outer end rounds |
+| `barWidth` | `0.7` | The share of its category slot a group of bars fills, `0.05` to `1`; the rest is the channel between categories |
+| `barGap` | `6` | Gap between grouped bars, in px. Ignored when stacked |
+| `values` | `'none'` | Print each bar's figure at its `'end'` or `'inside'` it. Read once, when the node is built |
+
+`grid` is literal: it names the lines drawn, not an axis. A vertical bar chart's
+value ticks run horizontally, so the default `'horizontal'` suits it; a horizontal
+bar chart wants `grid: 'vertical'`.
+
+```tsx
+// Horizontal bars, ruled along the value axis.
+props: { orientation: 'horizontal', style: { grid: 'vertical', values: 'inside' } }
+```
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `enter` | none | The whole entrance: the value markers and category captions stagger in, the bars rise, the legend comes up |
+| `showSeries` | `seriesIndex` | Brings a hidden series' bars back, the group reflowing to make room, with its legend entry. Default 0.35 s |
+| `hideSeries` | `seriesIndex` | Narrows a series' bars away (stacked, sinks them out of the stack) while the rest widen into the space. Default 0.35 s |
+| `spotlightSeries` | `seriesIndex` | Fades every other series and its legend entry. Nothing moves. Default 0.35 s |
+| `spotlightCategory` | `categoryIndex` | Fades every other category's bars and caption. Moves straight to a new category if one is already lit. Default 0.4 s |
+| `clearCategory` | none | Brings every category back to full. Default 0.4 s |
+
+Every command eases out unless the command row sets an `easing`.
+
+```tsx
+{ id: 'lit', type: 'spotlightSeries', targetId: 'chart', at: 2, duration: 0.35,
+  args: { seriesIndex: 0 } },
+```
+
+A `to` command that restates `valueAxis.range` or `ticks` tweens from the axis as
+drawn, so the bars rescale without a cut:
+
+```tsx
+{ id: 'rescale', type: 'to', targetId: 'chart', at: 2, duration: 1,
+  args: { valueAxis: { range: [0, 40] } } },
+```
+
+## Notes
+
+- Place it anywhere in a 2D scene. It takes children, laid out freeform over the chart. A new one in an editor starts 760 x 460.
+- Zero is always on the auto scale, and the bars grow from it, so a negative value grows the other way. If you crop `valueAxis.range` above zero, the bars rise from the plot floor instead.
+- Grouped, the bars divide the slot between the series in proportion to how much of it each currently claims; that share is what `hideSeries` tweens to `0`, so a hidden series leaves no hole. A series with `enabled: false` starts with no share.
+- Stacked or percent, only a stack's outer end rounds; the segments inside stay square, and `barGap` is ignored.
+- The category captions are read once, when the node is built. A `set` of `data` re-measures the bars but does not re-caption the slots.
+- `spotlightCategory` with an index past the last row, and `clearCategory` with nothing lit, hold their slot and change nothing.
+- Related: [LineChart](/docs/components/charts/line-chart), [RadialChart](/docs/components/charts/radial-chart), [Styling](/docs/components/charts/styling).

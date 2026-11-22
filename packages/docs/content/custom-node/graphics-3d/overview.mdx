@@ -1,0 +1,176 @@
+---
+sidebar_position: 1
+---
+
+# 3D Graphics
+
+MotionScript draws 3D with the same split it uses for everything else. You describe a scene as plain data, and the renderer turns it into pixels. Nothing in your project imports a 3D engine.
+
+```ts
+import { Canvas3D, Box3D } from '@motionscript/sdk/v1';
+
+Canvas3D({
+  width: 1600, height: 900, fill: '#0b0d12',
+  orbit: 65, elevation: 18, zoom: 7, fov: 45,
+  lights: [
+    { type: 'ambient', intensity: 0.4 },
+    { type: 'sun', intensity: 2.4, orbit: 37, elevation: 50 },
+  ],
+  children: [
+    Box3D({ width: 2, fill: 'tomato', roughness: 0.3 }),
+  ],
+})
+```
+
+That is a complete 3D scene: a camera, two lights and a lit box on a dark background. The camera and lights are props of the viewport, the stage; each call builds a node, the same nodes a document's rows build.
+
+## A 3D scene is a tree
+
+Everything in a 3D scene is a node, and a 3D node is a node in every sense that matters. It has an id that commands target, it holds children, it reads context, it has its own clock, and it animates with the same `to` command as everything else. In a document, `parentId` is what nests one node under another:
+
+```ts
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0,
+      props: { fill: '#0b0d12', orbit: 65, elevation: 18, zoom: 7,
+        lights: [{ type: 'ambient', intensity: 0.4 }] } },
+    { id: 'rig', type: 'group3d', parentId: 'viewport', layerOrder: 0, props: {} },
+    { id: 'box', type: 'box3d', parentId: 'rig', layerOrder: 0,
+      props: { width: 2, fill: 'tomato' } },
+    { id: 'ball', type: 'sphere3d', parentId: 'rig', layerOrder: 1,
+      props: { radius: 0.8, x: 3 } },
+  ],
+  commands: [
+    { id: 'spin', type: 'rotateTo', targetId: 'rig', at: 0, duration: 2, args: { rotationY: 360 } },
+  ],
+};
+```
+
+Moving the `Group3D` moves everything under it, so a rig animates as one thing.
+
+There are 22 node types in all: the viewport (`Canvas3D`), a group, the meshes, and the drawables that are not meshes. The camera, lights, fog and environment are not nodes but props of the viewport. The pages that follow cover them in the order you meet them.
+
+| Page | Covers |
+|---|---|
+| [Canvas3D](./canvas3d) | The viewport: its props, the stage, paint order, 3D through other shapes |
+| [Scene setup](./scene) | The stage's camera, `lights`, environment and fog, and the render settings that are `Canvas3D` props |
+| [Objects](./objects) | Meshes, groups, instances, lines, points, sprites and models |
+| [Materials and textures](./materials) | The `fill` shorthand, `Mat`, `Tex`, and what the shorthand leaves out |
+| [Animating](./animating) | `to`, variables, cameras, and what is cheap to change |
+| [2D on 3D](./surfaces) | `Tex.surface`: 2D content as a texture |
+
+## Two trees, one API
+
+The scene graph is one tree over two spaces:
+
+* **2D** (`component2d`) — laid out in a box on the page. Everything with a `width`, an anchor or a fill.
+* **3D** (`component3d`) — placed in space by a position, a rotation and a scale. Meshes, groups, lines, points, models.
+
+They share the tree itself, along with reactive props, commands, context and the clock. What differs is only the two things that genuinely differ: how a node is placed, and how it draws.
+
+The two never mix. Putting a `Box3D` inside a `Rect` throws, with a message pointing you at the one node that holds both: `Canvas3D`.
+
+## `Canvas3D` is where the two meet
+
+`Canvas3D` is built like a `Rect` and hosts a 3D scene. Its 3D children describe the scene; its 2D children draw over the result as a HUD:
+
+```ts
+Canvas3D({ width: 'fill', height: 'fill', cornerRadius: 24,
+  orbit: 65, elevation: 18, zoom: 7, lights: [{ type: 'ambient', intensity: 0.4 }], children: [
+  Box3D({ width: 2, fill: 'tomato' }),
+
+  Text({ text: 'FPS 60', fontSize: 32 }),
+] })
+```
+
+Being built like a `Rect` is what makes it lay out in flex and stack groups, take `cornerRadius` and `clip`, and be masked, blended and filtered like anything else.
+
+## 3D is still a fill
+
+Underneath, a 3D scene is a **fill**, the same as a colour, a gradient or an image: the renderer draws it to a texture and paints it through whatever shape asked for it. `Canvas3D` is convenience on top of that, not machinery.
+
+That is what lets 3D clip to shapes a rect cannot describe. Build the scene by hand as a `Scene3D`, which is the value `Canvas3D` records from its children, and use it as a fill:
+
+```ts
+const scene = new Scene3D()
+  .perspective({ position: [0, 2, 6], lookAt: 0, fov: 45 })
+  .light({ type: 'ambient', intensity: 0.4 })
+  .draw(new Graphics3D().box({ width: 2, fill: 'tomato' }));
+
+Ellipse({ width: 420, height: 420, fill: scene })
+Text({ text: 'DEPTH', fontSize: 320, fill: scene })
+Rect({ fill: ['#0b0d12', scene] })
+```
+
+A bare `Scene3D` coerces to a 3D fill the same way a bare CSS string coerces to a solid colour. Because it is one layer in the fill array, paint order, `opacity` and `blend` work as usual.
+
+A scene you build by hand has only what you put in it: the stage's camera and light rig on [`Canvas3D`](./canvas3d#the-stage) belong to that node, not to `Scene3D`.
+
+## Six rules the vocabulary follows
+
+Each of these replaced a pair of fields that could disagree, and they are the quickest way to read a 3D scene you did not write.
+
+* **`fill` is what a surface is made of.** It takes the whole 2D fill chain: a colour, a gradient, an image, a 2D subtree, or a stack of blended layers. There is no `color` prop on a mesh node, and writing one does nothing.
+* **Subdivision is always `segments`** (a number, or a per-axis tuple the shape documents), and a partial revolution is always **`startAngle` plus `sweep`**, in degrees, the pair `Ellipse` uses.
+* **Axes are real props.** `x`/`y`/`z`, `rotationX/Y/Z` and `scaleX/Y/Z` are the props; `position`, `rotation` and `scale` distribute into them. That is why `to({ y: 3 })` moves one axis and leaves the others alone.
+* **`transparent` and `depthWrite` are derived** from opacity, fill alpha, an `alphaMap` or transmission. `opacity: 0.5` on its own is enough.
+* **There is no `key`.** Identity is the node's id plus a content signature, so a builder that emits things conditionally reuses the right cache entry with nothing written by hand.
+* **The background is the viewport's own 2D `fill`.** There is no background node.
+
+## The three values
+
+Three names come up constantly, and they divide cleanly:
+
+| | what it is |
+|---|---|
+| `Graphics3D` | what **one node** draws: geometry and material, and nothing else. The 3D `Graphics2D`. |
+| the 3D `render` context | what a node draws **into**. Lights, camera and scene settings are calls on it (`draw`, `light`, `camera`, `fog`, `environment`). |
+| `Scene3D` | the **recorded** result: camera, lights, fog and every drawable, ready to paint. |
+
+`Graphics3D` holds drawables only. There is no hierarchy, light or camera in it; those belong to the scene: the node tree owns the hierarchy, and the stage (or a node's `render`) the camera and lights.
+
+You rarely touch any of them directly. They matter when you write a custom 3D node, which is the same shape as a custom 2D node, with `component3d`:
+
+```ts
+import { component3d, Graphics3D } from '@motionscript/sdk/v1';
+
+export const Blob3D = component3d({
+  key: 'blob3d',
+  render: (ctx) => ctx.draw(new Graphics3D().sphere({ radius: 1, fill: 'red' })),
+});
+```
+
+A custom 3D node paints with the same `fill` and `stroke` a 2D shape takes, through the `Paint3D` module: see [Painting a custom 3D node](./objects#painting-a-custom-3d-node).
+
+A 3D component has its placement built in (`x`/`y`/`z`, `rotationX/Y/Z`, `scaleX/Y/Z`, `quaternion`, `lookAt`, `visible`, `shadow`, `renderOrder`, and the `position`/`rotation`/`scale` forms in a call), with `moveTo`, `rotateTo` and `scaleTo`. Its children render after it, in its space.
+
+By convention `g` is a `Graphics2D` and `g3` is a `Graphics3D`. A scene routinely holds both (a `Graphics3D` for the 3D, a `Graphics2D` for each [`Tex.surface`](./surfaces) source), so a bare `g` always means the 2D one.
+
+## Angles are degrees
+
+Every angle in the 3D API (Euler rotations, camera orbit and field of view, spot cone angles, sweep arcs, texture rotation) is in degrees, matching 2D `rotation`. You never write `Math.PI`.
+
+## What renders today
+
+Some of what the types accept does nothing yet. Each is accepted and recorded without an error, renders exactly as if it were left out, and logs a warning once in development:
+
+* **`post`** (bloom, ssao, outline, dof, shaderPass) is recorded on the scene and no pass is applied. See [Post effects](./scene#post-effects).
+* **An HDR, EXR or cubemap environment** (the stage's `environment`, or `src` and `faces` from a node's `render`) loads nothing. Only `preset: 'studio'` is realised. See [Environment](./scene#environment).
+* **`params` on a geometry or an environment** is not applied. It works on materials, lights and cameras. See [Escape hatches](./materials#escape-hatches-in-order).
+* **`extends` on a shader material** is not read: a shader always replaces the built-in model. See [Materials](./materials).
+* **OBJ models** do not load. Only glTF and GLB do. See [Models](./objects#models).
+
+A line `weight` above `1` is also ignored by most WebGL implementations, with nothing substituted for it; draw a `Tube3D`.
+
+## What is cheap to animate
+
+Transforms, material values and light values are written in place every frame, so they cost nothing. **Geometry parameters are not**: the underlying geometries are immutable, so tweening a `radius` rebuilds the mesh each frame. Scale the object instead:
+
+```ts
+// expensive: rebuilds the box every frame
+Box3D({ width: () => grow() })
+
+// cheap: one matrix write
+Box3D({ width: 1, scaleX: () => grow() })
+```

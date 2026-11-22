@@ -1,0 +1,102 @@
+---
+sidebar_position: 16
+---
+
+# GeoBorder
+
+`GeoBorder` draws countries and their states or provinces by ISO 3166 code,
+fitted into the node's box, with every shape prop a `Rect` has: fill, stroke,
+shadow, effects, and `start`/`end` to draw the outline on.
+
+It ships in `@motionscript/geography`, along with the outlines it draws: every
+country and every first-level subdivision, derived from
+[Natural Earth](https://www.naturalearthdata.com/) (public domain). They are
+loaded on demand from wherever you register them.
+
+## Registering the data
+
+The node draws nothing until a source can answer for its files. Register one
+per process, before rendering:
+
+```ts
+import { geoRegistry, geoUrlSource, geoLoaderSource } from '@motionscript/geography/v1';
+
+// Fetched over HTTP: serve `@motionscript/geography/data` from your own host.
+geoRegistry.use(geoUrlSource('https://cdn.example.com/geo'));
+
+// Read from disk in Node.
+import { readFile } from 'node:fs/promises';
+geoRegistry.use(geoLoaderSource((key) =>
+  readFile(`node_modules/@motionscript/geography/data/${key}.json`, 'utf8').catch(() => null),
+));
+
+// Or pass shapes by hand, as GeoJSON in longitude and latitude.
+geoRegistry.define({ 'XX-ATLANTIS': { type: 'Polygon', coordinates: [[[-30, 30], [-25, 30], [-25, 35], [-30, 30]]] } });
+```
+
+Sources are asked in the order they were registered; the first that has a file
+wins. A defined shape is used before any source.
+
+## Basic usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'fr', type: 'geoBorder', parentId: null, layerOrder: 0,
+      props: { iso: 'FR', detail: 0.35, width: 480, height: 480,
+               fill: '#1d3557', stroke: { weight: 3, fill: '#f1faee' }, end: 0 } },
+  ],
+  commands: [
+    { id: 'draw', type: 'to', targetId: 'fr', at: 0, duration: 1.2, args: { end: 1 } },
+    { id: 'refine', type: 'to', targetId: 'fr', at: 1.2, duration: 1, args: { detail: 1 } },
+  ],
+};
+```
+
+```ts
+GeoBorder({ iso: ['US-CA', 'US-OR', 'US-WA'], borders: 'outline', stroke: { weight: 2, fill: 'white' } })
+GeoBorder({ iso: 'US', level: 'state', fill: 'transparent', stroke: { weight: 1.5, fill: 'white' } })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `iso` | `string \| string[]` | `['FR']` | ISO 3166-1 alpha-2 (`'FR'`) or ISO 3166-2 (`'US-CA'`) codes. A string may list several: `'FR, DE'`. |
+| `level` | `'country' \| 'state'` | `'country'` | What a bare country code draws: its outline, or its first-level subdivisions. A subdivision code is always itself. |
+| `detail` | `number` | `0.5` | `1` is full resolution; lower keeps fewer points and drops smaller islands. Relative to the selection's area, so a value looks equally stylised on any country. Animatable. |
+| `projection` | `'conic' \| 'mercator' \| 'equirectangular' \| 'orthographic'` | `'conic'` | Conic equal-area is fitted to the selection. Animatable: `projectTo` morphs one projection into another. |
+| `frame` | `'mainland' \| 'all'` | `'mainland'` | `mainland` leaves out remote parts — Alaska and Hawaii for `US`, the overseas departments for `FR` — so the main landmass fills the box. |
+| `borders` | `'all' \| 'outline'` | `'all'` | Stroke the borders between selected regions, or only the outline of the whole selection. |
+
+Borders two selected regions share are stroked once. Because the stroke is drawn
+along border lines rather than around each shape, `stroke.align` does not apply.
+
+`start` and `end` draw the borders on and leave the fill whole: draw the outline
+on with `progressTo` and fade the land in with `fillTo`.
+
+`projectTo` morphs the map from one projection into another, refitting it to
+the box as it goes, so Greenland can shrink from its Mercator shape to its true
+one:
+
+```ts
+{ id: 'true-size', type: 'projectTo', targetId: 'gl', at: 2, duration: 2, args: { projection: 'conic' } }
+```
+
+A tween with `orthographic` at one end clips the far side of the world away as
+it nears the globe.
+
+The fill is one shape measured against the node's box, so a `grid` or a gradient
+runs on across every border and island, and stays put when the selection or its
+`detail` changes. A square box gives a grid square cells.
+
+## Coverage and worldview
+
+Countries follow Natural Earth's default, de facto borders: Kosovo is `XK`,
+Somaliland `XS` and Northern Cyprus `XN`. Territories Natural Earth folds into a
+parent (French Guiana, Réunion, Svalbard…) are also available under their own
+codes. Where Natural Earth's subdivisions are second-level, the ISO first-level
+regions are built from them — France's regions, the United Kingdom's nations,
+Italy's regions, Spain's autonomous communities and the Philippines' regions —
+and the finer units stay available by their own codes.

@@ -1,0 +1,57 @@
+---
+sidebar_position: 35
+---
+
+# DropLines
+
+Dashed guide lines from a graph point to the axes, reading its coordinates off them. The point is its own `x` and `y`, or the point of a plot above its `x`. It ships in `@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [{ id: 't', value: 0.5 }],
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 450, padding: 32, xRange: [0, 4], yRange: [0, 4], fontFamily: 'Inter' } },
+    { id: 'curve', type: 'functionPlot', parentId: 'axes', layerOrder: 0,
+      props: { expression: 'sqrt(4x)' } },
+    // Inside the plot: the point's height is the curve's at x.
+    { id: 'guides', type: 'dropLines', parentId: 'curve', layerOrder: 0,
+      props: { x: '=[t]', end: 0 } },
+    { id: 'dot', type: 'plotPoint', parentId: 'curve', layerOrder: 1,
+      props: { x: '=[t]', radius: 6 } },
+    // Free, in the axes: a vertical line only, from (3, 1) down to the x axis.
+    { id: 'mark', type: 'dropLines', parentId: 'axes', layerOrder: 2,
+      props: { x: 3, y: 1, axis: 'x' } },
+  ],
+  commands: [
+    // Each line grows from its axis towards the point.
+    { id: 'draw', type: 'progressTo', targetId: 'guides', at: 0, duration: 0.6, args: { end: 1 } },
+    { id: 'slide', type: 'variableTo', targetId: 't', at: 0.8, duration: 2, args: { value: 3.5 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `on` | `string` | `''` | The id of a `functionPlot` to take the point's height from. Empty, it reads the plot it sits inside, or none |
+| `axis` | `'x' \| 'y' \| 'both'` | `'both'` | Which axis to drop to: `'x'` draws the vertical line, `'y'` the horizontal one |
+| `stroke` | `Stroke` | `{ weight: 2, fill: '#9ca3af', align: 'center', dash: [8, 6] }` | The lines. See [Strokes](/docs/attributes/strokes) |
+
+The point is its `x` and `y` ([Position](/docs/attributes/position)), in graph units.
+
+## Animating
+
+It has no commands of its own. Move the point with `moveTo` or by binding `x` to a variable, as above. `progressTo` (`{ end }`) draws the lines on, each from its axis towards the point.
+
+## Notes
+
+- It goes in a coordinate system (`axes2d`, `numberPlane`, `numberLine`, `polarPlane`) or inside a `functionPlot`. Inside a plot it reads that plot with nothing said, and appears and leaves with it.
+- Reading a plot, its own `y` is not used. Where the curve has no value at `x`, nothing is drawn (a [`plotPoint`](/docs/components/math/plot-point) stays at its own `y` there instead).
+- The lines end on the axes where they cross zero, or at the edge of the system's range when zero is outside it.
+- It is a line only: it takes a `stroke` and no `fill`.
+- Manim's `axes.get_vertical_line` and `get_lines_to_point`. A [`tangentLine`](/docs/components/math/tangent-line) and a `plotPoint` bound to the same variable move with it.

@@ -1,0 +1,119 @@
+---
+sidebar_position: 42
+---
+
+# Glow
+
+Spreads the bright (or opaque) parts of a layer outward and composites them back
+— optionally recoloured through a ramp keyed on how strongly each pixel glows.
+
+## Glow or bloom?
+
+[Bloom](./bloom) is the contained version of the same idea, and is cheaper: it
+composes as an image filter, which means its spread is **bounded by the node's
+own box**. Reach for `glow` when you need any of the things that bound rules out:
+
+- spread that bleeds past the layer's box,
+- a colour of its own, or a ramp rather than a single colour,
+- control over where the layer sits relative to the glow, or over the blend,
+- an anamorphic streak along one axis.
+
+Bloom also works on an image or video fill's `preset.adjustments`; glow does not, for the
+same reason `outline` and `dropShadow` don't — a fill is clipped to its shape,
+and a glow clipped to the thing that cast it is no glow at all.
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+// Default glow — the layer's own colours, spread 25px
+Rect({ effects: Effects.glow() })
+
+// Scalar shorthand sets intensity
+Rect({ effects: Effects.glow(2) })
+
+// A neon glow in one colour
+Rect({ effects: Effects.glow({ radius: 40, intensity: 2, tint: 'solid', color: '#39d3ff' }) })
+
+// A ramp, traversed twice across the glow's falloff
+Rect({
+  effects: Effects.glow({
+    radius: 60,
+    intensity: 2.2,
+    tint: 'ramp',
+    colors: ['#ffffff', '#ff9a2e', '#7b2ff7'],
+    stops: [0, 0.5, 1],
+    cycles: 2,
+  }),
+})
+
+// An anamorphic streak
+Rect({ effects: Effects.glow({ radius: 80, axis: 'x', tint: 'solid', color: '#ff5cf0' }) })
+```
+
+## Props
+
+The builder takes a single options object — these are its fields, and also the
+fields of the effect object it produces.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'glow'` | – | Effect identifier |
+| `channel` | `'luminance' \| 'alpha'` | `'luminance'` | What decides a pixel's glow strength. `'alpha'` glows every opaque pixel equally and ignores colour — a halo around a shape rather than light escaping an image |
+| `threshold` | `number` | `0.5` | Luminance cutoff `0`–`1`. Read only when `channel` is `'luminance'` |
+| `radius` | `number` | `25` | Spread in pixels |
+| `spread` | `number` | `0` | Dilation applied *before* the blur, in pixels. Gives the glow a solid core to fade from, the way a drop shadow's spread does |
+| `intensity` | `number` | `1` | Brightness of the glow. `0` is off |
+| `axis` | `'both' \| 'x' \| 'y'` | `'both'` | Which way it spreads. A single axis gives an anamorphic streak |
+| `original` | `'behind' \| 'front' \| 'hidden'` | `'behind'` | Where the layer sits relative to its glow. `'hidden'` isolates the glow |
+| `blend` | `BlendMode` | `'screen'` | How the glow merges with the layer |
+| `tint` | `'none' \| 'solid' \| 'ramp'` | `'none'` | `'none'` keeps the layer's own colours |
+| `color` | `Color` | `'white'` | The glow's colour when `tint` is `'solid'` |
+| `colors` | `Color[]` | `['white', '#ffa640']` | Ramp colours when `tint` is `'ramp'`, parallel to `stops` |
+| `stops` | `number[]` | `[0, 1]` | Each ramp colour's position, `0`–`1` ascending |
+| `loopStyle` | `'mirror' \| 'repeat'` | `'mirror'` | How the ramp repeats past one pass. `'repeat'` restarts at the first stop; `'mirror'` walks back down through them |
+| `cycles` | `number` | `1` | Ramp traversals across the glow's strength range |
+| `phase` | `number` | `0` | Offset along the ramp, in degrees of one cycle |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` glows the content beneath the node, clipped to its silhouette |
+
+## Animating
+
+`intensity` fades the whole glow on or off, and `0` is its neutral — so a glow
+that starts at `0` and is raised by a `to` arrives rather than being on from the
+first frame:
+
+```tsx
+nodes: [
+  { id: 'light', type: 'rect', parentId: null, layerOrder: 0,
+    props: { width: 200, height: 200, fill: 'white', effects: Effects.glow({ radius: 40, intensity: 0 }) } },
+],
+commands: [
+  { id: 'glow-on', type: 'to', targetId: 'light', at: 0, duration: 1,
+    args: { effects: Effects.glow({ radius: 40, intensity: 2 }) } },
+],
+```
+
+`phase` is the one to animate for a glow that *moves*. Ramping it through 360°
+walks the ramp once around, so colour travels outward through the glow while its
+brightness holds steady:
+
+```tsx
+{ id: 'travel', type: 'to', targetId: 'light', at: 1, duration: 2,
+  args: { effects: Effects.glow({ radius: 60, intensity: 2, tint: 'ramp', cycles: 3, phase: 360 }) } },
+```
+
+Ramps interpolate colour-by-colour when both ends have the **same number of
+stops**. When the counts differ there is no correspondence to tween along, so the
+ramp snaps at the midpoint like an enum — keep the stop count fixed across a
+tween and vary the colours and positions instead.
+
+## Stacking with other effects
+
+```ts
+// Grade first, then glow what the grade left bright
+Rect({ effects: Effects.vintage(0.8).glow({ threshold: 0.6, radius: 30, intensity: 1.5 }) })
+
+// Cross flare: two single-axis glows
+Rect({ effects: Effects.glow({ radius: 90, axis: 'x' }).glow({ radius: 90, axis: 'y' }) })
+```

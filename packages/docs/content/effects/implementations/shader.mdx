@@ -1,0 +1,76 @@
+---
+sidebar_position: 39
+---
+
+# Shader
+
+Your own effect, written in [WGSL](https://www.w3.org/TR/WGSL/): a fragment function over the node's rendered layer — or, in `'backdrop'` mode, over what is painted beneath it. The sibling of the [custom shader fill](../../attributes/fills#custom-shader--your-own-wgsl): a fill paints inside a shape, an effect rewrites pixels that already exist.
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+const RIPPLE = `
+struct Params { amount: f32, frequency: f32 }
+
+fn effect(in: EffectIn) -> vec4f {
+    let wave = sin(in.uv.y * u.frequency + in.time * 4.0) * u.amount;
+    return sample_src(in.uv + vec2f(wave, 0.0));
+}`;
+
+// The node's own content, rippled
+Rect({ fill: Fills.image('pool.jpg'), effects: Effects.shader({ source: RIPPLE, uniforms: { amount: 0.02, frequency: 30 } }) })
+
+// What lies beneath a lens, rippled; the ripple reads up to 24 px past the lens
+Rect({ cornerRadius: 20, effects: Effects.shader({ source: RIPPLE, mode: 'backdrop', reach: 24, uniforms: { amount: 0.03, frequency: 26 } }) })
+```
+
+## The shader contract
+
+You define `fn effect(in: EffectIn) -> vec4f`, returning **premultiplied** rgba. The renderer puts this in front of your code:
+
+```wgsl
+struct EffectIn {
+    uv: vec2f,     // 0–1 across the node's box, y down
+    px: vec2f,     // device px (what sample_src_px takes)
+    local: vec2f,  // px from the box's top-left
+    size: vec2f,   // the box, px
+    time: f32,     // seconds the node has existed
+    scale: f32,    // device px per px
+    node: vec2f,      // 0–1 across the node's own box: turns and scales with it
+    node_size: vec2f, // the node's own box, px
+}
+var<uniform> u: Params;                 // your struct Params, if you declare one
+fn sample_src(uv: vec2f) -> vec4f       // the input at box uv
+fn sample_src_px(px: vec2f) -> vec4f    // the input at device px
+```
+
+The **input** is the node's own layer, or in `'backdrop'` mode what is painted beneath the node; there the result is composited back through the node's silhouette. Sampling is bilinear and clamped at the input's edge.
+
+Your output **replaces** the input. To overlay something instead, either composite onto `sample_src(in.uv)` yourself or give a `blendMode`, which composites your output onto the input with that mode (foreground only).
+
+`uv`, `local` and `size` measure the node's box **as drawn on screen**: the upright bounds of a rotated or skewed node. `node` and `node_size` measure the node's own box instead, so a point stored in `node` units stays on the same spot of the node however it is turned or scaled; under a 3D (projective) transform they fall back to `uv` and `size`.
+
+`uv` and `local` run outside `0`–`1` and the box wherever the effect draws past the node, which is as far as `reach` (px) lets it: a glow or a ripple that spills, or one that reads pixels from beyond the box, needs a `reach` that covers it.
+
+Uniforms are the members of your `struct Params`, read as `u.<name>` and supplied by name — see [uniforms](../../attributes/fills#uniforms) on the fill page, which works identically. So does the loop bound: 16,384 iterations per pixel across all your loops, after which every loop breaks.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'shader'` | – | Effect identifier |
+| `source` | `string` | – | The program. Keep it constant: it is the compile cache's key |
+| `uniforms` | `Record<string, number \| number[]>` | `{}` | `Params` values by member name; they interpolate |
+| `language` | `'wgsl'` | `'wgsl'` | The source's language. Only a saved SkSL effect carries anything else (`'sksl'`), and it draws nothing |
+| `contract` | `number` | `1` | WGSL only: the version of the shader contract above it was written for; stamped when absent, so a renderer can tell a shader written for a newer one |
+| `reach` | `number` | `0` | Px past the node's box the effect may draw or read |
+| `blendMode` | `BlendMode` | – | Composites the output onto the input instead of replacing it. Foreground only |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | The node's own content, or the backdrop beneath it |
+
+A source that doesn't compile leaves the node unaffected, and the renderer reports the error with a line and column in your code. A new program compiles in the background, so it takes effect a moment after it is first drawn; an export waits for it.
+
+## SkSL
+
+Effects written before WGSL are SkSL (`half4 main(float2 coord)`, `uniform shader u_backdrop`), which Motion Script no longer runs. Documents carrying them still load, but the effect is skipped and reported as a render error, so a host can ask for a conversion. `u_backdrop.eval(coord)` becomes `sample_src_px(in.px)`, the backdrop built-ins (`u_center`, `u_half`, `u_time`) come from `in`, and a foreground SkSL effect — which only generated colour, screen-blended by default — becomes one that composites onto `sample_src(in.uv)` or sets `blendMode: 'screen'`.

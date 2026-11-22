@@ -1,0 +1,140 @@
+---
+sidebar_position: 10
+---
+
+# Contributing
+
+Thank you for your interest in contributing to MotionScript! This guide covers how to set up the development environment, understand the repo structure, and submit changes.
+
+## Repository structure
+
+```
+motionscript/
+├── apps/
+│   ├── engine/        # example Node render server over @motionscript/headless
+│   ├── react/         # example React host over @motionscript/react
+│   └── shaders/       # demo custom nodes built on WGSL shaders
+├── packages/
+│   ├── core/          # @motionscript/core — the animation engine
+│   ├── browser/       # @motionscript/browser — browser platform, exporter, audio
+│   ├── headless/      # @motionscript/headless — rendering from Node
+│   ├── react/         # @motionscript/react — React bindings
+│   ├── sdk/           # @motionscript/sdk — the flagship package
+│   ├── site/          # This documentation site
+│   ├── e2e/           # Visual regression tests
+│   └── components/    # charts, code, geography, math
+```
+
+The monorepo uses [pnpm workspaces](https://pnpm.io/workspaces) and [Turborepo](https://turbo.build/).
+
+## Getting started
+
+### Prerequisites
+
+- **Node.js** 22 or later
+- **pnpm**, the version pinned by `packageManager` in the root `package.json`
+
+### Install dependencies
+
+```bash
+pnpm install
+```
+
+### Build the libraries
+
+Everything else depends on the prebuilt `dist/` of the library packages. Build
+them first:
+
+```bash
+pnpm build:lib
+```
+
+### Start the docs site
+
+```bash
+pnpm --filter @motionscript/docs dev
+```
+
+### Start an example host
+
+```bash
+pnpm app:react    # a React app playing documents in the browser
+pnpm app:engine   # a Node server rendering stills and video over HTTP
+```
+
+## Development workflow
+
+### Making changes to core
+
+After editing `packages/core/src`, rebuild the package:
+
+```bash
+pnpm --filter @motionscript/core build
+```
+
+Or run the watch mode:
+
+```bash
+pnpm --filter @motionscript/core dev
+```
+
+:::info Rebuild before previewing
+The example apps and the e2e harness resolve each package's built `dist/`, so
+rebuild the package you edited before running them again.
+:::
+
+### Running tests
+
+```bash
+pnpm test
+# or run tests for a specific package
+pnpm --filter @motionscript/core test
+```
+
+### Type checking
+
+```bash
+pnpm typecheck
+```
+
+## Submitting a pull request
+
+1. **Fork** the repository on GitHub.
+2. Create a branch from `main`: `git checkout -b feat/my-feature`.
+3. Make your changes and ensure tests pass: `pnpm test`.
+4. Commit with a descriptive message.
+5. Push and open a pull request against `main`.
+
+### What makes a good PR
+
+- Focused changes: one concern per PR
+- Tests for new behaviour
+- Updated docs if you added or changed a public API
+- No breaking changes without a discussion issue first
+
+## Adding a new node
+
+1. Write it as a component in `packages/core/src/components/builtins/<family>/<family>.ts`: a `component2d` spec spreading the modules it draws with (`Paint`, `Flow`, `Shapes`), with `export type YourNode = NodeOf<typeof YourNode>` beside it.
+2. Add its key to `NODE_TYPES` in `packages/core/src/document/builtins.ts`.
+3. Export it from `packages/core/src/sdk/index.ts`.
+4. Add a page under `packages/docs/content/components/basic/`.
+
+## Adding a new image filter
+
+1. Create `packages/core/src/attributes/shape/filters/implementations/<name>.ts`.
+2. Implement the `FilterRegistry.register<YourFilter>(...)` call with a `lerp` and `equals` function.
+3. Add the type to `Adjustments` in `packages/core/src/attributes/shape/filters/chain.ts`.
+4. Add a page under `packages/docs/content/image-filters/`.
+
+## Adding a new node effect
+
+1. Create `packages/core/src/attributes/shape/effects/implementations/<name>.ts`.
+2. Register it with the effect registry and add to `Effects` in `packages/core/src/attributes/shape/effects/chain.ts`.
+3. Add a page under `packages/docs/content/effects/`.
+
+## Code style
+
+- TypeScript strict mode throughout
+- No comments unless the WHY is non-obvious
+- Prefer editing existing files over creating new ones
+- Run `pnpm lint` before committing

@@ -1,0 +1,184 @@
+---
+sidebar_position: 3
+---
+
+import { RectCanvas, RowCanvas, ColumnCanvas, GridCanvas } from '@site/src/components/docs/node-scenes';
+
+# Rect
+
+The primary building block, and the only node that lays its children out. A rounded rectangle that is also a flex, freeform or grid container.
+
+<RectCanvas />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    // A row container laying out three squares, separated by a gap. A container
+    // in a document says `width: 'hug'` / `height: 'hug'` to wrap its children.
+    { id: 'row', type: 'rect', parentId: null, layerOrder: 0,
+      props: { flow: 'horizontal', width: 'hug', height: 'hug', gap: 48, padding: 44, cornerRadius: 24 } },
+    { id: 'c1', type: 'rect', parentId: 'row', layerOrder: 0,
+      props: { width: 130, height: 130, fill: '#6990DD', cornerRadius: 14 } },
+    { id: 'c2', type: 'rect', parentId: 'row', layerOrder: 1,
+      props: { width: 130, height: 130, fill: '#E8617C', cornerRadius: 14 } },
+    { id: 'c3', type: 'rect', parentId: 'row', layerOrder: 2,
+      props: { width: 130, height: 130, fill: '#F5C26B', cornerRadius: 14 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `width`, `height` | `number \| 'fill' \| 'hug'` | see [Size defaults](#size-defaults) | Size on each axis. See [Size](/docs/attributes/size) |
+| `flow` | `'horizontal' \| 'vertical' \| 'freeform' \| 'grid'` | `'freeform'` | Layout mode for children |
+| `gap` | `number \| 'auto'` | `0` | Space between children along the main axis. `'auto'` distributes evenly |
+| `wrap` | `boolean` | `false` | Break a `horizontal`/`vertical` run onto new lines when it runs out of main-axis room |
+| `crossGap` | `number` | follows `gap` | Space on the cross axis: between wrapped lines, and between grid rows |
+| `columns` | `number` | `1` | Number of equal columns when `flow` is `'grid'` |
+| `align` | `AlignName \| { x: number, y: number }` | `'center'` | Child alignment. A named position (`'center'`, `'topLeft'`, `'bottomRight'`, …) or a per-axis vector: x: `-1` left · `0` center · `1` right, y: `-1` bottom · `0` center · `1` top |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius in pixels. Accepts uniform, per-corner, or per-axis shorthand |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | `'rounded'` for circular arcs, `'angled'` for chamfered cuts |
+
+## Flow modes
+
+`flow` is the one question a container answers, and every other layout prop
+follows from it.
+
+### `horizontal` / `vertical`
+
+A flex run along one axis, honouring `gap` and `align`.
+
+<RowCanvas />
+
+<ColumnCanvas />
+
+Set `wrap` to break the run onto new lines once it runs out of room, spacing the
+lines by `crossGap` (which follows `gap` when you leave it out):
+
+```ts
+Rect({
+  flow: 'horizontal', wrap: true, gap: 16, crossGap: 24, width: 640,
+  children: tags.map((t) => Tag({ label: t })),
+})
+```
+
+Wrapping needs a bounded main axis to break against, so an axis set to `'hug'`
+stays on one line — "as wide as my contents" and "no wider than me" are the same
+sentence.
+
+### `grid`
+
+`columns` equal column tracks cut out of the content box. Rows size to their
+tallest cell, or divide the height equally when the box has a bounded one.
+Children auto-flow left-to-right, and place themselves explicitly with
+`column`/`row` or span with `colSpan`/`rowSpan`.
+
+<GridCanvas />
+
+`gap` is the column gap here and `crossGap` the row gap.
+
+### `freeform`
+
+Children overlap, each centred in the padded content box and offset from there
+by its own `x`/`y`. Use `align` to shift them (e.g. `align: 'bottomRight'` or
+`align: { x: 1, y: -1 }`).
+
+### Size defaults
+
+An unset `width`/`height` is decided once, when the `Rect` is built, from the children it was built with:
+
+| How the `Rect` is built | `width` default | `height` default |
+|---|---|---|
+| No children | `'fill'` | `'fill'` |
+| In code, with `children` passed in (`Rect({ children })`, or `new Rect({ children })`) | `'hug'` | `'hug'` |
+| From a document row | `'fill'` | `'fill'` |
+
+A document row is built from its own `props` alone, before any child row has been attached, so it never counts as having children: a `rect` row with child rows and no `width`/`height` fills its parent, exactly as an empty one does. **A container in a document that should wrap its children says so: `width: 'hug'`, `height: 'hug'`.** The Usage example above does. Children added to a code-built `Rect` after construction (`rect.add(...)`) do not change the default either.
+
+In code, if a direct child is `'fill'` on the axis `Rect` would otherwise hug (its `flow`'s main axis — width for `horizontal`, height for `vertical`, both independently for `freeform`), that axis defaults to `'fill'` instead, so the child has real space to fill into. See [Size](/docs/attributes/size#default-sizing) for the full rule.
+
+### Corner shorthands
+
+`cornerRadius` and `cornerStyle` share the same shorthand grammar:
+
+```ts
+// Uniform
+Rect({ cornerRadius: 16, cornerStyle: 'rounded' })
+
+// Per-axis
+Rect({ cornerRadius: 16, cornerStyle: { top: 'rounded', bottom: 'angled' } })
+
+// Per-corner
+Rect({
+  cornerRadius: { topLeft: 24, topRight: 24, bottomLeft: 0, bottomRight: 0 },
+})
+```
+
+## Animating
+
+All props animate with a `to` command. Transition `flow` to cross-fade between layout modes, or animate `gap` to expand/collapse spacing:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { flow: 'horizontal', width: 'hug', height: 'hug', gap: 30, padding: 44, cornerRadius: 24 } },
+    { id: 'c1', type: 'rect', parentId: 'box', layerOrder: 0,
+      props: { width: 130, height: 130, fill: '#6990DD', cornerRadius: 14 } },
+    { id: 'c2', type: 'rect', parentId: 'box', layerOrder: 1,
+      props: { width: 130, height: 130, fill: '#E8617C', cornerRadius: 14 } },
+    { id: 'c3', type: 'rect', parentId: 'box', layerOrder: 2,
+      props: { width: 130, height: 130, fill: '#F5C26B', cornerRadius: 14 } },
+  ],
+  commands: [
+    // Expand gap
+    { id: 'widen', type: 'to', targetId: 'box', at: 0, duration: 0.6,
+      easing: { kind: 'out' }, args: { gap: 100 } },
+
+    // Switch to column
+    { id: 'stack', type: 'to', targetId: 'box', at: 0.6, duration: 0.8,
+      easing: { kind: 'out' }, args: { flow: 'vertical' } },
+  ],
+};
+```
+
+### Animated child insertion and removal
+
+A child joins mid-scene with a node row whose `startAt` is that time, naming the
+container as its `parentId`. `layerOrder` places it among its siblings and
+doesn't have to be a whole number, so `0.5` lands between the children at `0`
+and `1`. An `endAt` takes a child out. Both happen at an instant, so to open and
+close the space smoothly, tween the child's size together with `gapScale`, its
+share of the gaps on either side (`0` to `1`). These rows continue the example
+above:
+
+```tsx
+nodes: [
+  // Grow a card in between the first two
+  { id: 'card', type: 'rect', parentId: 'box', layerOrder: 0.5, startAt: 1.4,
+    props: { width: 0, height: 0, gapScale: 0, fill: '#6990DD', cornerRadius: 14 } },
+  // The first child's existing row, now taken out once it has shrunk away
+  { id: 'c1', type: 'rect', parentId: 'box', layerOrder: 0, endAt: 2.3,
+    props: { width: 130, height: 130, fill: '#6990DD', cornerRadius: 14 } },
+],
+commands: [
+  { id: 'grow-card', type: 'to', targetId: 'card', at: 1.4, duration: 0.4,
+    easing: { kind: 'out' }, args: { width: 130, height: 130, gapScale: 1 } },
+
+  // Shrink the first child away
+  { id: 'shrink-c1', type: 'to', targetId: 'c1', at: 2, duration: 0.3,
+    args: { width: 0, height: 0, gapScale: 0 } },
+],
+```
+
+## Notes
+
+- `Rect` is the only node that runs layout on its children. There used to be `Row`, `Column` and `Grid` containers beside it, each a Rect with one of its answers frozen; they are gone, and their jobs are `flow: 'horizontal'`, `flow: 'vertical'` and `flow: 'grid'`. Switching between them is now an animation rather than a different node.
+- `gap: 'auto'` only applies to `horizontal` and `vertical` flow.
+- See [Layout](/docs/attributes/layout) for a full reference on sizing, padding, and `flex`.

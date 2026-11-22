@@ -1,0 +1,65 @@
+---
+sidebar_position: 14
+---
+
+# Background Blur
+
+Blurs the content _beneath_ a node rather than the node itself. The node's own edges stay sharp while the backdrop is softened within its silhouette. This is the `mode: 'backdrop'` variant of [Blur](./blur), equivalent to Figma's background blur.
+
+![Background blur effect demo](/effects/background-blur.webp)
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+// Blur the backdrop behind a frosted-glass card
+Rect({ fill: 'white/20', effects: Effects.blur({ radius: 16, mode: 'backdrop' }) })
+
+// Raw object
+Rect({ effects: [{ type: 'blur', radius: 16, mode: 'backdrop' }] })
+```
+
+The node must be layered _over_ other scene content for the effect to be visible: it blurs whatever is painted below it.
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'blur'` | – | Effect identifier |
+| `radius` | `number` | – | Blur radius in pixels |
+| `mode` | `'backdrop'` | – | Must be `'backdrop'`; this is what distinguishes background blur from a regular node blur |
+
+## Animating
+
+```tsx
+import { Effects, Fills } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'bg', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 600, fill: Fills.image('./photo.jpg', { fit: 'fill' }) } },
+
+    // Layered over the photo, so there is a backdrop to blur.
+    { id: 'card', type: 'rect', parentId: null, layerOrder: 1,
+      props: {
+        width: 400, height: 260, cornerRadius: 16, fill: 'white/15',
+        effects: Effects.blur({ radius: 0, mode: 'backdrop' }),
+      } },
+  ],
+  commands: [
+    { id: 'frost', type: 'to', targetId: 'card', at: 0, duration: 1.2,
+      easing: { kind: 'inOut' }, args: { effects: Effects.blur({ radius: 20, mode: 'backdrop' }) } },
+  ],
+};
+```
+
+## Stacking with other effects
+
+Background blur composes with other backdrop effects or regular effects on the same node:
+
+```ts
+// Frosted glass: background blur + subtle grayscale on the backdrop
+Rect({ effects: Effects.blur({ radius: 16, mode: 'backdrop' }).grayscale({ amount: 0.2, mode: 'backdrop' }) })
+```

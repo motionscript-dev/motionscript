@@ -1,0 +1,78 @@
+---
+sidebar_position: 24
+---
+
+# TracedPath
+
+The trail a point leaves as a value changes: the curve of an equation from
+where the value began to where it is now. Reach for it to draw the path behind
+a moving point. It ships in `@motionscript/math`; register the package's
+`NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [{ id: 't', value: 0 }],
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 450, padding: 32, xRange: [-4, 4], yRange: [-3, 3], fontFamily: 'Inter' } },
+    // The trail ends wherever `t` is
+    { id: 'trail', type: 'tracedPath', parentId: 'axes', layerOrder: 0,
+      props: { expression: '(t cos(3t) / 2, t sin(3t) / 2)', value: '=[t]' } },
+    // The point at the head of the trail, written by the same equation
+    { id: 'dot', type: 'plotPoint', parentId: 'axes', layerOrder: 1,
+      props: { x: '=[t] * cos(3 * [t]) / 2', y: '=[t] * sin(3 * [t]) / 2' } },
+  ],
+  commands: [
+    { id: 'drive', type: 'variableTo', targetId: 't', at: 0, duration: 4, args: { value: 6.28 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `from` | `number` | `0` | The value the trail starts at |
+| `value` | `number` | `0` | The value the point is at now: where the trail ends |
+| `tail` | `number` | `0` | How much of the trail is kept, in the value's own units. `0` keeps all of it |
+
+It is a [`functionPlot`](/docs/components/math/function-plot) underneath and
+takes its `expression`, `params` and `stroke` (`#58a6ff`, 3 px). The value is
+the equation's free variable: `t` for a parametric curve, `theta` for a polar
+one, `x` for a function of x.
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `traceTo` | `{ value }` | The point on to another value, the trail following it |
+| `morphTo` | `{ expression }` | The equation (inherited) |
+| `paramsTo` | `{ params }` | The equation's named values (inherited) |
+
+Where no variable drives it, `traceTo` draws the trail on:
+
+```tsx
+{ id: 'trace', type: 'traceTo', targetId: 'trail', at: 0, duration: 3, args: { value: 6.28 } },
+```
+
+With a `tail`, only the most recent stretch stays, whichever way the value
+runs: `{ value: '=[t]', tail: 1.5 }` is a comet behind the point.
+
+## Notes
+
+- It goes inside an `axes2d` (so a `numberPlane`), a `numberLine` or a
+  `polarPlane`, and holds no children.
+- It takes a `stroke` and no `fill`. It has no outline trim (`start`, `end`,
+  `progressTo`): it appears as `value` moves away from `from`, and draws nothing
+  while they are equal.
+- `from`, `value` and `tail` decide the span drawn, so `domain` and `domainTo`
+  have no effect on it.
+- An implicit equation has no free variable to trace along; it is drawn whole.
+- Manim's `TracedPath` records where a moving point has been. Here the trail
+  is worked out from the equation, so the point that leads it must follow the
+  same equation, as the `plotPoint` above does.
+- Related: [function-plot](/docs/components/math/function-plot),
+  [plot-point](/docs/components/math/plot-point).

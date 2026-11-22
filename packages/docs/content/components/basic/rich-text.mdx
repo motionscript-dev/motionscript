@@ -1,0 +1,146 @@
+---
+sidebar_position: 2
+---
+
+import { RichTextCanvas } from '@site/src/components/docs/node-scenes';
+
+# RichText
+
+Renders mixed-style text. Style is defined as a tree of `TextSpan` objects, and children inherit and can override the parent span's style, so you can nest spans to build up complex formatting.
+
+<RichTextCanvas />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'title', type: 'richtext', parentId: null, layerOrder: 0,
+      props: {
+        fontSize: 96,
+        fill: 'white',
+        spans: [
+          { text: 'Motion ' },
+          { text: 'Script', fill: '#6990DD', fontWeight: 800 },
+        ],
+      } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `spans` | `TextSpan \| TextSpan[]` | `[]` | Root span tree |
+| `fontSize` | `number` | `48` | Default font size in pixels |
+| `fontFamily` | `string` | none: [inherited](/docs/components/basic/text#font-family) | Default font family for the spans. There is no built-in default, and a `RichText` that resolves no family fails to build |
+| `fontWeight` | `number` | `400` | Default font weight (100–900) |
+| `fontStyle` | `'normal' \| 'italic'` | `'normal'` | Default font style |
+| `letterSpacing` | `number` | `0` | Default letter spacing in pixels |
+| `lineHeight` | `number` | `1.2` | Line height multiplier |
+| `textAlign` | `'left' \| 'right' \| 'center' \| 'justify' \| 'start' \| 'end'` | `'center'` | Text alignment |
+
+### Font family
+
+`RichText` resolves its family the way [`Text`](/docs/components/basic/text#font-family) does: the node's own `fontFamily`, a `variant` preset, the nearest `default-text-style`, then the theme's `typography.default`, then a host fallback if one is declared. A span's own `fontFamily` overrides the result for that span. With no family anywhere the frame fails to build with `has no fontFamily`.
+
+### Size defaults
+
+`RichText` defaults to `width: 'hug'`, `height: 'hug'`.
+
+## TextSpan interface
+
+Each span can carry its own style. Unset fields inherit from the parent span (or the node's top-level defaults).
+
+```ts
+interface TextSpan {
+  text?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: number;
+  fontStyle?: 'normal' | 'italic';
+  letterSpacing?: number;
+  fill?: FillProp | FillProp[];
+  stroke?: StrokeProp | StrokeProp[];
+  children?: TextSpan[];  // nested spans that inherit this span's styles
+}
+```
+
+### Nested spans
+
+Children inherit their parent span's styles and can override selectively:
+
+```ts
+RichText({
+  fontSize: 32,
+  fill: 'white',
+  spans: [
+    {
+      text: 'Start',
+      fontWeight: 700,
+      children: [
+        { text: ' — inherits bold' },
+        { text: ' override', fill: '#E8617C' },
+      ],
+    },
+  ],
+})
+```
+
+## Animating
+
+Animate any top-level prop with a `to` command. `spans` itself doesn't interpolate, so a `to` on it has no effect. To animate one span's style, bind that field to a variable and tween the variable instead:
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [
+    { id: 'tint', value: '#6990DD', lerp: 'color' },
+  ],
+  nodes: [
+    { id: 'label', type: 'richtext', parentId: null, layerOrder: 0,
+      props: {
+        fontSize: 96,
+        fill: 'white',
+        spans: [
+          { text: 'Motion ', fontWeight: 400 },
+          { text: 'Script', fontWeight: 800, fill: '=[tint]' },
+        ],
+      } },
+  ],
+  commands: [
+    // Animate font size
+    { id: 'grow', type: 'to', targetId: 'label', at: 0, duration: 0.6,
+      easing: { kind: 'out' }, args: { fontSize: 120 } },
+
+    // Cross-fade the bold span from blue to pink
+    { id: 'blush', type: 'variableTo', targetId: 'tint', at: 0.6, duration: 0.8,
+      args: { value: '#E8617C' } },
+  ],
+};
+```
+
+`'=[tint]'` is an expression: the span's `fill` follows the `tint` variable, and `variableTo` tweens it with the `color` lerp it was declared with.
+
+### Draw-on animation
+
+Like `Text`, animating `end` from `0` to `1` traces the text outline:
+
+```tsx
+nodes: [
+  { id: 'label', type: 'richtext', parentId: null, layerOrder: 0,
+    props: { fontSize: 64, end: 0,
+      spans: [{ text: 'Motion ', fill: 'white' }, { text: 'Script', fill: '#6990DD', fontWeight: 800 }] } },
+],
+commands: [
+  { id: 'draw-on', type: 'to', targetId: 'label', at: 0, duration: 1.5, args: { end: 1 } },
+],
+```
+
+## Notes
+
+- Spans without a `text` field act as purely stylistic wrappers for their `children`.
+- `fill` and `stroke` on a span follow the same syntax as shape node fills: CSS strings, gradient objects, or arrays for layering.
+- `RichText` does not support word wrapping; use `Text` with `wrap: true` for that.

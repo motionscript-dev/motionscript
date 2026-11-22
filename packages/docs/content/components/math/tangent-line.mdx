@@ -1,0 +1,74 @@
+---
+sidebar_position: 34
+---
+
+# TangentLine
+
+The tangent to a plot at its `x`, drawn a fixed length on screen. With a `dx` it is the secant through `x` and `x + dx` instead, and `legs` draws that secant's run and rise. It ships in `@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+<ComponentClip file="tangent" />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [{ id: 't', value: -2 }],
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 450, padding: 32, xRange: [-3, 3], yRange: [-3, 3], fontFamily: 'Inter' } },
+    { id: 'curve', type: 'functionPlot', parentId: 'axes', layerOrder: 0,
+      props: { expression: 'x^3 / 3 - x' } },
+    // Inside the plot: it reads that curve. Its x and the dot's follow `t`.
+    { id: 'tangent', type: 'tangentLine', parentId: 'curve', layerOrder: 0,
+      props: { x: '=[t]', length: 240 } },
+    { id: 'dot', type: 'plotPoint', parentId: 'curve', layerOrder: 1,
+      props: { x: '=[t]', radius: 6, fill: '#f87171' } },
+  ],
+  commands: [
+    { id: 'slide', type: 'variableTo', targetId: 't', at: 0, duration: 3, args: { value: 2 } },
+  ],
+};
+```
+
+A secant with its run and rise, closing in on the tangent as `dx` shrinks:
+
+```tsx
+nodes: [
+  // ...axes and curve as above
+  { id: 'secant', type: 'tangentLine', parentId: 'curve', layerOrder: 0,
+    props: { x: 0.5, dx: 1.5, legs: true } },
+],
+commands: [
+  { id: 'close', type: 'to', targetId: 'secant', at: 0, duration: 2, args: { dx: 0.01 } },
+],
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `on` | `string` | `''` | The id of a `functionPlot` to read. Empty, it reads the plot it sits inside |
+| `length` | `number` | `260` | The line's length on screen, in pixels |
+| `dx` | `number` | `0` | The secant's second point, this far along x in graph units. `0` is the tangent itself |
+| `legs` | `boolean` | `false` | With a `dx`, also draw the secant's run and rise |
+| `stroke` | `Stroke` | `{ weight: 3, fill: '#f59e0b', align: 'center', cap: 'round', join: 'round' }` | The line. See [Strokes](/docs/attributes/strokes) |
+
+The point it touches is its `x` ([Position](/docs/attributes/position)), in graph units.
+
+## Animating
+
+It has no commands of its own. Slide it along the curve with `moveTo` (`{ x }`), or bind `x` to a variable as above; `length` and `dx` animate with `to`, and `progressTo` (`{ end }`) draws it on.
+
+```tsx
+{ id: 'move', type: 'moveTo', targetId: 'tangent', at: 3, duration: 1, args: { x: 0 } },
+```
+
+## Notes
+
+- It goes inside a `functionPlot`, and appears and leaves with it. Naming another plot in `on` makes it read that one instead.
+- `length` is pixels, so the line keeps its size when the axes zoom. A secant is never shorter than its two points plus 16 pixels past each.
+- Where the curve has no value at `x` (or at `x + dx`), nothing is drawn.
+- It is a line only: it takes a `stroke` and no `fill`.
+- In code, `slope` reads the slope drawn, in graph units: the curve's at `x`, or the secant's when there is a `dx`.
+- Manim's `TangentLine` and `axes.get_secant_slope_group`. Pair it with a [`plotPoint`](/docs/components/math/plot-point) on the same variable to mark where it touches.

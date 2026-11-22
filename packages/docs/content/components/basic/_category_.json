@@ -1,0 +1,8 @@
+{
+  "label": "Basic",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "The built-in components in @motionscript/core: text, shapes, paths, video and cameras."
+  }
+}

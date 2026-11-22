@@ -1,0 +1,152 @@
+---
+sidebar_position: 2
+---
+
+# Coming from Manim
+
+Motion Script covers the same ground as Manim's graphs, formulas and 3D scenes,
+through `@motionscript/math`. The ideas carry over; the way a scene is written
+does not. This page maps one to the other.
+
+```bash
+npm install @motionscript/math @motionscript/sdk
+```
+
+## What changes
+
+**A scene is data, not a program.** In Manim, `construct` runs once and each
+`self.play` call renders as it goes. Here a scene is a document: the things in
+it (nodes) and what happens to them (commands, each placed at a time). Nothing
+runs in order. A frame is worked out from the time alone, so any frame can be
+shown without playing the ones before it, and an editor can scrub, cut and
+export any stretch of it.
+
+**A `self.play` is a command with an `at`.** Where Manim waits for one
+animation to end before the next starts, a command says when it starts and how
+long it lasts. Two commands at the same `at` run together; `self.wait(1)` is a
+second with no command in it.
+
+**An updater is a binding.** Manim keeps a value in a `ValueTracker` and
+recomputes what depends on it every frame. Here the value is a document
+variable, a prop that depends on it is written as a formula (`"=[t]"`), and
+`variableTo` drives it. There is no frame-to-frame state, so the result is the
+same however you get to a frame.
+
+**A coordinate system holds what is drawn on it.** `axes.plot(...)` and
+`axes.c2p(...)` become children: a `functionPlot` placed inside an `axes2d` is
+drawn in its graph units, and so is the `x`/`y` of any other node put inside
+it, a point, a label or an image.
+
+**LaTeX needs no TeX install.** MathJax is bundled, and every glyph of a
+formula is a path that can be coloured, written on and morphed.
+
+## A scene side by side
+
+A dot sliding along a parabola to its lowest point. In Manim:
+
+```python
+class Lowest(Scene):
+    def construct(self):
+        axes = Axes(x_range=[0, 10], y_range=[0, 100, 10])
+        curve = axes.plot(lambda x: 2 * (x - 5) ** 2)
+        t = ValueTracker(0)
+        dot = always_redraw(lambda: Dot(axes.i2gp(t.get_value(), curve)))
+        self.add(axes, curve, dot)
+        self.play(t.animate.set_value(5))
+```
+
+As a document:
+
+```ts
+{
+  kind: 'composition',
+  variables: [{ id: 't', value: 0 }],
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 760, height: 420, xRange: [0, 10], yRange: [0, 100], yStep: 10 } },
+    { id: 'curve', type: 'functionPlot', parentId: 'axes', layerOrder: 0,
+      props: { expression: '2(x - 5)^2' } },
+    // Inside the plot, a point rides it: its x says where, its height is the curve's.
+    { id: 'dot', type: 'plotPoint', parentId: 'curve', layerOrder: 0,
+      props: { x: '=[t]' } },
+  ],
+  commands: [
+    { id: 'slide', type: 'variableTo', targetId: 't', at: 0, duration: 1.5, args: { value: 5 } },
+  ],
+}
+```
+
+## Classes
+
+| Manim | Motion Script |
+|---|---|
+| `NumberLine`, `UnitInterval` | [`numberLine`](/docs/components/math/number-line) |
+| `Axes` | [`axes2d`](/docs/components/math/axes2d) |
+| `NumberPlane`, `ComplexPlane` | [`numberPlane`](/docs/components/math/number-plane) |
+| `PolarPlane` | [`polarPlane`](/docs/components/math/polar-plane) |
+| `ThreeDAxes` | [`axes3d`](/docs/components/math/axes3d), a 3D graph with its own camera |
+| `axes.plot`, `ParametricFunction`, `ImplicitFunction`, polar graphs | [`functionPlot`](/docs/components/math/function-plot): how the equation is written decides which |
+| `axes.plot_line_graph`, `Polygon` on axes | [`pointsPlot`](/docs/components/math/points-plot) |
+| `Surface`, `axes.plot_surface` | [`surfacePlot3d`](/docs/components/math/surface-plot3d) |
+| `ParametricFunction` in 3D | [`curvePlot3d`](/docs/components/math/curve-plot3d) |
+| `Dot`, `LabeledDot`, `axes.i2gp` | [`plotPoint`](/docs/components/math/plot-point) (inside a plot, it rides it) |
+| `Dot3D` | [`plotPoint3d`](/docs/components/math/plot-point3d) |
+| `Arrow`, `Vector`, `DoubleArrow`, `Line` on axes | [`vectorArrow`](/docs/components/math/vector-arrow); its head is the stroke's `endCap` |
+| `Arrow3D` | [`vectorArrow3d`](/docs/components/math/vector-arrow3d) |
+| `axes.get_area` | [`curveArea`](/docs/components/math/curve-area) |
+| `axes.get_riemann_rectangles` | [`riemannSum`](/docs/components/math/riemann-sum) |
+| `TangentLine`, `axes.get_secant_slope_group` | [`tangentLine`](/docs/components/math/tangent-line) (`dx` above zero for a secant) |
+| `axes.get_vertical_line`, `get_lines_to_point` | [`dropLines`](/docs/components/math/drop-lines) |
+| `ArrowVectorField` | [`vectorField`](/docs/components/math/vector-field) |
+| `StreamLines` | [`streamLines`](/docs/components/math/stream-lines) |
+| `TracedPath` | [`tracedPath`](/docs/components/math/traced-path) |
+| `MathTex`, `Tex` | [`latex`](/docs/components/math/latex) |
+| `Matrix`, `IntegerMatrix` | [`latexMatrix`](/docs/components/math/latex-matrix) |
+| `Brace`, `BraceLabel`, `BraceBetweenPoints` | [`curlyBrace`](/docs/components/math/curly-brace) |
+| `Angle`, `RightAngle` | [`angleMark`](/docs/components/math/angle-mark) |
+| `SurroundingRectangle`, `Underline`, `Cross` | [`emphasisMark`](/docs/components/math/emphasis-mark) |
+| `Graph`, `DiGraph` | [`networkGraph`](/docs/components/math/network-graph) |
+| `SampleSpace` | [`sampleSpace`](/docs/components/math/sample-space) |
+| `DecimalNumber`, `Variable` | core's [`number`](/docs/components/basic/number), bound to a variable |
+| `BarChart` | [`barChart`](/docs/components/charts/bar-chart) in `@motionscript/charts` |
+
+## Animations
+
+| Manim | Motion Script |
+|---|---|
+| `Create`, `DrawBorderThenFill` | `progressTo` (`start`, `end`) |
+| `Write` | `writeTo` on a `latex` |
+| `FadeIn`, `FadeOut` | `fadeTo` |
+| `Transform`, `ReplacementTransform` | `morphTo` on a plot, a formula or a field |
+| `TransformMatchingTex` | `morphTo` on a `latex`: shared terms travel |
+| `Indicate` | `pulse` |
+| `Wiggle` | `wiggle` |
+| `ShowPassingFlash` | `flash` |
+| `Circumscribe` | an `emphasisMark`, drawn on with `progressTo` |
+| `MoveAlongPath` | `moveTo` with a `path` |
+| `Rotate`, `ScaleInPlace` | `rotateTo`, `scaleTo` |
+| `obj.animate.set_color` | `fillTo`, `strokeTo`; `partFillTo` for one part of a formula or a graph |
+| `ValueTracker.animate.set_value` | `variableTo` |
+| `axes` range changes | `rangeTo` |
+| `ApplyMatrix`, `LinearTransformationScene` | `transformTo` on a `numberPlane` |
+| `ApplyPointwiseFunction`, `prepare_for_nonlinear_transform` | `warpTo` on a `numberPlane` |
+| `graph.change_layout` | `arrangeTo` on a `networkGraph` |
+| `move_camera`, `begin_ambient_camera_rotation` | `orbitTo` on an `axes3d` or a `canvas3d` |
+| `self.camera.frame.animate.move_to(dot)` | a `camera` with `follow` naming the dot, and `zoomTo` |
+
+## Where it differs
+
+- **Angles in equations are radians** and trig takes bare names (`sin(x)`); a
+  name an equation does not know is a value of yours, set in `params` and
+  animated with `paramsTo`.
+- **3D graphs are z up and right-handed**, as in Manim; the scene itself is y
+  up, so an `axes3d`'s default camera already shows the textbook view.
+- **A morph between two equations blends their points**, so any kind of curve
+  bends into any other. An implicit curve has no points to blend and changes
+  half way.
+- **Lengths that are not graph values are pixels in 2D and scene units in 3D**:
+  a point's radius, a stroke's weight, a label's size. They keep their size
+  when the axes' range changes.
+
+Every component above has its own page; the [Math overview](/docs/components/math/overview)
+lists them by group.

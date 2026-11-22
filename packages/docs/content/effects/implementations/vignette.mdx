@@ -1,0 +1,69 @@
+---
+sidebar_position: 16
+---
+
+# Vignette
+
+Ramps a tint in toward the edges of a node — the lens falloff every photo grade reaches for. The falloff is normalized by the node's half-extent, so it follows the box's aspect ratio instead of an off-center circle.
+
+![Vignette effect demo](/effects/vignette.webp)
+
+## Usage
+
+```ts
+import { Rect, Fills, Effects } from '@motionscript/sdk/v1';
+
+// Default: a soft black falloff at half strength
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.vignette() })
+
+// Scalar shorthand sets the amount
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.vignette(0.9) })
+
+// A tight, hard-edged spotlight
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.vignette({ amount: 1, radius: 0.4, softness: 0.2 }) })
+
+// White vignette — the tint is a color, not just a darkening
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.vignette({ amount: 0.8, color: 'white' }) })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'vignette'` | – | Effect identifier |
+| `amount` | `number` | `0.5` | 0–1 tint strength at the outside. `0` is off |
+| `radius` | `number` | `0.75` | Normalized radius where the ramp starts. `1` is the middle of each edge, `√2` the corners |
+| `softness` | `number` | `0.5` | Width of the ramp. `0` is a hard ring, `1` a long gradient |
+| `color` | `Color` | `'black'` | Tint color. Its alpha scales the effect alongside `amount` |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` vignettes whatever the node sits over, clipped to its silhouette |
+
+## Animating
+
+```tsx
+import { Effects } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'card', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 600, height: 400, effects: Effects.vignette(0) } },
+  ],
+  commands: [
+    { id: 'darken', type: 'to', targetId: 'card', at: 0, duration: 1.2,
+      easing: { kind: 'inOut', args: 'quad' }, args: { effects: Effects.vignette(1) } },
+  ],
+};
+```
+
+## Stacking with other effects
+
+```ts
+// Film look: grade, grain, then darken the corners last
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.vintage(0.6).grain(0.2).vignette(0.7) })
+```
+
+Order matters — a vignette applied *before* a `threshold` or `posterize` gets quantized along with everything else, which is occasionally what you want and usually not.
+
+## See also
+
+`colorAdjustment` has no `vignette` field as a node effect: it is a color matrix, which has no access to a pixel's position. This effect is the real implementation.

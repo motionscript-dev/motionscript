@@ -1,0 +1,75 @@
+---
+sidebar_position: 41
+---
+
+# AngleMark
+
+`AngleMark` marks an angle at its own position: an arc from one direction to
+another, or the small square of a right angle, with an optional label. Bind a
+direction to a variable and the angle opens and closes. It ships in
+`@motionscript/math`; register the package's `NODES`
+([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [{ id: 'theta', value: 30 }],
+  nodes: [
+    { id: 'base', type: 'vectorArrow', parentId: null, layerOrder: 0,
+      props: { tail: { x: 0, y: 0 }, head: { x: 240, y: 0 } } },
+    // The angle from the x direction to theta, labelled with its own size.
+    { id: 'angle', type: 'angleMark', parentId: null, layerOrder: 1,
+      props: { fromAngle: 0, toAngle: '=[theta]', radius: 60, label: '°', fontFamily: 'Inter' } },
+  ],
+  commands: [
+    { id: 'open', type: 'variableTo', targetId: 'theta', at: 0, duration: 2, args: { value: 120 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `fromAngle` | `number` | `0` | Where the arc starts, in degrees counter-clockwise from the right |
+| `toAngle` | `number` | `60` | Where it ends. The angle marked is `toAngle - fromAngle` |
+| `radius` | `number` | `48` | The arc's radius in pixels. `0` draws nothing |
+| `corner` | `'auto' \| 'arc' \| 'square'` | `'auto'` | `auto` draws the square where the angle is a right one (within half a degree), the arc elsewhere. Not animatable |
+| `label` | `string` | `''` | Text beyond the middle of the arc, a formula between dollar signs, or `°` for the angle's size in degrees. Not animatable |
+| `labelSize` | `number` | `24` | The label's size in pixels |
+| `labelColor` | `Color` | `'#e5e7eb'` | The label's colour |
+| `fontFamily` | `string` | `''` | The label's font, for plain text and `°` |
+| `stroke` | `StrokeProp \| StrokeProp[]` | 3 px, `'#e5e7eb'`, round caps and joins | The arc's line |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `radiusTo` | `{ radius }` | Growing or shrinking the mark |
+| `progressTo` | `{ start?, end? }` | Drawing the arc on |
+| `flash` | `{ portion? }` | A stretch of the arc, `portion` of its length (default `0.25`), running along it |
+
+```tsx
+{ id: 'grow', type: 'radiusTo', targetId: 'angle', at: 2, duration: 0.5, args: { radius: 90 } },
+```
+
+`fromAngle` and `toAngle` animate with a `to` command.
+
+## Notes
+
+- The mark is centred on its own `x` and `y`: put it at the vertex. Inside a
+  coordinate system those are graph units, but `radius` stays in pixels and the
+  directions are on screen, so on axes with unequal x and y scales an angle
+  measured in graph units differs from the one drawn.
+- Directions are degrees counter-clockwise from the right, y up. A negative
+  sweep (`toAngle` below `fromAngle`) runs clockwise; `°` shows its size without
+  the sign.
+- It takes a [`stroke`](/docs/attributes/strokes) and no `fill`. It has no size
+  of its own and takes no place in a layout.
+- A `°` label is rounded to a tenth of a degree.
+- Manim's `Angle` and `RightAngle`.
+- Related: [`vectorArrow`](/docs/components/math/vector-arrow),
+  [`curlyBrace`](/docs/components/math/curly-brace),
+  [`emphasisMark`](/docs/components/math/emphasis-mark).

@@ -1,0 +1,252 @@
+---
+sidebar_position: 9
+---
+
+# Audio
+
+Sound is a tree of nodes, on the same terms as the rest of a scene: a `sound` node plays one clip of a file, and an `audioBus` node groups the clips that feed it. Both are rows in a document's `nodes` like any other node, and a composition's root takes audio children directly. They have no box and no place in space, so layout and rendering never see them.
+
+## Basic usage
+
+```tsx
+export default {
+  kind: 'composition',
+  duration: 8,
+  nodes: [
+    { id: 'music', type: 'sound', parentId: null, layerOrder: 0,
+      props: { src: './music.mp3' } },
+  ],
+  commands: [],
+};
+```
+
+A node row with no `startAt` or `endAt` has no length of its own, so a scene that is only sound sets `duration` — without it, this one would be zero seconds long.
+
+A clip with no picture can also be a document of its own: `{ kind: 'audio', nodes, commands }` reads the same way, with an `audioBus` at its root instead of a canvas.
+
+---
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `src` | `string` | | Path to the audio file |
+| `volume` | `number \| Ramp` | `1` | Linear gain (0 = silent, 1 = full, >1 = amplified). A ramp automates it — see [Fades and automation](#fades-and-automation) |
+| `loop` | `boolean` | `false` | Repeat the trimmed clip until the node's `endAt` |
+| `trimStart` | `number` | `0` | In-point in the source file (seconds) |
+| `trimEnd` | `number` | | Out-point in the source file (seconds). Defaults to the end of the file |
+| `speed` | `number \| Ramp` | `1` | Playback-rate multiplier. Alters pitch. A ramp runs over seconds of the source |
+| `effects` | `AudioEffectsInput` | `[]` | Audio effects (a single effect, an array, or an `AudioEffectChain`) |
+| `transitionIn` | `AudioTransition` | | A fade over the clip's first seconds — see [Transitions](#transitions) |
+| `transitionOut` | `AudioTransition` | | A fade over the clip's last seconds |
+
+The shorter examples on this page are written as component calls, where `SoundNode` is the `sound` node's component; in a document they are the same keys in `props`.
+
+---
+
+## When a clip plays
+
+A clip plays for its **presence span**: it starts at the `startAt` that brings its row into the tree, and stops at the `endAt` that takes it out. There is no play command, and no start time to keep in sync with anything — when a sound happens is the same field as when a rectangle appears.
+
+```tsx
+// A hit at 1.5s, cut off at 2s
+{ id: 'hit', type: 'sound', parentId: null, layerOrder: 0, startAt: 1.5, endAt: 2,
+  props: { src: './hit.wav', volume: 0.8 } },
+```
+
+Without an `endAt`, a clip plays until its trim or its file runs out. Either way, the span it plays is readable straight off the document.
+
+---
+
+## Trimming
+
+Presence says *when* on the timeline; the trim says *what part of the file*:
+
+```ts
+// The first 5 seconds of the source
+SoundNode({ src: './track.mp3', trimEnd: 5 })
+
+// 10s to 20s of the source
+SoundNode({ src: './track.mp3', trimStart: 10, trimEnd: 20 })
+```
+
+---
+
+## Looping
+
+A looping clip repeats until its `endAt` — here, for 10 seconds:
+
+```tsx
+{ id: 'ambient', type: 'sound', parentId: null, layerOrder: 0, endAt: 10,
+  props: { src: './ambient.mp3', loop: true } },
+```
+
+---
+
+## Fades and automation
+
+Automation is a **ramp**, not a tween. `volume`, `speed` and every [audio effect](../audio-effects/gain) param take one in place of a number. A ramp is plain JSON, a list of keys each placed `at` seconds after the clip's start or `before` seconds before its end, so it round-trips through a document:
+
+```ts
+import { SoundNode, ramp } from '@motionscript/sdk/v1';
+
+// Duck to 30% from 3s to 6s
+SoundNode({ src: './music.mp3', volume: { keys: [
+  { at: 3, value: 1 },
+  { at: 3.5, value: 0.3, ease: { kind: 'inOut', args: 'quad' } },
+  { at: 6, value: 0.3 },
+  { at: 6.5, value: 1 },
+] } })
+
+// The same, built fluently: segments run on from the start
+SoundNode({ src: './music.mp3', volume: ramp(1, 1, 3).ramp(1, 0.3, 0.5).hold(2.5).ramp(0.3, 1, 0.5) })
+
+// Swell: up over 0.5s, hold, down over the last second
+SoundNode({ src: './music.mp3', volume: ramp(0, 1, 0.5).hold().ramp(1, 0, 1) })
+```
+
+Segments before a bare `hold()` are placed from the clip's start and segments after it from the end, and the hold stretches to fill whatever lies between, so the swell above keeps its shape on a clip of any length. A key's `ease` is the same `EaseSpec` a command takes, shaping the segment arriving at it; an engine-built ease function (`easeIn`, `easeOut`, `easeInOut`, `curveEase`) is stored as its spec, and a registered ease's name cannot be used, because nothing that plays sound has the registry.
+
+A `speed` ramp runs over seconds of the **source** rather than of the clip, since the rate is what decides how fast the source is consumed, and the clip's length on the timeline is the integral of it. A looping sound cannot ramp its speed.
+
+A `to` on `volume`, `pan` or `speed` throws, on purpose. Sound is scheduled once, ahead of playback, so a value written frame by frame would reach it on one frame and never again: the command would draw a bar on the timeline and render flat.
+
+The same goes for everything else a clip is built from. A clip is scheduled with the `src`, trim, `loop`, `speed` and effects its node has when it enters the tree, so a `set` changing one of them partway through is not heard. To change a sound mid-way, end its row there and start a second one.
+
+---
+
+## Transitions
+
+A transition is what happens as a clip enters or leaves: today, a fade over its first (`transitionIn`) or last (`transitionOut`) `duration` seconds, on top of its `volume` and any ramp on it.
+
+```ts
+SoundNode({
+  src: './music.mp3',
+  volume: 0.8,
+  transitionIn: { duration: 0.5 },
+  transitionOut: { duration: 1.2, curve: { kind: 'out', args: 'quad' } },
+})
+```
+
+`curve` is read as entering, progress along x and gain up y, and a `transitionOut` plays it backwards. It defaults to `'equalPower'`, the usual shape for audio: a pair of equal-power fades over the same second keeps the loudness steady where a linear pair dips in the middle. Like a ramp's ease, it can be a drawn curve, `{ kind: 'custom', args: [{ x, y }, …] }`. When in and out together are longer than the clip, both are shortened in proportion.
+
+A **cross-fade** is two clips whose spans overlap, the first with a `transitionOut` and the second with a `transitionIn` as long as the overlap:
+
+```tsx
+{ id: 'intro', type: 'sound', parentId: null, layerOrder: 0, startAt: 0, endAt: 10,
+  props: { src: './intro.mp3', transitionOut: { duration: 1 } } },
+{ id: 'theme', type: 'sound', parentId: null, layerOrder: 1, startAt: 9, endAt: 30,
+  props: { src: './theme.mp3', transitionIn: { duration: 1 } } },
+```
+
+Nothing links the two, so moving one leaves two ordinary fades rather than a broken pairing. A sweep while a clip leaves, such as a low-pass closing over its last second, is a ramp on the effect with `before` keys: `{ keys: [{ before: 1, value: 20000 }, { before: 0, value: 400 }] }`.
+
+---
+
+## Buses
+
+An `audioBus` groups clips: everything under it feeds through its `volume`, `mute`, `effects` and transitions. A `sound` joins one through its `parentId`:
+
+```tsx
+import { AudioEffects } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  duration: 3,
+  nodes: [
+    { id: 'sfx', type: 'audioBus', parentId: null, layerOrder: 0,
+      props: { volume: 0.5, effects: AudioEffects.echo({ delay: 0.2, feedback: 0.3 }) } },
+    { id: 'whoosh', type: 'sound', parentId: 'sfx', layerOrder: 0, startAt: 0.5,
+      props: { src: './whoosh.mp3' } },
+    { id: 'hit', type: 'sound', parentId: 'sfx', layerOrder: 1, startAt: 1.2,
+      props: { src: './hit.wav' } },
+  ],
+  commands: [],
+};
+```
+
+A bus is a shared signal path, not a label: every clip under it feeds one live chain, so the echo here is a single tail both sounds share rather than one each.
+
+A ramp or a transition on a bus runs over the bus's own span: from its row's `startAt` to its `endAt`, or to the end of its clip when nothing removes it. `transitionOut: { duration: 1 }` on a bus fades everything under it over the bus's last second, wherever each sound's own span falls.
+
+One bus row is one bus. Containment is the only thing that puts a clip on it, so a bus is a container node exactly like a `rect` holding children — and two rows are two chains, whatever they are called. A `video` is the one exception: its audio is welded to its picture, which has to stay in the visual tree, so it names a bus instead. By id, the same id a `sound` under that bus writes as its `parentId`:
+
+```tsx
+{ id: 'clip', type: 'video', parentId: null, layerOrder: 1,
+  props: { src: './interview.mp4', bus: 'sfx' } },
+```
+
+An id matching no bus routes straight to the master, the same as no bus at all.
+
+---
+
+## Audio effects
+
+The `AudioEffects` builder chains effects fluently. Effects apply in order from index 0 (closest to the source):
+
+```ts
+import { AudioEffects, SoundNode } from '@motionscript/sdk/v1';
+
+SoundNode({
+  src: './voice.mp3',
+  effects: AudioEffects.gain(1.5).lowpass(3000).echo({ delay: 0.3, feedback: 0.4 }),
+})
+```
+
+### Available effects
+
+| Effect | Builder | Description |
+|---|---|---|
+| Gain | `AudioEffects.gain(value)` | Volume multiplier. `1` = unchanged, `0` = silent, `>1` = louder |
+| High-pass | `AudioEffects.highpass(frequency)` or `.highpass({ frequency, q? })` | Rolls off content below `frequency` Hz |
+| Low-pass | `AudioEffects.lowpass(frequency)` or `.lowpass({ frequency, q? })` | Rolls off content above `frequency` Hz |
+| Tremolo | `AudioEffects.tremolo(rate)` or `.tremolo({ rate, depth? })` | Amplitude wobble at `rate` Hz with `depth` modulation (0-1) |
+| Echo | `AudioEffects.echo(delay)` or `.echo({ delay, feedback?, mix? })` | Delay `delay` seconds, feedback 0–&lt;1, wet mix 0-1 |
+
+### Raw effect objects
+
+Effects can also be passed as plain objects or arrays:
+
+```ts
+SoundNode({
+  src: './music.mp3',
+  effects: [
+    { type: 'gain', value: 0.7 },
+    { type: 'lowpass', frequency: 2000 },
+  ],
+})
+```
+
+### Spreading and branching chains
+
+`AudioEffects` chains are immutable: each method returns a new chain. Safe to share and branch:
+
+```tsx
+const base = AudioEffects.gain(1.2).lowpass(4000);
+const wet  = base.echo({ delay: 0.4, feedback: 0.5 });   // 'base' is unchanged
+const dry  = base.highpass(80);
+
+// Spread into an array
+const effects = [...base, { type: 'tremolo', rate: 4, depth: 0.3 }];
+```
+
+---
+
+## Speed and pitch
+
+`speed` alters both tempo and pitch (like changing tape speed). A `2` multiplier doubles speed and raises pitch by one octave:
+
+```ts
+SoundNode({ src: './beat.mp3', speed: 1.5 })
+```
+
+The clip's scene-time duration shrinks proportionally: a 10-second source at `speed: 2` occupies 5 seconds of scene time. For a rate that changes over the clip, give `speed` a ramp over seconds of the source — a tape winding up:
+
+```ts
+import { SoundNode, ramp, easeOut } from '@motionscript/sdk/v1';
+
+// Spin up from slow to normal over the first 2 seconds of the source, then hold
+SoundNode({ src: './vinyl.mp3', speed: ramp(0.1, 1, 2, { ease: easeOut() }).hold() })
+```
+
+There is no pitch-preservation mode, so use speed for stylistic tape effects rather than tempo-matching. Values close to `0` can cause artifacts.

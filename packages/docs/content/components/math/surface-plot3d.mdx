@@ -1,0 +1,107 @@
+---
+sidebar_position: 61
+---
+
+# SurfacePlot3d
+
+A surface in a 3D graph: a height over x and y, or a parametric surface in u
+and v. Reach for it to show a function of two variables, colour it by height,
+or bend one surface into another. It ships in `@motionscript/math`; register
+the package's `NODES` ([overview](/docs/components/math/overview)).
+
+<ComponentClip file="surface" />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes3d', parentId: null, layerOrder: 0,
+      props: { width: 960, height: 540, xRange: [-3, 3], yRange: [-3, 3], zRange: [-2, 2],
+        labels: true, fontFamily: 'Inter' } },
+    { id: 'bump', type: 'surfacePlot3d', parentId: 'axes', layerOrder: 0,
+      props: { expression: '1.8 exp(-(x^2 + y^2) / 2)',
+        colorScale: ['#1d4ed8', '#22c55e', '#facc15', '#ef4444'], floorShadow: 0.35 } },
+    // A point inside the surface rides it: its height is the surface's.
+    { id: 'dot', type: 'plotPoint3d', parentId: 'bump', layerOrder: 0,
+      props: { x: 0.8, y: -0.6, label: 'P', fontFamily: 'Inter', fill: '#facc15' } },
+  ],
+  commands: [
+    { id: 'saddle', type: 'morphTo', targetId: 'bump', at: 0.5, duration: 1.5,
+      args: { expression: '(x^2 - y^2) / 5' } },
+    { id: 'swing', type: 'orbitTo', targetId: 'axes', at: 0, duration: 3,
+      args: { orbit: 80, elevation: 32 } },
+  ],
+};
+```
+
+How the equation is written says what kind of surface it is:
+
+```tsx
+{ expression: 'sin(x) * cos(y)' }          // a height over x and y
+{ expression: 'z = x^2 - y^2' }            // the same, stated
+{ expression: '(cos(u) sin(v), sin(u) sin(v), cos(v))',
+  uDomain: [0, 6.2832], vDomain: [0, 3.1416] }   // parametric, in u and v
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `expression` | `string` | `''` | The surface's equation: a height in `x` and `y`, or three parts in `u` and `v` |
+| `uDomain` | `[number, number] \| null` | `null` | The span of `x` (a height) or `u` (parametric) that is drawn. Left out: the axes' x range, or 0 to 1 |
+| `vDomain` | `[number, number] \| null` | `null` | The span of `y` or `v`. Left out: the axes' y range, or 0 to 1 |
+| `params` | `Record<string, number>` | `{}` | The equation's named values: any name in it that is not a variable, a function or a constant |
+| `segments` | `number` | `48` | How finely the surface is sampled, each way (2 to 256). Not animatable |
+| `colorScale` | `Color[]` | `[]` | Colours by height, lowest first, over the axes' z range. Empty paints the surface in its `fill` |
+| `meshLines` | `number` | `12` | How many lines are drawn across the surface each way (0 to 64); `0` leaves it bare. Not animatable |
+| `meshColor` | `Color` | `'#0b1220'` | The mesh lines' colour |
+| `floorShadow` | `number` | `0` | The opacity, 0 to 1, of a flattened copy of the surface laid on the floor of the axes in its colours; `0` draws none |
+
+It is a mesh and takes the mesh material props: `fill`, `opacity`, `roughness`,
+`metalness`, `wireframe` and the rest (see
+[Materials](/docs/custom-node/graphics-3d/materials)). In a document an unset
+`fill` is the plot blue, `#58a6ff`.
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `morphTo` | `{ expression }` | One surface bending into another, of any kind |
+| `paramsTo` | `{ params }` | The named values |
+| `domainTo` | `{ uDomain?, vDomain? }` | The spans that are drawn |
+
+```tsx
+// On a surface whose expression is 'sin(k * x) * cos(y) / 2'
+{ id: 'ripple', type: 'paramsTo', targetId: 'wave', at: 0, duration: 2, args: { params: { k: 3 } } },
+```
+
+Like any 3D node it also has `moveTo`, `rotateTo` and `scaleTo`, and `to` animates `colorScale`,
+`floorShadow`, `fill` and `opacity`.
+
+## Notes
+
+- It goes inside an [`axes3d`](/docs/components/math/axes3d) and draws nothing
+  anywhere else. It holds only a [`plotPoint3d`](/docs/components/math/plot-point3d),
+  which rides it: the point's `x` and `y` say where, and its height is the
+  surface's.
+- **It is held inside the axes.** A height that leaves the z range is drawn at
+  its edge, and one with no value is drawn flat, so a pole does not tear the mesh.
+- Trig is in radians. A height is written bare or as `z = ...`, and no other
+  equals sign is read; a parametric surface is three parts in brackets. An
+  equation that will not parse draws nothing.
+- A morph blends the two surfaces point by point over the same grid, so a height
+  can bend into a parametric surface and back. A `colorScale` tweens colour by
+  colour when the two lists are the same length, and changes at the end
+  otherwise.
+- With a `colorScale` the surface is shown on white with vertex colours, so its
+  `fill` is ignored. The floor shadow takes the same colours, or the plot blue
+  without a scale.
+- It is drawn from both sides and lit by the axes' lights. Below `opacity` 1 it
+  stops writing depth, so it blends rather than leaves a hole.
+- Manim's `Surface` and `axes.plot_surface`; Manim's `Transform` of a surface is
+  `morphTo`.
+- Related: [`curvePlot3d`](/docs/components/math/curve-plot3d) for a curve
+  through space, [`functionPlot`](/docs/components/math/function-plot) for a 2D
+  plot.

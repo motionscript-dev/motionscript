@@ -1,0 +1,89 @@
+---
+sidebar_position: 50
+---
+
+# NetworkGraph
+
+`NetworkGraph` draws a set of vertices and the edges between them, arranged by
+a rule: in a circle, by springs, as a tree, or in a grid. Reach for it for a
+graph in the sense of graph theory, not a plot. It ships in
+`@motionscript/math`; register the package's `NODES`
+([overview](/docs/components/math/overview)).
+
+<ComponentClip file="graph" />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'graph', type: 'networkGraph', parentId: null, layerOrder: 0,
+      props: {
+        width: 760, height: 460,
+        vertices: ['1', '2', '3', '4', '5'],
+        edges: [{ from: '1', to: '2' }, { from: '1', to: '3' }, { from: '2', to: '4' }, { from: '2', to: '5' }],
+        fontFamily: 'Inter',
+      } },
+  ],
+  commands: [
+    // From a circle to a tree hanging from the first vertex.
+    { id: 'tree', type: 'arrangeTo', targetId: 'graph', at: 0.5, duration: 1, args: { arrangement: 'tree' } },
+    // A vertex by its name, an edge written a-b.
+    { id: 'root', type: 'partFillTo', targetId: 'graph', at: 1.8, duration: 0.4, args: { part: '1', fill: '#f59e0b' } },
+    { id: 'edge', type: 'partFillTo', targetId: 'graph', at: 2.2, duration: 0.4, args: { part: '1-2', fill: '#f59e0b' } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `vertices` | `string[]` | `[]` | The vertices' names. Blank names and repeats are skipped when drawn |
+| `edges` | `{ from, to }[]` | `[]` | The edges, by their ends' names. A pair `['a', 'b']` reads the same. An edge from a vertex to itself is a loop above it |
+| `directed` | `boolean` | `false` | An arrowhead on each edge, at its `to` end. Two edges between the same vertices, one each way, bow apart |
+| `arrangement` | `'circular' \| 'spring' \| 'tree' \| 'grid'` | `'circular'` | The rule that places the vertices. Animate it with `arrangeTo` |
+| `root` | `string` | `''` | The vertex a tree hangs from; left empty, the first |
+| `positions` | `{ vertex, x, y }[]` | `[]` | Vertices placed by hand, whatever the arrangement says, from -1 to 1 each way across the node's box, y up |
+| `vertexRadius` | `number` | `18` | The vertices' radius in pixels. `0` draws only their labels |
+| `vertexStroke` | `StrokeProp \| StrokeProp[]` | none | An outline round each vertex |
+| `labels` | `boolean` | `true` | Write each vertex's name on it; a name between dollar signs is typeset |
+| `labelSize` | `number` | `18` | The names' size in pixels |
+| `labelColor` | `Color` | `'#111827'` | The names' colour |
+| `fontFamily` | `string` | `''` | The names' font |
+| `partFills` | `{ part, fill }[]` | `[]` | Paints for a vertex by its name, or an edge written `a-b`, over the graph's own |
+| `fill` | `FillProp \| FillProp[]` | `'#e5e7eb'` | The vertices' paint |
+| `stroke` | `StrokeProp \| StrokeProp[]` | 3 px, `'#9ca3af'`, round caps | The edges' paint |
+
+The graph fills its own `width` and `height` (a host starts it at 560 by 400).
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `arrangeTo` | `{ arrangement }` | Every vertex moving to where another rule places it |
+| `partFillTo` | `{ part, fill }` | One vertex or edge taking a paint, leaving the others as they are |
+| `progressTo` | `{ start?, end? }` | The edges drawing on, each from its `from` end |
+
+```tsx
+{ id: 'spring', type: 'arrangeTo', targetId: 'graph', at: 3, duration: 1, args: { arrangement: 'spring' } },
+```
+
+## Notes
+
+- `fill` is the vertices and `stroke` the edges; see
+  [fills](/docs/attributes/fills) and [strokes](/docs/attributes/strokes). A
+  part's `fill` takes any paint, gradients and layers included, and fades in
+  from the graph's own.
+- On an undirected graph, `a-b` and `b-a` name the same edge. On a directed one
+  they are two.
+- `positions` and the arrangements share one box, -1 to 1 each way, inset so a
+  vertex and its label stay inside the node.
+- Edges are drawn under the vertices, from rim to rim.
+- An arrowhead is the stroke's `endCap`, `'triangle'` unless the stroke sets
+  one ([end markers](/docs/attributes/strokes#end-markers)).
+- It does not take children.
+- Manim's `Graph` and `DiGraph`; `change_layout` is `arrangeTo`.
+- Related: [`sampleSpace`](/docs/components/math/sample-space),
+  [`emphasisMark`](/docs/components/math/emphasis-mark).

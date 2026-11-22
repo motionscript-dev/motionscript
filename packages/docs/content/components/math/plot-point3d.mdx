@@ -1,0 +1,67 @@
+---
+sidebar_position: 63
+---
+
+# PlotPoint3d
+
+A dot at graph coordinates in a 3D graph, with an optional label. Reach for it
+to mark a point in space, or a point on a surface that stays on it as the
+surface changes. It ships in `@motionscript/math`; register the package's
+`NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes3d', parentId: null, layerOrder: 0,
+      props: { width: 960, height: 540, fontFamily: 'Inter' } },
+    { id: 'bump', type: 'surfacePlot3d', parentId: 'axes', layerOrder: 0,
+      props: { expression: '1.8 exp(-(x^2 + y^2) / 2)' } },
+    // On the surface: x and y say where, the height is the surface's.
+    { id: 'p', type: 'plotPoint3d', parentId: 'bump', layerOrder: 0,
+      props: { x: 0.8, y: -0.6, label: 'P', fontFamily: 'Inter', fill: '#facc15' } },
+    // Free in the axes: placed by its own x, y and z.
+    { id: 'q', type: 'plotPoint3d', parentId: 'axes', layerOrder: 1,
+      props: { x: -2, y: 2, z: 1.5, label: 'Q', fontFamily: 'Inter', fill: '#f97316' } },
+  ],
+  commands: [
+    // P slides across the surface, climbing over the bump.
+    { id: 'slide', type: 'moveTo', targetId: 'p', at: 0, duration: 2, args: { x: -0.8, y: 0.6 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `radius` | `number` | `0.1` | The dot's radius, in scene units. `0` draws no dot, only the label |
+| `label` | `string` | `''` | Text above the dot |
+| `labelSize` | `number` | `0.26` | The height of the label's text, in scene units |
+| `labelColor` | `Color` | `'#e5e7eb'` | The label's colour |
+| `fontFamily` | `string` | `''` | The label's font; empty takes the scene's default text style |
+
+It is a mesh: `fill` paints the dot, and it takes the other mesh material props
+(see [Materials](/docs/custom-node/graphics-3d/materials)). Its position is the
+3D node's own `x`, `y` and `z`, in graph units.
+
+## Commands
+
+It has none of its own. Move it with the 3D node's `moveTo` (`x`, `y`, `z`), and
+animate `radius`, `labelSize`, `fill` or `labelColor` with `to`.
+
+## Notes
+
+- It goes inside an [`axes3d`](/docs/components/math/axes3d), free at its own
+  `x`, `y` and `z`, or inside a [`surfacePlot3d`](/docs/components/math/surface-plot3d),
+  where it rides the surface: its `z` is ignored and its height follows the
+  surface through a `morphTo` or `paramsTo`. It holds nothing.
+- Its position is in graph units and moves with the axes' `rangeTo`; its
+  `radius` and `labelSize` are scene units, so the dot keeps its size.
+- **Give it a `fill`.** An unset `fill` in a document is a mesh's white.
+- The label sits just above the dot and always faces the camera.
+- Manim's `Dot3D`.
+- Related: [`plotPoint`](/docs/components/math/plot-point), the 2D dot that
+  rides a plot; [`vectorArrow3d`](/docs/components/math/vector-arrow3d).

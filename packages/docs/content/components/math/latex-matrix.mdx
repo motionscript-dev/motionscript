@@ -1,0 +1,88 @@
+---
+sidebar_position: 4
+---
+
+# LatexMatrix
+
+`LatexMatrix` typesets a matrix from a list of rows of entries, inside the
+brackets you choose. Reach for it when the entries are data you want to change
+or point at one by one, rather than a `\begin{pmatrix}` written by hand in a
+[`latex`](/docs/components/math/latex) node. It ships in `@motionscript/math`;
+register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'm', type: 'latexMatrix', parentId: null, layerOrder: 0,
+      props: {
+        entries: [['1', '0'], ['0', '1']],
+        brackets: 'round',
+        fontSize: 64,
+        fill: 'white',
+        // The second '1' is the bottom-right entry.
+        partFills: [{ part: '1', occurrence: 2, fill: '#facc15' }],
+      } },
+  ],
+  commands: [
+    // The entries both matrices write travel; the rest fade.
+    { id: 'shear', type: 'entriesTo', targetId: 'm', at: 0.5, duration: 1,
+      args: { entries: [['1', 'k'], ['0', '1']] } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `entries` | `string[][]` | `[['a', 'b'], ['c', 'd']]` | The rows, top to bottom; each entry is a piece of LaTeX. An empty row is skipped, and no rows draws nothing |
+| `brackets` | `'square' \| 'round' \| 'bar' \| 'double' \| 'curly' \| 'none'` | `'square'` | The delimiters: `bmatrix`, `pmatrix`, `vmatrix`, `Vmatrix`, `Bmatrix` or none. Not animatable |
+
+It is a [`latex`](/docs/components/math/latex) node underneath and keeps the
+props that matter for a formula:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `fontSize` | `number` | `16` | Font size; the node sizes itself to the matrix |
+| `fill` | `FillProp \| FillProp[]` | none | The glyphs' paint. A document must give one (a host seeds the kit's blue) |
+| `partFills` | `{ part, fill, occurrence? }[]` | `[]` | Paints for entries, named by their source. `occurrence` counts from 1; left out, every place the entry is written is painted |
+| `written` | `number` | `1` | How much of the matrix is written, 0 to 1 |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `entriesTo` | `{ entries }` | A morph to new entries. A different count of rows or columns resizes the brackets on the way |
+| `partFillTo` | `{ part, fill, occurrence? }` | Paints one entry, leaving the others as they are |
+| `writeTo` | `{ written }` | Writes the matrix on, or off, glyph by glyph |
+
+```tsx
+{ id: 'mark', type: 'partFillTo', targetId: 'm', at: 1.5, duration: 0.4,
+  args: { part: 'k', fill: '#f87171' } },
+```
+
+A `to` command that sets `entries`, `brackets` or `fontSize` morphs the same way
+`entriesTo` does.
+
+## Notes
+
+- Each entry is a part of the formula, named by its own source: `x^2`, `0`,
+  `\frac{1}{2}`. A repeated entry is told apart with `occurrence`, counting
+  left to right, top to bottom.
+- Inside a document string, double each backslash: `'\\frac{1}{2}'`.
+- `entries` is a whole value. It does not tween entry by entry; the morph draws
+  the way from one matrix to the other and the prop changes at the end.
+- `brackets` is not animatable; it changes at once.
+- `morphTo` and the `latex` prop do nothing here: the source is built from
+  `entries` and `brackets`.
+- A formula has no outline trim (`start`, `end`, `progressTo`); `written` is how
+  it appears.
+- It can be placed anywhere, and takes children. An
+  [`emphasisMark`](/docs/components/math/emphasis-mark) or
+  [`curlyBrace`](/docs/components/math/curly-brace) inside it with no `on`
+  marks it, and its `part` names an entry.
+- Manim's `Matrix` and `IntegerMatrix`.
+- For a free-form formula, see [`latex`](/docs/components/math/latex).

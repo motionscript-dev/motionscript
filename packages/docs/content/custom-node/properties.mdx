@@ -1,0 +1,349 @@
+---
+sidebar_position: 2
+---
+
+# State
+
+A component's `state` is its properties. Each entry is what makes a custom node's knob behave like a built-in one: it accepts loose author input, works in a call and in a document's `props`, works with `set`, can be bound, and animates with `to`.
+
+```ts
+import { component2d, Paint } from '@motionscript/sdk/v1';
+
+export const Gauge = component2d({
+  key: 'gauge',
+  state: { ...Paint.state, value: 0 },
+  // …
+});
+```
+
+Hand it to the engine (`createBrowserEngine({ nodes: [Gauge] })`) and any document it opens can name it:
+
+```ts
+nodes: [
+  { id: 'gauge', type: 'gauge', parentId: null, layerOrder: 0, props: { value: 0.35 } },
+],
+commands: [
+  { id: 'fill-gauge', type: 'to', targetId: 'gauge', at: 0, duration: 1.2,
+    easing: { kind: 'inOut', args: 'quad' }, args: { value: 0.8 } },
+],
+```
+
+That is the whole story for a number. Everything else on this page exists because anything richer than a number needs two extra pieces.
+
+## An entry has two halves
+
+Under the loose type you write is a resolved value the node actually uses. Two functions bridge them:
+
+* A **resolve** (a mapper), which turns loose author input into the resolved value. `'red'` becomes a fill layer, `12` becomes four corner radii, `'topLeft'` becomes a pivot vector.
+* A **lerp** (a tween), which says how the resolved value interpolates. Two fill arrays lerp layer by layer, two corner sets lerp per corner, two colours lerp per channel.
+
+`to()` resolves once, on the destination, and interpolates between resolved values. Each step is stored as it comes out of the lerp and is not resolved again, so an entry that must stay in a range under an easing that overshoots clamps in its lerp as well as its resolve.
+
+`Types.custom` takes both:
+
+```ts
+glow: Types.custom<Fill, FillResolved[]>('red', { resolve: fillOps.resolve, lerp: fillOps.lerp }),
+```
+
+## Why this matters: the silent failure
+
+`.to()` only animates numbers and entries that carry a lerp. A string without one **snaps to its final value at the end of the tween**, and anything else (a boolean, an object, an array) is left alone. There is no warning, no type error, and no exception. You just get a jump, or nothing.
+
+```ts
+// Snaps. The colour appears at the last frame.
+tint: 'red',
+
+// Interpolates.
+tint: Types.color('red'),
+```
+
+The same is true of a resolve. Without one, `glow: 'red'` stores the string `'red'` rather than a fill layer, and whatever paints it gets a string it cannot use.
+
+## The attribute types
+
+Getting the pair right means knowing which resolve goes with which lerp, and several of those halves are internal and not exported at all. The `Types` builders pre-bake each pair, so there is one definition of every attribute's resolve and lerp and you never copy an incantation out of a built-in node.
+
+```ts
+import { component2d, Paint, Shapes, Types } from '@motionscript/sdk/v1';
+
+export const Card = component2d({
+  key: 'card',
+  state: {
+    ...Paint.state,
+    ...Shapes.corners,
+    glow: Types.fill('white/10'),
+    edge: Types.stroke,
+    notch: Types.cornerRadius(12),
+  },
+  // …
+});
+```
+
+```ts
+nodes: [
+  { id: 'card', type: 'card', parentId: null, layerOrder: 0, props: { glow: 'red' } },
+],
+commands: [
+  { id: 'shift-glow', type: 'to', targetId: 'card', at: 0, duration: 0.6,
+    args: { glow: Fills.linearGradient(['#6990DD', '#E8617C']) } },
+],
+```
+
+An attribute builder is used bare (`Types.stroke`, its own default) or called with a default in the loose form (`Types.fill('white/10')`).
+
+### The full set
+
+| Builder | Author type | Default | Accepts |
+|---|---|---|---|
+| `Types.fill` | `Fill` | `[]` | Everything `fill` takes: a CSS string, a fill object, a `Fills` chain, or an array. Lerps layer by layer |
+| `Types.stroke` | `Stroke` | `[]` | Everything `stroke` takes, including layered strokes |
+| `Types.shadow` | `Shadow` | `[]` | Everything `shadow` takes |
+| `Types.effects` | `Effect` | `[]` | One effect, an array, or an `Effects` chain |
+| `Types.color` | `Color` | `'black'` | CSS strings, `oklch()`, theme tokens, `'white/10'`. Lerps per channel |
+| `Types.cornerRadius` | `RectCornerRadius` | `0` | Uniform, per corner or per axis. Lerps per corner |
+| `Types.cornerStyle` | `RectCornerStyle` | `'rounded'` | `'rounded'` or `'angled'`, per corner |
+| `Types.path` | `PathData` | `''` | An SVG string or command list. Morphs between arbitrary shapes |
+| `Types.insets` | `InsetsProps` | `0` | Scalar, symmetric or per edge. Lerps per edge |
+| `Types.alignment` | `Alignment` | `'center'` | A named position in `[-1, 1]` (y-up), resolved to a per-axis vector. `'centerLeft'` to `'centerRight'` slides |
+| `Types.vector2` | `Vector2` | `{ x: 0, y: 0 }` | A plain 2D point, lerped component-wise |
+| `Types.size` | `SizeInput` | `'fill'` | A pixel number or `'fill'` / `'hug'`. Numbers interpolate, keywords snap |
+
+And the rest:
+
+| Builder | What it holds |
+|---|---|
+| `Types.number(d, { min, max, step, unit, scale })` | A number, with the hints a host draws its control from. `scale: 100` with `unit: '%'` shows a 0 to 1 value as a percentage |
+| `Types.text(d, { typing, multiline })` | A string. `typing: true` gives it a lerp that types it out character by character, so `to()` types rather than snaps |
+| `Types.boolean(d)` | A boolean |
+| `Types.oneOf(values, { default })` | One of a list of strings |
+| `Types.point(d)` | A `Vector2` in the node's own frame, lerped |
+| `Types.list(item)` | An array of one item type |
+| `Types.object(shape)` | An object of entries |
+| `Types.image(src)`, `Types.video(src)`, `Types.audio(src)`, `Types.font(family)` | A media source or a font family |
+| `Types.seed(n)` | A seed for deterministic randomness |
+| `Types.nodeRef()` | Another node, by id (see [below](#another-node)) |
+| `Types.custom(d, { resolve, lerp })` | Anything else |
+
+The attribute builders, `number`, `text`, `boolean`, `oneOf`, `point`, `list` and `custom` also take `{ private: true }` and `{ inherit }` (both below). `Types.list` and `Types.object` make a fresh default for each node, so two nodes never share one array.
+
+## Values arrive resolved
+
+Calls and documents take the loose form (`'red'`); every field reads the resolved one. `state.glow` is already the `FillResolved[]` a paint call wants, typed that way, with no cast:
+
+```ts
+render: (ctx, state) => ctx.draw(
+  new Graphics2D()
+    .rect({ width: ctx.size.width, height: ctx.size.height, cornerRadius: 24 })
+    .fill(state.glow),
+),
+```
+
+So `Card({ glow: 'red' })` type-checks against `Fill`, and `state.glow` inside the node is the resolved array.
+
+## An entry does not paint
+
+Declaring an entry gives you the input handling, the storage and the animation. The node still has to draw the thing:
+
+```ts
+ctx.draw(g.fill(state.glow));
+```
+
+What it references does load by itself: a `Types.fill`, `stroke` or `shadow` entry declares every image and font its paints name, and a `Types.image`, `video` or `font` entry declares its file or family. Anything else your node loads is declared in `load`. See [Declaring assets](./declaring-assets).
+
+## Paint with fills and strokes
+
+Whatever your node paints, an area or a line, make it a `Types.fill` or a `Types.stroke` entry rather than a colour, a width and an on/off switch. A fill already holds solid colours, gradients, images and blend modes; a stroke holds its weight, colour, dash and caps. A host gives both the same full editor it gives every shape, so your node reads like every other one, and an empty paint draws nothing, which is how an optional part is switched off:
+
+```ts
+state: {
+  ...Paint.state,                    // fill, stroke, shadow: the shape's own
+  grid: Types.stroke({ weight: 1, fill: '#ffffff33' }),
+  labels: Types.stroke([]),          // empty: no labels until someone adds a stroke
+},
+```
+
+A 3D node does the same through `Paint3D`: `Paint3D.material(state.fill)` paints a surface and `Paint3D.lines(g3, state.stroke, segments)` draws lines (see [3D objects](./graphics-3d/objects)).
+
+`Types.color` stores a normalised `[r, g, b, a]` tuple. Keep it for a colour that is not a paint, such as a light's colour or a value a shader reads, and hand it to a fill where you draw it:
+
+```ts
+state: { tint: Types.color('#6990DD') },
+render: (ctx, state) => ctx.draw(g.fill(Fills.color(state.tint))),
+```
+
+## Everything else works unchanged
+
+A typed entry is an ordinary property, so all the usual machinery applies.
+
+```ts
+// A call, in a component's own children
+Card({ glow: 'lime', effects: Effects.blur(4) })
+
+// A binding, re-evaluated on every read
+Card({ glow: () => (theme() === 'dark' ? '#0b0d12' : 'white') })
+
+// The same binding in a document: an expression naming a variable
+variables: [
+  { id: 'tone', value: '#0b0d12', lerp: 'color' },
+],
+nodes: [
+  { id: 'card', type: 'card', parentId: null, layerOrder: 0, props: { glow: '=[tone]' } },
+],
+commands: [
+  // A `set` command: a stamp, no tween
+  { id: 'restyle', type: 'set', targetId: 'card', at: 1,
+    args: { glow: Fills.radialGradient(['white', 'transparent']) } },
+
+  // A `to` command, using the attribute's own lerp
+  { id: 'brighten', type: 'to', targetId: 'card', at: 2, duration: 1,
+    easing: { kind: 'inOut', args: 'quad' }, args: { glow: '#ffffff', notch: 48 } },
+],
+```
+
+## Rolling your own pair
+
+When no builder fits, write the pair yourself with `Types.custom`. The usual case is a value that is neither a number nor a built-in attribute.
+
+A boolean needs a lerp or `.to()` will not drive it at all:
+
+```ts
+function snapFlag(from: boolean, to: boolean, t: number): boolean {
+  return t < 1 ? from : to;
+}
+
+floor: Types.custom(true, { lerp: snapFlag }),
+```
+
+A custom object needs both halves:
+
+```ts
+interface Range { min: number; max: number }
+
+const resolveRange = (v: Range | number): Range =>
+  typeof v === 'number' ? { min: 0, max: v } : v;
+
+const lerpRange = (from: Range, to: Range, t: number): Range => ({
+  min: from.min + (to.min - from.min) * t,
+  max: from.max + (to.max - from.max) * t,
+});
+
+span: Types.custom<Range | number, Range>(1, { resolve: resolveRange, lerp: lerpRange }),
+```
+
+`lerpNumber`, `lerpVector2`, `lerpVector3`, `lerpEuler3` and `slerpQuaternion` are all exported if you are composing a lerp out of parts.
+
+A resolve receives the previous resolved value as its second argument when one exists, which is how the partial forms work. That is what lets `cornerRadius` accept `{ topLeft: 8 }` and keep the other three corners.
+
+A `Types.custom` entry reports no kind of its own: a host reads one off the default. Pass `kind` (`'vector2'`, `'color'`, …) when the default can't tell it.
+
+## Private entries
+
+An entry with `{ private: true }` is the node's own state: not in documents or calls, not listed by a host, and written only by its commands. A seek restores it like any other entry, so a frame is still a function of its time.
+
+```ts
+travel: Types.number(1, { private: true }),
+```
+
+See [Commands](./commands#what-goes-where) for when to reach for one.
+
+## Inherited entries
+
+A node can hand its subtree a value, and an entry below can take it when the author left it unset. `provide` returns the values, each under a context; an entry's `inherit` reads them:
+
+```ts
+import { component2d, createContext, provides, Types, type Color } from '@motionscript/sdk/v1';
+
+const Accent = createContext<Color>('#6990DD', 'accent');
+
+export const Palette = component2d({
+  key: 'palette',
+  state: { accent: Types.color('#6990DD') },
+  provide: (state) => [provides(Accent, state.accent)],
+});
+
+export const Swatch = component2d({
+  key: 'swatch',
+  state: { tint: Types.color('black', { inherit: (use) => use(Accent) }) },
+  // …
+});
+```
+
+`inherit` is read once, when the node first attaches, and only for an entry the call or row did not set; its second argument is what the node was built with. `provide`'s second argument reads what is above, so a provider can lay its value over the inherited one. The text entries (`Typeface.state`) inherit this way from the nearest `DefaultTextStyle`.
+
+## Another node
+
+A `Types.nodeRef()` entry holds an id in documents and calls, and every field reads it as a view of that node, or `null` when there is none:
+
+```ts
+state: { target: Types.nodeRef() },
+render: (ctx, state) => {
+  const t = state.target;
+  if (!t) return;
+  // t.state, t.size, and t.frame: where it stands in this node's frame (y up from the centre).
+  ctx.draw(new Graphics2D().line({ points: [{ x: 0, y: 0 }, { x: t.frame.x, y: t.frame.y }] }).stroke({ weight: 2, fill: 'white' }));
+},
+```
+
+The view is read-only: a node animates another through a command, never by writing its state.
+
+## Modules instead of inheritance
+
+Spreading a module's `state` gives your node its entries; nothing is inherited from anywhere else. Three things follow:
+
+* **A new default for an entry you spread, or a built-in one, goes in `defaults`.** `{ ...Flow.state, flow: 'grid' }` would declare a new text entry named `flow`, not change the default of the one `Flow` spreads in:
+
+  ```ts
+  state: { ...Paint.state, ...Flow.state },
+  defaults: { fill: 'white/10', flow: 'horizontal', width: 'hug' },
+  ```
+
+  A function in `defaults` is a binding, handed the live state and what the node was built with: `defaults: { rotation: (state) => state.angle }`.
+* **Redeclaring a key after the spread replaces the entry whole**, type, default and lerp alike. Use it to change what an entry is, not only its default.
+* **Leave out what you have no use for.** Spread only the modules your node draws with, or take part of one:
+
+  ```ts
+  const { overlay: _overlay, ...paint } = Paint.state;
+  const { overlayTo: _overlayTo, ...paintCommands } = Paint.commands;
+  ```
+
+  A host then never offers a control that draws nothing.
+
+What a call takes is the component's own type, `Parameters<typeof Card>[0]`; what a built node is, `NodeOf<typeof Card>`.
+
+## Renaming and retiring entries
+
+A document stores your props by key, so a saved scene keeps naming an entry long after you have renamed it. Three spec fields, written right after `defaults`, keep those scenes working:
+
+```ts
+export const Gauge = component2d({
+  key: 'gauge',
+  state: { ...Paint.state, angle: Types.number(0), label: Types.custom({ text: '' }) },
+  defaults: { fill: 'white/10' },
+  // A row that still says `turns` sets `angle`.
+  renamed: { turns: 'angle' },
+  // Still works; a host stops offering it.
+  deprecated: { fill: 'Draw the dial with `stroke` instead.' },
+  migrate: {
+    // Keyed by the old name: converts only what was stored as `turns`.
+    turns: (value) => (value as number) * 360,
+    // Keyed by an entry: runs on every stored value, so it must return a current one unchanged.
+    label: (value) => (typeof value === 'string' ? { text: value } : value),
+  },
+});
+```
+
+They apply whenever a node is built from a row, and to a `to` or `set` command's props. A row that sets both an old key and its new one keeps the new. A value hook never sees an expression (`'=[spin]'`): a rename moves it, but its result cannot be converted by rewriting it.
+
+Changing what a value *means* (a unit, a default, a coordinate space) without a new name breaks every saved scene silently. Give the entry a new name, and convert the old one under `renamed` and `migrate`.
+
+A host storing rows can rewrite them the same way: `migrateNodeProps(engine.registry, type, props)` returns the new `props`, what `changes` were made and which props are `deprecated`.
+
+## Checklist
+
+* Numbers need nothing.
+* Anything else needs a lerp, or `.to()` silently snaps or does nothing.
+* Anything with loose author input needs a resolve.
+* For the standard attribute kinds, use the `Types` builder rather than wiring the pair by hand.
+* A spread module's defaults change in `defaults`, not by redeclaring the key.
+* The entry handles the value. Your `render` still has to paint it.
+* Renamed an entry, or changed what its value means? Keep the old key in `renamed`, and convert it in `migrate`.

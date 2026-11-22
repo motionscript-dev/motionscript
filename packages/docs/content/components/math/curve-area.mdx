@@ -1,0 +1,57 @@
+---
+sidebar_position: 32
+---
+
+# CurveArea
+
+The region between a plot and the x axis, or between two plots, over a span of x. Reach for it to shade an integral or the gap between two curves. It ships in `@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 450, padding: 32, xRange: [-1, 4], yRange: [-1, 3], fontFamily: 'Inter' } },
+    { id: 'top', type: 'functionPlot', parentId: 'axes', layerOrder: 0,
+      props: { expression: '2 + sin(2x) / 2' } },
+    { id: 'bottom', type: 'functionPlot', parentId: 'axes', layerOrder: 1,
+      props: { expression: 'x / 4' } },
+    // Beside the plots, naming them. Starts empty and is swept open.
+    { id: 'area', type: 'curveArea', parentId: 'axes', layerOrder: 2,
+      props: { on: 'top', under: 'bottom', domain: [0, 0] } },
+  ],
+  commands: [
+    { id: 'sweep', type: 'domainTo', targetId: 'area', at: 0, duration: 1.5, args: { domain: [0, 3] } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `on` | `string` | `''` | The id of the `functionPlot` that bounds the area from above |
+| `under` | `string` | `''` | The id of a second `functionPlot` to fill down to. Empty fills down to the x axis |
+| `domain` | `[number, number]` | `[0, 1]` | The span of x that is filled, as `[min, max]` in graph units |
+| `fill` | `Fill` | `{ type: 'solid', color: '#58a6ff', opacity: 0.35 }` | The area's paint. See [Fills](/docs/attributes/fills) |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `domainTo` | `{ domain }` | The span that is filled: sweep the area open, or slide it along |
+
+```tsx
+{ id: 'slide', type: 'domainTo', targetId: 'area', at: 2, duration: 1, args: { domain: [1, 4] } },
+```
+
+## Notes
+
+- It goes in a coordinate system (`axes2d`, `numberPlane`, `numberLine`, `polarPlane`), beside the plot or plots it reads, and names them in `on` and `under`. It has its own span on the timeline, so it can be swept open, faded, or kept while a curve changes under a `morphTo`.
+- With `on` empty it reads the plot it sits inside. A `functionPlot` takes only the marks made for it, though, so an area belongs beside its plots, not in one.
+- It draws nothing until `on` names a plot that exists.
+- The fill is held inside the system's y range, and where a curve has no value it drops to the axis. The span is also cut to the system's x range.
+- It is a fill only: no `stroke`, and no outline trim (`start`, `end`, `progressTo`). It appears with `domainTo`, its timeline span or its opacity.
+- Manim's `axes.get_area`. For rectangles under a curve, see [`riemannSum`](/docs/components/math/riemann-sum); for the plot itself, [`functionPlot`](/docs/components/math/function-plot).

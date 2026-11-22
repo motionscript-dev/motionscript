@@ -1,0 +1,131 @@
+---
+sidebar_position: 7
+---
+
+# Styling
+
+Every chart has one look entry, `style`. It holds the colours, the type, the grid,
+the marks and the legend, so the content props (`data`, `series`, the axes) say
+what is plotted and `style` says how it looks. A chart draws only the fields it
+has; a field it does not have is ignored, so one style dresses every chart.
+
+## Writing a style
+
+A style is a partial. Give only what you change; the rest stays at the chart's
+defaults, or at whatever the style was before.
+
+```tsx
+{ id: 'chart', type: 'lineChart', parentId: null, layerOrder: 0,
+  props: {
+    // ...data, xField, series
+    style: { fontFamily: 'Inter', fontSize: 32, area: 'gradient', legend: 'top' },
+  } },
+```
+
+Restyle with a `to` command: colours, sizes and weights tween, and everything else
+(a choice such as `curve`, a font family, a switch) steps at the midpoint.
+
+```tsx
+{ id: 'restyle', type: 'to', targetId: 'chart', at: 3, duration: 1,
+  args: { style: { palette: ['#f97316', '#ef4444'], foreground: '#fff7ed' } } },
+```
+
+## Presets
+
+`CHART_STYLE_PRESETS` holds eight colour-only looks: `midnight` (the default),
+`paper`, `ember`, `neon`, `ocean`, `sunset`, `pastel` and `mono`. Each states every
+colour, so applying one replaces the last. Spread one into a style and add to it:
+
+```ts
+import { CHART_STYLE_PRESETS } from '@motionscript/charts/v1';
+
+const style = { ...CHART_STYLE_PRESETS.paper, fontSize: 32 };
+```
+
+A preset is an ordinary style, so it works in a `to` command too, and the same one
+dresses a line, bar, pie, radar or radial chart. A host can save a style and reuse
+it across charts and projects.
+
+## Fields
+
+Fields are grouped, but written flat: `style: { palette, fontSize, curve }`.
+
+### Colours
+
+| Field | Default | |
+|---|---|---|
+| `palette` | blue, green, amber, rose, violet | A colour per series (per row in a pie or radial chart), cycled by index. A series' own `fill` wins |
+| `foreground` | `#f4f4f5` | Values, legend captions, centre text |
+| `muted` | `#a1a1aa` | Axis markers and captions, spoke and slice labels |
+| `background` | none | Behind the plot. Empty, so the chart reads against the stage |
+
+### Text
+
+| Field | Default | |
+|---|---|---|
+| `fontFamily` | `''` | Empty takes the scene's default face |
+| `fontSize` | `28` | Marker and legend size in px at 1080p; titles and values scale from it |
+| `fontWeight` | `500` | `100` to `900` |
+
+### Legend
+
+| Field | Default | |
+|---|---|---|
+| `legend` | `'bottom'` | `'bottom'`, `'top'`, `'right'` or `'none'`. Read once, when the node is built |
+| `swatch` | `'square'` | The marker before each caption: `'square'`, `'circle'` or `'line'` |
+
+### Grid (line and bar)
+
+| Field | Default | |
+|---|---|---|
+| `horizontalGrid` | `{ weight: 2, fill: 'white/15' }` | A `Stroke` for the horizontal rules. Weight, colour, `dash` and caps come with it; `[]` draws none |
+| `verticalGrid` | `[]` | The vertical rules, a `Stroke`. Literal, so a horizontal bar chart rules this one |
+| `axisStroke` | `[]` | The baseline and value-axis rule, a `Stroke` |
+| `showXAxis` | `true` | The category (x) axis row. Read once, when the node is built |
+| `showYAxis` | `true` | The value (y) axis column. Read once, when the node is built |
+
+### Marks and labels, by chart
+
+| Chart | Field | Default | |
+|---|---|---|---|
+| Line | `strokeWidth` | `4` | Line weight in px |
+| | `curve` | `'smooth'` | `'smooth'`, `'linear'` or `'step'` |
+| | `dots` | `false` | A dot on every sample |
+| | `dotSize` | `12` | Dot diameter in px |
+| | `area` | `'none'` | `'none'`, `'solid'` or `'gradient'` fill under each line |
+| | `areaOpacity` | `0.4` | The fill's opacity at the line |
+| | `values` | `'none'` | Each point's value `'above'` or `'below'` it. Read once |
+| Bar | `barRadius` | `10` | Corner radius of a bar's far end, px |
+| | `barWidth` | `0.7` | Share of the category slot a group fills |
+| | `barGap` | `6` | Gap between grouped bars, px |
+| | `values` | `'none'` | Each figure at the `'end'` of a bar or `'inside'` it. Read once |
+| Pie | `innerRadius` | `0` | The hole, `0` (pie) to `0.9`; about `0.6` is a donut |
+| | `sliceGap` | `3` | Channel between wedges, px |
+| | `sliceRadius` | `4` | Wedge corner rounding, px |
+| | `labelPlacement` | `'inside'` | `'inside'`, `'outside'` or `'none'`. Read once |
+| Radar | `gridShape` | `'polygon'` | `'polygon'` or `'circle'` rings |
+| | `gridLevels` | `4` | Number of rings |
+| | `gridStroke` | `{ weight: 2, fill: 'white/15' }` | The rings, a `Stroke`; `[]` draws none |
+| | `spokeStroke` | `{ weight: 2, fill: 'white/15' }` | The line from the centre to each category, a `Stroke`; `[]` draws none |
+| | `spokeLabels` | `true` | The category names around the rim. Read once |
+| | `strokeWidth` | `4` | Polygon outline weight, px |
+| | `areaOpacity` | `0.25` | Polygon fill strength |
+| | `dots` | `true` | A dot on each value |
+| | `dotSize` | `10` | Dot diameter, px |
+| Radial | `innerRadius` | `0.3` | Where the innermost ring starts, `0` to `0.9` |
+| | `ringGap` | `8` | Space between rings, px |
+| | `sweep` | `360` | Degrees a full ring spans, `30` to `360` |
+| | `startAngle` | `0` | Degrees clockwise from 12 o'clock |
+| | `track` | `'white/10'` | The empty ring under each arc, a `Fill`; `[]` draws none |
+| | `roundCaps` | `true` | Round the arc ends |
+| | `ringLabels` | `false` | Each category written at its ring's start |
+
+Fields marked read once shape which parts are built, so a `to` steps them rather
+than tweens, and a document edit rebuilds the chart.
+
+See each chart's page for how its fields look in use:
+[LineChart](/docs/components/charts/line-chart),
+[BarChart](/docs/components/charts/bar-chart),
+[PieChart](/docs/components/charts/pie-chart),
+[RadarChart](/docs/components/charts/radar-chart) and
+[RadialChart](/docs/components/charts/radial-chart).

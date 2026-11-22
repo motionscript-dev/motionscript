@@ -1,0 +1,67 @@
+---
+sidebar_position: 30
+---
+
+# PlotPoint
+
+A dot at a graph point, with an optional label. Put it inside a plot and it rides the curve: its `x` says where along it, and its height is the curve's. It ships in `@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [{ id: 't', value: 0 }],
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 760, height: 420, padding: 32, xRange: [0, 10], yRange: [0, 100], yStep: 10, fontFamily: 'Inter' } },
+    { id: 'curve', type: 'functionPlot', parentId: 'axes', layerOrder: 0,
+      props: { expression: '2(x - 5)^2' } },
+    // Inside the plot it rides it: x follows the variable, the height is the curve's.
+    { id: 'dot', type: 'plotPoint', parentId: 'curve', layerOrder: 0,
+      props: { x: '=[t]', label: 'P', labelSide: 'right', fontFamily: 'Inter' } },
+    // In the axes on its own, it sits at its own graph x and y.
+    { id: 'min', type: 'plotPoint', parentId: 'axes', layerOrder: 1,
+      props: { x: 5, y: 0, radius: 5, fill: '#f59e0b', label: '$x_0$', labelSide: 'below', fontFamily: 'Inter' } },
+  ],
+  commands: [
+    { id: 'slide', type: 'variableTo', targetId: 't', at: 0, duration: 2, args: { value: 5 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `on` | `string` | `''` | The id of a `functionPlot` to ride. Empty, it rides the plot it sits inside, or none |
+| `radius` | `number` | `7` | The dot's radius in pixels |
+| `label` | `string` | `''` | Text beside the dot. Written between dollar signs (`'$x_0$'`) it is typeset as a formula |
+| `labelSide` | `'above' \| 'below' \| 'left' \| 'right'` | `'above'` | Which side of the dot the label sits on |
+| `labelSize` | `number` | `18` | The label's font size in pixels |
+| `labelColor` | `Color` | `'#e5e7eb'` | The label's colour |
+| `fontFamily` | `string` | `''` | The label's font. Empty is the scene's face |
+| `fill` | `Fill` | `'#e5e7eb'` | The dot's paint |
+
+The dot also takes a `stroke` ([Strokes](/docs/attributes/strokes)). Its place is the usual `x` and `y` ([Position](/docs/attributes/position)), read in graph units.
+
+## Animating
+
+A point has no commands of its own. Move it with `moveTo`, or bind `x` to a variable and drive that, as above. On a plot only `x` matters, so a `moveTo` with `{ x }` slides it along the curve:
+
+```tsx
+{ id: 'move', type: 'moveTo', targetId: 'dot', at: 2, duration: 1, args: { x: 8 } },
+```
+
+Its `radius`, `labelSize`, `labelColor` and `fill` animate with `to`.
+
+## Notes
+
+- It goes in a coordinate system (`axes2d`, `numberPlane`, `numberLine`, `polarPlane`) or inside a `functionPlot`. In a `numberLine`, `x` is a value on the line and `y` is pixels above it.
+- Riding a plot, its own `y` is not used, except where the curve has no value (off the end of `sqrt(x)`, say): there the point stays at its own `y` rather than vanishing.
+- A point inside one plot that names another in `on` rides the one it names.
+- `radius` and `labelSize` are pixels, so the dot keeps its size when the axes zoom. A point riding a plot follows it through a `morphTo` and the axes through a `rangeTo`.
+- It has no outline trim: no `start`, `end` or `progressTo`. Bring it in with its timeline span, or animate `radius` or opacity.
+- In code, `value` reads the graph height the point is at.
+- Any number of props can follow the same variable: a [`tangentLine`](/docs/components/math/tangent-line) and [`dropLines`](/docs/components/math/drop-lines) bound to `t` move with the dot.
+- Manim's `Dot`, `LabeledDot` and `axes.i2gp`. For a dot in a 3D graph, see [`plotPoint3d`](/docs/components/math/plot-point3d).

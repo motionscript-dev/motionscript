@@ -1,0 +1,8 @@
+{
+  "label": "Available Components",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Every component you can put in a scene. Basic ships with @motionscript/core; the rest come from their own packages."
+  }
+}

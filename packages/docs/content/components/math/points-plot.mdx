@@ -1,0 +1,76 @@
+---
+sidebar_position: 21
+---
+
+# PointsPlot
+
+A line through listed graph points: a data series, or, closed, a shape drawn in
+graph coordinates. It ships in `@motionscript/math`; register the package's
+`NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 450, padding: 32, xRange: [0, 8], yRange: [0, 20], fontFamily: 'Inter' } },
+    // A smooth line through the data, drawn on from nothing
+    { id: 'series', type: 'pointsPlot', parentId: 'axes', layerOrder: 0,
+      props: { points: [{ x: 0, y: 4 }, { x: 2, y: 9 }, { x: 4, y: 7 }, { x: 6, y: 14 }],
+        smooth: true, end: 0 } },
+    // A closed triangle is filled
+    { id: 'shape', type: 'pointsPlot', parentId: 'axes', layerOrder: 1,
+      props: { points: [{ x: 5, y: 2 }, { x: 7, y: 2 }, { x: 6, y: 6 }],
+        closed: true, fill: '#f59e0b' } },
+  ],
+  commands: [
+    { id: 'draw', type: 'progressTo', targetId: 'series', at: 0, duration: 1, args: { end: 1 } },
+    // A fifth point grows out of the line's end
+    { id: 'grow', type: 'pointsTo', targetId: 'series', at: 1.2, duration: 1,
+      args: { points: [{ x: 0, y: 4 }, { x: 2, y: 9 }, { x: 4, y: 7 }, { x: 6, y: 14 }, { x: 8, y: 18 }] } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `points` | `{ x: number, y: number }[]` | `[]` | The points, in graph units, in order |
+| `closed` | `boolean` | `false` | Join the last point to the first. Not animatable |
+| `smooth` | `boolean` | `false` | Curve through the points instead of turning a corner at each. Not animatable |
+| `stroke` | `Stroke` | `#58a6ff`, 3 px, centred, round caps and joins | The line. See [Strokes](/docs/attributes/strokes) |
+
+It also takes the inherited `fill` ([Fills](/docs/attributes/fills)), painted
+only when `closed` is set, and the outline trim `start`/`end`.
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `pointsTo` | `{ points }` | The points to new places; extra ones grow from the line's end |
+| `progressTo` | `{ start?, end? }` | Drawing the line on (inherited) |
+
+```tsx
+{ id: 'settle', type: 'pointsTo', targetId: 'series', at: 0, duration: 0.8,
+  args: { points: [{ x: 0, y: 5 }, { x: 2, y: 6 }, { x: 4, y: 8 }, { x: 6, y: 10 }] } },
+```
+
+## Notes
+
+- It goes inside an `axes2d` (so a `numberPlane`), a `numberLine` or a
+  `polarPlane`, and holds no children. Its own `x`/`y` there shift every point,
+  in graph units.
+- During `pointsTo`, the shorter list is padded with its own last point: going
+  to more points, the new ones grow out of the end; going to fewer, the extra
+  ones fold into the last.
+- An open line has no inside, so its `fill` waits until it is `closed`.
+- `smooth` passes a curve through every point it was given (Catmull–Rom), so it
+  may overshoot between points that change direction sharply.
+- Fewer than two points draw nothing.
+- Manim's `axes.plot_line_graph`, and a `Polygon` on axes.
+- Related: [function-plot](/docs/components/math/function-plot),
+  [plot-point](/docs/components/math/plot-point),
+  [line-chart](/docs/components/charts/line-chart).

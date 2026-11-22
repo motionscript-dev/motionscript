@@ -1,0 +1,249 @@
+---
+sidebar_position: 1
+title: Introduction
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Introduction
+
+MotionScript is a TypeScript-first motion design engine for 2D and 3D animation. You describe a scene as a JSON **document** — the nodes in it, and commands placed on a timeline — and the engine renders any frame of it on demand, in a browser or in Node, and exports it to video.
+
+Because a frame is a pure function of its time, scrubbing costs the same forwards or backwards, a scene's length is known before it plays, and a document can be stored, diffed or generated like any other data.
+
+<DocsGrid>
+  <DocsCard title="Install" href="#install" meta="npm · pnpm · yarn">
+    Add MotionScript to a project you already have, or scaffold a new one.
+  </DocsCard>
+  <DocsCard title="Connect your app" href="#connect-your-app" meta="React · browser · Node">
+    Open a document on an engine and put it on a canvas.
+  </DocsCard>
+  <DocsCard title="Build your own components" href="#build-your-own-components" meta="component2d">
+    Write a node type of your own.
+  </DocsCard>
+  <DocsCard title="Framework quickstarts" href="/docs/framework-quickstarts/react" meta="React · Node.js">
+    The same thing end to end, in the host you already have.
+  </DocsCard>
+</DocsGrid>
+
+---
+
+## Install
+
+MotionScript is published to npm as a set of packages. Add the ones your host needs — the engine-agnostic library, plus a rendering backend.
+
+<Tabs groupId="package-manager">
+  <TabItem value="npm" label="npm">
+
+```bash
+npm install @motionscript/core @motionscript/sdk @motionscript/browser
+```
+
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @motionscript/core @motionscript/sdk @motionscript/browser
+```
+
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+
+```bash
+yarn add @motionscript/core @motionscript/sdk @motionscript/browser
+```
+
+  </TabItem>
+</Tabs>
+
+What each one is for:
+
+| Package | What it does |
+| --- | --- |
+| `@motionscript/core` | The engine. A peer dependency of the SDK and of every backend, so install it yourself: exactly one copy of it may be in your app, or class identity breaks and nodes render as plain shapes. |
+| `@motionscript/sdk` | The library itself: node types, document types, props, layout, and the factories a node type of your own is written with. This is what your scenes import. |
+| `@motionscript/browser` | The browser platform: WebGPU rendering (through `@motionscript/renderer`, installed with it), video export and audio playback. |
+| `@motionscript/react` | React bindings: a hook that owns the session and a component that draws it. Install this too if your host is React (it needs `react` and `react-dom` 19). |
+| `@motionscript/headless` | Renders the same documents from Node — a script, a queue, an HTTP handler. It drives a headless Chromium, so run `npx playwright install chromium` once after installing it. |
+
+:::tip WebGPU
+`@motionscript/browser` draws with WebGPU. Its renderer's WebAssembly resolves beside the module, which a bundler serves for you; a CDN setup passes its URL as `rendererWasmUrl`. A browser without WebGPU cannot draw, and `createBrowserEngine` rejects with `WebGpuUnavailableError` there.
+:::
+
+---
+
+## Connect your app
+
+Whatever the host, the shape is the same: **build one engine, open a document on it, get back a session.** The engine holds the renderer and knows which node types exist. A session is one document bound to one surface. You make an engine once for the whole app and open as many documents on it as you like.
+
+Here is the document the rest of this page opens — a blue square that slides right and fades out:
+
+```ts title="src/scenes/intro.ts"
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 200, height: 200, fill: 'royalblue', cornerRadius: 16 } },
+  ],
+  commands: [
+    { id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1, args: { x: 400 } },
+    { id: 'fade', type: 'to', targetId: 'box', at: 1.5, duration: 0.5, args: { opacity: 0 } },
+  ],
+};
+```
+
+### React
+
+`useMotionPlayer` owns the session and `MotionStage` draws it. The hook takes the engine rather than building one, so it stays out of the business of picking a backend — hand it the browser engine, a test double, or nothing at all while yours is still loading.
+
+```tsx title="src/Preview.tsx"
+import { useMotionPlayer, MotionStage, type Engine } from '@motionscript/react';
+import scene from './scenes/intro';
+
+export function Preview({ engine }: { engine: Engine | null }) {
+  const player = useMotionPlayer({
+    engine,
+    document: scene,
+    viewport: { width: 1920, height: 1080 },
+    fps: 60,
+  });
+
+  return <MotionStage player={player} />;
+}
+```
+
+Building the engine is asynchronous, so `useEngine` returns `null` until it resolves, passes it down, and disposes it when the app unmounts:
+
+```tsx title="src/App.tsx"
+import { createBrowserEngine } from '@motionscript/browser';
+import { useEngine } from '@motionscript/react';
+import { Preview } from './Preview';
+
+export default function App() {
+  const engine = useEngine(() => createBrowserEngine());
+
+  return <Preview engine={engine} />;
+}
+```
+
+Hand the player a *different* document and it swaps it into the running session rather than tearing the canvas down, so editing a scene keeps your place on the timeline.
+
+### Browser
+
+Without a framework, `engine.open` does the same job directly. `viewport` and `fps` describe the output rather than the scene, so they are passed here instead of written into the document.
+
+```ts title="src/main.ts"
+import { createBrowserEngine } from '@motionscript/browser';
+import scene from './scenes/intro';
+
+const engine = await createBrowserEngine();
+
+const session = engine.open({
+  document: scene,
+  viewport: { width: 1920, height: 1080 },
+  fps: 60,
+  target: document.querySelector('canvas')!,
+});
+
+session.playback?.play();
+```
+
+### Node and servers
+
+`@motionscript/headless` renders the same documents without a browser window. It drives the *browser* engine inside a headless page, which is the point: a server export and a reader's preview are the same code, so they are the same picture.
+
+```ts title="render.ts"
+import { writeFile } from 'node:fs/promises';
+import { createServerEngine } from '@motionscript/headless';
+import scene from './scenes/intro.js';
+
+const engine = createServerEngine({ projectRoot: '.' });
+
+const video = await engine.renderVideo({ document: scene });
+await writeFile('out.mp4', video);
+
+const still = await engine.renderImage({ document: scene, frame: 'last' });
+await writeFile('out.png', still.bytes);
+
+await engine.close();
+```
+
+Each of these has a fuller walkthrough of its own — installing, wiring the WASM file, and a transport you can drive — under [Framework quickstarts](/docs/framework-quickstarts/react).
+
+The engine bundles your **project entry** — `src/project.ts` by default, or the file its `entry` option names — so the node types your documents name come along with it. Documents are data and arrive per request, which is what lets one warm engine serve many renders.
+
+---
+
+## Build your own components
+
+A document names node types by key, and an engine only knows the ones it has been given: the built-in nodes, the `NODES` of each component package you install, and any you write.
+
+### Write a node type
+
+When no component package fits, write the component yourself. A custom node is one object handed to a factory: it paints whatever it likes during the render pass, while still laying out, animating and nesting like any other node. It is also the one place code joins a scene: anything JSON cannot express — a computed lookup table, a generated point cloud, a drawing built from a formula — belongs here.
+
+```ts title="src/components/blob.ts"
+import { component2d, Graphics2D } from '@motionscript/sdk/v1';
+
+export const Blob = component2d({
+  key: 'blob',
+  render: (ctx) => {
+    ctx.draw(
+      new Graphics2D()
+        .ellipse({ width: 200, height: 200 })
+        .fill('tomato'),
+    );
+    ctx.children();
+  },
+});
+```
+
+`key` only declares the document key — it is written out rather than taken from the variable name because documents store it, and a minifier is free to rename a variable. List the component in your project entry and hand that to the engine:
+
+```ts title="src/project.ts"
+import { Blob } from './components/blob';
+
+export const nodes = [Blob];
+```
+
+```ts
+import { nodes } from './project';
+
+const engine = await createBrowserEngine({ nodes });
+```
+
+Any document opened on that engine can now use it like a built-in:
+
+```ts
+{ id: 'blob', type: 'blob', parentId: null, layerOrder: 0,
+  props: { width: 400, height: 400 } },
+```
+
+<DocsGrid>
+  <DocsCard title="Custom nodes" href="/docs/custom-node/introduction" meta="component2d">
+    Factories, state, commands, and declaring assets.
+  </DocsCard>
+  <DocsCard title="Graphics" href="/docs/custom-node/graphics/overview" meta="Graphics2D">
+    Shapes, paints, cuts and masks recorded into one figure.
+  </DocsCard>
+  <DocsCard title="3D graphics" href="/docs/custom-node/graphics-3d/overview" meta="Canvas3D">
+    Meshes, materials, lights and cameras, painted into a 2D scene.
+  </DocsCard>
+</DocsGrid>
+
+---
+
+## Where to go next
+
+<DocsGrid columns={3}>
+  <DocsCard title="Your first scene" href="/docs/getting-started/scene">
+    Build a title card from scratch, one page at a time.
+  </DocsCard>
+  <DocsCard title="Available components" href="/docs/components/basic/text">
+    Basic shapes, text and video, plus math, charts, code and geography.
+  </DocsCard>
+  <DocsCard title="API reference" href="/api/sdk">
+    Generated from the source, one page per export.
+  </DocsCard>
+</DocsGrid>

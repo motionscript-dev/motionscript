@@ -1,0 +1,63 @@
+---
+sidebar_position: 6
+---
+
+# Echo
+
+Adds a delayed, fading repeat of the signal: a feedback echo (simple delay line). Each repeat is quieter than the previous by the `feedback` factor, producing a natural decay tail. The `mix` prop controls the wet/dry blend.
+
+## Usage
+
+```ts
+import { AudioEffects, SoundNode } from '@motionscript/sdk/v1';
+
+// Via AudioEffects builder — 300 ms delay, 40% feedback, default 50% wet mix
+SoundNode({ src: './voice.mp3', effects: AudioEffects.echo({ delay: 0.3, feedback: 0.4 }) })
+
+// With explicit mix — mostly dry, subtle echo
+SoundNode({ src: './voice.mp3', effects: AudioEffects.echo({ delay: 0.5, feedback: 0.6, mix: 0.25 }) })
+
+// Via raw object
+SoundNode({ src: './voice.mp3', effects: [{ type: 'echo', delay: 0.3, feedback: 0.4, mix: 0.5 }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'echo'` | – | Effect identifier |
+| `delay` | `number` | – | Time before the first repeat, in seconds |
+| `feedback` | `number` | – | Repeat decay factor, `0`–`<1`. Each echo is this fraction of the previous |
+| `mix` | `number` | `0.5` | Wet/dry blend. `0` = dry signal only, `1` = fully wet (no original) |
+
+## Animating
+
+Fade the echo in to add spaciousness over time:
+
+```ts
+import { AudioEffects, SoundNode, ramp, easeOut } from '@motionscript/sdk/v1';
+
+// Crossfade to a wet echo over the first 3 seconds, then hold
+SoundNode({
+  src: './narration.mp3',
+  effects: AudioEffects.echo({ delay: 0.4, feedback: 0.5, mix: ramp(0, 0.6, 3, { ease: easeOut() }).hold() }),
+})
+```
+
+An effect param is automated with a ramp rather than a tween: sound is scheduled once, ahead of playback, so a value written frame by frame never reaches it. See [Fades and automation](../attributes/audio#fades-and-automation) for how a ramp lines up with the clip.
+
+## Stacking with other effects
+
+```tsx
+// Muffle the echo tails with a low-pass
+AudioEffects.echo({ delay: 0.3, feedback: 0.5 }).lowpass(3000)
+
+// Quieter source into a long, washy reverb-like echo
+AudioEffects.gain(0.7).echo({ delay: 0.6, feedback: 0.75, mix: 0.4 })
+```
+
+## Notes
+
+- `feedback` must be strictly less than `1`. A value of `1` or above creates an infinite loop that never decays.
+- Long `delay` values (> 1s) with high `feedback` (> 0.7) can cause the tail to accumulate loudly. Preview with low `mix` first.
+- All three props (`delay`, `feedback`, `mix`) accept a ramp.

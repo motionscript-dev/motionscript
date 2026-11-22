@@ -1,0 +1,148 @@
+---
+sidebar_position: 13
+---
+
+import { VideoCanvas } from '@site/src/components/docs/node-scenes';
+
+# Video
+
+Renders a playing video. Layout and child positioning are inherited from `Rect`: a Video lays out its children exactly like a Rect, with a playing video frame painted in place of the fill. The video's audio track is automatically scheduled alongside the picture.
+
+<VideoCanvas />
+
+## Usage
+
+```tsx
+// A video plays for as long as it is in the scene, from its `startAt` to its
+// `endAt`. `duration` holds the scene open while it plays.
+export default {
+  kind: 'composition',
+  duration: 10,
+  nodes: [
+    { id: 'clip', type: 'video', parentId: null, layerOrder: 0,
+      props: { src: './assets/clip.mp4', fit: 'fill', width: 1280, height: 720, cornerRadius: 0 } },
+  ],
+  commands: [],
+};
+```
+
+## Props
+
+### Source & fit
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `src` | `string` | – | Path to the video file |
+| `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the video frame fills the node's bounds. `'fill'` covers + crops (centered), `'fit'` letterboxes, `'tile'` repeats, `'stretch'` distorts to fill. |
+| `crop` | `Insets` | `0` | Window onto the source frame, in **fractions** of its own size, applied before `fit` |
+| `zoom` | `number` | `1` | Magnification on top of the fitted scale |
+| `anchor` | `Anchor` | `'center'` | The point held fixed as `zoom` scales, and the alignment when the frame doesn't cover |
+| `matrix` | `ImageMatrix` | – | Raw frame→shape matrix; bypasses `crop`/`fit`/`zoom`/`anchor` and the bounds |
+| `filters` | `MediaFilter[] \| FilterChain` | `[]` | Visual filters applied to the rendered frame |
+
+`crop`, `zoom` and `anchor` behave exactly as they do on an [image fill](/docs/attributes/fills#image-fill) — same pipeline, same units, same caveats under `'tile'`.
+
+### Playback
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `playing` | `boolean` | `true` | Whether playback advances with the node's clock |
+| `timestamp` | `number \| null` | – | **Explicit** source time in seconds. Omit it and the picture is timed from the moment this node appeared; set it to drive the playhead yourself, or `null` to hand it back |
+| `trimStart` | `number` | – | Starting point within the source file in seconds |
+| `trimEnd` | `number` | – | Ending point within the source file in seconds |
+| `speed` | `number` | `1` | Playback-rate multiplier (affects both picture and audio) |
+| `loop` | `'forward' \| 'reverse' \| 'none'` | – | Loop behaviour |
+| `duration` | `number` | – | Length of one loop cycle in seconds. Defaults to the trimmed clip length |
+
+### Audio
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `volume` | `number` | `1` | Audio volume in [0, 1] |
+| `muted` | `boolean` | `false` | Silence the audio track without affecting the picture |
+| `audioEffects` | `AudioEffectsInput` | `[]` | Audio effects applied to the video's sound track (a single effect, an array, or an `AudioEffectChain`) |
+| `bus` | `string` | — | Node id of an `audioBus` in this clip to route the sound into. A `video` cannot be parented under one, so it names it — see [Buses](/docs/attributes/audio#buses) |
+
+### Layout & appearance
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius (clips the frame) |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape |
+
+## Playback timing
+
+The frame shown is worked out as the node paints, from **how long the node has
+existed** — a `Video` whose `startAt` is 3s opens on its first frame, not 3s
+in, and plays until its `endAt` or the end of the scene. Nothing advances it
+per frame, so a given frame renders the same whether you scrubbed to it,
+exported it, or played into it.
+
+`timestamp` overrides that: set it and the node shows exactly that source time.
+It is the time-remap knob — tween it to scrub the clip, or pair it with
+`playing: false` to hold a single frame. Set it to `null` to hand the playhead
+back to the clock; a `set` only writes the props it names, so leaving
+`timestamp` out won't clear it. A paused clip with no `timestamp` sits on its
+first frame (`trimStart`).
+
+## Animating
+
+Animate standard node props (`opacity`, `scale`, `cornerRadius`, etc.) with a `to` command. For playback control, stamp `timestamp` and `playing` with a `set` command:
+
+```tsx
+export default {
+  kind: 'composition',
+  duration: 10, // keep playing after the last command
+  nodes: [
+    { id: 'clip', type: 'video', parentId: null, layerOrder: 0,
+      props: { src: './assets/clip.mp4', fit: 'fill', width: 960, height: 540,
+        cornerRadius: 24, opacity: 0 } },
+  ],
+  commands: [
+    // Fade in
+    { id: 'fade-in', type: 'to', targetId: 'clip', at: 0, duration: 0.8,
+      easing: { kind: 'inOut' }, args: { opacity: 1, cornerRadius: 0 } },
+
+    // Three seconds later, freeze on the frame 3s into the clip
+    { id: 'freeze', type: 'set', targetId: 'clip', at: 3.8,
+      args: { playing: false, timestamp: 3 } },
+
+    // Scrub it by hand while frozen
+    { id: 'scrub', type: 'to', targetId: 'clip', at: 3.8, duration: 2,
+      easing: { kind: 'inOut' }, args: { timestamp: 8 } },
+
+    // Hand the playhead back to the clock, which never stopped — so it resumes
+    // where an unpaused clip would be
+    { id: 'resume', type: 'set', targetId: 'clip', at: 5.8,
+      args: { playing: true, timestamp: null } },
+  ],
+};
+```
+
+### Trim and loop
+
+```ts
+Video({
+  src: './assets/clip.mp4',
+  trimStart: 2.5,
+  trimEnd: 8.0,
+  loop: 'forward',
+  width: 640,
+  height: 360,
+})
+```
+
+### Speed change
+
+```ts
+Video({ src: './assets/clip.mp4', speed: 0.5, width: 640, height: 360 })
+```
+
+## Notes
+
+- `Video` lays out like a `Rect`, so children can be placed on top of the video frame (for subtitles, overlays, etc.).
+- Set `muted: true` to suppress audio while keeping the picture, which is useful when compositing multiple video layers.
+- `playing: false` freezes both picture and sound; add a `timestamp` to choose which frame it holds.
+- `loop: 'reverse'` plays the clip backward when it reaches the end.
+- See [Audio Effects](/docs/attributes/audio) for the full list of audio effects.
+- See [Image Filters](/docs/image-filters/overview) for the full list of visual filters that can be applied to the frame.

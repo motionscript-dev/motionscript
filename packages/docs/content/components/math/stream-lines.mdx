@@ -1,0 +1,80 @@
+---
+sidebar_position: 23
+---
+
+# StreamLines
+
+The lines a vector field carries a point along, one from each point of a grid.
+With a `window` below one, each line shows only a stretch of itself, and
+`flowTo` sends those stretches along, so the field reads as moving. It ships in
+`@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+<ComponentClip file="streams" />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 860, height: 480, padding: 32, xRange: [-6, 6], yRange: [-3, 3], fontFamily: 'Inter' } },
+    // Each line shows a third of itself at a time
+    { id: 'flow', type: 'streamLines', parentId: 'axes', layerOrder: 0,
+      props: { expression: '(sin(y), cos(x))', spacing: 0.5, window: 0.35,
+        strengthFills: ['#38bdf8', '#a3e635', '#facc15', '#f87171'] } },
+  ],
+  commands: [
+    // Two whole turns: every stretch runs its line end to end twice
+    { id: 'run', type: 'flowTo', targetId: 'flow', at: 0, duration: 4, args: { phase: 2 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `expression` | `string` | `''` | The field, two parts in x and y: `(P, Q)`, such as `(-y, x)` |
+| `params` | `Record<string, number>` | `{}` | The equation's named values: any name in it that is not `x`, `y`, a function or a constant. One left unset is `1` |
+| `spacing` | `number` | `1` | How far apart the lines start, in graph units |
+| `length` | `number` | `3` | How far each line runs from where it starts, in graph units along itself |
+| `window` | `number` | `1` | The share of each line shown at once, `0.01` to `1`. `1` shows all of it |
+| `phase` | `number` | `0` | Where along its line each shown stretch is. One whole turn runs every line from end to end |
+| `strengthFills` | `Fill[]` | `[]` | Paints by the field's strength, weakest first. Empty draws every line in the stroke's own paint |
+| `maxMagnitude` | `number` | `0` | The strength the last paint stands for. `0` takes the strongest the field is where it is drawn |
+| `stroke` | `Stroke` | `#58a6ff`, 2 px, centred, round caps and joins | Every line. See [Strokes](/docs/attributes/strokes) |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `flowTo` | `{ phase }` | The shown stretches along their lines; a whole number runs each line that many times |
+| `morphTo` | `{ expression }` | The field, each vector turning from the one into the other |
+| `paramsTo` | `{ params }` | The equation's named values |
+
+```tsx
+{ id: 'curl', type: 'morphTo', targetId: 'flow', at: 4, duration: 1,
+  args: { expression: '(-y, x)' } },
+```
+
+## Notes
+
+- It goes inside an `axes2d` (so a `numberPlane`), a `numberLine` or a
+  `polarPlane`, and holds no children.
+- It takes one `stroke` for every line and no `fill`. It has no outline trim
+  (`start`, `end`, `progressTo`): `window` and `phase` are how it reveals itself.
+- The lines start at whole multiples of `spacing` from the origin and run
+  forward from there, at an even pace: the field's strength colours a line but
+  does not change how far it goes. A line stops where the field is at rest or
+  has no value, and a little past the edge of what the system shows.
+- A line takes eight steps per spacing and at most 600, so a `length` beyond
+  75 spacings is cut short. Past 1600 lines the spacing is doubled until it fits.
+- A stretch enters its line at one end and leaves by the other. Each line is
+  offset by its own fixed share of a turn, so the stretches do not march in
+  step, and a frame is the same however it is reached.
+- With `strengthFills`, each line is coloured by the field's average strength
+  along it, in twelve shades between the paints.
+- Manim's `StreamLines`; its `start_animation` is a `flowTo`.
+- Related: [vector-field](/docs/components/math/vector-field),
+  [number-plane](/docs/components/math/number-plane).

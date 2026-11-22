@@ -1,0 +1,71 @@
+---
+sidebar_position: 28
+---
+
+# Scanlines
+
+Periodic dark bands across the content — the CRT line structure.
+
+![Scanlines effect demo](/effects/scanlines.webp)
+
+## Usage
+
+```ts
+import { Rect, Fills, Effects } from '@motionscript/sdk/v1';
+
+// Default: 4px bands at half darkness
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.scanlines() })
+
+// Scalar shorthand sets the darkness
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.scanlines(0.85) })
+
+// Coarse, thin bands at an angle
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.scanlines({ spacing: 10, thickness: 0.25, angle: 90 }) })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'scanlines'` | – | Effect identifier |
+| `spacing` | `number` | `4` | Distance between band centers, in pixels |
+| `thickness` | `number` | `0.5` | 0–1 share of each period the dark band covers |
+| `darkness` | `number` | `0.5` | 0–1 how far the bands darken. `0` is off |
+| `offset` | `number` | `0` | Band phase in pixels — animate to roll the pattern |
+| `angle` | `number` | `0` | Band angle in degrees. `0` = horizontal bands |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` bands the content beneath the node |
+
+Bands are measured from the node's center, so they travel with the node rather than the node sliding underneath a screen-fixed pattern.
+
+## Rolling the pattern
+
+`offset` is applied before the wrap, so a linear tween past `spacing` loops seamlessly — the slow vertical roll of a mistuned set:
+
+```tsx
+import { Effects, Fills } from '@motionscript/sdk/v1';
+
+const bands = (offset: number) => Effects.scanlines({ darkness: 0.6, spacing: 6, offset });
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'screen', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 640, height: 400, fill: Fills.image('./photo.jpg'), effects: bands(0) } },
+  ],
+  commands: [
+    // One full period per second for four seconds. The pattern at
+    // `offset: 24` is four whole periods on, so one tween rolls without a seam.
+    { id: 'roll', type: 'to', targetId: 'screen', at: 0, duration: 4,
+      easing: { kind: 'linear' }, args: { effects: bands(24) } },
+  ],
+};
+```
+
+## Stacking with other effects
+
+```ts
+// CRT
+Rect({ fill: Fills.image('./photo.jpg'), effects: Effects.scanlines({ darkness: 0.5, spacing: 4 }).bloom(1.2).vignette(0.5) })
+```
+
+The band profile is a smoothstep pair rather than a hard `step`: at typical spacings a hard edge aliases into a moiré the moment the node moves or scales. A sub-pixel period has no visible band, so the effect is skipped.

@@ -1,0 +1,102 @@
+---
+sidebar_position: 5
+---
+
+# RadarChart
+
+A radar (spider) chart: one spoke per row of the table, one closed polygon per
+series over a web of rings, with the spoke names around the rim and a legend. Reach
+for it to compare several measures of the same few things at a glance. It ships in
+`@motionscript/charts`; register the package's `NODES`
+([overview](/docs/components/charts/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'chart', type: 'radarChart', parentId: null, layerOrder: 0,
+      props: {
+        width: 560, height: 480,
+        data: [
+          { skill: 'Speed', alpha: 80, beta: 55 },
+          { skill: 'Power', alpha: 60, beta: 85 },
+          { skill: 'Range', alpha: 70, beta: 60 },
+          { skill: 'Defence', alpha: 50, beta: 75 },
+          { skill: 'Agility', alpha: 90, beta: 40 },
+        ],
+        categoryField: 'skill',
+        series: [
+          { field: 'alpha', label: 'Alpha' },
+          { field: 'beta', label: 'Beta' },
+        ],
+        max: 100,
+        style: { fontFamily: 'Inter', gridShape: 'circle' },
+      } },
+  ],
+  commands: [
+    // The web grows out, the polygons grow from the centre, then labels and legend.
+    { id: 'in', type: 'enter', targetId: 'chart', at: 0, duration: 1.6, args: {} },
+    { id: 'focus', type: 'spotlightSeries', targetId: 'chart', at: 2.5, duration: 0.35,
+      args: { seriesIndex: 1 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `data` | `DataRecord[]` | `[]` | The table, one row per spoke |
+| `categoryField` | `string` | `''` | The column naming each spoke |
+| `series` | `{ field, label, fill?, enabled? }[]` | `[]` | One polygon per entry: the column it plots, its legend caption, a paint override, and whether it shows at first |
+| `min` | `number` | `0` | The value at the centre of the web |
+| `max` | `number` | `0` | The value at the rim. `0`, or a value not above `min`, rounds the largest value up |
+| `style` | chart style | the default style | Colours, type, web, polygons and legend; see [Style](#style) |
+
+## Style
+
+The radar chart draws the shared colour, text and legend groups (see
+[Styling](/docs/components/charts/styling)). Its grid group is its own, and it adds
+polygon marks:
+
+| Field | Default | |
+|---|---|---|
+| `gridShape` | `'polygon'` | `'polygon'` rings through the spokes, or `'circle'` |
+| `gridLevels` | `4` | How many rings, the outermost at the scale's maximum |
+| `gridStroke` | `{ weight: 2, fill: 'white/15' }` | The rings, a `Stroke` (weight, colour, `dash`); `[]` draws none |
+| `spokeStroke` | `{ weight: 2, fill: 'white/15' }` | The line from the centre out to each category, a `Stroke`; `[]` draws none |
+| `spokeLabels` | `true` | The category names around the rim. Read once, when the node is built |
+| `strokeWidth` | `4` | Outline weight of each polygon in px |
+| `areaOpacity` | `0.25` | How strongly each polygon is filled in its series colour; `0` leaves an outline |
+| `dots` | `true` | A dot on each value |
+| `dotSize` | `10` | Dot diameter in px |
+
+The chart has no axis markers: the rings are drawn by `gridLevels` and `gridStroke`,
+and the scale is the `min` and `max` props.
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `enter` | none | The web grows out, the polygons grow from the centre one series after another, then the spoke names and the legend come up |
+| `showSeries` | `seriesIndex` | Grows a hidden series' polygon back out of the centre, with its legend entry |
+| `hideSeries` | `seriesIndex` | Shrinks a series' polygon into the centre as its legend entry shrinks away |
+| `spotlightSeries` | `seriesIndex` | Fades every other series and its legend entry. Nothing moves |
+
+Every command eases out unless the command row sets an `easing`.
+
+```tsx
+{ id: 'only-beta', type: 'spotlightSeries', targetId: 'chart', at: 2, duration: 0.35,
+  args: { seriesIndex: 1 } },
+```
+
+## Notes
+
+- Place it anywhere in a 2D scene. It takes children, laid out freeform over the chart. The web is sized to leave room for the spoke names.
+- A cell plots only when it is a finite number; anything else reads as `0`.
+- With a `max` left at `0`, every polygon is scaled against the largest value in the table, so adding a bigger row rescales them all.
+- A series with `enabled: false` starts hidden; `showSeries` grows it in. The series list itself is read once, so adding a series means editing the document, not a `set`.
+- Spokes run clockwise from 12 o'clock in row order.
+- Related: [LineChart](/docs/components/charts/line-chart), [Styling](/docs/components/charts/styling).

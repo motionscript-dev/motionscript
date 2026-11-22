@@ -1,0 +1,75 @@
+---
+sidebar_position: 13
+---
+
+# PolarPlane
+
+Rings and spokes about an origin: the plane a polar curve is read on. It ships
+in `@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'polar', type: 'polarPlane', parentId: null, layerOrder: 0,
+      props: { width: 520, height: 520, radius: 3, angleUnit: 'radians', fontFamily: 'Inter', end: 0 } },
+    // A polar equation; children use x and y in the units the rings count.
+    { id: 'rose', type: 'functionPlot', parentId: 'polar', layerOrder: 0,
+      props: { expression: 'r = 2.5 cos(3theta)', end: 0 } },
+    { id: 'p', type: 'plotPoint', parentId: 'polar', layerOrder: 1,
+      props: { x: 2.5, y: 0, label: 'P', fontFamily: 'Inter' } },
+  ],
+  commands: [
+    { id: 'rings', type: 'progressTo', targetId: 'polar', at: 0, duration: 1, args: { end: 1 } },
+    { id: 'draw', type: 'progressTo', targetId: 'rose', at: 1, duration: 1.5, args: { end: 1 } },
+    { id: 'zoom', type: 'rangeTo', targetId: 'polar', at: 3, duration: 1, args: { radius: 2 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `radius` | `number` | `4` | The radius of the outermost ring, in graph units |
+| `ringStep` | `number` | `0` | The spacing of the rings. `0` picks a tidy one for the plane's size |
+| `spokes` | `number` | `12` | How many spokes divide the turn, `0` to `72`. `0` draws none |
+| `angleUnit` | `'degrees' \| 'radians'` | `'degrees'` | How the spokes' angles are written: `90°`, or `π/2` |
+| `gridStroke` | `Stroke` | `{ weight: 1.25, fill: '#3b4658' }` | The inner rings and the spokes |
+| `stroke` | `Stroke` | `{ weight: 2, fill: '#9ca3af' }` | The outer ring and the two lines through the origin |
+| `labels` | `boolean` | `true` | A number at each ring, and an angle at each spoke |
+| `labelSize` | `number` | `16` | The labels' font size, in pixels |
+| `labelColor` | `Color` | `'#9ca3af'` | The labels' colour |
+| `fontFamily` | `string` | `''` | The labels' font |
+
+`fill` paints a backdrop behind the box (none by default). `start` and `end`
+trim the rings and lines, as on any [stroke](/docs/attributes/strokes).
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `rangeTo` | `{ radius }` | How far out the plane reaches: a zoom about its origin |
+| `progressTo` | `{ start?, end? }` | Drawing the rings and lines on. The labels are not trimmed |
+
+```tsx
+{ id: 'out', type: 'rangeTo', targetId: 'polar', at: 0, duration: 1, args: { radius: 6 } },
+```
+
+## Notes
+
+- Children sit at `x` and `y`, not at an angle and a distance: graph units the
+  rings count, origin at the centre, y up, units square. A point at `(0, 2)` is
+  on the ring of radius 2, straight up. A polar `functionPlot` (`r = ...` in
+  `theta`), a point or an arrow goes on it as on axes.
+- Plots and marks go inside a polar plane as they go inside an `axes2d`.
+- The outer ring fits the shorter side of the plot area (the box less its
+  `padding`), less room for the angles written round it when `labels` is on.
+  Units are square, so a wide box shows more than `radius` left and right.
+- Angles count anticlockwise from the positive x axis. The two lines through the
+  origin are always drawn, in `stroke`; the spokes between them are in `gridStroke`.
+- Manim's `PolarPlane`.
+- Related: [FunctionPlot](/docs/components/math/function-plot), [Axes2d](/docs/components/math/axes2d),
+  [NumberPlane](/docs/components/math/number-plane).

@@ -1,0 +1,8 @@
+{
+  "label": "Image Filters",
+  "position": 9,
+  "link": {
+    "type": "generated-index",
+    "description": "Pixel-level filters applied to image and video fills via preset.adjustments, and to Video nodes via the filters prop."
+  }
+}

@@ -1,0 +1,263 @@
+---
+sidebar_position: 6
+---
+
+# Animating
+
+3D nodes animate the way every other node does: a `to` command names the node's id.
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0, props: {} },
+    { id: 'box', type: 'box3d', parentId: 'viewport', layerOrder: 0,
+      props: { width: 2, fill: 'tomato' } },
+  ],
+  commands: [
+    { id: 'turn', type: 'to', targetId: 'box', at: 0, duration: 2,
+      easing: { kind: 'inOut', args: 'quad' }, args: { rotationY: 360, fill: 'cyan' } },
+  ],
+};
+```
+
+Transforms, `fill` as a colour, and the numeric material and light values all interpolate. `position`, `rotation` and `scale` work as well as the axis props, and produce the same tween.
+
+## Variables
+
+One value can also drive several objects at once. That is a **variable**: one `variableTo` command, and any number of props bound to it with an expression. A bound prop is re-evaluated on every read, so both boxes follow the tween:
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [
+    { id: 'spin', value: 0 },
+  ],
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0, props: {} },
+    { id: 'big', type: 'box3d', parentId: 'viewport', layerOrder: 1,
+      props: { width: 2, fill: 'tomato', rotationY: '=[spin]' } },
+    { id: 'small', type: 'box3d', parentId: 'viewport', layerOrder: 2,
+      props: { width: 1, x: 3, fill: 'cyan', rotationY: '=[spin]' } },
+  ],
+  commands: [
+    { id: 'spin-both', type: 'variableTo', targetId: 'spin', at: 0, duration: 2,
+      easing: { kind: 'inOut', args: 'quad' }, args: { value: 360 } },
+  ],
+};
+```
+
+In a call, an entry can hold a plain function for the same effect, such as `rotationY: () => state.spin` in a component's `children`.
+
+The scene is rebuilt from scratch every frame, so nothing accumulates: frame 10 looks the same whether you played to it or scrubbed back to it.
+
+## Give a tween something to start from
+
+A numeric prop interpolates for free, **from the value it has**. A prop of your own with no default has no value until a row sets one, and a tween from nothing is not a tween, so state the starting value in the row and animate away from it.
+
+The stage's camera and lights always have one: every camera prop has a default, and each item in `lights` fills the fields it leaves out from its type's defaults. So `lightTo` moves a light from where it stands. To fade one in, write it at `intensity: 0`:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0,
+      props: { lights: [
+        { type: 'ambient', intensity: 0.2 },
+        { type: 'lamp', intensity: 0, color: 'white', position: [0, 3, 3] },
+      ] } },
+    { id: 'ball', type: 'sphere3d', parentId: 'viewport', layerOrder: 0, props: {} },
+  ],
+  commands: [
+    // `light` is the item's place in the list, counting from 0
+    { id: 'fade-in', type: 'lightTo', targetId: 'viewport', at: 0, duration: 1,
+      args: { light: 1, intensity: 4, color: 'tomato' } },
+  ],
+};
+```
+
+A mesh's `fill` starts white, so `to({ fill: 'cyan' })` always has somewhere to start.
+
+## Non-number props need a lerp
+
+A prop holding anything that is not a number needs a lerp, or `to()` has nothing to interpolate it with and **leaves it alone** (a string snaps at the end). There is no error, so this is easy to miss. The built-in vectors carry one: `lookTo` with `target: [0, 10, 0]` moves a `Canvas3D`'s aim, from the origin when it had none, and `to({ lookAt })` turns a node between two points it was given (from no `lookAt` at all, it snaps at the end).
+
+The lerps are exported, so a custom node gives its own entries one:
+
+```ts
+import {
+  component3d, lerpVector3, lerpEuler3, slerpQuaternion, Types,
+  type Vector3, type Euler3, type Quaternion,
+} from '@motionscript/sdk/v1';
+
+export const Rig = component3d({
+  key: 'rig',
+  state: {
+    spin: 0,                                                                            // fine
+    pos: Types.custom<Vector3>({ x: 0, y: 0, z: 0 }, { lerp: lerpVector3 }),
+    rot: Types.custom<Euler3>({ x: 0, y: 0, z: 0 }, { lerp: lerpEuler3 }),
+    quat: Types.custom<Quaternion>({ x: 0, y: 0, z: 0, w: 1 }, { lerp: slerpQuaternion }),
+    tint: Types.color('white'),                                                         // carries its own lerp
+  },
+});
+```
+
+Use a quaternion for tumbles where Euler interpolation would gimbal lock. Every 3D node has a `quaternion` of its own declared this way, so `to({ quaternion })` works on any of them.
+
+`Types.color` and the other attribute builders carry the right lerp already, which is why a custom node should reach for them rather than a plain value.
+
+## Reading the clock
+
+A bound prop is re-evaluated on every read, so reading a clock in one works, as does reading it in `render`:
+
+```ts
+export const Spinner = component3d({
+  key: 'spinner',
+  render: (ctx) => {
+    const t = ctx.time.elapsed;
+    ctx.draw(new Graphics3D().box({ width: 2, rotation: [0, t * 90, 0] }));
+  },
+});
+```
+
+## Prefer a tweened prop over the clock
+
+A tweened prop is usually the better choice even when the clock would work. It is part of the timeline, so it scrubs, exports and previews consistently, it can be seen and re-timed as a row, and its speed is described in the scene rather than derived from how long the node has existed.
+
+```tsx
+// A travelling wave, driven linearly across the scene
+const travel: CommandSpec = {
+  id: 'travel', type: 'to', targetId: 'wave', at: 0, duration: 4,
+  easing: { kind: 'linear' }, args: { phase: 20 },
+};
+```
+
+## What is cheap to change
+
+Not every field costs the same per frame.
+
+| Kind of change | Cost | Notes |
+|---|---|---|
+| Transforms | Free | `position`, `rotation`, `scale`, `lookAt` are in-place writes |
+| Material and light values | Free | Colours, intensities, `roughness`, `opacity` |
+| Shader uniform values | Free | The program is not recompiled |
+| Geometry parameters | Expensive | Geometries are immutable, so the mesh is reallocated every frame |
+| Structural material fields | Expensive | Recompiles the shader program |
+
+The trap is geometry. A bound `width` on a `Box3D` rebuilds the geometry every frame. Scale the object instead:
+
+```ts
+// Slow: rebuilds the geometry every frame
+Box3D({ width: () => size() })
+
+// Fast, same result: one matrix write
+Box3D({ width: 1, scaleX: () => size() })
+```
+
+The same applies to sphere `radius`, torus `thickness` and every other geometry parameter. Model the change as a transform where you can.
+
+Structural material fields are the ones that change how the shader is built rather than what it is fed: `transparent`, `alphaTest`, `faces`, `wireframe`, `blend`, `vertexColors`, `toneMapped`, `shading`, `dithering` and `polygonOffset`. Turning shadows on is structural too. Set them once rather than tweening them. (`opacity` is not on that list. Blending is derived from it and then latched: the first time a material's `opacity` drops below 1 it recompiles once and stays blended, so a fade costs one recompile per material rather than one per frame.)
+
+## Identity
+
+The renderer caches one live GPU object per drawable and mutates it between frames rather than rebuilding it. Identity comes from **the node itself**, so a conditional sibling appearing or disappearing costs nothing:
+
+```ts
+Canvas3D({ children: [
+  showFloor && Plane3D({ width: 60, height: 60, rotation: [-90, 0, 0] }),
+
+  ...screens.map((screen) => Group3D({ position: [screen.x, 0, 0], children: [
+    Box3D({ width: 4, height: 2.4, fill: '#15181f' }),
+  ] })),
+] })
+```
+
+There is nothing to declare: adding or removing the floor leaves every monitor's cached geometry alone, because their identity never depended on their position in a list.
+
+A single node that draws several things through one `Graphics3D` is covered too. A drawable is cached by its node, its structural signature, and which of that shape it is, so two ops with the same signature are interchangeable and everything that tells them apart (position, colour, roughness) is an in-place write. A builder that writes `if (t > 2) g3.sphere(…)` shifts nothing. There is no `key` to set.
+
+## Cameras animate with commands
+
+The camera is the stage's, so orbiting is a command on the viewport. `orbit` is the camera's angle around its `target` (the origin unless you set one), in degrees, and `orbitTo` moves it with `elevation` and `zoom`:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0,
+      props: { orbit: 90, elevation: 23, zoom: 13, fov: 45 } },
+    { id: 'box', type: 'box3d', parentId: 'viewport', layerOrder: 0,
+      props: { width: 2, fill: 'tomato' } },
+  ],
+  commands: [
+    { id: 'orbit', type: 'orbitTo', targetId: 'viewport', at: 0, duration: 6,
+      easing: { kind: 'inOut', args: 'quad' }, args: { orbit: 450 } },
+  ],
+};
+```
+
+The stage camera is not a node, so it does not ride in a `Group3D`. A custom node whose `render` sets a camera does, and takes over from the stage's while it is in the tree; see [Taking over from a node](./scene#taking-over-from-a-node).
+
+When an object moves, aim the camera at it rather than at the origin, or it will leave the frame. Bind both to one variable and they cannot drift apart; the camera keeps its angles and distance from `target`, so it travels with the ball:
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [
+    { id: 'lift', value: { x: 0, y: 0, z: 0 }, lerp: 'vector3' },
+  ],
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0,
+      props: { target: '=[lift]', orbit: 90, elevation: 23, zoom: 6.5, fov: 45 } },
+    { id: 'ball', type: 'sphere3d', parentId: 'viewport', layerOrder: 0,
+      props: { radius: 0.8, position: '=[lift]' } },
+  ],
+  commands: [
+    { id: 'raise', type: 'variableTo', targetId: 'lift', at: 0, duration: 2,
+      args: { value: { x: 0, y: 2, z: 0 } } },
+  ],
+};
+```
+
+## Animating a component's props
+
+For a reusable component, put the knobs in its `state` and animate them with a `to` command, exactly as for any other custom node. A viewport of your own is built the way `Canvas3D` is (see [Canvas3D](./canvas3d#reusable-3d-components)):
+
+```ts
+import { component2d, Graphics3D, Paint, Shapes, View3D } from '@motionscript/sdk/v1';
+
+export const Turntable = component2d({
+  key: 'turntable',
+  state: { ...Paint.state, ...Shapes.corners, ...View3D.state, angle: 0, reach: 8 },
+  defaults: { width: 'fill', height: 'fill' },
+  commands: { ...Paint.commands, ...View3D.commands },
+  allowedChildren: ['2d', '3d'],
+  load: (loader) => View3D.load(loader),
+  render: (ctx, state) => View3D.draw(ctx, state, (scene) => {
+    const a = (state.angle * Math.PI) / 180;
+    scene
+      .perspective({ position: [Math.cos(a) * state.reach, 2, Math.sin(a) * state.reach], lookAt: 0 })
+      .light({ type: 'directional', intensity: 2 }, { position: [4, 6, 3] })
+      .draw(new Graphics3D().torus({ radius: 1.5, thickness: 0.4, fill: 'tomato' }));
+  }),
+});
+```
+
+Hand it to the engine (`createBrowserEngine({ nodes: [Turntable] })`) and a document can animate it:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'table', type: 'turntable', parentId: null, layerOrder: 0, props: {} },
+  ],
+  commands: [
+    { id: 'swing', type: 'to', targetId: 'table', at: 0, duration: 4,
+      easing: { kind: 'inOut', args: 'quad' }, args: { angle: 180, reach: 5 } },
+  ],
+};
+```
+
+An entry a module spreads in takes a new default in `defaults`: `View3D` brings its own `orbit` and `zoom`, and `defaults: { orbit: 0, zoom: 8 }` starts the default camera elsewhere. Pick a new name for a prop that means something else.
+
+Non-numeric entries need a lerp, including booleans, since `.to()` only drives keys that are numeric or carry one. See [State](../properties).

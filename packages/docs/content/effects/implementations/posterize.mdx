@@ -1,0 +1,60 @@
+---
+sidebar_position: 11
+---
+
+# Posterize
+
+Quantizes each color channel into a fixed number of discrete brightness bands, flattening gradients into flat-color steps. Mirrors After Effects' **Posterize** effect.
+
+![Posterize effect demo](/effects/posterize.webp)
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+// Default: 4 levels per channel
+Rect({ effects: Effects.posterize() })
+
+// Coarser posterize
+Rect({ effects: Effects.posterize(3) })
+
+// Raw object
+Rect({ effects: [{ type: 'posterize', levels: 4 }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'posterize'` | – | Effect identifier |
+| `levels` | `number` | `4` | Number of brightness bands per channel (minimum `2`). Lower = fewer steps, more graphic |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` posterizes the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
+
+## Animating
+
+Animate from many levels (near-photographic) down to few (graphic):
+
+```tsx
+import { Effects } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'img', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 600, height: 400, fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
+        effects: Effects.posterize(32) } },
+  ],
+  commands: [
+    { id: 'flatten', type: 'to', targetId: 'img', at: 0, duration: 1.5,
+      easing: { kind: 'inOut' }, args: { effects: Effects.posterize(3) } },
+  ],
+};
+```
+
+## Stacking with other effects
+
+```ts
+// Graphic pop-art look
+Rect({ effects: Effects.posterize(4).grayscale(0.3) })
+```

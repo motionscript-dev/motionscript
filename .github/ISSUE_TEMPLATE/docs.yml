@@ -1,0 +1,25 @@
+name: Docs problem
+description: Something on a page of motionscript.dev/docs is wrong, unclear or missing.
+title: "Docs: "
+labels: [docs]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The page's address. The "Report a problem" link on the page fills this in.
+      placeholder: https://motionscript.dev/docs/...
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's wrong
+      description: What the page says, and what it should say or what you expected to find. A quote of the passage helps.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Engine version
+      description: The version the page shows in its header, if it matters.

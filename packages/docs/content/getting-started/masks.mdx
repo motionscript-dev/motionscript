@@ -1,0 +1,88 @@
+---
+sidebar_position: 6
+---
+
+import { MaskCanvas, TextMaskCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Revealing with Masks
+
+For our finale, let's get a little carried away. A **mask** lets you show only part of a node, clipped to the shape of another. Animate that shape and you get reveals, wipes, and all sorts of fun.
+
+You create one with a `mask` node. The rule to remember: its **first child is the mask** (the child with `layerOrder: 0`), and every child after it is the content that gets clipped to that mask.
+
+## A basic mask
+
+Here we use a circle to clip our card. Only the part of the card inside the circle shows.
+
+```ts title="src/scenes/my-scene.ts"
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'mask', type: 'mask', parentId: null, layerOrder: 0, props: { mode: 'vector' } },
+
+    // first child = the mask
+    { id: 'iris', type: 'ellipse', parentId: 'mask', layerOrder: 0,
+      props: { width: 300, height: 300, fill: 'white' } },
+
+    // everything after = the clipped content (our card)
+    { id: 'card', type: 'rect', parentId: 'mask', layerOrder: 1,
+      props: { flow: 'vertical', width: 'hug', height: 'hug', gap: 16, padding: 32, fill: '#1e293b', cornerRadius: 16 } },
+    { id: 'box', type: 'rect', parentId: 'card', layerOrder: 0,
+      props: { width: 80, height: 80, fill: 'royalblue', cornerRadius: 12 } },
+    { id: 'title', type: 'text', parentId: 'card', layerOrder: 1,
+      props: { text: 'Motion Script', fontSize: 40, fontWeight: 700, fill: 'white' } },
+  ],
+  commands: [],
+};
+```
+
+The mask shape's color doesn't matter in `vector` mode, only its outline. We use white out of habit.
+
+## Animate the mask for an iris reveal
+
+This is the payoff. Start the mask circle tiny, then grow it to reveal the card behind it. Add the circle with `width: 0, height: 0`, then animate it like anything else:
+
+```ts
+{ id: 'reveal', type: 'to', targetId: 'iris', at: 0, duration: 1.2,
+  easing: { kind: 'inOut' }, args: { width: 800, height: 800 } }
+```
+
+The card irises open from a point. That's the same `to` you've used the whole way through, now driving a reveal.
+
+<MaskCanvas />
+
+## Get carried away: text as a mask
+
+Any node can be the mask, even text. Use a word as the mask and a colorful fill as the content, and the color shows *through the letters*.
+
+```ts title="src/scenes/my-scene.ts"
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'mask', type: 'mask', parentId: null, layerOrder: 0, props: { mode: 'alpha' } },
+
+    // the word is the mask
+    { id: 'word', type: 'text', parentId: 'mask', layerOrder: 0,
+      props: { text: 'MOTION', fontSize: 140, fontWeight: 900, fill: 'white' } },
+
+    // the gradient shows through the letters
+    { id: 'wash', type: 'rect', parentId: 'mask', layerOrder: 1,
+      props: {
+        width: 'fill', height: 'fill',
+        fill: { type: 'linear-gradient', colors: ['#4f80ff', '#e84393'] },
+      } },
+  ],
+};
+```
+
+Nothing moves here, so it's a **still**: a node tree with no timeline. The nodes are listed directly rather than added by commands.
+
+<TextMaskCanvas />
+
+This uses `mode: 'alpha'`, which clips by the mask's transparency instead of its outline, perfect for text and gradient masks. There's also `mode: 'luminance'` and an `inverted` option to show content *outside* the shape instead. The [Mask reference](/docs/components/basic/mask) has them all.
+
+## You made it
+
+Look back at what you built: a scene with a square and a title, animated into place, arranged in a tidy card, polished with a blur, and revealed with a mask. That's a complete little animation, and the same handful of ideas (nodes, commands placed in time, layouts, effects, masks) scale up to anything you want to make.
+
+From here, dig into the [Components](/docs/components/basic/text), [Attributes](/docs/attributes/position), and [Effects](/docs/effects/introduction) references whenever you need more detail. Now go make something.

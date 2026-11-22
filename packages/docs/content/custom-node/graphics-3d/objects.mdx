@@ -1,0 +1,342 @@
+---
+sidebar_position: 4
+---
+
+# Objects
+
+Everything you put in a 3D scene: meshes, groups, and the specialised drawables for crowds, lines, sprites and loaded models.
+
+## Meshes
+
+Fourteen mesh nodes, each taking its geometry's own parameters alongside a placement and a material, all as ordinary props, so any of them can be bound or tweened.
+
+```ts
+Box3D({ width: 2, height: 2, depth: 2, fill: 'tomato', roughness: 0.3, position: [0, 1, 0] })
+```
+
+| Node | Main parameters |
+|---|---|
+| `Box3D` | `width`, `height`, `depth`, `cornerRadius`, `segments` (`[width, height, depth]`) |
+| `Sphere3D` | `radius`, `segments` (`[longitude, latitude]`), `startAngle`, `sweep`, `startLatitude`, `latitudeSweep` |
+| `Plane3D` | `width`, `height`, `segments` (`[width, height]`) |
+| `Cylinder3D` | `radius` (a number, or `[top, bottom]` for a taper), `height`, `segments` (`[radial, height]`), `capped`, `startAngle`, `sweep` |
+| `Cone3D` | `radius`, `height`, `segments` (`[radial, height]`), `capped`, `startAngle`, `sweep` |
+| `Torus3D` | `radius`, `thickness`, `segments` (`[radial, tubular]`), `sweep` |
+| `TorusKnot3D` | `radius`, `thickness`, `segments` (`[tubular, radial]`), `windings` (`[p, q]`) |
+| `Circle3D` | `radius`, `segments`, `startAngle`, `sweep` |
+| `Ring3D` | `radius` (the outer edge), `innerRadius`, `segments` (`[around, radial]`), `startAngle`, `sweep` |
+| `Capsule3D` | `radius`, `height` (the straight mid-section), `segments` (`[radial, cap]`) |
+| `Polyhedron3D` | `shape`, `radius`, `segments` (subdivision toward a sphere) |
+| `Extrude3D` | `path`, `depth`, `segments`, `bevel` |
+| `Lathe3D` | `points`, `segments`, `startAngle`, `sweep` |
+| `Tube3D` | `points`, `radius`, `segments` (`[along, around]`), `closed` |
+
+Every parameter is optional, and an unset one leaves the renderer's own default in place: a `Box3D` is a unit cube, a `Sphere3D` has radius `1`.
+
+Three names do the work of ten that three.js has. **Subdivision is always `segments`**, as a number or a tuple in the order shown, and a **partial revolution is always `startAngle` plus `sweep`**, the pair `Ellipse` uses. All angles are degrees.
+
+`Box3D` takes a `cornerRadius`, the same prop `Rect` has, which is what most of a designed 3D scene is made of:
+
+```ts
+Box3D({ width: 2, height: 1, depth: 1, cornerRadius: 0.15, fill: 'tomato' })
+Cylinder3D({ radius: [0.2, 1], height: 2 })                  // a taper
+Sphere3D({ radius: 1, startAngle: 0, sweep: 180 })           // a half sphere
+Torus3D({ radius: 1.4, thickness: 0.1, sweep: 270 })
+```
+
+`Extrude3D` takes path data, the same value a 2D [`Path`](/docs/components/basic/path) takes, so an existing outline becomes a solid. Two differences from 2D: the extruder reads only the commands `M`, `L`, `C`, `Q` and `Z`, always with absolute coordinates (a lowercase letter is read as its uppercase twin, and arcs and the `H`, `V`, `S` and `T` shorthands are not read), and **`y` points up**, as it does everywhere else in 3D, where a 2D path's `y` points down. An outline copied from a 2D `Path` arrives upside down unless you negate its `y` values.
+
+```ts
+Extrude3D({ path: 'M 0 60 L 52 -40 L -52 -40 Z', depth: 20, bevel: 2 })   // a triangle, point up
+Extrude3D({ path: outline, depth: 0.4, bevel: { size: 0.05, thickness: 0.1, segments: 4 } })
+```
+
+`bevel` is a size, or `{ size, thickness, offset, segments }`; leave it out for hard edges. `Lathe3D` revolves a profile about the Y axis, where each point's `x` is the distance from the axis and its `y` is the height (the `z` is not used):
+
+```ts
+Lathe3D({ points: [[0.4, -1, 0], [1, -0.6, 0], [0.7, 0.2, 0], [0.3, 1, 0]], segments: 48, fill: '#c9ccd4' })
+```
+
+## Placement
+
+Every 3D node takes the same placement props. They are `Node3D`'s own, the way `x`, `y` and `width` are `Node2D`'s.
+
+| Prop | Type | Description |
+|---|---|---|
+| `position` | `Vector3Input` | Position in the parent's space. Distributes into `x`, `y`, `z` |
+| `x` / `y` / `z` | `number` | Position on one axis |
+| `rotation` | `Vector3Input \| Euler3` | Euler rotation in degrees. Distributes into `rotationX/Y/Z` |
+| `rotationX` / `rotationY` / `rotationZ` | `number` | Rotation about one axis, in degrees |
+| `rotationOrder` | `'XYZ' \| 'YXZ' \| …` | The order the Euler axes apply in. Default `'XYZ'` |
+| `quaternion` | `Quaternion` | Rotation as a quaternion. Wins over `rotation` |
+| `scale` | `Vector3Input` | Per-axis scale, or one number for all three. Distributes into `scaleX/Y/Z` |
+| `scaleX` / `scaleY` / `scaleZ` | `number` | Scale on one axis |
+| `lookAt` | `Vector3Input` | World point to orient toward. Wins over both rotations |
+| `visible` | `boolean` | Hide without removing |
+| `shadow` | `boolean \| 'cast' \| 'receive'` | Shadow participation. See [Shadows](./scene#shadows) |
+| `renderOrder` | `number` | Draw-order override for transparent sorting |
+
+The axis props are the real ones, and the vector props are sugar over them. That is why `to({ y: 3 })` lifts an object without restating `x` and `z`, and why `to({ position: [1, 3, 0] })` and `to({ x: 1, y: 3, z: 0 })` produce the same tween.
+
+## Material shorthand
+
+Every mesh node also takes the common material fields directly, so the usual case needs no separate material:
+
+```ts
+Sphere3D({ radius: 1, fill: 'cyan', roughness: 0.2, metalness: 0.8 })
+Plane3D({ width: 10, height: 10, fill: '#11141c', roughness: 0.85, rotation: [-90, 0, 0] })
+Torus3D({ radius: 1.4, thickness: 0.08, unlit: true, fill: 'white' })
+```
+
+| Prop | Description |
+|---|---|
+| `fill` | What the surface is made of: a colour, a gradient, an image path, a 2D `Graphics2D` or subtree, a stack of layers |
+| `opacity` | Alpha. Needs nothing else, because `transparent` is derived |
+| `roughness`, `metalness` | The physically based surface response |
+| `emission`, `emissionStrength` | Self-illumination colour and strength. Bloom is what would make it glow |
+| `normalMap`, `roughnessMap`, `metalnessMap`, `aoMap`, `alphaMap` | Per-pixel textures. See [Materials and textures](./materials#maps) |
+| `envMapIntensity` | How strongly the environment reflects |
+| `wireframe` | Draw edges only |
+| `shading` | `'smooth'` (the default) or `'flat'` |
+| `faces` | Which faces to draw: `'front'` (the default), `'back'` or `'both'` |
+| `vertexColors` | Read per-vertex colour from the geometry |
+| `blend` | `'normal'`, `'additive'`, `'subtractive'`, `'multiply'` or `'none'` |
+| `unlit` | A `basic` material instead of `standard`: right for anything that should read as its own light source |
+| `material` | A full `Mat` descriptor. Wins over everything above |
+
+**There is no `color` prop.** The surface is `fill`, so `color: 'tomato'` is dropped without a word and the mesh renders white. `fill` takes the whole 2D fill chain, which is what replaced the flat colour plus a texture slot for each kind of map.
+
+A fill that is a plain colour tweens, so `to({ fill: 'cyan' })` is a colour change. A fill that is anything else (a gradient, an image) holds until the end of the tween and then switches.
+
+Everything that is a renderer knob rather than a design decision (`depthWrite`, `depthTest`, `alphaTest`, `toneMapped`, `polygonOffset`, `dithering`) lives only on a `Mat` descriptor passed as `material`. For `transparent` and `depthWrite` there is nothing to set: they are derived from `opacity`, the fill's alpha, an `alphaMap` or transmission.
+
+For full control, pass a `material` built with `Mat`. See [Materials and textures](./materials).
+
+## Thin and touching geometry
+
+Two faces at nearly the same depth z-fight: the surface flickers in zig-zag stripes, worst where thin parts sit close together.
+
+- **Never let two solids share visible face area.** Faces that overlap in one plane always flicker, and no setting fixes it, so inset, shrink or merge one. Flush side faces count: a beam flush with the edge of a slab fights along that edge.
+- **Lift anything laid on a surface by a real gap**: lines, decals, strips, printing, grid bars. Make it at least the camera distance ÷ 2000, so 0.01 at distance 20 and 0.0015 at distance 3; a hair lift of 0.001 to 0.003 fights from across a board. A bar centred on a solid's edge is fine, because its inner half is hidden.
+- **Leave the camera's `near` and `far` unset.** They are derived from the scene's bounds, and a tiny `near` spends the depth precision in front of the lens.
+- **`renderOrder` and translucency don't fix it.** `renderOrder` only orders draws within the opaque list or within the transparent one, and every transparent draw comes after every opaque one. A translucent overlay still depth-tests against the face under it. `depthTest: false` is only for a layer meant to draw on top, such as hidden lines.
+
+## Groups
+
+`Group3D` nests objects so they inherit its transform: the 3D `Rect` that only groups.
+
+```ts
+Group3D({ position: [3, 0, 0], rotation: [0, 45, 0], children: [
+  Sphere3D({ radius: 0.8, fill: 'cyan' }),
+  Box3D({ width: 0.4, position: [0, 1.2, 0] }),
+] })
+```
+
+Target it with a command and the whole rig animates as one thing:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0, props: {} },
+    { id: 'rig', type: 'group3d', parentId: 'viewport', layerOrder: 0,
+      props: { x: 3, rotationY: 45 } },
+    { id: 'ball', type: 'sphere3d', parentId: 'rig', layerOrder: 0,
+      props: { radius: 0.8, fill: 'cyan' } },
+    { id: 'cube', type: 'box3d', parentId: 'rig', layerOrder: 1,
+      props: { width: 0.4, y: 1.2 } },
+  ],
+  commands: [
+    { id: 'lift-rig', type: 'to', targetId: 'rig', at: 0, duration: 2, args: { rotationY: 360, y: 2 } },
+  ],
+};
+```
+
+Only the axes named in `args` move, so `y: 2` lifts the rig without restating `x` and `z`.
+
+## Explicit geometry and material
+
+`Mesh3D` takes a geometry and a material as separate values, built with `Geo` and `Mat`. Hoist them and share them across meshes, since the renderer uploads a shared geometry to the GPU once no matter how many meshes reference it:
+
+```ts
+import { Mesh3D, Geo, Mat } from '@motionscript/sdk/v1';
+
+const brick = Geo.box({ width: 1, height: 0.5, depth: 0.5 });
+const red = Mat.standard({ color: 'tomato', roughness: 0.4 });
+
+Mesh3D({ geometry: brick, material: red, position: [0, 0, 0] })
+Mesh3D({ geometry: brick, material: red, position: [1, 0, 0] })   // same GPU buffer, same shader
+```
+
+A `Mat` descriptor keeps `color` and the full set of texture slots, because it is the renderer's vocabulary. It is the node shorthand that says `fill`.
+
+`Geo` also has entries the mesh nodes do not: `tetrahedron`, `octahedron`, `icosahedron`, `dodecahedron`, `buffer`, `parametric`, `edges`, `wireframe` and `model`. Reach them through `Mesh3D` (or `Line3D`, for the derived line geometries).
+
+### `Geo.buffer`
+
+Raw vertex data, for any mesh you can compute:
+
+```tsx
+Geo.buffer({
+  position: [/* x, y, z, x, y, z, ... */],
+  index: [/* triangle indices */],
+  computeNormals: true,
+})
+```
+
+`normal`, `uv` and `color` are optional. Set `staticData: true` once the arrays stop changing so the renderer skips re-uploading them, and bump `revision` when you mutate an array in place.
+
+### `Geo.parametric`
+
+A surface sampled over a grid, which is the friendlier form of `Geo.buffer` for waves, terrain and ribbons:
+
+```tsx
+Geo.parametric({
+  segments: [70, 70],
+  vertex: (u, v) => {
+    const x = (u - 0.5) * 20;
+    const z = (v - 0.5) * 20;
+    return { x, y: wave(x, z, phase()), z };
+  },
+  color: (u, v, p) => heightColor(p.y),
+  computeNormals: true,
+})
+```
+
+`u` and `v` both run from 0 to 1. The callbacks are evaluated into vertex buffers when you record the op, so the descriptor stays plain data. Per-vertex colour needs `vertexColors` on the mesh.
+
+### `Geo.edges` and `Geo.wireframe`
+
+Derived line geometry from another geometry. `edges` gives the hard edges only, which is a clean outline. `wireframe` gives every triangle edge.
+
+```ts
+Line3D({
+  geometry: Geo.edges(Geo.box({ width: 4, height: 4, depth: 4 })),
+  segments: true,
+  stroke: { fill: 'white' },
+  opacity: 0.4,
+})
+```
+
+## Instances
+
+Thousands of copies of one geometry in a single draw call. This is how you put a crowd on screen, since one mesh per copy will not keep up.
+
+```ts
+Instances3D({
+  geometry: Geo.box({ width: 0.2, height: 0.2, depth: 0.2 }),
+  fill: 'cyan',
+  instances: positions.map(p => ({ position: p, rotation: [0, p.x * 20, 0] })),
+  colors: tints,
+})
+```
+
+`Instances3D` is a mesh, so it takes the same material shorthand. The instance array's length is the instance count, and changing the *length* rebuilds the object while moving the entries within it does not. Each entry is a full placement (`position`, `rotation`, `scale`, …). `colors` tints per instance.
+
+## Lines
+
+```ts
+Line3D({ points: [[0, 0, 0], [1, 2, 0], [3, 1, 2]], stroke: { fill: '#6990DD', weight: 2 } })
+Line3D({ points: ring, closed: true, stroke: { fill: 'white', dash: [0.2, 0.1] } })
+Line3D({ geometry: Geo.edges(box), segments: true, stroke: { fill: 'white' }, opacity: 0.4 })
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `points` | `Vector3Input[]` | – | Explicit points. Give either this or `geometry` |
+| `geometry` | `Geometry3D` | – | A geometry to draw as lines. Wins over `points` |
+| `closed` | `boolean` | `false` | Join the last point back to the first, the same prop the 2D `Line` has |
+| `segments` | `boolean` | `false` | Treat the points as disjoint start/end pairs, the form `Geo.edges` produces |
+| `stroke` | `{ fill, weight, dash }` | – | The line's paint, named after the 2D `Stroke`. `dash` is `[dash, gap]` in world units |
+| `opacity` | `number` | – | Alpha |
+| `material` | `Material3D` | – | A full line material. Wins over `stroke` and `opacity` |
+
+A GL line has no outline to cap or join, so `cap` and `join` do not exist here. A `weight` above `1` is ignored by most WebGL implementations and nothing substitutes a thicker line for it, so for a genuinely thick line draw a `Tube3D`.
+
+## Painting a custom 3D node
+
+A custom 3D node takes `fill` and `stroke` exactly as a 2D shape does, so a host edits them with the same panels and a look saved off one component carries over. Spread `Paint3D` for the entries and their `fillTo` and `strokeTo` commands, then paint with its two helpers:
+
+```ts
+import { component3d, Graphics3D, Paint3D, Types } from '@motionscript/sdk/v1';
+
+export const Crate3D = component3d({
+  key: 'crate3d',
+  state: { ...Paint3D.state, hiddenStroke: Types.stroke },
+  defaults: {
+    fill: '#E8642C',
+    stroke: { weight: 9, fill: '#1A2230', cap: 'square' },
+    hiddenStroke: { weight: 5, fill: 'rgba(26, 34, 48, 0.45)', dash: [45, 35] },
+  },
+  commands: { ...Paint3D.commands },
+  render: (ctx, s) => {
+    const g3 = new Graphics3D().box({ width: 1, height: 1, depth: 1, material: Paint3D.material(s.fill) });
+    Paint3D.lines(g3, s.stroke, edges);                               // the outline
+    Paint3D.lines(g3, s.hiddenStroke, edges, { through: true });      // hidden edges, through the box
+    ctx.draw(g3);
+  },
+});
+```
+
+`Paint3D.material(fill)` is an unlit material; pass `{ type: 'standard', roughness: 0.6 }` to light it. A plain colour stays a colour and tweens, and its alpha is the opacity. A gradient or an image becomes a texture.
+
+`Paint3D.lines(g3, stroke, segments)` draws each `[from, to]` segment as a thin square bar, one batch per stroke layer:
+
+* **`weight` and `dash` are in thousandths of a scene unit.** A weight of 5 is a bar 0.005 across, a fine line on a model a unit or two in size.
+* **`cap: 'square'`** runs each bar half its weight past both ends, so outline corners close. `'butt'` and `'round'` end flush.
+* **The colour is the stroke's first solid fill**, and its alpha fades the line. An empty stroke draws nothing.
+* **`through: true`** draws the line through solids, for hidden lines.
+* **`lift`** moves every segment by a vector. A line laid on a face needs a real gap above it (see [Thin and touching geometry](#thin-and-touching-geometry)); a line on a solid's edge does not.
+
+Don't name an entry `hidden`: every node already has a `hidden` flag, and an entry of that name hides the whole node.
+
+## Points
+
+A point cloud, one dot per vertex of the geometry:
+
+```ts
+Points3D({ geometry: Geo.buffer({ position: cloud }), material: Mat.points({ size: 0.05, color: 'white' }) })
+```
+
+`Points3D` is a mesh node, and it builds a points material from the shorthand: `fill` (a colour, or an image that becomes each dot's texture), `opacity`, `alphaMap`, `blend` and `vertexColors` apply. The surface keys (`roughness`, `metalness`, `emission`, `shading`, `unlit` and the rest) have nothing to act on and are ignored. The dot `size` and `sizeAttenuation` exist only on the material, so pass a `Mat.points` for those. A `material` wins over the shorthand.
+
+```ts
+Points3D({ geometry: Geo.buffer({ position: cloud }), fill: 'white', opacity: 0.6 })
+```
+
+## Sprites
+
+A camera-facing textured quad, which always presents flat to the viewer:
+
+```ts
+Sprite3D({ fill: 'spark.png', position: [0, 2, 0], scale: 0.5 })
+Sprite3D({ fill: '#ff5030', opacity: 0.6, position: [2, 2, 0] })
+```
+
+`fill` is the same value every `fill` takes (a colour, an image path, 2D content), and `opacity` fades it. Pass a `material` built with `Mat.sprite` to take over.
+
+## Models
+
+Load a glTF or GLB file:
+
+```ts
+Model3D({ src: 'robot.glb', position: [0, 0, 0], scale: 0.5 })
+```
+
+Only glTF and GLB load. Any other format, OBJ included, resolves to an empty slot and draws nothing. A `.obj` source logs a warning in development, and a file that fails to load (a wrong path, bytes that are not glTF) logs one naming the file, once.
+
+| Prop | Type | Description |
+|---|---|---|
+| `src` | `string` | Path in the asset manifest |
+| `animation` | `ModelAnimation3D \| ModelAnimation3D[]` | Clips to sample |
+| `override` | `Record<string, Material3D>` | Replace materials by mesh or material name |
+
+Baked animation is sampled at an explicit time rather than advanced by a delta, which is what keeps a model frame-identical when you scrub:
+
+```ts
+Model3D({ src: 'robot.glb', animation: [{ clip: 'Walk', time: walkTime(), weight: 1 }] })
+```
+
+`clip` is a name or an index, and defaults to the first clip. Give several entries with `weight` values to cross-fade between them. `animation` holds records rather than numbers, so a `to` command cannot tween it; bind `time` to something that moves, such as a [variable](./animating#variables).
+
+`Geo.model(src, { node })` gives you the geometry of one mesh inside a loaded file, for when you want the shape and not the scene.

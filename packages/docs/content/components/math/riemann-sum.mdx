@@ -1,0 +1,59 @@
+---
+sidebar_position: 33
+---
+
+# RiemannSum
+
+Rectangles under a plot, each `dx` wide and as tall as the curve where it is sampled. Narrow them and the sum closes in on the area. It ships in `@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+<ComponentClip file="riemann" />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 450, padding: 32, xRange: [0, 4], yRange: [0, 4], fontFamily: 'Inter' } },
+    { id: 'curve', type: 'functionPlot', parentId: 'axes', layerOrder: 0,
+      props: { expression: 'x^2 / 4 + 0.5' } },
+    // Beside the plot, naming it in `on`.
+    { id: 'sum', type: 'riemannSum', parentId: 'axes', layerOrder: 1,
+      props: { on: 'curve', domain: [0, 3], dx: 0.5, sample: 'center' } },
+  ],
+  commands: [
+    { id: 'refine', type: 'refineTo', targetId: 'sum', at: 0.5, duration: 2, args: { dx: 0.05 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `on` | `string` | `''` | The id of the `functionPlot` the rectangles stand under |
+| `domain` | `[number, number]` | `[0, 1]` | The span of x the rectangles cover, as `[min, max]` in graph units |
+| `dx` | `number` | `0.25` | Each rectangle's width, in graph units. At least `0.001` |
+| `sample` | `'left' \| 'right' \| 'center'` | `'left'` | Where in its width a rectangle reads the curve's height |
+| `fill` | `Fill` | `{ type: 'solid', color: '#58a6ff', opacity: 0.35 }` | The rectangles' paint. See [Fills](/docs/attributes/fills) |
+| `stroke` | `Stroke` | `{ weight: 1.5, fill: '#58a6ff', align: 'center', join: 'round' }` | Each rectangle's outline. See [Strokes](/docs/attributes/strokes) |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `refineTo` | `{ dx }` | The rectangles' width: narrower is the sum closing in on the area |
+| `domainTo` | `{ domain }` | The span of x the rectangles cover |
+
+```tsx
+{ id: 'widen', type: 'domainTo', targetId: 'sum', at: 3, duration: 1, args: { domain: [0, 4] } },
+```
+
+## Notes
+
+- It goes in a coordinate system (`axes2d`, `numberPlane`, `numberLine`, `polarPlane`), beside the plot it reads, which it names in `on`. It has its own span on the timeline.
+- The rectangles stand on the x axis, held inside the system's y range. The last one is cut at the end of `domain`, and a rectangle whose sample point has no curve value is left out.
+- It draws at most 2000 rectangles; past that a [`curveArea`](/docs/components/math/curve-area) is the better mark.
+- It takes a `fill` and a `stroke`, and has no outline trim (`start`, `end`, `progressTo`). It appears with `domainTo`, its timeline span or its opacity.
+- Manim's `axes.get_riemann_rectangles`. The plot it reads is a [`functionPlot`](/docs/components/math/function-plot).

@@ -1,0 +1,66 @@
+---
+sidebar_position: 5
+---
+
+import { EffectsCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Adding Effects
+
+Our card is laid out nicely. Now let's make it pop. **Effects** are visual filters you put on any node with the `effects` prop, like blur, glow, or grayscale. They run after the node is drawn, so they apply to everything it contains.
+
+## Blur a node
+
+The simplest effect is a blur. An effect is a small object naming its `type` and its settings:
+
+```ts title="src/scenes/my-scene.ts"
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'card', type: 'rect', parentId: null, layerOrder: 0,
+      props: {
+        flow: 'vertical', width: 'hug', height: 'hug', gap: 16, padding: 32, fill: '#1e293b', cornerRadius: 16,
+        effects: { type: 'blur', radius: 8 },
+      } },
+
+    { id: 'box', type: 'rect', parentId: 'card', layerOrder: 0,
+      props: { width: 80, height: 80, fill: 'royalblue', cornerRadius: 12 } },
+    { id: 'title', type: 'text', parentId: 'card', layerOrder: 1,
+      props: { text: 'Motion Script', fontSize: 40, fontWeight: 700, fill: 'white' } },
+  ],
+  commands: [],
+};
+```
+
+That blurs the whole card, square, text, and all. Because the effect is on the container, it covers the children too.
+
+In TypeScript, the `Effects` builder makes the same value and saves you remembering field names: `Effects.blur(8)` produces `{ type: 'blur', radius: 8 }`. Either one works in a document.
+
+## Animate an effect for a focus pull
+
+Effects shine when you animate them. A classic move is to start blurry and snap into focus. Add the card with a heavy blur (`effects: { type: 'blur', radius: 20 }`), then animate the blur with `to` like any other prop:
+
+```ts
+{ id: 'focus', type: 'to', targetId: 'card', at: 0, duration: 1,
+  easing: { kind: 'out' }, args: { effects: { type: 'blur', radius: 0 } } }
+```
+
+The card resolves from a soft blur into a crisp image. A small touch that makes an intro feel polished.
+
+<EffectsCanvas />
+
+## Stack effects together
+
+An `effects` list applies in order:
+
+```ts
+// grayscale, then blur
+effects: [{ type: 'grayscale', amount: 0.8 }, { type: 'blur', radius: 4 }]
+```
+
+With the builder, each call adds to the chain: `Effects.grayscale(0.8).blur(4)`.
+
+## More effects to play with
+
+Blur and grayscale are just the start. There's a whole catalog, glow, pixelate, chromatic aberration, vintage film looks, and more, each with its own page in the [Effects reference](/docs/effects/introduction). They all attach the same way: build a list and hand it to `effects`.
+
+We've animated, laid out, and styled our scene. For the grand finale, let's reveal it with a mask.

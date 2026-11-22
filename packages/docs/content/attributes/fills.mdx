@@ -1,0 +1,379 @@
+---
+sidebar_position: 1
+---
+
+# Fills
+
+Every shape node accepts a `fill` prop. Pass a CSS color string as a shorthand, or a fill object for gradients, images, and layering.
+
+## Solid color
+
+```ts
+// CSS shorthand
+Rect({ fill: 'royalblue' })
+
+// Explicit object
+Rect({ fill: { type: 'solid', color: '#4f80ff' } })
+
+// With opacity and blend mode
+Rect({ fill: { type: 'solid', color: 'white', opacity: 0.6, blend: 'screen' } })
+```
+
+Colors accept any CSS color string (`'red'`, `'#ff0000'`, `'rgb(255,0,0)'`, `'hsl(0,100%,50%)'`) or an RGBA tuple (`[1, 0, 0, 1]`).
+
+---
+
+## Gradients
+
+### Linear gradient
+
+```ts
+Rect({ fill: {
+  type: 'linear-gradient',
+  colors: ['#4f80ff', '#e84393'],
+  stops: [0, 1],
+} })
+
+// Custom direction — start and end are { x, y } in node-local space
+Rect({ fill: {
+  type: 'linear-gradient',
+  colors: ['#4f80ff', 'transparent', '#e84393'],
+  stops: [0, 0.5, 1],
+  start: { x: -0.5, y: 0.5 },
+  end:   { x:  0.5, y: -0.5 },
+} })
+```
+
+### Radial gradient
+
+```ts
+Rect({ fill: {
+  type: 'radial-gradient',
+  colors: ['white', 'transparent'],
+  radius: 200,
+} })
+
+// Off-center focal point
+Rect({ fill: {
+  type: 'radial-gradient',
+  colors: ['#e84393', 'transparent'],
+  radius: 300,
+  center: { x: -0.3, y: 0.2 },
+} })
+```
+
+### Conic gradient
+
+```ts
+Rect({ fill: {
+  type: 'conic-gradient',
+  colors: ['red', 'orange', 'yellow', 'green', 'blue', 'red'],
+  stops: [0, 0.2, 0.4, 0.6, 0.8, 1],
+} })
+```
+
+---
+
+## Image fill
+
+```ts
+Rect({ fill: {
+  type: 'image',
+  src: './texture.png',
+  fit: 'fill',   // 'fill' (cover+crop, default) | 'fit' | 'tile' | 'stretch'
+} })
+```
+
+`fit: 'tile'` repeats the image at its own pixel size (times `zoom`), and a raw `matrix` maps from the image's own pixels onto the shape. Both mean the source file's resolution, not the resolution it happens to be decoded at. The engine decodes an image at the size the frame actually draws it, so a small thumbnail of a large photo is not held at full size and a camera zoom sharpens it, and none of that moves a tile or a `matrix` by a pixel.
+
+---
+
+## Video fill
+
+A playing clip, painted through whatever shape carries it — so it is clipped to
+an ellipse, a path, or a run of text just like any other fill.
+
+```ts
+Ellipse({ fill: Fills.video('./clip.mp4', { fit: 'fill' }), width: 400, height: 400 })
+```
+
+The frame it shows is worked out as it paints, from **how long the node carrying
+the fill has existed** — so the clip runs on its own wherever paint is accepted:
+a `fill`, an `overlay`, inside a `stroke` or `shadow`, or in a custom node's raw
+`Graphics2D`. Nothing has to advance it, and a frame looks the same whether you
+scrubbed to it, exported it, or played into it.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `fit` | `'fill' \| 'fit' \| 'tile' \| 'stretch'` | `'fill'` | How the frame fills the shape |
+| `playing` | `boolean` | `true` | Whether the clip advances with the node's clock |
+| `timestamp` | `number \| null` | – | **Explicit** source time in seconds. Set it to drive the playhead yourself; omit it (or pass `null`) to let the clip play |
+| `playStart` | `number` | `0` | Seconds after the node appears before playback begins |
+| `trimStart` / `trimEnd` | `number` | – | Region of the source to play |
+| `speed` | `number` | `1` | Playback-rate multiplier |
+| `loop` | `'forward' \| 'reverse' \| 'none'` | `'none'` | Loop behaviour at `trimEnd` |
+| `duration` | `number` | trimmed length | Length of one loop cycle |
+
+`timestamp` is the time-remap knob: tween it to scrub the clip, or set it with
+`playing: false` to hold one frame. A paused clip with no `timestamp` sits on its
+first frame.
+
+Cross-fading a video in over a node that already existed opens the clip partway
+through — the node's age is the playback clock. Give it `playStart` to line the
+start back up:
+
+```tsx
+// `box` has no `startAt`, so this is 4s into its life
+{ id: 'to-video', type: 'fillTo', targetId: 'box', at: 4, duration: 0.5,
+  args: { fill: Fills.video('./clip.mp4', { playStart: 4 }) } },
+```
+
+---
+
+## Multiple fills
+
+Pass an array to layer fills bottom to top:
+
+```ts
+Rect({ fill: [
+  { type: 'solid', color: '#0f1117' },
+  { type: 'linear-gradient', colors: ['#4f80ff33', 'transparent'], stops: [0, 1] },
+] })
+```
+
+---
+
+## Procedural fills
+
+Three fills generate their own pixels rather than taking a colour or an image. The first two expose a fixed set of knobs; the third hands you the shader.
+
+### Noise — speckle
+
+`Fills.noise` paints sparse per-pixel speckle: dust, static, stipple.
+
+```ts
+Rect({ fill: ['#0D0F15', Fills.noise({ density: 0.4, color: 'white', opacity: 0.15 })] })
+```
+
+Tween `seed` in whole steps to make the static crawl.
+
+### Fractal noise — fields
+
+`Fills.fractalNoise` is a continuous *field* rather than speckle — several octaves of smooth noise summed at rising frequency and falling amplitude, which is what produces cloud, smoke, marble, wood, terrain and plasma.
+
+```ts
+// Drifting cloud
+Rect({ fill: Fills.fractalNoise({ basis: 'value', colors: ['#10131b', '#6990DD'] }) })
+
+// Marble veining
+Rect({ fill: Fills.fractalNoise({ basis: 'ridged', octaves: 5, colors: ['#1a1206', '#F5C26B'] }) })
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `basis` | `'value' \| 'simplex' \| 'ridged' \| 'worley'` | `'simplex'` | Which noise function the octaves come from |
+| `octaves` | `number` | `4` | How many octaves are summed, `1`–`8`. Each one doubles the cost |
+| `frequency` | `number \| { x, y }` | `3` | Cycles of the first octave across the shape |
+| `lacunarity` | `number` | `2` | Frequency multiplier per octave |
+| `gain` | `number` | `0.5` | Amplitude multiplier per octave |
+| `seed` | `number` | `0` | Field offset — random-access into the noise |
+| `offset` | `{ x, y }` | `{ x: 0, y: 0 }` | Pan through the field, in cycles |
+| `angle` | `number` | `0` | Rotation of the field in degrees |
+| `colors` | `Color[]` | `['black', 'white']` | Colours the 0–1 field maps onto, low to high |
+| `stops` | `number[]` | evenly spaced | Positions of each colour in `0`–`1` |
+| `contrast` | `number` | `1` | Steepen (>1) or flatten (\<1) the field before the ramp |
+
+**Choosing a basis:**
+
+- **`'value'`** — the cheapest and softest: clouds, haze, paper fibre, subtle mottling.
+- **`'simplex'`** — more even, fewer axis-aligned artefacts. The right default for anything organic seen up close.
+- **`'ridged'`** — sharp branching crests: mountains, lightning, veins, marble.
+- **`'worley'`** — cellular distance, so it gives edges rather than blur: scales, cracked earth, caustics, stained glass.
+
+**Animating:** tween `offset` to travel *through* the field (it flows); tween `seed` to shift to a different field entirely (it churns). `basis` and `octaves` snap rather than interpolating, because both are baked into the compiled shader.
+
+It composes with the effect layer rather than duplicating it — [duotone](../effects/implementations/duotone) over it is marble, [threshold](../effects/implementations/threshold) over it is an organic matte, [posterize](../effects/implementations/posterize) over it is topographic banding, and [displace](../effects/implementations/displace) is water.
+
+### Custom shader — your own WGSL
+
+`Fills.shader` is the escape hatch past the built-in procedural fills: you write the fragment function, in [WGSL](https://www.w3.org/TR/WGSL/).
+
+```ts
+const GLOW = `
+struct Params { amount: f32 }
+
+fn fill(in: FillIn) -> vec4f {
+    let d = 1.0 - length(in.uv - 0.5) * 2.0;
+    let a = smoothstep(0.0, 1.0, d) * u.amount;
+    return vec4f(vec3f(0.41, 0.56, 0.87) * a, a);   // premultiplied
+}`;
+
+Rect({ width: 400, height: 400, fill: Fills.shader(GLOW, { uniforms: { amount: 1 } }) })
+```
+
+It is a fill, so it paints inside the shape's own path and stacks like any other layer — the same shader clips to an ellipse, a path or a run of text, and takes `opacity`, `blend` and `space` for free:
+
+```ts
+Rect({ fill: ['#0b0d12', Fills.shader(GLOW, { blend: 'screen', opacity: 0.8 })] })
+Ellipse({ fill: Fills.shader(GLOW) })
+Text({ text: 'DEPTH', fontSize: 320, fill: Fills.shader(GLOW) })
+Rect({ stroke: { fill: Fills.shader(GLOW), weight: 12 } })
+```
+
+#### The shader contract
+
+You define `fn fill(in: FillIn) -> vec4f`. The renderer puts this in front of your code:
+
+```wgsl
+struct FillIn {
+    uv: vec2f,     // 0–1 across the fill's box, y down
+    local: vec2f,  // px from the box's top-left
+    size: vec2f,   // the box, px
+    time: f32,     // seconds the node has existed
+    scale: f32,    // device px per px
+}
+var<uniform> u: Params;                 // your struct Params, if you declare one
+fn sample_texture(uv: vec2f) -> vec4f   // the fill's first texture, premultiplied
+```
+
+Two rules:
+
+- **Return premultiplied alpha** — `return vec4f(rgb * a, a)`.
+- **Don't apply the layer's `opacity` yourself.** It is already on the paint as an alpha your output is modulated by, so folding it in again renders at the *square* of what you asked for. Same for a node's own opacity.
+
+Everything a coordinate mode used to choose is in `in`: `in.uv` stretches with the shape; `(in.local - 0.5 * in.size) / in.size.y` is centred with square pixels (what anything radial wants); `in.local` is raw px, for a pattern whose pitch is an authored size. `time` is **node age, not scene time** — it starts when the node appears, which is what makes it identical whether you played to a frame or seeked to it. `scale` folds in the pixel ratio *and* the camera zoom, so a 4× export sees a different value from the player: use it for a hairline that should stay one pixel wide, not for anything that decides the look.
+
+Loops are bounded: each pixel may run 16,384 loop iterations in total, summed over every `loop`, `for` and `while` in your code (nested ones included), and past that every loop breaks. A loop that never ends would otherwise hang the GPU until the driver resets it, which blanks every canvas on the page.
+
+Your names can't collide with the renderer's own: everything else in the module is prefixed `ms_`. Derivatives (`dpdx`, `fwidth`) and `textureSample` aren't available, because a fill is evaluated per pixel of an arbitrary shape; use `textureSampleLevel` (or `sample_texture`).
+
+:::note
+Keep the source constant. It is the compile cache's key, so building it per frame — interpolating a changing value into a template literal — compiles a new GPU program every frame. Hoist it to module scope and put everything that moves in a uniform, which is an in-place write and costs nothing.
+:::
+
+#### Uniforms
+
+Declare uniforms as the members of `struct Params`; your code reads them as `u.<name>`. Values are supplied **by name**, in any order, and laid out by WGSL's own uniform rules (the renderer reflects the struct, so a `vec3f` followed by an `f32` just works):
+
+```tsx
+const SRC = `
+struct Params {
+    amount: f32,
+    centre: vec2f,
+    tint: vec4f,
+    seed: i32,
+}
+fn fill(in: FillIn) -> vec4f { ... }`;
+
+Fills.shader(SRC, {
+    uniforms: {
+        amount: 0.6,             // f32
+        centre: [0.5, 0.5],      // vec2f
+        tint: [0.9, 0.3, 0.4, 1],// vec4f
+        seed: 7,                 // i32
+    },
+})
+```
+
+A member you don't supply reads as 0 and a value naming no member is ignored; the WebGPU renderer reports either as a `params` render issue on the node, so a renamed member does not silently zero. An array in a uniform has a 16-byte stride, so use `array<vec4f, N>` rather than `array<f32, N>`. `Params` holds up to 512 bytes.
+
+#### Sampling an image
+
+`sample_texture(uv)` samples the first of the fill's `textures`, `0`–`1` across the image, repeating past its edges. The fill doesn't paint until the image has decoded, the same as an image fill.
+
+```ts
+const RIPPLE = `
+struct Params { amount: f32 }
+
+fn fill(in: FillIn) -> vec4f {
+    let wave = sin(in.uv.y * 24.0) * 0.02 * u.amount;
+    return sample_texture(in.uv + vec2f(wave, 0.0));
+}`;
+
+Rect({ width: 640, height: 400, fill: Fills.shader(RIPPLE, {
+    textures: [{ name: 'photo', src: 'kingfisher.jpg' }],
+    uniforms: { amount: 1 },
+}) })
+```
+
+#### Errors
+
+A source that doesn't compile draws nothing. The renderer validates it before anything reaches the GPU and reports the problem with a line and column in **your** code; a host's shader editor shows those as you type. Pipelines compile in the background, so a new shader appears a moment after it is first drawn — a frame never waits for it, while an export does.
+
+**Animating:** uniform values interpolate, component-wise for vectors, and so does `opacity`. `source` and `textures` **snap** at the midpoint of a tween rather than cross-fading — the source is the compile-cache key, and there is no halfway value between two programs. To dissolve between two shaders, stack them as two layers and tween their opacities in opposite directions.
+
+#### SkSL
+
+Before WGSL, shaders were written in SkSL (`vec4 main(vec2 fragCoord)`, `uniform` declarations, `u_size`/`u_time` built-ins, `coords`). Motion Script no longer runs SkSL. A saved document with an SkSL shader still loads (it is marked `language: 'sksl'` and keeps its source), but the fill draws nothing and is reported as a render error so a host can ask for the shader to be converted. Rewriting one is mostly mechanical: `main` becomes `fn fill(in: FillIn)`, `uniform float u_x` becomes a `Params` member read as `u.x`, `u_size`/`u_time`/`u_aspect` come from `in`, and `fragCoord` under `coords` becomes `in.uv` or `in.local`.
+
+Shader fills also paint a node's stroke and its shadow, so a shader-filled shape casts a shader-coloured shadow rather than a flat silhouette.
+
+---
+
+## Fill types reference
+
+| Type | Required props | Optional props |
+|---|---|---|
+| `'solid'` | `color` | `opacity`, `blend` |
+| `'linear-gradient'` | `colors`, `stops` | `start`, `end`, `blend` |
+| `'radial-gradient'` | `colors`, `stops`, `radius` | `center`, `blend` |
+| `'conic-gradient'` | `colors`, `stops` | `center`, `startAngle`, `blend` |
+| `'image'` | `src` | `fit`, `crop`, `zoom`, `anchor`, `matrix`, `preset`, `opacity`, `blend` |
+| `'video'` | `src` | `fit`, `crop`, `zoom`, `anchor`, `matrix`, `preset`, `playing`, `timestamp`, `playStart`, `trimStart`, `trimEnd`, `speed`, `loop`, `duration`, `opacity`, `blend` |
+| `'noise'` | – | `size`, `density`, `color`, `seed`, `opacity`, `blend` |
+| `'fractalNoise'` | – | `basis`, `octaves`, `frequency`, `lacunarity`, `gain`, `seed`, `offset`, `angle`, `colors`, `stops`, `contrast`, `opacity`, `blend` |
+| `'stripe'` | – | `gap`, `strokeWidth`, `angle`, `color`, `opacity`, `blend` |
+| `'shader'` | `source` | `language`, `contract`, `uniforms`, `textures`, `opacity`, `blend` |
+| `'canvas3D'` | `scene` | `maxPixelRatio`, `antialias`, `opacity`, `blend` |
+
+Every fill also takes `space` (`'local'` | `'parent'` | `'global'`), which chooses the rect it resolves against, and a plain CSS colour string is shorthand for `'solid'`.
+
+---
+
+## Animating fills
+
+Fill colors and gradient stops are all animatable with a `to` command:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 300, height: 200, fill: 'royalblue' } },
+  ],
+  commands: [
+    // Animate to a new color
+    { id: 'recolor', type: 'to', targetId: 'box', at: 0, duration: 1,
+      easing: { kind: 'inOut' }, args: { fill: '#e84393' } },
+
+    // Then animate opacity of a fill object
+    { id: 'fade-fill', type: 'to', targetId: 'box', at: 1, duration: 0.5,
+      args: { fill: { type: 'solid', color: 'white', opacity: 0 } } },
+  ],
+};
+```
+
+---
+
+## Blend modes
+
+The `blend` key on any fill object controls how it composites with fills below it. Available modes:
+
+| Mode | Description |
+|---|---|
+| `'normal'` | Standard alpha composite |
+| `'multiply'` | Darkens |
+| `'screen'` | Lightens |
+| `'overlay'` | Contrast boost |
+| `'darken'` | Keeps darker pixels |
+| `'lighten'` | Keeps lighter pixels |
+| `'color-dodge'` | Brightens based on top layer |
+| `'color-burn'` | Darkens based on top layer |
+| `'hard-light'` | High-contrast overlay |
+| `'soft-light'` | Subtle contrast |
+| `'difference'` | Subtracts colors |
+| `'exclusion'` | Lower-contrast difference |
+| `'hue'` | Hue of top, saturation/luminosity of bottom |
+| `'saturation'` | Saturation of top, hue/luminosity of bottom |
+| `'color'` | Hue and saturation of top, luminosity of bottom |
+| `'luminosity'` | Luminosity of top, hue/saturation of bottom |

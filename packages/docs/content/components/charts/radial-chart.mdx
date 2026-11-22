@@ -1,0 +1,98 @@
+---
+sidebar_position: 6
+---
+
+# RadialChart
+
+A radial bar chart: one concentric ring per row of the table, the first row
+outermost, each an arc swept by its value out of a maximum. Reach for it for a few
+progress or share figures that read better as rings than as bars. It ships in
+`@motionscript/charts`; register the package's `NODES`
+([overview](/docs/components/charts/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'chart', type: 'radialChart', parentId: null, layerOrder: 0,
+      props: {
+        width: 680, height: 480,
+        data: [
+          { goal: 'Move', done: 78 },
+          { goal: 'Exercise', done: 52 },
+          { goal: 'Stand', done: 91 },
+        ],
+        categoryField: 'goal',
+        valueField: 'done',
+        max: 100,
+        centerLabel: '78%',
+        centerCaption: 'closed',
+        showCenter: false,
+        style: { fontFamily: 'Inter', sweep: 270, startAngle: -135 },
+      } },
+  ],
+  commands: [
+    // The rings sweep in outer first, then the legend arrives.
+    { id: 'in', type: 'enter', targetId: 'chart', at: 0, duration: 1.4, args: {} },
+    { id: 'pick', type: 'selectRing', targetId: 'chart', at: 2, duration: 0.45,
+      args: { ringIndex: 0 } },
+    { id: 'answer', type: 'revealCenter', targetId: 'chart', at: 2.5, duration: 0.6, args: {} },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `data` | `DataRecord[]` | `[]` | The table, one row per ring |
+| `categoryField` | `string` | `''` | The column naming each ring, on its label and legend row |
+| `valueField` | `string` | `''` | The column sizing each ring's arc |
+| `max` | `number` | `0` | The value a full sweep stands for. `0` lets the largest value fill its ring |
+| `style` | chart style | the default style | Colours, type, ring geometry and legend; see [Style](#style) |
+| `gap` | `number` | `40` | Space between the rings and the legend, in px. Read once, when the node is built |
+| `centerLabel` | `string` | `''` | Text set in the centre hole |
+| `centerCaption` | `string` | `''` | A smaller second line under `centerLabel` |
+| `showCenter` | `boolean` | `true` | Draw the centre text at rest. Set `false` to hold it for `revealCenter`. Read once, when the node is built |
+| `pops` | `number[]` | `[]` | How far each ring is emphasised, `0` to `1`. The selection commands move it |
+
+## Style
+
+The radial chart draws the shared colour, text and legend groups (see
+[Styling](/docs/components/charts/styling)). Its own fields:
+
+| Field | Default | |
+|---|---|---|
+| `innerRadius` | `0.3` | Where the innermost ring starts, as a fraction of the outer radius, `0` to `0.9` |
+| `ringGap` | `8` | Space between neighbouring rings, in px |
+| `sweep` | `360` | Degrees a full ring spans, `30` to `360`. `270` makes a gauge-like open ring |
+| `startAngle` | `0` | Degrees clockwise from 12 o'clock where every ring begins |
+| `track` | `'white/10'` | The full ring under each arc, a `Fill`; `[]` draws none |
+| `roundCaps` | `true` | Round the ends of the arcs and tracks |
+| `ringLabels` | `false` | Write each ring's category at its start, in `muted` |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `enter` | none | The whole entrance: the rings sweep in from `startAngle`, outer ring first, then the captions fade up as the legend staggers in. The centre text keeps its own command |
+| `revealCenter` | none | Fades the centre text up. Not part of `enter` |
+| `selectRing` | `ringIndex` | Thickens one ring and dims the rest; other selected rings stay out |
+| `clearSelection` | none | Settles every ring and brings the chart back to full |
+
+Every command eases out unless the command row sets an `easing`.
+
+```tsx
+{ id: 'pick', type: 'selectRing', targetId: 'chart', at: 3, duration: 0.45,
+  args: { ringIndex: 2 } },
+```
+
+## Notes
+
+- Place it anywhere in a 2D scene. It takes children, laid out freeform over the chart.
+- A ring plots rows, not series, so none can be hidden. Selection is what the chart has instead.
+- Each arc spans `value / max` of `sweep`; a value above `max` fills its ring.
+- The centre text sits in the hole, so it needs `innerRadius` large enough to hold it.
+- Related: [PieChart](/docs/components/charts/pie-chart), [BarChart](/docs/components/charts/bar-chart), [Styling](/docs/components/charts/styling).

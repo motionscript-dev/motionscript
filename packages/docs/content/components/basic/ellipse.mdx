@@ -1,0 +1,69 @@
+---
+sidebar_position: 4
+---
+
+import { EllipseCanvas } from '@site/src/components/docs/node-scenes';
+
+# Ellipse
+
+Circles, ovals, and arcs. Control the arc extent with `startAngle` and `sweep`.
+
+<EllipseCanvas />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    // Full circle
+    { id: 'circle', type: 'ellipse', parentId: null, layerOrder: 0,
+      props: { width: 200, height: 200, fill: '#6990DD' } },
+
+    // Arc (progress ring): ratio 1 leaves only the outline to stroke
+    { id: 'arc', type: 'ellipse', parentId: null, layerOrder: 1,
+      props: { width: 360, height: 360, startAngle: -90, sweep: 270, ratio: 1,
+        stroke: { fill: '#6990DD', weight: 24 } } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `startAngle` | `number` | `0` | Starting angle of the arc in degrees (0 = right/3 o'clock, clockwise) |
+| `sweep` | `number` | `360` | Angular extent of the arc in degrees. `360` = full ellipse |
+| `ratio` | `number` | `0` | Inner radius as a fraction of the outer, so the size of the hole. `0` is a solid disk (a pie wedge when `sweep` is under `360`), `0.5` a donut. At `1` the hole reaches the outer edge: there is nothing left to fill, and a stroke draws the bare outline or arc |
+
+## Animating
+
+All props animate with a `to` command. Animate `sweep` to create a progress ring or pie chart:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'ring', type: 'ellipse', parentId: null, layerOrder: 0,
+      props: { width: 360, height: 360, startAngle: -90, sweep: 0, ratio: 1,
+        stroke: { fill: '#6990DD', weight: 24 } } },
+  ],
+  commands: [
+    // Draw ring from 0 to full circle
+    { id: 'draw', type: 'to', targetId: 'ring', at: 0, duration: 1.5,
+      easing: { kind: 'inOut' }, args: { sweep: 360 } },
+  ],
+};
+```
+
+Animate `startAngle` to spin the arc opening around the circle. A command states where a prop ends up, not how far it moves, so a full turn from `-90` is `270`:
+
+```tsx
+{ id: 'spin', type: 'to', targetId: 'ring', at: 1.5, duration: 2, args: { startAngle: 270 } },
+```
+
+## Notes
+
+- Angles are in degrees, measured clockwise from the 3 o'clock position.
+- For a progress ring, set `ratio: 1` so the stroke follows the arc alone (at `0` it outlines the whole wedge), and `startAngle: -90` so the arc starts at 12 o'clock.
+- The standard `start`/`end` draw props trace the outline; `sweep` controls the geometric arc extent.

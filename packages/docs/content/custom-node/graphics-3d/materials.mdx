@@ -1,0 +1,196 @@
+---
+sidebar_position: 5
+---
+
+# Materials and textures
+
+A material decides how a surface responds to light. The [shorthand props](./objects#material-shorthand) on a mesh node cover most cases. `Mat` builds a full descriptor when you need one.
+
+```tsx
+import { Geo, Graphics3D, Mat, Tex } from '@motionscript/sdk/v1';
+
+const brushed = Mat.standard({
+  color: '#c9ccd4',
+  roughness: 0.35,
+  metalness: 0.9,
+  normalMap: Tex.image('brushed-normal.png', { repeat: [4, 4] }),
+});
+
+const g3 = new Graphics3D().mesh(Geo.cylinder({ radius: 1, height: 0.2 }), brushed);
+```
+
+Or on a node, through the `material` prop:
+
+```ts
+Cylinder3D({ radius: 1, height: 0.2, material: brushed })
+```
+
+Hoist and share materials. One material across many meshes compiles one shader program instead of one per mesh.
+
+## Two vocabularies, one rule
+
+The shorthand on a node and a `Mat` descriptor are two spellings of the same thing, and they differ in two places on purpose:
+
+| | node shorthand | `Mat` descriptor |
+|---|---|---|
+| surface | `fill` | `color`, plus a `map` slot for an image |
+| self-illumination | `emission`, `emissionStrength` | `emission`, `emissionStrength`, `emissionMap` |
+| faces | `faces` | `faces` |
+| blending | `blend` | `blend` |
+
+The shorthand is what a designer writes; the descriptor is the renderer's vocabulary, with every slot. A `fill` resolves into `color` and `map` when the material is built, which is the only place the two meet. When you pass a `material`, it wins and the shorthand beside it is ignored.
+
+## Choosing a material
+
+| Builder | Lit | Use for |
+|---|---|---|
+| `Mat.standard` | yes | The default. Physically based, `roughness` and `metalness` |
+| `Mat.physical` | yes | Clearcoat, transmission, sheen, iridescence. Costs more per pixel |
+| `Mat.basic` | no | Flat colour. Screens, overlays, anything that is its own light source |
+| `Mat.lambert` | yes | Cheap diffuse, no specular highlight |
+| `Mat.phong` | yes | Classic specular highlight via `shininess` and `specular` |
+| `Mat.toon` | yes | Banded cel shading, through a `gradientMap` |
+| `Mat.normal` | no | Colours surfaces by their normal. A debugging view |
+| `Mat.depth` | no | Colours by distance from the camera |
+| `Mat.matcap` | no | Lighting baked into a lookup texture. Cheap and stylised |
+| `Mat.points` | no | Point clouds |
+| `Mat.lineBasic` / `Mat.lineDashed` | no | Lines |
+| `Mat.sprite` | no | Camera-facing quads |
+| `Mat.shadow` | – | Catches shadows on an otherwise invisible surface |
+| `Mat.shader` | – | Raw GLSL |
+
+Reach for `Mat.standard` by default. Use `Mat.physical` only when a surface genuinely needs glass, car paint or fabric. `unlit` on a mesh node picks `Mat.basic` for you.
+
+## Common fields
+
+Every material takes these:
+
+| Field | Type | Description |
+|---|---|---|
+| `opacity` | `number` | Alpha. Blending turns on by itself when it is below 1 |
+| `transparent` | `boolean` | Force alpha blending on, for a draw-order reason. Rarely needed |
+| `alphaTest` | `number` | Discard fragments below this alpha |
+| `faces` | `'front' \| 'back' \| 'both'` | Which faces are drawn |
+| `wireframe` | `boolean` | Draw edges only |
+| `blend` | `'normal' \| 'additive' \| 'subtractive' \| 'multiply' \| 'none'` | How the colour combines with the framebuffer |
+| `vertexColors` | `boolean` | Read per-vertex colour from the geometry |
+| `toneMapped` | `boolean` | Include this material in tone mapping |
+| `depthWrite` / `depthTest` | `boolean` | Depth buffer behaviour |
+| `polygonOffset` | `boolean` | Push this surface's depth back, with `polygonOffsetFactor` and `polygonOffsetUnits` (`1` and `1`), so a decal coplanar with it wins (from 0.1.1-alpha.1; earlier renderers ignore it). A decal that is not exactly coplanar is lifted instead ([Thin and touching geometry](./objects#thin-and-touching-geometry)) |
+| `dithering` | `boolean` | Dither the output to hide banding |
+| `visible` | `boolean` | Draw at all |
+
+**Blending is derived.** The renderer turns it on for an `opacity` below 1, a colour that carries alpha, a per-pixel `alphaMap`, or `transmission`. You never write `transparent: true` to make `opacity` work, and an explicit `transparent: false` cannot switch off blending that a lower alpha requires.
+
+`faces: 'back'` with `depthWrite: false` is the usual recipe for a translucent shell that should not occlude what is inside it.
+
+## Maps
+
+Most lit materials accept the same texture slots:
+
+| Slot | What it does |
+|---|---|
+| `map` | Base colour |
+| `normalMap` | Surface detail, with `normalScale` |
+| `roughnessMap` / `metalnessMap` | Per-pixel roughness and metalness |
+| `aoMap` | Baked ambient occlusion, with `aoMapIntensity` |
+| `alphaMap` | Per-pixel alpha |
+| `emissionMap` | Where the surface emits, with `emission` and `emissionStrength` |
+| `displacementMap` | Moves vertices, with `displacementScale` and `displacementBias` |
+| `envMap` | Reflections, with `envMapIntensity` |
+| `lightMap` | Baked lighting, with `lightMapIntensity` |
+
+A mesh node's shorthand exposes `normalMap`, `roughnessMap`, `metalnessMap`, `aoMap`, `alphaMap` and `envMapIntensity`. The base colour is its `fill`, and the rest of the slots go through a `Mat` descriptor.
+
+## Textures
+
+A bare string works anywhere a texture is expected, so `Tex.image` is only needed when you want sampler options. On a node, an image is simply a `fill`:
+
+```ts
+Plane3D({ width: 4, height: 4, fill: 'floor.jpg' })
+Plane3D({ width: 4, height: 4, fill: Tex.image('floor.jpg', { repeat: [4, 4], wrapS: 'repeat', wrapT: 'repeat' }) })
+Plane3D({ width: 4, height: 4, normalMap: 'floor-normal.png' })
+```
+
+A string `fill` is an image path when it begins with `/` or `.` or ends in a known image extension, and a colour otherwise.
+
+| Option | Type | Description |
+|---|---|---|
+| `wrapS` / `wrapT` | `'clamp' \| 'repeat' \| 'mirror'` | Behaviour past the edge |
+| `repeat` | `Vector2` | Tiling |
+| `offset` | `Vector2` | Pan |
+| `rotation` | `number` | Rotation in degrees |
+| `center` | `Vector2` | Pivot for the rotation |
+| `magFilter` / `minFilter` | `'nearest' \| 'linear'` | Sampling. `'nearest'` for pixel art |
+| `anisotropy` | `number` | Sharpness at grazing angles |
+| `flipY` | `boolean` | Flip vertically |
+| `colorSpace` | `'srgb' \| 'linear'` | Use `'linear'` for data maps like normals |
+
+Images go through the ordinary asset pipeline, so the pixels are resident before the frame that needs them draws. A node declares the textures it draws, so there is nothing to register by hand.
+
+`Tex.data` builds a texture from raw RGBA bytes, which is how you make gradient ramps, noise and lookup tables:
+
+```tsx
+Tex.data(bytes, 256, 1, { magFilter: 'linear' })
+```
+
+`Tex.surface` renders 2D MotionScript content into a texture. See [2D on 3D](./surfaces).
+
+## Metals need something to reflect
+
+A `standard` or `physical` material with high `metalness` renders black unless the scene has an environment to reflect. The fastest fix needs no asset: the generated studio, set by a node whose `render` calls `ctx.environment`:
+
+```ts
+import { Canvas3D, Sphere3D, component3d } from '@motionscript/sdk/v1';
+
+const Studio = component3d({
+  key: 'studio',
+  render: (ctx) => ctx.environment({ preset: 'studio' }),
+});
+
+Canvas3D({ children: [
+  Studio({}),
+  Sphere3D({ radius: 1, fill: '#c9ccd4', metalness: 1, roughness: 0.15 }),
+] })
+```
+
+The stage's own `environment` prop does not render yet. See [Environment](./scene#environment).
+
+## Physical extras
+
+`Mat.physical` adds the fields that make glass, coated and fabric surfaces:
+
+| Field | For |
+|---|---|
+| `clearcoat`, `clearcoatRoughness` | Car paint, lacquer |
+| `transmission`, `thickness`, `ior` | Glass and liquids |
+| `attenuationColor`, `attenuationDistance` | Tinting through a volume |
+| `sheen`, `sheenColor`, `sheenRoughness` | Cloth |
+| `iridescence`, `iridescenceIOR`, `iridescenceThicknessRange` | Soap film, oil slick |
+| `specularIntensity`, `specularColor` | Non-metal specular tint |
+| `anisotropy`, `anisotropyRotation` | Brushed metal, hair |
+
+## Raw GLSL
+
+`Mat.shader` is the full escape hatch:
+
+```tsx
+Mat.shader({
+  vertex: vertexSource,
+  fragment: fragmentSource,
+  uniforms: { uTime: phase(), uColor: [1, 0.3, 0.2] },
+})
+```
+
+Uniform values are free to animate. Changing the shader source recompiles the program, so keep the source constant and drive it through uniforms. A shader replaces the built-in shading model rather than wrapping it, so write its lighting yourself. The `extends` option the type declares (`'standard'`, `'basic'`, `'phong'`) is not read: it is inert, and the first material that sets it logs a warning in development.
+
+## Escape hatches, in order
+
+When a descriptor does not expose what you need, work down this list:
+
+1. The full parameter surface on the named descriptor.
+2. Arbitrary vertex data with `Geo.buffer` or `Geo.parametric`.
+3. Raw GLSL with `Mat.shader`.
+4. A `params` object, passed straight through to the underlying renderer object.
+
+`params` is read on materials, lights and cameras. It is the last resort, since what it accepts is renderer-specific. It is **not applied** on geometries, the environment or post effects, so setting it there does nothing; in development the first one logs a warning. Set a geometry's own fields instead.

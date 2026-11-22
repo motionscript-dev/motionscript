@@ -1,0 +1,26 @@
+{
+  "name": "@motionscript/docs",
+  "version": "0.5.0",
+  "description": "The Motion Script documentation pages (MDX), as the docs site renders them, versioned with the engine they describe.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/motionscript-dev/motionscript.git",
+    "directory": "packages/docs"
+  },
+  "homepage": "https://motionscript.dev/docs",
+  "bugs": {
+    "url": "https://github.com/motionscript-dev/motionscript/issues"
+  },
+  "files": [
+    "NOTICE",
+    "content",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

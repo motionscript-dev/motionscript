@@ -1,0 +1,81 @@
+---
+sidebar_position: 62
+---
+
+# CurvePlot3d
+
+A curve through a 3D graph, written as three parts in `t` and drawn as a tube.
+Reach for it for a helix, a trajectory or any parametric space curve. It ships
+in `@motionscript/math`; register the package's `NODES`
+([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes3d', parentId: null, layerOrder: 0,
+      props: { width: 960, height: 540, xRange: [-3, 3], yRange: [-3, 3], zRange: [-2, 2],
+        fontFamily: 'Inter' } },
+    // A helix, drawn on from nothing.
+    { id: 'helix', type: 'curvePlot3d', parentId: 'axes', layerOrder: 0,
+      props: { expression: '(2cos(t), 2sin(t), t / 4)', domain: [-6.28, 6.28], end: 0 } },
+  ],
+  commands: [
+    { id: 'draw', type: 'progressTo', targetId: 'helix', at: 0, duration: 2, args: { end: 1 } },
+    { id: 'tighten', type: 'morphTo', targetId: 'helix', at: 2, duration: 1.5,
+      args: { expression: '(cos(2t), sin(2t), t / 4)' } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `expression` | `string` | `''` | The curve's equation: three parts in `t`, `(x, y, z)` |
+| `domain` | `[number, number] \| null` | `null` | The span of `t` that is drawn; 0 to 1 when left out |
+| `params` | `Record<string, number>` | `{}` | The equation's named values: any name in it that is not a variable, a function or a constant |
+| `samples` | `number` | `160` | How many points the curve is drawn through (2 to 2000). Not animatable |
+| `thickness` | `number` | `0.04` | The radius of the tube, in scene units |
+| `start` | `number` | `0` | Where the drawn part begins, as a share of the span of `t` |
+| `end` | `number` | `1` | Where the drawn part ends |
+
+It is a mesh and takes the mesh material props: `fill`, `opacity`, `roughness`,
+`metalness` and the rest (see [Materials](/docs/custom-node/graphics-3d/materials)).
+In a document an unset `fill` is the plot blue, `#58a6ff`.
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `morphTo` | `{ expression }` | One curve bending into another |
+| `paramsTo` | `{ params }` | The named values |
+| `domainTo` | `{ domain }` | The span of `t` that is drawn |
+| `progressTo` | `{ start?, end? }` | Drawing the curve on, or wiping it off |
+
+```tsx
+{ id: 'wipe', type: 'progressTo', targetId: 'helix', at: 4, duration: 1, args: { start: 1 } },
+```
+
+Like any 3D node it also has `moveTo`, `rotateTo` and `scaleTo`.
+
+## Notes
+
+- It goes inside an [`axes3d`](/docs/components/math/axes3d), draws nothing
+  anywhere else, and holds nothing.
+- **`domain` defaults to 0 to 1**, not a full turn, so a curve in `cos(t)` and
+  `sin(t)` needs one: `[0, 6.2832]` for one turn.
+- Trig is in radians. A point where any part has no value is left out, and the
+  tube joins the points either side of it. An equation that will not parse, or
+  is not three parts, draws nothing.
+- `start` and `end` are shares of `t`, not of the curve's length, so a curve
+  whose speed varies draws on unevenly.
+- `thickness` is in scene units, so the tube keeps its width when the axes'
+  range changes.
+- A morph blends the two curves point by point over the same span of `t`.
+- Manim's `ParametricFunction` in 3D; `Create` is `progressTo`.
+- Related: [`surfacePlot3d`](/docs/components/math/surface-plot3d),
+  [`functionPlot`](/docs/components/math/function-plot) for a parametric curve
+  in 2D, [`tracedPath`](/docs/components/math/traced-path) for a 2D trail.

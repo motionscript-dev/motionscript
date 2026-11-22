@@ -1,0 +1,107 @@
+---
+sidebar_position: 60
+---
+
+# Axes3d
+
+A 3D graph: three axes through a box of graph coordinates, z up, seen through a
+camera of its own. Reach for it to plot a surface, a space curve or a vector, or
+to place any 3D node at graph coordinates. It ships in `@motionscript/math`;
+register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes3d', parentId: null, layerOrder: 0,
+      props: { width: 960, height: 540, xRange: [-3, 3], yRange: [-3, 3], zRange: [-2, 2],
+        labels: true, grid: true, fontFamily: 'Inter' } },
+    // Any 3D node inside the axes sits at graph coordinates and keeps its own size.
+    { id: 'ball', type: 'sphere3d', parentId: 'axes', layerOrder: 0,
+      props: { x: 1, y: 2, z: 0.5, radius: 0.2, fill: '#f97316' } },
+  ],
+  commands: [
+    // The camera swings round the graph.
+    { id: 'swing', type: 'orbitTo', targetId: 'axes', at: 0, duration: 2,
+      args: { orbit: 80, elevation: 32 } },
+    // A wider x range: the ball is carried to where graph x = 1 now is.
+    { id: 'widen', type: 'rangeTo', targetId: 'axes', at: 2, duration: 1,
+      args: { xRange: [-6, 6] } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `xRange` | `[number, number]` | `[-3, 3]` | The x values shown, as `[min, max]` |
+| `yRange` | `[number, number]` | `[-3, 3]` | The y values shown |
+| `zRange` | `[number, number]` | `[-2, 2]` | The z values shown |
+| `xLength` | `number` | `6` | How long the x axis is drawn, in scene units |
+| `yLength` | `number` | `6` | How long the y axis is drawn, in scene units |
+| `zLength` | `number` | `4` | How long the z axis is drawn, in scene units |
+| `xStep`, `yStep`, `zStep` | `number` | `0` | Tick spacing on each axis; `0` picks a tidy one for the axis's length |
+| `color` | `Color` | `'#9ca3af'` | The axis lines, tips and ticks |
+| `thickness` | `number` | `0.02` | The radius of an axis line, in scene units. `0` draws no lines |
+| `tips` | `boolean` | `true` | A cone at the positive end of each axis |
+| `ticks` | `boolean` | `true` | Tick marks |
+| `tickSize` | `number` | `0.16` | The length of a tick mark, in scene units |
+| `grid` | `boolean` | `false` | Lines across the plane of the x and y axes, at each of their ticks |
+| `gridLineColor` | `Color` | `'#374151'` | The colour of those lines |
+| `labels` | `boolean` | `false` | A number at each tick |
+| `labelSize` | `number` | `0.26` | The height of a label's text, in scene units |
+| `labelColor` | `Color` | `'#9ca3af'` | The numbers' and titles' colour |
+| `fontFamily` | `string` | `''` | The numbers' and titles' font; empty takes the scene's default text style |
+| `xLabel`, `yLabel`, `zLabel` | `string` | `'x'`, `'y'`, `'z'` | A title at the positive end of each axis; `''` leaves it out |
+
+An `axes3d` is a [`canvas3d`](/docs/custom-node/graphics-3d/canvas3d) and takes
+all of its props: the camera (`orbit`, `elevation`, `zoom`, `fov`, `target`),
+the `lights`, `fog` and `environment`, the render settings, and every [`rect`](/docs/components/basic/rect) prop, so `fill` is the
+backdrop behind the graph.
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `rangeTo` | `{ xRange?, yRange?, zRange? }` | The window of values shown; everything inside follows |
+| `orbitTo` | `{ orbit?, elevation?, zoom? }` | The default camera, from `canvas3d` |
+
+```tsx
+{ id: 'zoom', type: 'rangeTo', targetId: 'axes', at: 0, duration: 1,
+  args: { xRange: [0, 3], yRange: [0, 3], zRange: [0, 2] } },
+```
+
+## Notes
+
+- **It is its own viewport.** It stands on the 2D stage as it is, at the top
+  level or inside a `rect`, like an `axes2d`. It cannot go inside a `canvas3d`;
+  a 3D shape you want beside the graph goes inside the axes instead.
+- **A 3D graph is right-handed with z up.** The scene has y up, so graph x, y
+  and z run along the scene's z, x and y: seen head-on, y is to the right and z
+  is up, and the default camera shows x coming toward you.
+- **The axes are a box**, `xLength` by `yLength` by `zLength` scene units,
+  centred in the scene and showing the three ranges. An axis crosses the others
+  at their zero, or at the nearest end of a range without one.
+- **A child's `x`, `y` and `z` are graph units**, whatever the child is, and it
+  keeps its own size and turn. The built-in `moveTo` moves it in graph units,
+  and `rangeTo` carries it.
+- Lengths that are not graph values (`thickness`, `tickSize`, `labelSize`) are
+  scene units, so they keep their size when a range changes. Labels are cards
+  that always face the camera.
+- `gridLineColor` is the graph's own grid; `gridColor` is the canvas's authoring
+  grid, a different thing.
+- The axes' titles are drawn whether or not `labels` is on. The numbers and
+  titles need a font, as any text does: set `fontFamily` when the scene has no
+  default text style.
+- Give it a `width` and `height`. A `canvas3d` with none fills its parent.
+- The camera is the canvas's own: `orbitTo` swings it and `lookTo` moves its
+  `target`. `lights` replaces the default rig, and `lightTo` moves one light.
+- Manim's `ThreeDAxes`; `move_camera` is `orbitTo`.
+- What goes inside: [`surfacePlot3d`](/docs/components/math/surface-plot3d),
+  [`curvePlot3d`](/docs/components/math/curve-plot3d),
+  [`plotPoint3d`](/docs/components/math/plot-point3d),
+  [`vectorArrow3d`](/docs/components/math/vector-arrow3d), or any 3D node. The 2D
+  graph is [`axes2d`](/docs/components/math/axes2d).

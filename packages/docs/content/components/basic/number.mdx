@@ -1,0 +1,151 @@
+---
+sidebar_position: 9
+---
+
+# Number
+
+A figure drawn as text: a price, a percentage, a counter, a readout. You give it a numeric `value` and say how to write it down, and it formats and redraws itself every frame, so tweening `value` counts.
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'figures', type: 'rect', parentId: null, layerOrder: 0,
+      props: { flow: 'vertical', width: 'hug', height: 'hug', gap: 24 } },
+
+    // "1,300": the default format, grouped, no decimals
+    { id: 'count', type: 'number', parentId: 'figures', layerOrder: 0,
+      props: { value: 1299.99, fontFamily: 'Inter', fontSize: 72, fill: 'white' } },
+
+    // "$1,299.99"
+    { id: 'price', type: 'number', parentId: 'figures', layerOrder: 1,
+      props: { value: 1299.99, format: 'currency', fractionDigits: 2,
+        fontFamily: 'Inter', fontSize: 72, fill: '#6990DD' } },
+
+    // "42.5%": percent scales by 100
+    { id: 'share', type: 'number', parentId: 'figures', layerOrder: 2,
+      props: { value: 0.425, format: 'percent', fractionDigits: 1,
+        fontFamily: 'Inter', fontSize: 72, fill: '#E8617C' } },
+
+    // "72.4 kg": a pattern typed by hand
+    { id: 'weight', type: 'number', parentId: 'figures', layerOrder: 3,
+      props: { value: 72.4, format: 'custom', customPattern: '#,##0.0 kg',
+        fontFamily: 'Inter', fontSize: 72, fill: '#F5C26B' } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `value` | `number` | `0` | The number to display. Animatable: tweening it counts |
+| `format` | `'number' \| 'currency' \| 'percent' \| 'custom'` | `'number'` | How the figure is written. See [Formats](#formats) |
+| `customPattern` | `string` | `''` | The pattern used when `format` is `'custom'`. See [Patterns](#patterns) |
+| `fractionDigits` | `number` | `0` | Decimal places, always exactly this many. Rounded and clamped to `0`–`10`. Ignored by `'custom'` |
+| `grouped` | `boolean` | `true` | Group digits in threes (`1,000` rather than `1000`). Ignored by `'custom'` |
+| `currencySymbol` | `string` | `'$'` | Printed before the figure when `format` is `'currency'` |
+
+`Number` shares every font and layout prop with [Text](/docs/components/basic/text): `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `letterSpacing`, `lineHeight`, `textAlign`, `verticalAlign`, `textDecoration`, `textCase`, `minFontSize` and `variant`, with the same defaults and the same [font family](/docs/components/basic/text#font-family) rules. It takes [fills](/docs/attributes/fills), [strokes](/docs/attributes/strokes) and shadows like any shape. It has no `text`, and no `wrap`.
+
+## Formats
+
+The four formats each compose one pattern from `fractionDigits`, `grouped` and `currencySymbol`, and hand it to the formatter:
+
+| `format` | Pattern it builds (`fractionDigits: 2`, `grouped: true`) | `1234.5` shows |
+|---|---|---|
+| `'number'` | `#,##0.00` | `1,234.50` |
+| `'currency'` | `'$'#,##0.00` | `$1,234.50` |
+| `'percent'` | `#,##0.00%` | `123,450.00%` |
+| `'custom'` | `customPattern`, as typed | |
+
+`'percent'` multiplies by 100, so a stored `0.42` reads `42%`. A value already in percent points wants a custom pattern with the sign quoted: `#,##0'%'`.
+
+The currency symbol is quoted into the pattern, so a symbol containing `#`, `0`, `,`, `.` or `%` prints as text rather than being read as digits.
+
+### Patterns
+
+`customPattern` uses the spreadsheet grammar, the same one chart axes use:
+
+| Pattern | Value | Shows |
+|---|---|---|
+| `#,##0.##` | `1234.5` | `1,234.5` |
+| `#,##0.00` | `1234.5678` | `1,234.57` |
+| `0.000` | `3.14159` | `3.142` |
+| `00` | `7` | `07` |
+| `0.#%` | `0.07` | `7%` |
+| `#,##0'%'` | `42` | `42%` |
+| `#,##0.0 kg` | `72.4` | `72.4 kg` |
+| `'#'#,##0` | `1234` | `#1,234` |
+
+- `0` is a digit that is always written, `#` one written only when the number needs it. `0.00` pads to two decimals, `0.##` trims.
+- A `,` anywhere in the integer digits turns grouping on.
+- A bare `%` scales by 100 as well as printing. A quoted `'%'` only prints.
+- Anything else before or after the digits is printed as is. Quote it to be sure.
+- A blank custom pattern falls back to `#.#` (integers bare, anything else to one decimal), so the figure stays readable while it is being typed.
+
+## Animating
+
+`value` is a plain number, so a `to` command counts through it, reformatting every frame. `countTo` is the same tween under its own name, with `args: { value }`:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'price', type: 'number', parentId: null, layerOrder: 0,
+      props: { value: 0, format: 'currency', fractionDigits: 2,
+        fontFamily: 'Inter', fontSize: 120, fontWeight: 800, fill: 'white' } },
+  ],
+  commands: [
+    // Counts up to "$1,299.99"
+    { id: 'count-up', type: 'countTo', targetId: 'price', at: 0, duration: 1.5,
+      easing: { kind: 'out' }, args: { value: 1299.99 } },
+  ],
+};
+```
+
+| Command | `args` | Animates |
+|---|---|---|
+| `countTo` | `{ value }` | `value` |
+
+Because `fractionDigits` fixes the number of decimals, a counting figure never gains or drops a trailing digit as it crosses a whole number.
+
+### Bound to a variable
+
+A figure that should read out a value something else is driven by takes it from a document variable. Write `value` as a formula, and move the variable with `variableTo`; every prop bound to it follows:
+
+```tsx
+export default {
+  kind: 'composition',
+  variables: [{ id: 't', value: 0 }],
+  nodes: [
+    { id: 'readout', type: 'rect', parentId: null, layerOrder: 0,
+      props: { flow: 'vertical', width: 'hug', height: 'hug', gap: 16 } },
+
+    // t itself, to two decimals
+    { id: 't-label', type: 'number', parentId: 'readout', layerOrder: 0,
+      props: { value: '=[t]', fractionDigits: 2,
+        fontFamily: 'Inter', fontSize: 64, fill: 'white' } },
+
+    // A formula of t: here t squared
+    { id: 't-squared', type: 'number', parentId: 'readout', layerOrder: 1,
+      props: { value: '=[t]^2', fractionDigits: 2,
+        fontFamily: 'Inter', fontSize: 64, fill: '#6990DD' } },
+  ],
+  commands: [
+    { id: 'slide', type: 'variableTo', targetId: 't', at: 0, duration: 2, args: { value: 5 } },
+  ],
+};
+```
+
+Bind the same variable into a [plot point](/docs/components/math/plot-point)'s `x` and the figure reads out where the point is.
+
+## Notes
+
+- `Number` is a sibling of [Text](/docs/components/basic/text), not a kind of it. It has no `text` prop, no `append`/`prepend` and no wrapping: what it draws comes from `value` and the five format props alone.
+- The formatter does not use the host locale (`Intl.NumberFormat`), so the same document draws `1,234.50` on every machine. Grouping is always `,` and the decimal point always `.`.
+- A value that rounds to zero prints without a minus sign: `-0.001` at two decimals is `0.00`. A non-finite value (`NaN`, `Infinity`) prints nothing.
+- `start`/`end` reveal the glyphs, as on Text.
+- Manim's `DecimalNumber`, and `Variable` when it is bound to a variable.

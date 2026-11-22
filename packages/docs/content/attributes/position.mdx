@@ -1,0 +1,202 @@
+---
+sidebar_position: 5
+---
+
+# Position
+
+Every node has `x` and `y` props that offset it within its layout cell. The coordinate system is centered: `(0, 0)` is the center of the parent, positive `x` moves right, positive `y` moves up.
+
+## x and y
+
+```ts
+Rect({ x: 100, y: -50, width: 200, height: 200, fill: 'royalblue' })
+```
+
+---
+
+## Cardinal anchor props
+
+Instead of `x`/`y`, you can position a node by one of its named anchor points. The node reactively adjusts its offset so that the given anchor lands at the specified scene-space coordinate.
+
+Available anchors: `center`, `topLeft`, `topRight`, `bottomLeft`, `bottomRight`, `topCenter`, `bottomCenter`, `centerLeft`, `centerRight`.
+
+```ts
+// Pin the top-left corner to (−400, 200)
+Rect({ topLeft: { x: -400, y: 200 }, width: 200, height: 120, fill: 'royalblue' })
+
+// Pin the bottom-right corner to (300, -100)
+Rect({ bottomRight: { x: 300, y: -100 }, width: 200, height: 120, fill: 'tomato' })
+
+// Pin the center to a reactive position — re-evaluates whenever the target changes
+Rect({ center: () => otherNode.topRight, width: 80, height: 80, fill: 'seagreen' })
+```
+
+Only one anchor prop may be set at a time. Setting `pivot` alongside an anchor prop is an error, since anchors manage pivot automatically.
+
+---
+
+## Pivot
+
+`pivot` controls the origin point for rotation and scaling. It is a normalized `{ x, y }` vector where `(0, 0)` is the node's center, `(-1, 1)` is the top-left corner, and `(1, -1)` is the bottom-right corner.
+
+```ts
+// Rotate around the top-left corner
+Rect({ pivot: { x: -1, y: 1 }, rotation: 45, width: 200, height: 200, fill: 'royalblue' })
+
+// Scale from the bottom-center
+Rect({ pivot: { x: 0, y: -1 }, scale: 1.5, width: 200, height: 120, fill: 'tomato' })
+```
+
+When you use an anchor prop, pivot is set automatically to match the anchor's position on the node.
+
+---
+
+## Rotation
+
+`rotation` is in degrees, clockwise:
+
+```ts
+Rect({ rotation: 45, width: 200, height: 200, fill: 'royalblue' })
+```
+
+Rotation happens around the `pivot` point (center by default).
+
+This is the in-plane rotation — the Z axis. For the two out-of-plane ones, plus
+mirroring, depth and perspective, see [Mirrors and 3D](./transform-3d).
+
+---
+
+## Scale
+
+`scale` is a uniform multiplier. It also applies relative to `pivot`:
+
+```ts
+Rect({ scale: 1.5, width: 100, height: 100, fill: 'tomato' })
+```
+
+---
+
+## Movement animations
+
+### `to`: tween position
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 120, height: 120, fill: 'royalblue' } },
+  ],
+  commands: [
+    // Move to x=300
+    { id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 0.8,
+      easing: { kind: 'out', args: 'back' }, args: { x: 300 } },
+
+    // Then move both axes at once
+    { id: 'drift', type: 'to', targetId: 'box', at: 0.8, duration: 0.6,
+      args: { x: -200, y: 150 } },
+  ],
+};
+```
+
+The rest of this section shows single command rows for the same `box`.
+
+### `moveTo`: convenience command
+
+```tsx
+{ id: 'move', type: 'moveTo', targetId: 'box', at: 0, duration: 0.6,
+  easing: { kind: 'out', args: 'back' }, args: { x: 300, y: 100 } },
+```
+
+### `moveTo` along a path
+
+Give `moveTo` a `path` instead of a destination and the node follows the curve
+rather than the straight line to it. It takes an SVG `d` string or a command
+array; a [`PathBuilder`](/docs/custom-node/graphics/shapes#path) produces one with
+`toCommands()`, which keeps the document plain data:
+
+```tsx
+import { PathBuilder } from '@motionscript/sdk/v1';
+
+// A half-circle arc: from (-300, 0) over the top to (300, 0)
+{ id: 'arc', type: 'moveTo', targetId: 'box', at: 0, duration: 2,
+  easing: { kind: 'inOut', args: 'quad' },
+  args: { path: new PathBuilder().arc({ width: 600, startAngle: 180, sweep: -180 }).toCommands() } },
+
+// Or straight from an editor / an SVG
+{ id: 'swoop', type: 'moveTo', targetId: 'box', at: 2, duration: 2,
+  args: { path: 'M -300 0 C -100 300, 100 300, 300 0' } },
+```
+
+The path's coordinates **are** `x`/`y` values — the same centered, y-up space
+the destination form writes into — so the path says where the node is, not how
+far it travels from where it happened to be. The node walks it by **arc
+length**, which is what makes easing shape the travel rather than the curve's
+own parameter.
+
+A `path` and an `x`/`y` destination together is an error, not a precedence
+rule: the path's end is already where the move ends.
+
+### `rotateTo`: animate rotation
+
+```tsx
+{ id: 'spin', type: 'rotateTo', targetId: 'box', at: 0, duration: 0.8,
+  easing: { kind: 'inOut', args: 'quad' }, args: { rotation: 180 } },
+```
+
+### `scaleTo`: animate scale
+
+```tsx
+{ id: 'grow', type: 'scaleTo', targetId: 'box', at: 0, duration: 0.4, args: { scale: 2 } },
+{ id: 'shrink', type: 'scaleTo', targetId: 'box', at: 0.4, duration: 0.4, args: { scale: 1 } },
+```
+
+### One tween per command
+
+Every `to` and every command above is **one** row, placed by its own `at`.
+There is nothing to combine them with: to run one after another, start the next
+where the last ends; to run them together, give them the same `at`.
+
+```tsx
+// In sequence: the second starts where the first ends
+{ id: 'out', type: 'to', targetId: 'box', at: 0, duration: 1, args: { x: 200 } },
+{ id: 'back', type: 'to', targetId: 'box', at: 1, duration: 1, args: { x: 0 } },
+
+// Together: one shared `at`
+{ id: 'turn', type: 'rotateTo', targetId: 'box', at: 2, duration: 1, args: { rotation: 90 } },
+{ id: 'swell', type: 'scaleTo', targetId: 'box', at: 2, duration: 1, args: { scale: 1.5 } },
+```
+
+
+---
+
+## Anchor-based animation
+
+Animate an anchor prop to move a node so a specific corner or edge lands at a target point:
+
+```tsx
+{ id: 'pin', type: 'to', targetId: 'box', at: 0, duration: 0.8,
+  easing: { kind: 'out', args: 'back' }, args: { topLeft: { x: -400, y: 300 } } },
+```
+
+---
+
+## Anchor getters
+
+Every node exposes readable getters for all nine anchor points, accounting for the node's current rotation. They are for code that holds the node itself: one built with `new`, which is typed as the node (a call returns an element to hand on, not a node to read):
+
+```ts
+const box = new Rect({ width: 200, height: 120, rotation: 30 });
+
+const tl = box.topLeft;       // { x, y } in scene space
+const center = box.center;    // same as { x: box.x, y: box.y }
+const br = box.bottomRight;
+```
+
+A binding that reads one is re-evaluated on every read, so it always sees where the node is now:
+
+```ts
+// Badge always follows the top-right of the card
+const card = new Rect({ width: 300, height: 200, fill: 'royalblue' });
+const badge = Rect({ center: () => card.topRight, width: 24, height: 24, fill: 'red' });
+```

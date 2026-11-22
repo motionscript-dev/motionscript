@@ -1,0 +1,163 @@
+---
+sidebar_position: 7
+---
+
+# 2D on 3D
+
+`Tex.surface` renders 2D MotionScript content into an offscreen buffer and binds it to a surface. It is how you put a chart on a monitor, a label on a sign, or a whole layout on a curved panel.
+
+```ts
+import { Graphics2D, Tex, Canvas3D, Plane3D } from '@motionscript/sdk/v1';
+
+const panel = new Graphics2D()
+  .rect({ width: 512, height: 512 })
+  .fill('#101826')
+  .rect({ y: 96, width: 384, height: 160 })
+  .fill('#4f8ef7');
+
+Canvas3D({ orbit: 90, elevation: 0, zoom: 4.2, fov: 45, lights: [{ type: 'ambient', intensity: 0.8 }], children: [
+  Plane3D({ width: 3, height: 3, unlit: true, fill: Tex.surface(panel, { width: 512, height: 512 }) }),
+] })
+```
+
+A source is a fill, so `fill: panel` does the same thing with the default 512 by 512 buffer. `Tex.surface` is what you reach for to pin a resolution or a sampler option.
+
+A source is code, not data: a built `Graphics2D` or a node subtree. It lives in a custom node, and a document names that node.
+
+## The source is a value
+
+`Tex.surface(source, options?)` takes two kinds of source:
+
+* A built [`Graphics2D`](../graphics/overview), for anything you can draw directly.
+* A `Node2D` subtree, for anything that needs real layout, shaped `Text` or an image fill.
+
+```ts
+const scope = new Graphics2D().line({ points: trace }).stroke({ weight: 6, fill: '#6990DD' });
+const stats = new Rect({ flow: 'vertical', padding: 48, gap: 16, children: [
+  Text({ text: 'CPU', fontSize: 64, fill: 'white' }),
+  Text({ text: '42%', fontSize: 96, fill: '#6990DD' }),
+] });
+
+Canvas3D({ children: [
+  Plane3D({ fill: Tex.surface(scope, { width: 1024, height: 640 }) }),
+  Plane3D({ fill: Tex.surface(stats, { width: 1024, height: 640 }), position: [5, 0, 0] }),
+] })
+```
+
+A node source does not have to live anywhere in the scene tree. It is a value in a descriptor, so `Canvas3D` hands it the asset catalog, context and clock it would otherwise get from a parent. There is no name to match, and nothing has to be mounted anywhere in particular.
+
+`width` and `height` are the buffer's resolution in pixels. The plane stretches the texture over itself, so match your plane's proportions to the buffer's or the content will look squashed.
+
+## Hoist the source
+
+Build the source once, outside any per-frame binding. Rebuilding it every frame re-lays-out the subtree, defeats the texture cache, and leaks.
+
+```ts
+// Right: built once, at module or scene scope
+const panel = new Graphics2D().rect({ width: 512, height: 512 }).fill('#101826');
+
+Canvas3D({ children: [
+  Plane3D({ fill: Tex.surface(panel, { width: 512, height: 512 }) }),
+] })
+```
+
+```ts
+// Wrong: a fresh source every frame
+Canvas3D({ children: [
+  Plane3D({ fill: () => Tex.surface(new Graphics2D().rect({ width: 512, height: 512 }), { width: 512, height: 512 }) }),
+] })
+```
+
+The source itself can still animate. A subtree whose props change, or a `Graphics2D` rebuilt from a node's props inside a custom node, is fine, because the value changes while the identity stays put.
+
+## There is no key
+
+The texture's identity **is the source object**. Hold the same `Graphics2D` or node across frames and the renderer reuses its buffer; let it go out of scope and the texture is released with it. So a surface that appears and disappears conditionally, or one whose position in the scene shifts between frames, needs nothing written to keep its cache entry:
+
+```ts
+screens.map(screen => (
+  Plane3D({
+    width: 4,
+    height: 4 * (screen.height / screen.width),
+    unlit: true,
+    fill: Tex.surface(screen.source, { width: screen.width, height: screen.height }),
+  })
+))
+```
+
+What you must not do is create a new source for the same content each frame, which is the "wrong" case above.
+
+## Options
+
+`Tex.surface` takes all the [texture options](./materials#textures), plus:
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `width` / `height` | `number` | `512` | The buffer's resolution in pixels |
+| `maxPixelRatio` | `number` | `1` | Ceiling on the buffer's device-pixel ratio |
+
+## Use an unlit material for screens
+
+A screen should read as its own light source. A lit material tints the texture with the scene's lighting and looks muddy:
+
+```ts
+Plane3D({ width, height, position: [0, 0, 0.095], unlit: true, fill: Tex.surface(source, { width: w, height: h }) })
+```
+
+## Cost
+
+The 3D renderer owns its own graphics context, so there is no shared texture. Every animated surface costs a full read back from the GPU plus an upload, once per frame. That is why the default pixel ratio is 1.
+
+Practical consequences:
+
+* Keep buffer resolutions as small as the content allows.
+* A static surface is much cheaper than an animated one, because the cache can hold it. A gradient used as a plain `fill` is rasterized once for that reason.
+* A handful of surfaces is fine. Dozens of animated ones will not be.
+
+## A worked example
+
+A rig of monitors, where the node owns the hardware and the scene owns the content:
+
+```ts
+interface Screen {
+  id: string;
+  source: SurfaceSource3D;
+  width: number;
+  height: number;
+}
+
+function monitor(screen: Screen, x: number) {
+  const width = 4;
+  const height = width * (screen.height / screen.width);
+
+  return Group3D({ position: [x, 0.35, 0], children: [
+    Box3D({
+      width: width + 0.24, height: height + 0.24, depth: 0.18,
+      fill: '#15181f', roughness: 0.55,
+    }),
+    Plane3D({
+      width, height,
+      position: [0, 0, 0.095],
+      unlit: true,
+      fill: Tex.surface(screen.source, { width: screen.width, height: screen.height }),
+    }),
+  ] });
+}
+
+function monitorWall(screens: Screen[], spacing = 6) {
+  const half = ((screens.length - 1) / 2) * spacing;
+
+  return Canvas3D({
+    width: 'fill', height: 'fill', fill: '#080a10',
+    target: [0, 0.2, 0], orbit: 90, elevation: 4, zoom: 13, fov: 42,
+    lights: [
+      { type: 'ambient', intensity: 0.5 },
+      { type: 'sun', intensity: 1.8, orbit: 50, elevation: 46 },
+      { type: 'lamp', intensity: 3, position: [0, 1, 5], color: '#5f7fd0' },
+    ],
+    children: screens.map((screen, i) => monitor(screen, i * spacing - half)),
+  });
+}
+```
+
+Adding a third monitor is adding a third entry. Each monitor's cache identity is its own source, so adding one leaves the others' GPU objects untouched. The plane takes each buffer's own aspect, so a screen authored at any resolution shows its texture unstretched.

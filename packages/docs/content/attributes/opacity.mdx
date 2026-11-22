@@ -1,0 +1,64 @@
+---
+sidebar_position: 6
+---
+
+# Opacity
+
+`opacity` controls how transparent a node is. `1` is fully opaque, `0` is fully invisible.
+
+```ts
+Rect({ opacity: 0.5, width: 200, height: 200, fill: 'royalblue' })
+```
+
+Opacity applies to the node and all of its children as a group. A child cannot exceed its parent's opacity.
+
+---
+
+## Fade animations
+
+### `to`: tween opacity
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 200, height: 200, fill: 'royalblue', opacity: 0 } },
+  ],
+  commands: [
+    // Fade in
+    { id: 'fade-in', type: 'to', targetId: 'box', at: 0, duration: 0.6,
+      easing: { kind: 'out' }, args: { opacity: 1 } },
+
+    // Then fade out
+    { id: 'fade-out', type: 'to', targetId: 'box', at: 0.6, duration: 0.4,
+      args: { opacity: 0 } },
+  ],
+};
+```
+
+### `fadeTo`: convenience command
+
+```tsx
+{ id: 'fade-out', type: 'fadeTo', targetId: 'box', at: 0, duration: 0.4, args: { opacity: 0 } },
+{ id: 'fade-in', type: 'fadeTo', targetId: 'box', at: 0.4, duration: 0.4, args: { opacity: 1 } },
+```
+
+---
+
+## Blend mode
+
+`blend` controls how a node's rendered result composites against what's behind it. The default `'pass-through'` does not isolate the node: each child blends directly against the backdrop.
+
+Setting any other mode isolates the node first (flattens it into an offscreen buffer), then blends the result:
+
+```ts
+Rect({ blend: 'multiply', width: 200, height: 200, fill: 'royalblue' })
+Rect({ blend: 'screen', width: 200, height: 200, fill: 'hotpink' })
+```
+
+Available blend modes mirror the fill blend modes: `'normal'`, `'multiply'`, `'screen'`, `'overlay'`, `'darken'`, `'lighten'`, `'color-dodge'`, `'color-burn'`, `'hard-light'`, `'soft-light'`, `'difference'`, `'exclusion'`, `'hue'`, `'saturation'`, `'color'`, `'luminosity'`.
+
+:::info Isolation
+`'pass-through'` is the only mode that does not isolate: `opacity` on a pass-through node scales each child's alpha individually. Every other blend mode creates an isolated layer, which means the node's own `opacity` fades the fully-composited group as a whole.
+:::

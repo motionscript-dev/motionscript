@@ -1,0 +1,160 @@
+---
+sidebar_position: 1
+title: React
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# React quickstart
+
+Put a MotionScript scene on screen in a React app, with a play/pause button under it. About five minutes, start to finish.
+
+## 1. Install
+
+You need the engine, the library, the browser platform (which brings the WebGPU renderer), and the React bindings. `@motionscript/core` is a peer dependency of the other three, so it is listed explicitly: your app must hold exactly one copy of it.
+
+<Tabs groupId="package-manager">
+  <TabItem value="npm" label="npm">
+
+```bash
+npm install @motionscript/core @motionscript/sdk @motionscript/react @motionscript/browser
+```
+
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @motionscript/core @motionscript/sdk @motionscript/react @motionscript/browser
+```
+
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+
+```bash
+yarn add @motionscript/core @motionscript/sdk @motionscript/react @motionscript/browser
+```
+
+  </TabItem>
+</Tabs>
+
+## 2. WebGPU
+
+The engine draws with WebGPU. Its renderer's WebAssembly resolves beside its module, which Vite, webpack and Next bundle with no configuration. A browser without WebGPU cannot draw: `createBrowserEngine` rejects with `WebGpuUnavailableError`, so check `isWgpuSupported()` first if you want to say so up front.
+
+## 3. Write a scene
+
+A scene is data: a list of nodes, and a list of commands placed on a timeline.
+
+```ts title="src/scenes/intro.ts"
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 200, height: 200, fill: 'royalblue', cornerRadius: 16 } },
+    { id: 'label', type: 'text', parentId: 'box', layerOrder: 0,
+      props: { text: 'hello', fontSize: 32, fill: 'white' } },
+  ],
+  commands: [
+    { id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1,
+      easing: { kind: 'out', args: 'back' }, args: { x: 400 } },
+    { id: 'fade', type: 'to', targetId: 'box', at: 1.5, duration: 0.5, args: { opacity: 0 } },
+  ],
+};
+```
+
+The object is plain data, so a `.json` file works just as well.
+
+## 4. Build the engine
+
+An **engine** holds the renderer and knows which node types exist. Building one is asynchronous, and `useEngine` does the waiting for you: give it a function that builds the engine, and it returns `null` until the engine is ready. Make **one** for the whole app and open as many documents on it as you like — a fresh engine per render rebuilds the WebGL surface behind every player on it.
+
+```tsx
+import { createBrowserEngine } from '@motionscript/browser';
+import { useEngine } from '@motionscript/react';
+
+const engine = useEngine(() => createBrowserEngine());
+```
+
+It disposes the engine when the component unmounts, including the case where it unmounted while the wasm was still loading, which StrictMode does on every mount in development. If building fails, the error is logged; a browser without WebGPU surfaces there as `WebGpuUnavailableError`. Two options change that:
+
+- **`onError`** receives the error instead of `console.error`, for a toast or your error reporter.
+- **`deps`** rebuilds the engine when something that makes a *different* one changes, such as the list of custom `nodes`. The old engine is disposed first and the hook returns `null` until the new one is ready. It defaults to `[]`, built once. The function you pass is always the latest one, so an inline arrow never rebuilds anything on its own.
+
+```tsx
+const engine = useEngine(() => createBrowserEngine({ nodes }), {
+  deps: [nodes],
+  onError: (error) => reportError(error),
+});
+```
+
+Anything that has to be true before a player sees the engine, such as `engine.setManifest(...)`, goes inside the function you pass, before it returns.
+
+## 5. Play it
+
+`useMotionPlayer` opens the session and owns the transport; `MotionStage` is the canvas bound to it.
+
+```tsx title="src/Preview.tsx"
+import { createBrowserEngine } from '@motionscript/browser';
+import { useEngine, useMotionPlayer, MotionStage, usePlayhead } from '@motionscript/react';
+import scene from './scenes/intro';
+
+export function Preview() {
+  const engine = useEngine(() => createBrowserEngine());
+
+  const player = useMotionPlayer({
+    engine,
+    document: scene,
+    viewport: { width: 1920, height: 1080 },
+    fps: 60,
+    loop: true,
+  });
+
+  // Only this component re-renders as the playhead moves — the frame number
+  // lives outside React, so the tree above it is not re-rendered at clock rate.
+  const frame = usePlayhead(player);
+
+  return (
+    <div>
+      <MotionStage player={player} renderScale={0.5} />
+
+      <div>
+        <button onClick={() => player.toggle()}>
+          {player.isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={player.totalFrames - 1}
+          value={frame}
+          onChange={(e) => player.seek(Number(e.target.value))}
+        />
+        <span>
+          {frame} / {player.totalFrames - 1}
+        </span>
+      </div>
+    </div>
+  );
+}
+```
+
+That is the whole integration. Things worth knowing about it:
+
+- **`engine` is nullable on purpose.** The player no-ops until one arrives, which is what keeps the hook out of a conditional — React forbids that.
+- **`renderScale` is not a zoom.** It is how many device pixels are rasterized per viewport unit. A 1920×1080 project in a 700px-wide panel rasterizes about seven times the pixels anyone can see; `0.5` is a quarter of the fill, the shader work and the effect offscreens. Quantize it to a few steps rather than driving it from a resize observer — every change re-creates the GPU surface.
+- **A new document keeps your place.** Hand the player a different `document` and it is reconciled onto the running session — tracks patched in place, playhead where it was, playback still running. Treat documents as immutable: an edit made in place to one the player already holds is not seen.
+- **One session drives one surface**, so one stage per player. Two independent timelines are two `useMotionPlayer` calls sharing one engine.
+
+## Where to go next
+
+<DocsGrid columns={3}>
+  <DocsCard title="Your first scene" href="/docs/getting-started/scene">
+    The guided walkthrough: a tween, a layout, an effect, a mask.
+  </DocsCard>
+  <DocsCard title="Available components" href="/docs/components/basic/text">
+    Basic shapes, text and video, plus math, charts, code and geography.
+  </DocsCard>
+  <DocsCard title="Node.js quickstart" href="/docs/framework-quickstarts/nodejs">
+    Render the same document to a file, from a server.
+  </DocsCard>
+</DocsGrid>

@@ -1,0 +1,91 @@
+---
+sidebar_position: 12
+---
+
+# OrbitCamera
+
+A 3D camera for one part of a scene. Its children are placed in one 3D space by their `depth` and tilt, and seen through a camera that orbits, rises and dollies round a point. Wrap a card stack, a logo or a grid of items in one to turn it in depth without turning the rest of the scene. It is the stage's [shared 3D space](/docs/attributes/transform-3d#a-shared-3d-space), scoped to a subtree.
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    // Seen from 30° to the right and 15° above
+    { id: 'orbit', type: 'orbitCamera', parentId: null, layerOrder: 0,
+      props: { orbit: 30, elevation: 15 } },
+
+    // Three cards stacked in depth: negative is further away
+    { id: 'back', type: 'rect', parentId: 'orbit', layerOrder: 0,
+      props: { width: 320, height: 200, fill: '#6990DD', cornerRadius: 18, depth: -150 } },
+    { id: 'middle', type: 'rect', parentId: 'orbit', layerOrder: 1,
+      props: { width: 320, height: 200, fill: '#E8617C', cornerRadius: 18 } },
+    { id: 'front', type: 'rect', parentId: 'orbit', layerOrder: 2,
+      props: { width: 320, height: 200, fill: '#F5C26B', cornerRadius: 18, depth: 150 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `orbit` | `number` | `0` | Degrees about the vertical axis through `lookAt`. `0` is head-on; positive moves the camera right |
+| `elevation` | `number` | `0` | Degrees above the layers. Positive looks down on them |
+| `dolly` | `number` | `0` | Pixels the camera has moved in toward `lookAt`. Inert with `perspective: 0` |
+| `lookAt` | `{ x: number, y: number, z?: number }` | `{ x: 0, y: 0 }` | The point the camera aims at and orbits. `z` puts it in depth, as a node's `depth` does |
+| `zoom` | `number` | `1` | Lens zoom, applied after the projection. Values > 1 zoom in |
+| `heading` | `number` | `0` | Roll of the view in degrees, clockwise |
+| `orbitSpeed` | `number` | `0` | Degrees per second the camera orbits on its own, added to `orbit`: a turntable |
+| `perspective` | `number` | `1000` | Inherited from [3D transforms](/docs/attributes/transform-3d#perspective), read here as the camera's distance from `lookAt` at `dolly: 0`. The plane through `lookAt` draws 1:1. `0` is a parallel projection |
+
+Size defaults to `'hug'` on both axes, so the node wraps what it holds.
+
+## Commands
+
+All the props animate with a `to` command. Each camera move also has a named command:
+
+| Command | Args | Animates |
+|---|---|---|
+| `orbitTo` | `{ orbit?, elevation? }` | `orbit`, `elevation` |
+| `dollyTo` | `{ dolly }` | `dolly` |
+| `zoomTo` | `{ zoom }` | `zoom` |
+| `panTo` | `{ lookAt }` | `lookAt` |
+| `headingTo` | `{ heading }` | `heading` |
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'orbit', type: 'orbitCamera', parentId: null, layerOrder: 0, props: {} },
+    { id: 'back', type: 'rect', parentId: 'orbit', layerOrder: 0,
+      props: { width: 320, height: 200, fill: '#6990DD', cornerRadius: 18, depth: -150 } },
+    { id: 'middle', type: 'rect', parentId: 'orbit', layerOrder: 1,
+      props: { width: 320, height: 200, fill: '#E8617C', cornerRadius: 18 } },
+    { id: 'front', type: 'rect', parentId: 'orbit', layerOrder: 2,
+      props: { width: 320, height: 200, fill: '#F5C26B', cornerRadius: 18, depth: 150 } },
+  ],
+  commands: [
+    // Swing round and rise to see the stack from the side
+    { id: 'swing', type: 'orbitTo', targetId: 'orbit', at: 0, duration: 2,
+      easing: { kind: 'inOut' }, args: { orbit: 50, elevation: 20 } },
+
+    // Push in toward the stack
+    { id: 'push', type: 'dollyTo', targetId: 'orbit', at: 2, duration: 1.5,
+      easing: { kind: 'inOut' }, args: { dolly: 300 } },
+  ],
+};
+```
+
+## Notes
+
+- Inside it, a child's `x`/`y` and `depth` are its position in 3D, and `rotationX`/`rotationY`/`rotationZ` turn it there. Groups nest in full 3D.
+- Siblings paint far to near, whatever their `layerOrder`. Coplanar ones keep their authored order. Planes that cut through each other cannot be sorted, so keep things that must interleave as siblings.
+- A child's own `perspective` is ignored: the camera owns perspective. The OrbitCamera's own tilt and `depth` are unused too; they would only turn the whole view as one flat card.
+- `orbit` and `elevation` mean what they mean on the stage's camera ([3D transforms](/docs/attributes/transform-3d)), so the same numbers look at a scene from the same side in each. A `Canvas3D`'s `orbit` is measured from +X instead, so `90` there is head-on.
+- `orbitSpeed` turns the camera with the clock, so it keeps turning for the node's whole span with no command. `orbitTo` still works on top of it.
+- A mask, a boolean or a nested [Camera](/docs/components/basic/camera) composites its children itself, so their subtrees are flat planes in the space.
+- The 2D [Camera](/docs/components/basic/camera) pans, zooms and rolls a flat world inside a clipped card. An OrbitCamera draws no card of its own: it turns its children in depth where they stand.
+- It holds flat layers (text, shapes, images) placed in depth. For real geometry, lights and materials, use `Canvas3D`; for 3D math, [Axes3D](/docs/components/math/axes3d).
+- Manim moves its 3D camera with `move_camera` and `begin_ambient_camera_rotation`; here those are `orbitTo` and `orbitSpeed`.

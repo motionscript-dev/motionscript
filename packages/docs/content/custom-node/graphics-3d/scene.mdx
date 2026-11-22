@@ -1,0 +1,252 @@
+---
+sidebar_position: 3
+---
+
+# Scene setup
+
+Camera, lights and the scene-wide settings. These decide how a scene reads before you add a single object.
+
+None of them is a node. They are props of the [`Canvas3D`](./canvas3d) itself, the stage the objects stand on: its camera (`orbit`, `elevation`, `zoom`, `fov`, `projection`, `frustumHeight`, `target`), its `lights`, its air (`fog`, `fogNear`, `fogFar`) and its sky (`environment`). Commands move them by the viewport's id: `orbitTo`, `lookTo` and `lightTo`. (Before 0.5.0 these were the `Camera3D`, light, `Fog3D` and `Environment3D` nodes.)
+
+Everything else a scene needs is a prop on the viewport too: the background (its own `fill`), shadows, tone mapping, exposure and post-processing. There are no `Background3D`, `Shadows3D`, `ToneMapping3D` or `PostEffects3D` nodes.
+
+## Camera
+
+The stage has one camera, placed in polar coordinates around the point it looks at:
+
+```ts
+Canvas3D({ target: [0, 0.2, 0], orbit: 108, elevation: 12, zoom: 13, fov: 42, children: [/* … */] })
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `target` | `Vector3Input` | origin | The point the camera looks at and orbits around |
+| `orbit` | `number` | `35` | Angle around the vertical axis through `target`, in degrees, measured from **+X**: `0` puts the camera on +X and `90` is head-on from +Z |
+| `elevation` | `number` | `20` | Angle above the ground plane, in degrees, `-89` to `89` |
+| `zoom` | `number` | `12` | The camera's **distance** from `target`, in scene units. Not a lens factor |
+| `projection` | `'perspective' \| 'orthographic'` | `'perspective'` | The projection |
+| `fov` | `number` | `45` | Perspective only: vertical field of view, in degrees |
+| `frustumHeight` | `number` | `10` | Orthographic only: the visible world height. Width follows the viewport's aspect |
+
+A camera move is almost always a move around the thing it looks at, which is why these are the props: each number tweens on its own, where the same move written through a position is a sine and cosine pair recomputed every frame. The clip planes come from the scene's own extent, so there is nothing to set for them.
+
+```ts
+Canvas3D({ projection: 'orthographic', frustumHeight: 8, orbit: 45, elevation: 35 })  // isometric-ish
+```
+
+The aspect ratio always tracks the viewport's layout box; there is no prop for it.
+
+Two commands move the camera, each moving only what it is given: `orbitTo` (`orbit`, `elevation`, `zoom`) and `lookTo` (`target`):
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0,
+      props: { orbit: 90, elevation: 15, zoom: 7, lights: [{ type: 'ambient', intensity: 0.6 }] } },
+    { id: 'box', type: 'box3d', parentId: 'viewport', layerOrder: 0,
+      props: { width: 2, fill: 'tomato' } },
+  ],
+  commands: [
+    { id: 'orbit', type: 'orbitTo', targetId: 'viewport', at: 0, duration: 4, args: { orbit: 450 } },
+    { id: 'rise', type: 'lookTo', targetId: 'viewport', at: 4, duration: 1, args: { target: [0, 1, 0] } },
+  ],
+};
+```
+
+Every point accepts three forms: `[x, y, z]`, `{ x, y, z }`, or a single number for all three axes, so `target: 0` is the origin.
+
+A hand-built `Scene3D` has no stage, so with no camera of its own it falls back to a fixed framing: a 50 degree lens at `(0, 0, 5)` looking at the origin.
+
+## Lights
+
+`lights` is a list, as a fill list is: each item has a `type` and that type's own fields, and an item states only the fields it changes from its type's defaults.
+
+```ts
+Canvas3D({ shadows: true, lights: [
+  { type: 'ambient', intensity: 0.4 },
+  { type: 'sun', intensity: 2.4, orbit: 37, elevation: 50, shadow: true },
+  { type: 'lamp', intensity: 4, position: [0, 1, 5], color: '#5f7fd0' },
+  { type: 'spot', intensity: 3, position: [0, 6, 0], target: [0, 0, 0], angle: 25, penumbra: 0.4 },
+  { type: 'sky', sky: '#8ec5ff', ground: '#2b2118', intensity: 0.8 },
+  { type: 'softBox', intensity: 6, width: 4, height: 2, position: [0, 3, 2] },
+] })
+```
+
+| `type` | Fields (defaults) | Use for |
+|---|---|---|
+| `'ambient'` | `color` (white), `intensity` (`0.45`) | A flat floor of light so nothing is pure black. Casts no shadow |
+| `'sun'` | `color` (white), `intensity` (`2.4`), `orbit` (`36.87`), `elevation` (`50.19`), `shadow` (`false`) | Parallel rays from far away, aimed by two angles measured as the camera's are |
+| `'sky'` | `sky` (white), `ground` (`#807a70`), `intensity` (`1`) | Outdoor bounce, sky colour above and ground colour below |
+| `'lamp'` | `color` (white), `intensity` (`8`), `position` (`[2, 3, 2]`), `distance` (`0`), `shadow` (`false`) | A bare bulb radiating in all directions. `distance` is where its light stops; `0` is never |
+| `'spot'` | `color` (white), `intensity` (`12`), `position` (`[3, 5, 3]`), `target` (origin), `angle` (`30`), `penumbra` (`0.3`), `distance` (`0`), `shadow` (`false`) | A cone from `position` toward `target`. `angle` is the half-angle in degrees, and `penumbra` (`0` to `1`) softens the edge |
+| `'softBox'` | `color` (white), `intensity` (`4`), `position` (`[0, 4, 3]`), `target` (origin), `width` (`3`), `height` (`2`) | A glowing rectangle facing `target`, like a studio softbox. It lights `standard` and `physical` materials only, and casts no shadow |
+
+Positions are points in the stage's space. A sun has no position, only a direction: a sun with `orbit` and `elevation` shines from where the camera would stand at those angles, so the default sun comes from the direction of `[4, 6, 3]`.
+
+**Unset, `lights` is a three-light rig**: an ambient fill at `0.45`, a key sun from the direction of `[4, 6, 3]` at `2.4`, and a rim sun from below behind at 35% of the key. Together they are enough for an untextured box to read as three distinct faces. Writing `lights` replaces the whole rig, so a list without an ambient item has no fill, and `lights: []` is a scene with no light at all, where lit materials render black.
+
+A reliable starting point is one ambient item at low intensity plus one sun for shape. Add a lamp or a spot after that for accents.
+
+`lightTo` moves one light, by its place in the list (counting from `0`): only the `color`, `intensity`, `orbit`, `elevation` or `position` it is given move, each from where the light stands.
+
+```tsx
+{ id: 'dim-key', type: 'lightTo', targetId: 'viewport', at: 0, duration: 2,
+  args: { light: 1, intensity: 0.8, orbit: 120 } },
+```
+
+## Environment
+
+Image-based lighting: light the scene with an environment rather than with discrete lights. This is what makes metals read as metal. Without something to reflect, a surface with high `metalness` renders black.
+
+The stage's `environment` is a fill whose image layer names the picture, a 360 degree panorama:
+
+```ts
+Canvas3D({ environment: { type: 'image', src: '/sky.hdr' } })
+```
+
+:::caution Not rendered yet
+No backend loads an HDR, EXR or cubemap panorama yet, so a stage's `environment` is recorded and lights nothing, and in development the first one logs a warning. Empty, the default, is no environment.
+:::
+
+The environment that does render today is the generated studio, a flat, neutral grey interior: enough variation to give metal something to reflect, with no tint. It needs no asset, and it is set from a node of your own whose `render` calls `ctx.environment({ preset: 'studio' })`; see [Taking over from a node](#taking-over-from-a-node). That call also takes `intensity`, `background` (draw the environment behind the scene as an infinitely distant sky that turns with the camera), `blur` (the background only, `0` to `1`) and `rotation`.
+
+The environment is also the one thing that does not belong in a 2D `fill`. The viewport's `fill` is the backdrop for most scenes, because it composites under the 3D and is unaffected by lights and fog. Reach for an environment's `background` only when you need a sky that reprojects as the camera turns.
+
+## Fog
+
+Fades distant geometry toward a colour. The stage's `fog` is a fill, and its first solid colour is the colour of the air; the fog is linear, thickening from `fogNear` to `fogFar` away from the camera:
+
+```ts
+Canvas3D({ fill: '#0b0d12', fog: '#0b0d12', fogNear: 15, fogFar: 36 })
+```
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `fog` | `Fill` | empty | The air's colour, its first solid layer. Empty is clear air |
+| `fogNear` | `number` | `8` | Distance at which the fog begins |
+| `fogFar` | `number` | `30` | Distance at which the fog is total |
+
+Give the fog the backdrop's colour. Fog that does not match what is behind it reads as a grey wall rather than as distance.
+
+Leave `fog` empty for no fog. Exponential fog (a `density` instead of `near` and `far`) is the fog a node's `render` sets with `ctx.fog({ density })`; a `ctx.fog` with no colour takes the viewport's first opaque solid fill.
+
+## Taking over from a node
+
+A custom 3D node whose `render` calls `ctx.camera`, `ctx.light`, `ctx.fog` or `ctx.environment` takes over that part of the stage while it is in the tree:
+
+* **A camera** it sets replaces the stage's. It is placed by the node, so a camera node inside a moving `Group3D` is carried by it, and it can be pinned with `position` and `lookAt` where the stage camera is always polar. A scene keeps its last camera, and a hidden node records none, so the stage's applies again.
+* **One light** recorded anywhere in the scene replaces the whole `lights` list, rig included.
+* **Fog and an environment** have no position: the last one set wins, and `ctx.fog(null)` or `ctx.environment(null)` clears it.
+
+```ts
+import { component3d } from '@motionscript/sdk/v1';
+
+export const Studio = component3d({
+  key: 'studio',
+  render: (ctx) => ctx.environment({ preset: 'studio', intensity: 0.8 }),
+});
+```
+
+## Shadows
+
+Shadows are off by default, because enabling them recompiles every material that receives one. Treat it as setup rather than something to animate.
+
+```ts
+Canvas3D({ shadows: true })                   // medium quality
+Canvas3D({ shadows: { quality: 'high' } })
+```
+
+| `quality` | Shadow map | Filtering |
+|---|---|---|
+| `'low'` | 512 | PCF |
+| `'medium'` (the default) | 2048 | PCF, soft |
+| `'high'` | 4096 | PCF, soft |
+
+Turning shadows on is only half of it. A light opts in with its own `shadow`:
+
+```ts
+Canvas3D({ shadows: true, lights: [
+  { type: 'sun', intensity: 2.4, orbit: 37, elevation: 50, shadow: true },
+  { type: 'sun', intensity: 1, orbit: -143, elevation: 50, shadow: { softness: 0.8, extent: 8 } },
+] })
+```
+
+A light does **not** cast by default, because every casting light is another shadow map, and a lamp's is six faces. Give a sun, a lamp or a spot `shadow: true`, or `shadow: { softness, extent }`: `softness` widens the penumbra (default `0.5`) and `extent` sets the half-size of a sun's shadow frustum, which is otherwise sized from the scene's own bounds. The bias is derived, so there is nothing to tune when you rescale a scene.
+
+Every 3D node also has a `shadow` prop, and on an object it means *participation*: `true` (the default), `false`, `'cast'` or `'receive'`. It applies to what the node itself draws, so a `Box3D` with `shadow: 'receive'` receives and does not cast, and the default of `true` means turning `shadows` on is enough for every mesh to cast and receive. It does not cascade to a node's children: each child has its own.
+
+A custom node gets the same behaviour. Whatever its `render` draws takes the node's `shadow`, unless the drawable states its own:
+
+```ts
+export const Crate = component3d({
+  key: 'crate',
+  render: (ctx) => {
+    ctx.draw(new Graphics3D().box({ fill: 'tomato' }));                     // takes the node's shadow
+    ctx.draw(new Graphics3D().box({ fill: 'tomato', shadow: 'receive' }));  // states its own
+  },
+});
+```
+
+## Tone mapping
+
+How bright colour is mapped into displayable range. Set it on the viewport:
+
+```ts
+Canvas3D({ tone: 'agx', exposure: 1.1 })
+```
+
+| Mode | Notes |
+|---|---|
+| `'none'` | Clips highlights |
+| `'linear'` | Straight scale |
+| `'reinhard'` | Gentle rolloff |
+| `'cineon'` | Film-style curve |
+| `'aces'` | The filmic default |
+| `'agx'` | Modern filmic, holds saturation in highlights |
+| `'neutral'` | Conservative, close to the source colours |
+
+Leave `tone` out and you get `'aces'`. `exposure` (default `1`) is applied before the mapping. A material can opt out with `toneMapped: false`, which is useful for overlays that must keep an exact colour. It is a field of a [`Mat`](./materials) descriptor, so the mesh takes it through `material`.
+
+## Post effects
+
+Full-frame passes applied after the scene renders, in the order given. They are props of the viewport too:
+
+```ts
+Canvas3D({ post: { type: 'bloom', strength: 0.8, radius: 0.4, threshold: 0.85 } })
+Canvas3D({ post: [{ type: 'ssao', radius: 8 }, { type: 'outline', thickness: 2 }] })
+```
+
+:::caution Not rendered yet
+`post` is recorded on the scene, and **no pass is applied**: a viewport with `post` renders exactly like one without. In development the first `post` set logs a warning saying so. The types and the table below describe what the chain is for. Until the passes land, do the equivalent in 2D: a `Canvas3D` is a node, so vignette, grain, grading and blur are its ordinary `effects` over the composited result.
+:::
+
+| Effect | Parameters | What it does |
+|---|---|---|
+| `bloom` | `strength`, `radius`, `threshold` | Bleeds light from bright pixels. What makes `emission` glow |
+| `ssao` | `radius`, `intensity` | Contact shadows in creases |
+| `outline` | `color`, `thickness` | Draws an outline around geometry |
+| `dof` | `focus`, `aperture`, `maxBlur` | Depth of field |
+| `shaderPass` | `fragment`, `uniforms` | Anything expressible as one fragment pass |
+
+The chain is short on purpose. What belongs in it is what needs the depth buffer, object ids, or HDR radiance before tone mapping. There is no `fxaa` or `smaa`: the viewport's own `antialias` multisamples the 3D pass.
+
+## Putting it together
+
+```ts
+Canvas3D({
+  width: 'fill', height: 'fill', fill: '#080a10', shadows: true, tone: 'aces',
+  target: [0, 1, 0], orbit: 90, elevation: 20, zoom: 9, fov: 42,
+  fog: '#080a10', fogNear: 12, fogFar: 30,
+  lights: [
+    { type: 'ambient', intensity: 0.35 },
+    { type: 'sun', intensity: 2.2, orbit: 50, elevation: 46, shadow: true },
+  ],
+  children: [
+    Studio({}),
+    // …objects…
+  ],
+})
+```
+
+The fog is the backdrop's colour, so the horizon dissolves into it. `Studio` is the environment node from [Taking over from a node](#taking-over-from-a-node).

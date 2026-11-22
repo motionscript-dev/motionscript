@@ -1,0 +1,80 @@
+---
+sidebar_position: 51
+---
+
+# SampleSpace
+
+`SampleSpace` draws a probability's whole as a box cut into parts whose areas
+are their probabilities: across into columns by `columnShares`, and each column
+again by its entry in `rowShares`. Reach for it to show a conditional
+probability or Bayes' rule. It ships in `@motionscript/math`; register the
+package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'space', type: 'sampleSpace', parentId: null, layerOrder: 0,
+      props: {
+        width: 520, height: 420,
+        columnShares: [0.3, 0.7],   // P(A), P(not A)
+        rowShares: [0.8, 0.2],      // P(B | A), P(B | not A)
+        columnLabels: ['A', 'not A'],
+        rowLabels: ['B', 'not B'],
+        values: true,
+        fontFamily: 'Inter',
+      } },
+  ],
+  commands: [
+    { id: 'shift', type: 'divideTo', targetId: 'space', at: 0.5, duration: 1,
+      args: { columnShares: [0.6, 0.4] } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `columnShares` | `number[]` | `[1]` | How the whole is shared across, left to right. Any numbers, read as shares of their sum |
+| `rowShares` | `number[]` | `[]` | Each column's upper share, 0 to 1. A column without one is not cut across |
+| `columnFills` | `FillProp[]` | `[]` | Each column's paint, left to right, round again past the last; its lower part shows it fainter. Empty, a built-in palette |
+| `columnLabels` | `string[]` | `[]` | Each column's name, under a brace below it |
+| `rowLabels` | `string[]` | `[]` | The upper part's name and the lower's, under braces on the left of the first column |
+| `values` | `boolean` | `false` | Write each part's probability in it, to three decimals |
+| `labelSize` | `number` | `20` | The labels' and values' size in pixels |
+| `labelColor` | `Color` | `'#e5e7eb'` | The labels', values' and braces' colour |
+| `fontFamily` | `string` | `''` | The labels' font |
+| `stroke` | `StrokeProp \| StrokeProp[]` | 2 px, `'#0b0d12'` | The outline of each part |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `divideTo` | `{ columnShares?, rowShares? }` | The cuts moving: the columns' shares, each column's upper share, or both |
+
+```tsx
+{ id: 'given', type: 'divideTo', targetId: 'space', at: 2, duration: 1,
+  args: { rowShares: [0.5, 0.1] } },
+```
+
+## Notes
+
+- Shares tween one by one. A list with a different number of entries has nothing
+  to pair with and changes at the end of the command.
+- A share that is not a positive number counts as `0`. A row share is clamped to
+  0 to 1.
+- The braces and their labels take room from the box, below and on the left,
+  only when there are labels to show. The row braces are drawn only when the
+  first column is cut.
+- A value is written only in a part taller and wider than `labelSize`.
+- It has no `fill` of its own: `columnFills` paints the parts, and `stroke`
+  outlines them. It has no outline trim, so no `progressTo` or `flash`.
+- A label between dollar signs is typeset: `'$A^c$'`.
+- It does not take children.
+- Manim's `SampleSpace`.
+- Related: [`networkGraph`](/docs/components/math/network-graph),
+  [`curlyBrace`](/docs/components/math/curly-brace),
+  [Bar chart](/docs/components/charts/bar-chart).

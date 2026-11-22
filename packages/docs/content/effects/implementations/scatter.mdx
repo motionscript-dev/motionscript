@@ -1,0 +1,59 @@
+---
+sidebar_position: 12
+---
+
+# Scatter
+
+Randomly displaces each pixel of the node by up to `strength` pixels, producing a static-noise smear. Mirrors After Effects' **Scatter** effect.
+
+![Scatter effect demo](/effects/scatter.webp)
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+// Default: 10px displacement in both directions
+Rect({ effects: Effects.scatter() })
+
+// Horizontal only
+Rect({ effects: Effects.scatter({ strength: 20, axis: 'x' }) })
+
+// Raw object
+Rect({ effects: [{ type: 'scatter', strength: 10, axis: 'both' }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'scatter'` | – | Effect identifier |
+| `strength` | `number` | `10` | Maximum random pixel displacement. `0` = off |
+| `axis` | `'x' \| 'y' \| 'both' \| { x: number; y: number }` | `'both'` | Axis along which pixels are displaced. `{ x, y }` scales the jitter per axis |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` scatters the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
+
+## Animating
+
+```tsx
+import { Effects } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'img', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 600, height: 400, fill: { type: 'image', src: './photo.jpg', fit: 'fill' },
+        effects: Effects.scatter(0) } },
+  ],
+  commands: [
+    { id: 'disintegrate', type: 'to', targetId: 'img', at: 0, duration: 1.2,
+      easing: { kind: 'out' }, args: { effects: Effects.scatter(40) } },
+  ],
+};
+```
+
+## Stacking with other effects
+
+```ts
+// Signal-loss look: scatter + chromatic aberration
+Rect({ effects: Effects.scatter({ strength: 8, axis: 'x' }).chromaticAberration({ amount: 4, angle: 0 }) })
+```

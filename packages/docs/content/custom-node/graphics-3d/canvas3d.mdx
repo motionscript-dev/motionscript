@@ -1,0 +1,270 @@
+---
+sidebar_position: 2
+---
+
+# Canvas3D
+
+`Canvas3D` hosts a 3D scene in a rect. It is built like a [`Rect`](/docs/components/basic/rect), so it lays out in flex and stack groups, takes `cornerRadius` and `clip`, and can be masked, blended and filtered.
+
+It is also the one node that holds both trees: its 3D children describe the scene, and its 2D children draw over the result. The stage itself holds what is scene-wide: the camera, the lights, the fog and the environment are its props.
+
+```ts
+Canvas3D({
+  width: 'fill', height: 'fill', cornerRadius: 24, fill: '#0b0d12', shadows: true,
+  target: [0, 1, 0], orbit: 60, elevation: 18, zoom: 6, fov: 45,
+  lights: [
+    { type: 'ambient', intensity: 0.4 },
+    { type: 'sun', intensity: 2.4, orbit: 37, elevation: 50, shadow: true },
+  ],
+  children: [
+    Box3D({ width: 2, cornerRadius: 0.15, fill: 'tomato', roughness: 0.3 }),
+  ],
+})
+```
+
+It takes every [`Rect`](/docs/components/basic/rect) prop. The props below are the ones it adds.
+
+## Render settings
+
+These are settings of the thing doing the rendering rather than objects in the scene, so they are props on the viewport and not nodes. There is no `Shadows3D`, `ToneMapping3D` or `PostEffects3D` node.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `maxPixelRatio` | `number` | `2` | Ceiling on the 3D buffer's device-pixel ratio |
+| `antialias` | `boolean` | `true` | Multisample the 3D pass |
+| `shadows` | `boolean \| { quality }` | `false` | Turn shadow casting on for the scene. `quality` is `'low'`, `'medium'` or `'high'` |
+| `tone` | `ToneMapping3D` | `'aces'` | How HDR colour is compressed to what the screen shows |
+| `exposure` | `number` | `1` | Exposure applied before tone mapping |
+| `post` | `PostEffect3D \| PostEffect3D[]` | none | Post-processing passes. **Recorded but not applied yet** (it warns once in development), see [Post effects](./scene#post-effects) |
+
+`maxPixelRatio` is the knob for an expensive scene. Lower it and the 3D renders into a smaller buffer that is scaled up when composited, trading sharpness for fill rate.
+
+`shadows` is only half of casting a shadow; see [Shadows](./scene#shadows) for what lights and objects must opt into.
+
+## The stage
+
+The camera, the lights, the air and the sky are props of the viewport, so a scene is objects on a stage. **Only the `Canvas3D` has them**: a `Scene3D` you build by hand and use as a fill gets none of this, and one with no lights renders lit materials black.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `orbit` | `number` | `35` | Degrees around the vertical axis through `target`, measured from +X |
+| `elevation` | `number` | `20` | Degrees above the ground plane |
+| `zoom` | `number` | `12` | The camera's **distance** from `target`, in scene units |
+| `fov` | `number` | `45` | Vertical field of view, degrees |
+| `projection` / `frustumHeight` | `'perspective' \| 'orthographic'` / `number` | `'perspective'` / `10` | The projection, and an orthographic camera's visible height |
+| `target` | `Vector3Input` | origin | What the camera looks at and orbits |
+| `lights` | `StageLight3D[]` | the rig below | The lights, as a list of typed items |
+| `fog` / `fogNear` / `fogFar` | `Fill` / `number` / `number` | empty / `8` / `30` | The air's colour (its first solid layer; empty is clear air) and where it begins and is total |
+| `environment` | `Fill` | empty | The sky that lights the scene, an image fill's picture. **Not rendered yet** |
+
+[Scene setup](./scene) covers each of them. Three things to know:
+
+* **The default rig is three lights**: an ambient fill, a key sun from the direction of `[4, 6, 3]`, and a rim sun from behind at 35% of the key's intensity in the same colour. Together they are enough for an untextured box to read as three distinct faces. Writing `lights` replaces all three.
+* **`zoom` is a distance, not a lens factor**: it moves the camera back. And `orbit` is measured from the **+X** axis, so `orbit: 90` is head-on from +Z. Both are kept this way so that stored scenes frame the way they always did.
+* **A node can take a part over.** A custom node whose `render` sets a camera, a light, fog or an environment replaces that part of the stage; one light replaces the whole list. See [Taking over from a node](./scene#taking-over-from-a-node).
+
+They exist for a viewport driven by a handful of numbers: a command can tween them and a drag gesture can write them. `orbitTo` swings the camera, `lookTo` moves its `target` and `lightTo` moves one light:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0,
+      props: { fill: '#0b0d12', shadows: true } },
+    { id: 'box', type: 'box3d', parentId: 'viewport', layerOrder: 0,
+      props: { width: 2, cornerRadius: 0.2, fill: 'tomato' } },
+  ],
+  commands: [
+    { id: 'swing', type: 'orbitTo', targetId: 'viewport', at: 0, duration: 4,
+      easing: { kind: 'inOut', args: 'quad' }, args: { orbit: 215, elevation: 35 } },
+  ],
+};
+```
+
+## Authoring grid
+
+Two reference aids for a viewport someone is composing in. Both are **off by default**, and an export through the same builder leaves them off.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `showGrid` | `boolean` | `false` | Draw a ground-plane grid |
+| `gridSize` | `number` | `40` | Total extent, in scene units |
+| `gridDivisions` | `number` | `40` | Cells across it |
+| `gridMajorEvery` | `number` | `5` | Every Nth line is drawn heavier |
+| `gridColor` / `gridMajorColor` | `Color` | `#26292f` / `#363a42` | Minor and major line colours |
+| `gridFade` | `number` | `0.55` | How much of the way to the edge the grid has faded out, `0` to `1` |
+| `gridFadeColor` | `Color` | `#0b0d12` | What the grid fades into, only when `fill` has no solid layer to read |
+| `showAxes` | `boolean` | `false` | Draw the two coloured axis lines |
+| `axisXColor` / `axisZColor` | `Color` | `#c8404f` / `#2f6fd0` | Axis line colours |
+
+The grid fades into the first opaque solid layer of the viewport's `fill`, so the horizon dissolves into the backdrop rather than ringing it with a halo. It is drawn first, so objects standing on the ground plane read as standing on it.
+
+## Size defaults
+
+A 3D viewport has no natural size and should not be sized by its overlay children, since hugging a label would collapse the viewport to the size of the text. So `Canvas3D` defaults to `width: 'fill'` and `height: 'fill'` whether or not it has children. Give it an explicit size when you want one.
+
+## Mixing the two trees
+
+Only a node that allows both trees accepts both: `Canvas3D`, or a component of your own with `allowedChildren: ['2d', '3d']`. Everywhere else, parenting a 3D node to a 2D one throws:
+
+```ts
+// ✗ throws: a 2D node cannot hold a 3D one
+Rect({ children: [Box3D({})] })
+```
+
+That is deliberate. A `Box3D` under a `Rect` would be skipped by the layout walk *and* by the 3D walk, and would simply never appear. A silent nothing is worse than a loud error.
+
+## Paint order
+
+The fill stack decides everything, with no special cases:
+
+1. Your own `fill` layers.
+2. The 3D scene.
+3. 2D children and `overlay`.
+4. `stroke`.
+
+So a `fill` paints beneath the 3D and doubles as the scene's background, and 2D children paint over it as a heads-up display:
+
+```ts
+Canvas3D({ width: 1200, height: 700, fill: '#8b1e3f', cornerRadius: 48,
+  orbit: 90, elevation: 10, zoom: 7, lights: [{ type: 'ambient', intensity: 0.4 }], children: [
+  Torus3D({ radius: 1.5, thickness: 0.4, fill: 'tomato' }),
+
+  Rect({ flow: 'vertical', gap: 8, padding: 32, align: 'topLeft', children: [
+    Text({ text: 'Turntable', fontSize: 48, fill: 'white' }),
+    Text({ text: '45 rpm', fontSize: 28, fill: 'white/60' }),
+  ] }),
+] })
+```
+
+The red fill shows through wherever the 3D render is transparent, which is everywhere no geometry covers. That is why there is no background node: a colour, a gradient, an image or a video behind a 3D scene is the ordinary 2D fill chain, which does strictly more. A fill is also unaffected by lights and fog, which is what you want from a backdrop. (A sky that *reprojects* as the camera turns is the one thing that needs the 3D pass; it is an environment's `background`, see [Environment](./scene#environment).)
+
+`cornerRadius` and `cornerStyle` confine the 3D, because it is painted as the top layer of the rect's own fill.
+
+## 3D through other shapes
+
+`Canvas3D` is convenience. The primitive is a fill carrying a recorded `Scene3D`, so any shape can carry a 3D scene:
+
+```ts
+import { Ellipse, Path, Text, Fills, Graphics3D, Scene3D } from '@motionscript/sdk/v1';
+
+function scene(fill: string): Scene3D {
+  return new Scene3D()
+    .perspective({ position: [0, 1.6, 5], lookAt: 0, fov: 45 })
+    .light({ type: 'ambient', intensity: 0.45 })
+    .light({ type: 'directional', intensity: 2.6 }, { position: [4, 6, 3] })
+    .draw(new Graphics3D().torusKnot({
+      radius: 1.1, thickness: 0.36, fill, roughness: 0.25, metalness: 0.4,
+    }));
+}
+
+// The ellipse's own path is the clip, so there is no rectangular bleed.
+Ellipse({ width: 420, height: 420, fill: () => scene('#e0533d') })
+
+// An arbitrary path works the same way.
+Path({
+  width: 420,
+  height: 420,
+  data: 'M50,88 C-20,45 8,2 50,26 C92,2 120,45 50,88 Z',
+  fill: () => Fills.canvas3D(scene('#4ea1ff')),
+})
+
+// Text has no single path, so it draws per glyph and carries the scene across the run.
+Text({ text: 'DEPTH', fontSize: 260, fill: () => scene('#3ddc84') })
+```
+
+Note the shape of `.light()`: the light's own parameters and its *placement* are separate arguments, because placement is a transform.
+
+`Fills.canvas3D(scene, options?)` is the explicit form. It takes the layer options every fill takes (`opacity`, `blend`) plus `maxPixelRatio` and `antialias`. A bare `Scene3D` is shorthand for it.
+
+## Stacking two scenes
+
+A fill array can hold more than one 3D layer:
+
+```ts
+Rect({
+  width: 720,
+  height: 720,
+  cornerRadius: 32,
+  fill: () => [
+    '#0b0d12',
+    Fills.canvas3D(knot('#e0533d', -0.7)),
+    Fills.canvas3D(knot('#4ea1ff', 0.7), { opacity: 0.55 }),
+  ],
+})
+```
+
+Each layer keeps its own scene graph and GPU buffers, so the two render independently.
+
+## Reusable 3D components
+
+Most of the time the component you want is a **thing in the scene**, not a whole viewport. Write it with `component3d`:
+
+```ts
+import { component3d, Graphics3D, Types } from '@motionscript/sdk/v1';
+import { createBrowserEngine } from '@motionscript/browser';
+
+export const Gem = component3d({
+  key: 'gem',
+  state: { tint: Types.color('tomato') },
+  render: (ctx, state) => ctx.draw(new Graphics3D().polyhedron({
+    shape: 'icosahedron', radius: 1, fill: state.tint, shading: 'flat',
+  })),
+});
+
+// `key` only declares the type. Handing it to an engine registers it.
+const engine = await createBrowserEngine({ nodes: [Gem] });
+```
+
+Any document opened on that engine can then add a `gem`:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'viewport', type: 'canvas3d', parentId: null, layerOrder: 0,
+      props: { orbit: 90, elevation: 0, zoom: 6, lights: [{ type: 'ambient', intensity: 0.5 }] } },
+    { id: 'gem', type: 'gem', parentId: 'viewport', layerOrder: 0, props: { y: 1 } },
+  ],
+  commands: [
+    { id: 'turn-gem', type: 'to', targetId: 'gem', at: 0, duration: 2,
+      args: { tint: 'cyan', rotationY: 360 } },
+  ],
+};
+```
+
+`tint` is a `Types.color` entry rather than a plain string, so the `to` interpolates it instead of snapping.
+
+A 3D component declares the resources it needs (textures, a model file) by recording its own `render`, so one that draws a `Tex.image` needs no declaration of its own. Moving the node declares nothing new, because placement is not part of what it draws.
+
+When the component really is a whole viewport, build it the way `Canvas3D` is built: a `component2d` that spreads `View3D` with the rect's modules, takes 3D children, and paints with `View3D.draw`. Its third argument draws more into the scene, after the viewport's own settings, grid, camera and lights:
+
+```ts
+import { component2d, Graphics3D, Paint, Shapes, View3D } from '@motionscript/sdk/v1';
+
+export const Turntable = component2d({
+  key: 'turntable',
+  state: { ...Paint.state, ...Shapes.corners, ...View3D.state, angle: 0 },
+  defaults: { width: 'fill', height: 'fill' },
+  commands: { ...Paint.commands, ...View3D.commands },
+  allowedChildren: ['2d', '3d'],
+  load: (loader) => View3D.load(loader),
+  render: (ctx, state) => View3D.draw(ctx, state, (scene) => {
+    const a = (state.angle * Math.PI) / 180;
+    scene
+      .perspective({ position: [Math.cos(a) * 6, 2, Math.sin(a) * 6], lookAt: 0, fov: 45 })
+      .draw(new Graphics3D().torus({ radius: 1.5, thickness: 0.4, fill: 'tomato' }));
+  }),
+});
+```
+
+It runs inside the render pass on every frame, so every entry read there samples the current frame. A camera it sets wins over the default one, because a scene keeps its last camera. The viewport's `shadows`, `tone`, `exposure` and `post` still apply. `View3D.load` warms the 3D runtime before the first frame. Add entries for anything a document should animate with a `to` command, exactly as for any other custom node. See [State](../properties).
+
+## Cost
+
+The 3D pass renders into its own buffer and is composited into the 2D frame. It is not free, so the usual levers are:
+
+* Lower `maxPixelRatio` on large viewports.
+* Turn `antialias` off when the scene has no long straight edges.
+* Prefer `Instances3D` over many separate meshes. See [Objects](./objects#instances).
+* Avoid tweening geometry parameters. See [Animating](./animating#what-is-cheap-to-change).

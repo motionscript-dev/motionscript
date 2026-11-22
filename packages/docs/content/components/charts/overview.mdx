@@ -1,0 +1,153 @@
+---
+title: Overview
+sidebar_position: 1
+---
+
+# Charts
+
+`@motionscript/charts` draws animated data charts: a line chart (which is also the
+area chart), a bar chart, a pie chart, a radar chart and a radial chart. They are
+five ways of drawing a table, so they share one kit underneath (the value axis, the
+legend, the plot panel, number formatting) and one look: every chart is dressed by
+a single [`style`](/docs/components/charts/styling) entry.
+
+```bash
+npm install @motionscript/charts @motionscript/sdk
+```
+
+```ts title="src/project.ts"
+import { NODES } from '@motionscript/charts/v1';
+
+export const nodes = NODES; // [LineChart, BarChart, PieChart, RadarChart, RadialChart]
+```
+
+Importing the package registers nothing; the host hands `NODES` to the engine.
+
+## A chart
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'chart', type: 'barChart', parentId: null, layerOrder: 0,
+      props: {
+        width: 760, height: 460,
+        data: [
+          { month: 'Jan', revenue: 10, cost: 4 },
+          { month: 'Feb', revenue: 14, cost: 6 },
+          { month: 'Mar', revenue: 12, cost: 9 },
+        ],
+        categoryField: 'month',
+        series: [
+          { field: 'revenue', label: 'Revenue' },
+          { field: 'cost', label: 'Cost' },
+        ],
+        style: { fontFamily: 'Inter' },
+      } },
+  ],
+  commands: [
+    { id: 'in', type: 'enter', targetId: 'chart', at: 0, duration: 1.4, args: {} },
+    { id: 'focus', type: 'spotlightCategory', targetId: 'chart', at: 2, duration: 0.4,
+      args: { categoryIndex: 1 } },
+  ],
+};
+```
+
+A chart at rest is the finished chart: every line traced, every bar raised, the
+legend in place. `enter` arms the parts back to their pre-entrance state as the
+command is built and animates them in, so an editor's paused canvas shows the chart
+you are editing rather than an empty box. The command's `duration` is the whole
+entrance, and each beat (axes, marks, legend) is a share of it.
+
+Every default is tuned for a dark 1920 x 1080 stage and looks finished with no
+styling at all. Change the look through `style`, not through the content props.
+
+## Passing data
+
+`data` is the table: an array of rows, each a plain record of column name to
+value. A chart names the columns it reads.
+
+| Chart | Names | Reads |
+|---|---|---|
+| `lineChart` | `xField`, `series` | One row per sample. `xField` is the shared x column; each series plots one more column as a line or an area |
+| `barChart` | `categoryField`, `series` | One row per category. `categoryField` captions each slot; each series plots one column as a bar |
+| `pieChart` | `categoryField`, `valueField` | One row per slice. `categoryField` names it, `valueField` sizes it |
+| `radarChart` | `categoryField`, `series` | One row per spoke. `categoryField` names the spoke; each series plots one column as a polygon |
+| `radialChart` | `categoryField`, `valueField` | One row per ring. `categoryField` names it, `valueField` sets how far round it sweeps |
+
+A series is `{ field, label, fill?, enabled? }`: the column it plots, its legend
+caption, a paint override, and whether it shows at first (`true` unless set).
+Without a `fill` a series takes the style palette's entry for its index (a pie's or
+radial's row takes it the same way), so an unstyled chart comes out in distinct
+colours.
+
+A cell plots only when it is a finite number. A numeric string (`'12'`), `NaN`,
+`Infinity` and a missing cell all read as `0`, so convert a column of strings
+before it goes into `data`. The line chart's x column is the exception: it can
+hold numbers, dates or names (see [LineChart](/docs/components/charts/line-chart)).
+
+## What every chart shares
+
+### The value axis
+
+The line chart's two axes and the bar chart's value axis take an axis domain:
+
+| Field | Default | |
+|---|---|---|
+| `label` | `''` | Caption beside the axis; `''` hides it |
+| `range` | from the data | `[min, max]` of the scale. Left out, the chart rounds the data's bounds out to tidy values |
+| `ticks` | five across the range | Tick values, in data units |
+| `format` | none | A number pattern for the tick text, such as `'$#,##0'` or `'#,##0.00'`. Without one, integers print plain and fractions to as many places as the tick step needs |
+
+A grid line runs under every tick. A `to` command that restates `range` or
+`ticks` tweens from the axis as drawn, so an auto axis rescales continuously and
+the marks follow it:
+
+```tsx
+{ id: 'rescale', type: 'to', targetId: 'chart', at: 3, duration: 1,
+  args: { valueAxis: { range: [0, 40] } } },
+```
+
+### The legend
+
+The legend is part of the style: `style.legend` is `bottom` (the default),
+`top`, `right` or `none`, and `style.swatch` shapes
+the small marker before each caption (`square`, `circle` or `line`). The per-series
+commands (`showSeries`, `hideSeries`, `spotlightSeries`) move a series' legend
+entry in step with its marks, and a spotlit series' entry dims with it.
+
+### Look
+
+Colours, type, grid, marks, value labels and the legend all live in
+[`style`](/docs/components/charts/styling). One style, or one of the eight presets,
+dresses any of the five charts; a field a chart does not draw is ignored. A `to`
+command on `style` tweens a restyle.
+
+### Read once, at construction
+
+Some props shape which parts a chart builds, so they are read when the node is
+built: the series list (count, labels, `enabled`), the bar chart's `orientation`,
+`showCenter`, axis captions, the bar chart's category captions, the pie's and
+radial's label and legend-row counts, `labelMode`, `gap`, `centerLabel` and
+`centerCaption`, and the style fields that add or remove a part: `legend`,
+`showXAxis`, `showYAxis`, `values`, `labelPlacement` and `spokeLabels`. A `set` or
+`to` of them changes nothing; editing the document rebuilds the node, which does.
+`data`, scales, ticks, every other style field, `region`, `stack` and the chart's
+own animated signals are live.
+
+## Text
+
+The chart's face is `style.fontFamily`; left empty, it takes the nearest
+`default-text-style` node or the clip's `typography.default`, as a
+[Text](/docs/components/basic/text#font-family) without its own family does. Size
+and weight are `style.fontSize` and `style.fontWeight`.
+
+## Components
+
+- [LineChart](/docs/components/charts/line-chart): one line or area per series over a shared x column, with region spotlights and zoom.
+- [BarChart](/docs/components/charts/bar-chart): grouped, stacked or percent bars, vertical or horizontal.
+- [PieChart](/docs/components/charts/pie-chart): a pie or donut, one slice per row.
+- [RadarChart](/docs/components/charts/radar-chart): one polygon per series over a web of spokes.
+- [RadialChart](/docs/components/charts/radial-chart): one concentric ring per row, swept by its share.
+
+[Styling](/docs/components/charts/styling) lists every style field and the presets.

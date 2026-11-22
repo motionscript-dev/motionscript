@@ -1,0 +1,65 @@
+---
+sidebar_position: 31
+---
+
+# VectorArrow
+
+An arrow from `tail` to `head`, two graph points, straight or bent into an arc. Its head is the stroke's `endCap`, so a plain segment, a double arrow or a dashed one is a change of stroke. It ships in `@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'plane', type: 'numberPlane', parentId: null, layerOrder: 0,
+      props: { width: 860, height: 480, xRange: [-6, 6], fontFamily: 'Inter' } },
+    // The two basis vectors, drawn on from the origin.
+    { id: 'i', type: 'vectorArrow', parentId: 'plane', layerOrder: 0,
+      props: { head: { x: 1, y: 0 }, end: 0,
+        stroke: { weight: 4, fill: '#f87171', align: 'center', endCap: 'triangle' } } },
+    { id: 'j', type: 'vectorArrow', parentId: 'plane', layerOrder: 1,
+      props: { head: { x: 0, y: 1 }, end: 0,
+        stroke: { weight: 4, fill: '#a3e635', align: 'center', endCap: 'triangle' } } },
+    // A bent arrow with a head at both ends.
+    { id: 'swap', type: 'vectorArrow', parentId: 'plane', layerOrder: 2,
+      props: { tail: { x: 2, y: -1 }, head: { x: 4, y: -1 }, bend: 90,
+        stroke: { weight: 3, fill: '#e5e7eb', align: 'center', startCap: 'stealth', endCap: 'stealth' } } },
+  ],
+  commands: [
+    { id: 'draw-i', type: 'progressTo', targetId: 'i', at: 0, duration: 0.6, args: { end: 1 } },
+    { id: 'draw-j', type: 'progressTo', targetId: 'j', at: 0.3, duration: 0.6, args: { end: 1 } },
+    { id: 'stretch', type: 'endpointsTo', targetId: 'i', at: 1, duration: 1, args: { head: { x: 3, y: 1 } } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `tail` | `Vector2` | `{ x: 0, y: 0 }` | Where the arrow starts, in graph units |
+| `head` | `Vector2` | `{ x: 1, y: 1 }` | Where it ends, in graph units |
+| `bend` | `number` | `0` | The arc it sweeps, in degrees from `-180` to `180`. `0` is straight; a positive bend bows to the arrow's left |
+| `stroke` | `Stroke` | `{ weight: 4, fill: '#e5e7eb', align: 'center', endCap: 'triangle' }` | The line and its head. See [Strokes](/docs/attributes/strokes) |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `endpointsTo` | `{ tail?, head? }` | Either end, or both, to new graph points |
+
+```tsx
+{ id: 'move', type: 'endpointsTo', targetId: 'i', at: 1, duration: 1, args: { tail: { x: -1, y: 0 }, head: { x: 2, y: 2 } } },
+```
+
+`progressTo` (`{ end }`) draws it on from the tail, and `bend` animates with `to`.
+
+## Notes
+
+- It goes in a coordinate system: `axes2d`, `numberPlane`, `numberLine` or `polarPlane`. Outside one a graph unit is a pixel, so `tail` and `head` are pixels.
+- Its own `x` and `y` shift the whole arrow, in graph units, on top of `tail` and `head`.
+- The head is any [end marker](/docs/attributes/strokes#end-markers): `'triangle'`, `'stealth'`, `'arrow'` and the rest, or a plain cap for a segment. A `startCap` marker makes a double arrow, and `dash` a dashed one.
+- It is a line only: it takes a `stroke` and no `fill`.
+- On a `numberPlane`, arrows go with the plane through `transformTo` and `warpTo`.
+- Manim's `Arrow`, `Vector`, `DoubleArrow`, and a `Line` on axes. In a 3D graph, see [`vectorArrow3d`](/docs/components/math/vector-arrow3d); for a grid of arrows, [`vectorField`](/docs/components/math/vector-field).

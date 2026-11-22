@@ -1,0 +1,45 @@
+---
+sidebar_position: 1
+---
+
+# Gain
+
+Scales the clip's amplitude by a linear factor. Use it to raise or lower the volume of a `sound` node without touching the source file.
+
+## Usage
+
+```ts
+import { AudioEffects, SoundNode } from '@motionscript/sdk/v1';
+
+// Via AudioEffects builder
+SoundNode({ src: './voice.mp3', effects: AudioEffects.gain(1.5) })
+
+// Via raw object
+SoundNode({ src: './voice.mp3', effects: [{ type: 'gain', value: 1.5 }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'gain'` | – | Effect identifier |
+| `value` | `number` | – | Linear amplitude multiplier. `1` = unchanged, `0` = silent, `>1` = louder |
+
+## Animating
+
+Pass a ramp as `value` to fade volume in or out:
+
+```ts
+import { AudioEffects, SoundNode, ramp, easeOut } from '@motionscript/sdk/v1';
+
+// Fade in over the clip's first 2 seconds, then hold
+SoundNode({ src: './music.mp3', effects: AudioEffects.gain(ramp(0, 1, 2, { ease: easeOut() }).hold()) })
+```
+
+An effect param is automated with a ramp rather than a tween: sound is scheduled once, ahead of playback, so a value written frame by frame never reaches it. See [Fades and automation](../attributes/audio#fades-and-automation) for how a ramp lines up with the clip.
+
+## Notes
+
+- Gain stacks multiplicatively with the sound node's `volume`, which is itself applied as a gain at the end of the clip's chain. A `volume` of `0.5` and a gain of `2` cancel out to unity.
+- Values above `1` can cause clipping if the signal is already near full scale. Keep headroom when boosting.
+- `value` accepts a ramp. Its segments are linear unless given an `ease`, and a ramp is plain JSON: `{ keys: [{ at, value, ease? }, …] }`.

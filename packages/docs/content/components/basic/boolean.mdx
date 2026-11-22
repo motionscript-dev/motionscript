@@ -1,0 +1,80 @@
+---
+sidebar_position: 10
+---
+
+# Boolean
+
+Combines the outlines of its child shapes into one: their union, the first minus the rest, their overlap, or everything but the overlap. Reach for it for a crescent, a ring with a notch, a cut-out icon, any silhouette that is easier to build from simple shapes.
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    // A crescent: the first circle, minus the one offset over it.
+    // The group's own fill paints the result.
+    { id: 'moon', type: 'boolean', parentId: null, layerOrder: 0,
+      props: { op: 'subtract', width: 300, height: 300, fill: '#F5C26B' } },
+    { id: 'disc', type: 'ellipse', parentId: 'moon', layerOrder: 0,
+      props: { width: 300, height: 300 } },
+    { id: 'cutter', type: 'ellipse', parentId: 'moon', layerOrder: 1,
+      props: { width: 260, height: 260, x: 90, y: 50 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `op` | `'union' \| 'subtract' \| 'intersect' \| 'exclude'` | `'union'` | How the children's outlines combine. See [Operations](#operations) |
+
+`Boolean` is a shape: it takes [`fill`](/docs/attributes/fills), [`stroke`](/docs/attributes/strokes), [`shadow`](/docs/attributes/shadows), `overlay` and `effects`, and paints the combined outline with them. Its fill is empty by default, so set one.
+
+## Operations
+
+| `op` | Result |
+|---|---|
+| `'union'` | Everything any child covers, as one outline |
+| `'subtract'` | The first child (`layerOrder: 0`), with every later child cut out of it |
+| `'intersect'` | Only where all the children overlap |
+| `'exclude'` | Everything the children cover, minus where they overlap |
+
+Order only matters to `'subtract'`: the first child is what gets cut, the rest are cutters.
+
+## Animating
+
+The children stay ordinary, separately editable shapes, and the group recombines them every frame. Move, resize or rotate a child and the result follows. Sliding the cutter off the disc above waxes the crescent into a full moon:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'moon', type: 'boolean', parentId: null, layerOrder: 0,
+      props: { op: 'subtract', width: 300, height: 300, fill: '#F5C26B',
+        stroke: { fill: 'white', weight: 4 } } },
+    { id: 'disc', type: 'ellipse', parentId: 'moon', layerOrder: 0,
+      props: { width: 300, height: 300 } },
+    { id: 'cutter', type: 'ellipse', parentId: 'moon', layerOrder: 1,
+      props: { width: 260, height: 260, x: 90, y: 50 } },
+  ],
+  commands: [
+    { id: 'wax', type: 'to', targetId: 'cutter', at: 0, duration: 1.5,
+      easing: { kind: 'inOut' }, args: { x: 320 } },
+  ],
+};
+```
+
+The group's own `fill` and `stroke` animate with `to` like any shape's.
+
+## Notes
+
+- The children's own fills, strokes and shadows are not drawn: only their outlines count. Paint the group instead.
+- Children at any depth that produce an outline contribute: a `rect`, an `ellipse`, a `path`, or a nested `boolean`. Nesting is how to mix operations: a `subtract` group as one child of a `union` group cuts first, then joins.
+- A child with `opacity: 0` is left out of the combination.
+- Children are centred in the group and offset by their own `x`/`y`, as in a freeform [Rect](/docs/components/basic/rect). The group runs no flex layout.
+- The group's selection box and hit area are the combined outline's extent, not its layout box.
+- Inside a [shared 3D space](/docs/attributes/transform-3d#a-shared-3d-space), a boolean's children are combined in its own plane.
+- Manim's `Union`, `Difference`, `Intersection` and `Exclusion`.
+- To show part of one node through the shape of another, rather than combining outlines, use a [Mask](/docs/components/basic/mask).

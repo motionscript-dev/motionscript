@@ -1,0 +1,76 @@
+---
+sidebar_position: 22
+---
+
+# VectorField
+
+A grid of arrows showing a vector field, one centred on each point and as long
+as the field is strong there. Reach for it to show a direction at every point:
+a flow, a force, a gradient. It ships in `@motionscript/math`; register the
+package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 860, height: 480, padding: 32, xRange: [-6, 6], yRange: [-3, 3], fontFamily: 'Inter' } },
+    // A turning field, coloured from weak (blue) to strong (red)
+    { id: 'field', type: 'vectorField', parentId: 'axes', layerOrder: 0,
+      props: { expression: '(-y, x)', spacing: 0.75, arrowScale: 0.3,
+        strengthFills: ['#38bdf8', '#a3e635', '#facc15', '#f87171'] } },
+  ],
+  commands: [
+    // Each arrow turns from the one field into the other
+    { id: 'morph', type: 'morphTo', targetId: 'field', at: 0.5, duration: 1.2,
+      args: { expression: '(sin(y), cos(x))' } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `expression` | `string` | `''` | The field, two parts in x and y: `(P, Q)`, such as `(-y, x)` |
+| `params` | `Record<string, number>` | `{}` | The equation's named values: any name in it that is not `x`, `y`, a function or a constant. One left unset is `1` |
+| `spacing` | `number` | `1` | How far apart the arrows stand, in graph units |
+| `arrowScale` | `number` | `0.4` | How long an arrow is drawn for a vector of length one, in graph units |
+| `strengthFills` | `Fill[]` | `[]` | Paints by the field's strength, weakest first. Empty draws every arrow in the stroke's own paint |
+| `maxMagnitude` | `number` | `0` | The strength the last paint stands for. `0` takes the strongest the field is where it is drawn |
+| `stroke` | `Stroke` | `#58a6ff`, 2.5 px, centred, round caps and joins | Every arrow. See [Strokes](/docs/attributes/strokes) |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `morphTo` | `{ expression }` | The field, each vector turning from the one into the other |
+| `paramsTo` | `{ params }` | The equation's named values |
+
+```tsx
+{ id: 'spin', type: 'paramsTo', targetId: 'field', at: 0, duration: 1,
+  args: { params: { a: 2 } } },   // for an expression such as '(-a * y, x)'
+```
+
+## Notes
+
+- It goes inside an `axes2d` (so a `numberPlane`), a `numberLine` or a
+  `polarPlane`, and holds no children.
+- It takes one `stroke` for every arrow and no `fill`. It has no outline trim
+  (`start`, `end`, `progressTo`); bring it in with its opacity.
+- The arrows stand at whole multiples of `spacing` from the origin, over what
+  the system shows. An arrow is the field's strength times `arrowScale` long,
+  and never longer than nine tenths of the spacing. Where the field is zero or
+  has no value, there is no arrow.
+- Past 2400 arrows the spacing is doubled until it fits, so a field over a
+  large range is still readable.
+- With `strengthFills`, the arrows are sorted by strength into twelve shades
+  between the paints. Set `maxMagnitude` to keep the colours fixed while the
+  field changes.
+- Trig is in radians; `pi`, `e`, `tau` and `phi` are constants.
+- Manim's `ArrowVectorField`.
+- Related: [stream-lines](/docs/components/math/stream-lines),
+  [vector-arrow](/docs/components/math/vector-arrow),
+  [number-plane](/docs/components/math/number-plane).

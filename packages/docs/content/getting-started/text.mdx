@@ -1,0 +1,77 @@
+---
+sidebar_position: 3
+---
+
+import { GettingStartedTextCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Adding Text
+
+Shapes are great, but most animations need words. Let's add a title to our scene using the `text` node.
+
+## Your first text node
+
+A `text` node goes in like any other node: a row in `nodes`, styled with props.
+
+```ts title="src/scenes/my-scene.ts"
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'title', type: 'text', parentId: null, layerOrder: 0,
+      props: { text: 'Motion Script', fontSize: 80, fontWeight: 800, fill: 'white' } },
+  ],
+  commands: [],
+};
+```
+
+These examples leave `fontFamily` off. The engine has no default typeface, so the project you run them in is expected to supply one (a `default-text-style` node or the theme's `typography.default`) and to list the font in its asset manifest. If a frame fails with `has no fontFamily`, that is what is missing; [Text › Font family](/docs/components/basic/text#font-family) has the full order. In your own scenes you can always set `fontFamily` on the node.
+
+The props you'll reach for most:
+
+- `text`: the words to show
+- `fontSize`: size in pixels
+- `fontWeight`: how bold, from `100` (thin) to `900` (black)
+- `fill`: the text color
+
+## Animate it in
+
+Text animates exactly like the square did. A common move is to fade and drift it into place: add the title invisible and slightly low, then bring it up.
+
+```ts
+nodes: [
+  { id: 'title', type: 'text', parentId: null, layerOrder: 0,
+    props: { text: 'Motion Script', fontSize: 80, fontWeight: 800, fill: 'white', opacity: 0, y: -20 } },
+],
+commands: [
+  { id: 'fade-in', type: 'to', targetId: 'title', at: 0, duration: 0.8,
+    easing: { kind: 'out' }, args: { opacity: 1 } },
+  { id: 'rise', type: 'to', targetId: 'title', at: 0, duration: 0.8,
+    easing: { kind: 'out' }, args: { y: 0 } },
+],
+```
+
+The two commands share an `at`, so the title fades up and settles at the same time. One `to` could carry both props; splitting them is what lets you give each its own timing or easing later.
+
+<GettingStartedTextCanvas />
+
+## A couple of handy tricks
+
+**Type it out.** The `append` command grows text character by character, like a typewriter. Starting from a title that reads `'Motion'`:
+
+```ts
+{ id: 'type', type: 'append', targetId: 'title', at: 0.5, duration: 1, args: { text: ' Script' } }
+```
+
+**Add some color.** A `fill` can be a gradient, not just a flat color:
+
+```ts
+props: {
+  text: 'Motion Script', fontSize: 80, fontWeight: 900,
+  fill: { type: 'linear-gradient', colors: ['#4f80ff', '#e84393'] },
+}
+```
+
+In TypeScript, the `Fills` helper builds the same value: `Fills.linearGradient(['#4f80ff', '#e84393'])`.
+
+That's everything you need to get words on screen and moving. If you later want mixed styles inside a single block (different colors or weights per word), there's a [`RichText` node](/docs/components/basic/rich-text) for exactly that.
+
+So far we've been placing things by hand with `x` and `y`. On the next page we'll let MotionScript do the arranging for us.

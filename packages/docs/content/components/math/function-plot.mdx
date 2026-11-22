@@ -1,0 +1,109 @@
+---
+sidebar_position: 20
+---
+
+# FunctionPlot
+
+The curve of an equation, drawn in the coordinate system it sits in. How the
+equation is written says what kind of curve it is: a function of x or of y, a
+polar curve, a parametric one or an implicit one. It ships in
+`@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+<ComponentClip file="fourier" />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes2d', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 450, padding: 32, xRange: [-7, 7], yRange: [-3, 3], fontFamily: 'Inter' } },
+    // `a` and `k` are named values: each is 1 until `params` says otherwise
+    { id: 'wave', type: 'functionPlot', parentId: 'axes', layerOrder: 0,
+      props: { expression: 'a * sin(k * x)', params: { a: 1, k: 1 }, end: 0 } },
+  ],
+  commands: [
+    // Draw the curve on
+    { id: 'draw', type: 'progressTo', targetId: 'wave', at: 0, duration: 1, args: { end: 1 } },
+    // Taller and tighter
+    { id: 'tune', type: 'paramsTo', targetId: 'wave', at: 1, duration: 1, args: { params: { a: 2, k: 2 } } },
+    // Bend into a parabola
+    { id: 'morph', type: 'morphTo', targetId: 'wave', at: 2.2, duration: 1, args: { expression: 'x^2 / 8 - 2' } },
+  ],
+};
+```
+
+## Equations
+
+| Written as | Is | Free variable | Drawn over, with no `domain` |
+|---|---|---|---|
+| `sin(x)`, `y = sin(x)` | a function of x | `x` | the width of its system |
+| `x = y^2` | a function of y | `y` | the height of its system |
+| `r = 1 + cos(theta)` | polar | `theta` | one turn, `0` to `2π` |
+| `(cos(t), sin(t))` | parametric | `t` | `0` to `1` |
+| `x^2 + y^2 = 4` | implicit | none | wherever the equation holds in view |
+
+Trig is in radians, and `pi`, `e`, `tau` and `phi` are constants. A parametric
+curve's default span is `0` to `1`, so a full circle needs
+`domain: [0, 6.2832]`. A name that is not a variable, a function or a constant
+is a named value: it is `1` until `params` gives it one, and a formula can bind
+it to a variable:
+
+```tsx
+{ expression: 'a * sin(k * x)', params: { a: 1.5, k: '=[speed]' } }
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `expression` | `string` | `''` | The equation. How it is written decides the kind of curve; see [Equations](#equations) |
+| `domain` | `[number, number] \| null` | `null` | The span of the free variable that is drawn. Left out, a function runs the width of its system, a polar curve one turn and a parametric one from `0` to `1` |
+| `params` | `Record<string, number>` | `{}` | The equation's named values. One left unset is `1`; each may be a formula bound to a variable |
+| `stroke` | `Stroke` | `#58a6ff`, 3 px, centred, round caps and joins | The curve. See [Strokes](/docs/attributes/strokes) |
+
+The outline trim, `start` and `end`, is inherited from the shape it is built on
+and is how the curve is drawn on.
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `morphTo` | `{ expression }` | One curve bending into another, of any kind |
+| `paramsTo` | `{ params }` | The named values |
+| `domainTo` | `{ domain }` | The span that is drawn |
+| `progressTo` | `{ start?, end? }` | Drawing the curve on (inherited) |
+
+```tsx
+{ id: 'sweep', type: 'domainTo', targetId: 'wave', at: 0, duration: 1.5,
+  args: { domain: [-7, 7] } },
+```
+
+## Notes
+
+- It goes inside an `axes2d` (so a `numberPlane`), a `numberLine` or a
+  `polarPlane`, never on its own. Its own `x`/`y` there shift the curve in graph
+  units.
+- It holds only the marks that read it: a `plotPoint` or `dropLines` that rides
+  the curve, and a `tangentLine`. A shape or a text does not go inside it. A
+  `curveArea` or `riemannSum` goes beside it and names it in `on`.
+- It takes a `stroke` and no `fill`. For the region under it, use a
+  [`curveArea`](/docs/components/math/curve-area).
+- Only what the system shows is sampled, however wide the domain, and the curve
+  stops at the system's edge.
+- `domainTo` from a plot with no `domain` (or to `null`) does not tween: it
+  changes at the end. Give the plot a `domain` to sweep from.
+- A morph blends the two curves point for point, so any kind bends into any
+  other. An implicit curve has no parameter to bend along, so a `morphTo` to or
+  from one changes over half way.
+- `paramsTo` starts a named value that `params` never set from `1`.
+- Manim's `axes.plot`, `ParametricFunction`, `ImplicitFunction` and polar graphs
+  are all this one node.
+- Related: [plot-point](/docs/components/math/plot-point),
+  [tangent-line](/docs/components/math/tangent-line),
+  [drop-lines](/docs/components/math/drop-lines),
+  [riemann-sum](/docs/components/math/riemann-sum),
+  [traced-path](/docs/components/math/traced-path),
+  [axes2d](/docs/components/math/axes2d),
+  [polar-plane](/docs/components/math/polar-plane).

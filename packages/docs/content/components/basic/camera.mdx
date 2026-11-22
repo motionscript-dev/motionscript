@@ -1,0 +1,85 @@
+---
+sidebar_position: 8
+---
+
+import { CameraCanvas } from '@site/src/components/docs/node-scenes';
+
+# Camera
+
+A viewport card that renders its children through a virtual camera transform. It draws itself like a `Rect` (fill, stroke, shadow, corners) and then paints its children through a zoom, pan, and rotation transform, clipped to the card's bounds.
+
+<CameraCanvas />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'cam', type: 'camera', parentId: null, layerOrder: 0,
+      props: { width: 760, height: 380, zoom: 1, lookAt: { x: 0, y: 0 },
+        fill: '#0a090e', cornerRadius: 18 } },
+    { id: 'blue', type: 'rect', parentId: 'cam', layerOrder: 0,
+      props: { width: 130, height: 130, fill: '#6990DD', cornerRadius: 12, x: -240 } },
+    { id: 'pink', type: 'rect', parentId: 'cam', layerOrder: 1,
+      props: { width: 130, height: 130, fill: '#E8617C', cornerRadius: 12 } },
+    { id: 'gold', type: 'rect', parentId: 'cam', layerOrder: 2,
+      props: { width: 130, height: 130, fill: '#F5C26B', cornerRadius: 12, x: 240 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `zoom` | `number` | `1` | Magnification factor. Values > 1 zoom in; < 1 zoom out |
+| `lookAt` | `{ x: number, y: number }` | `{ x: 0, y: 0 }` | World-space point that maps to the center of the viewport — what the camera is aimed at. Same word as `Graphics3D.perspective({ lookAt })` |
+| `follow` | `string` | `""` | The id of a node in the camera's world to keep at the centre of the view. `lookAt` is then an offset from it |
+| `heading` | `number` | `0` | Camera rotation in degrees (clockwise) |
+| `cornerRadius` | `number \| CornerRadiusProps` | `0` | Corner radius for the card and the viewport clip |
+| `cornerStyle` | `'rounded' \| 'angled' \| CornerStyleProps` | `'rounded'` | Corner shape for the card |
+
+`Camera` also takes all the standard paint props (`fill`, `stroke`, `shadow`, `start`, `end`, etc.).
+
+## Animating
+
+All camera props animate with a `to` command. The camera also has a named command for each: `panTo` (`args: { lookAt }`), `zoomTo` (`{ zoom }`) and `headingTo` (`{ heading }`). Pan, zoom, and rotate to create cinematic camera moves:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'cam', type: 'camera', parentId: null, layerOrder: 0,
+      props: { width: 760, height: 380, fill: '#0a090e', cornerRadius: 18 } },
+    { id: 'blue', type: 'rect', parentId: 'cam', layerOrder: 0,
+      props: { width: 130, height: 130, fill: '#6990DD', cornerRadius: 12, x: -240 } },
+    { id: 'pink', type: 'rect', parentId: 'cam', layerOrder: 1,
+      props: { width: 130, height: 130, fill: '#E8617C', cornerRadius: 12 } },
+    { id: 'gold', type: 'rect', parentId: 'cam', layerOrder: 2,
+      props: { width: 130, height: 130, fill: '#F5C26B', cornerRadius: 12, x: 240 } },
+  ],
+  commands: [
+    // Pan to the gold box on the right
+    { id: 'pan', type: 'panTo', targetId: 'cam', at: 0, duration: 1.2,
+      easing: { kind: 'inOut' }, args: { lookAt: { x: 240, y: 0 } } },
+
+    // Zoom in on it
+    { id: 'zoom-in', type: 'zoomTo', targetId: 'cam', at: 1.2, duration: 0.8,
+      easing: { kind: 'inOut' }, args: { zoom: 1.8 } },
+
+    // Pull back home
+    { id: 'pull-back', type: 'to', targetId: 'cam', at: 2, duration: 1.2,
+      easing: { kind: 'inOut' }, args: { lookAt: { x: 0, y: 0 }, zoom: 1 } },
+  ],
+};
+```
+
+## Notes
+
+- The Camera runs no flex or stack layout. Children are positioned stack-style (centered), then viewed through the camera transform.
+- The camera viewport is clipped to the card's bounds, so children outside the visible area are never drawn.
+- `lookAt` is in world-space coordinates relative to the children's own origin, not screen coordinates.
+- With `follow` set the camera is aimed at that node every frame, wherever it is in the camera's world and however it got there: a dot riding a curve, a child of a graph. Zooming and turning still work, about the followed node.
+- `heading` rotates the camera's view, not the children: the world stays fixed and the camera turns.
+- The stage has the same three camera props, and it can also open a [shared 3D space](/docs/attributes/transform-3d#a-shared-3d-space) with `space3D`, orbiting and dollying through layers placed in depth. A `Camera` node's world stays flat: inside a stage's space, the card moves in depth like any other node, and its children are drawn in its own plane.

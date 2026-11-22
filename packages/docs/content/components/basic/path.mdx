@@ -1,0 +1,96 @@
+---
+sidebar_position: 14
+---
+
+import { PathCanvas } from '@site/src/components/docs/node-scenes';
+
+# Path
+
+Renders an SVG path. Accepts any `d` string from Illustrator, Figma, or hand-written SVG via the `data` prop. The node auto-measures its bounding box from the path data and defaults to `width: 'hug'`, `height: 'hug'`.
+
+<PathCanvas />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    // Triangle from an SVG d string
+    { id: 'triangle', type: 'path', parentId: null, layerOrder: 0,
+      props: { data: 'M 0 -60 L 52 40 L -52 40 Z', fill: '#6990DD' } },
+
+    // Heart outline drawn with a stroke
+    { id: 'heart', type: 'path', parentId: null, layerOrder: 1,
+      props: { data: 'M 0 30 C -60 -20 -80 -60 0 -20 C 80 -60 60 -20 0 30 Z',
+        stroke: { fill: '#6990DD', weight: 8 } } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `data` | `string \| PathCommand[]` | – | SVG path data string, or an array of path commands |
+
+`Path` takes all the standard paint props (`fill`, `stroke`, `shadow`, `start`, `end`, `opacity`, etc.).
+
+### Size defaults
+
+`Path` defaults to `width: 'hug'`, `height: 'hug'`, and auto-measures the bounding box from the path data. Set explicit `width`/`height` to scale the path to a fixed size.
+
+### PathCommand array
+
+Instead of a string, pass a typed array of command objects:
+
+```ts
+type PathCommand =
+  | { type: 'M'; x: number; y: number }
+  | { type: 'L'; x: number; y: number }
+  | { type: 'C'; x1: number; y1: number; x2: number; y2: number; x: number; y: number }
+  | { type: 'Q'; x1: number; y1: number; x: number; y: number }
+  | { type: 'A'; rx: number; ry: number; rotation: number; largeArc: boolean; sweep: boolean; x: number; y: number }
+  | { type: 'Z' };
+```
+
+## Animating
+
+Animate `start`/`end` to draw on or erase the path:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'shape', type: 'path', parentId: null, layerOrder: 0,
+      props: {
+        data: 'M -100 0 C -100 -80 100 -80 100 0 C 100 80 -100 80 -100 0 Z',
+        stroke: { fill: '#6990DD', weight: 8 },
+        end: 0,
+      } },
+  ],
+  commands: [
+    // Draw the path on
+    { id: 'draw', type: 'to', targetId: 'shape', at: 0, duration: 1.5,
+      easing: { kind: 'inOut' }, args: { end: 1 } },
+
+    // Erase it back off
+    { id: 'erase', type: 'to', targetId: 'shape', at: 1.5, duration: 1.5,
+      easing: { kind: 'inOut' }, args: { end: 0 } },
+  ],
+};
+```
+
+Animate any other node prop normally with a `to` command:
+
+```tsx
+// Fade and scale
+{ id: 'fade-out', type: 'to', targetId: 'shape', at: 3, duration: 0.6,
+  easing: { kind: 'inOut' }, args: { opacity: 0, scale: 0.5 } },
+```
+
+## Notes
+
+- Path coordinates are in the path's own local space. The node auto-centers the bounding box at its origin.
+- Copy the `d` attribute directly from an SVG file or Figma's "Copy as SVG" export into the `data` prop.
+- Paths with only a `stroke` (no `fill`) work well with `start`/`end` animation for line-drawing effects.

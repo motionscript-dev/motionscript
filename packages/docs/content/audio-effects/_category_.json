@@ -1,0 +1,8 @@
+{
+  "label": "Audio Effects",
+  "position": 8,
+  "link": {
+    "type": "generated-index",
+    "description": "Signal processors applied to a sound or a bus via its `effects` prop. Gain, high-pass, low-pass, tremolo, and echo."
+  }
+}

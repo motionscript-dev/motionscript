@@ -45,6 +45,7 @@ a project document (JSON: tracks of still / composition / audio clips)
 | `headless` | Renders from Node by driving the browser engine in headless Chromium. |
 | `components/*` | Four published kits of scene components (charts, code, geography, math), built on the SDK. `geography` also carries the Natural Earth outlines its `GeoBorder` draws. |
 | `renderer` | The renderer, in Rust/wgpu (WebGPU): a retained 2D/3D renderer compiled to WASM, its storage and text measurement, and an adapter implementing `RenderContext2D` that drives core's render path. Imports nothing from `browser`. Building it needs Rust. |
+| `docs` | The documentation pages (MDX) the docs site renders, published with every release at the engine's version so the site shows the docs of the engine it pins. Content only: no code, imports nothing. |
 | `e2e` | Visual regression: renders scenes through `headless` on SwiftShader's WebGPU adapter and pixel-diffs them against the committed `wgpu-baseline/` (not published). |
 | `apps/*` | `react` (a Vite player page) and `engine` (an HTTP render server) run against built `dist/`; `shaders` is the demo kit of custom nodes on custom WGSL shaders they import. |
 

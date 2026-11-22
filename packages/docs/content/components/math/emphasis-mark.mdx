@@ -1,0 +1,79 @@
+---
+sidebar_position: 42
+---
+
+# EmphasisMark
+
+`EmphasisMark` draws a box, a circle, an underline or a cross on another node,
+or on one part of a formula. Reach for it to point at something: draw it on,
+flash it, or slide it from one term to the next. It ships in
+`@motionscript/math`; register the package's `NODES`
+([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'eq', type: 'latex', parentId: null, layerOrder: 0,
+      props: { latex: 'a^2 + b^2 = c^2', fontSize: 80, fill: 'white' } },
+    { id: 'box', type: 'emphasisMark', parentId: null, layerOrder: 1,
+      props: { on: 'eq', part: 'a^2', end: 0 } },
+  ],
+  commands: [
+    { id: 'draw', type: 'progressTo', targetId: 'box', at: 0, duration: 0.6, args: { end: 1 } },
+    { id: 'next', type: 'retargetTo', targetId: 'box', at: 1, duration: 0.8, args: { part: 'b^2' } },
+    { id: 'last', type: 'retargetTo', targetId: 'box', at: 2, duration: 0.8, args: { part: 'c^2' } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `shape` | `'box' \| 'circle' \| 'underline' \| 'cross'` | `'box'` | What is drawn. `circle` is the ellipse through the corners of the grown box. Not animatable |
+| `clearance` | `number` | `10` | Pixels between the target and the mark |
+| `stroke` | `StrokeProp \| StrokeProp[]` | 3 px, `'#facc15'`, round caps and joins | The mark's line |
+
+Every mark drawn on another node shares these:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `on` | `string` | `''` | The id of the node the mark is drawn on. Left empty, it is the formula the mark sits inside |
+| `part` | `string` | `''` | One part of that node, by its source, where it has parts: `x^2` of a formula |
+| `occurrence` | `number` | `1` | Which of the places the part is written, counted from 1 |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `retargetTo` | `{ on?, part?, occurrence? }` | The mark sliding onto another node or part. Naming a new `on` without a `part` takes the whole node |
+| `progressTo` | `{ start?, end? }` | Drawing the mark on |
+| `flash` | `{ portion? }` | A stretch of the outline, `portion` of its length (default `0.25`), running round it |
+
+```tsx
+{ id: 'flash', type: 'flash', targetId: 'box', at: 3, duration: 0.8, args: { portion: 0.3 } },
+```
+
+A mark that rests with `end: 0` and is sent a `flash` is only ever seen as the
+stretch passing.
+
+## Notes
+
+- It is drawn where its target is, wherever the two are in the tree, and turns
+  with a rotated target. Placed inside a formula with `on` left empty, it marks
+  that formula. Its own position does not move it.
+- `on` can name any node, not only a formula: a rect, an image, a plot.
+- A name that is not there, or a part the formula does not write, draws nothing.
+- It takes a [`stroke`](/docs/attributes/strokes) and no `fill`. It has no size
+  of its own and takes no place in a layout.
+- `clearance` is in pixels, also inside a coordinate system. `underline` sits
+  `clearance` below the target's bottom edge.
+- Manim's `SurroundingRectangle`, `Underline` and `Cross`; `Circumscribe` is an
+  `emphasisMark` drawn on with `progressTo`, and `ShowPassingFlash` is `flash`.
+- Related: [`curlyBrace`](/docs/components/math/curly-brace),
+  [`angleMark`](/docs/components/math/angle-mark),
+  [`latex`](/docs/components/math/latex),
+  [`latexMatrix`](/docs/components/math/latex-matrix).

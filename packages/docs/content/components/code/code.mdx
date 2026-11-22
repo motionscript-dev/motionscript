@@ -1,0 +1,265 @@
+---
+sidebar_position: 16
+---
+
+import { CodeCanvas } from '@site/src/components/docs/node-scenes';
+
+# Code
+
+The `Code` node renders syntax-highlighted code using [Lezer](https://lezer.codemirror.net/). Grammars are loaded lazily per language, and built-in themes are provided. It publishes commands for highlighting spans and rows, replacing, inserting, and erasing code.
+
+Every edit is animated by **diffing** the listing against the source it becomes: tokens that survived the edit keep their identity and travel to their new columns, what is gone fades out first, and only then does what is new arrive.
+
+Supported languages: `typescript`, `tsx`, `javascript`, `jsx`, `python`, `json`, `html`, `css`, `rust`, `go`, `java`, `cpp`, `php`, `markdown`, `xml`, and `yaml`.
+
+<CodeCanvas />
+
+`Code` ships in `@motionscript/code`:
+
+```bash
+npm install @motionscript/code @motionscript/sdk
+```
+
+Installing it registers nothing on its own. Add the package's `NODES` to your
+project entry's `nodes` so documents can name it as `code`:
+
+```ts title="src/project.ts"
+import { NODES as codeNodes } from '@motionscript/code/v1';
+
+export const nodes = [...codeNodes];
+```
+
+## Basic usage
+
+```tsx
+import { lines } from '@motionscript/code/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'listing', type: 'code', parentId: null, layerOrder: 0,
+      props: {
+        code: `function greet(name: string) {
+  return \`Hello, \${name}!\`;
+}`,
+        fontSize: 28,
+        showLineNumbers: true,
+      } },
+  ],
+  commands: [
+    { id: 'focus', type: 'highlight', targetId: 'listing', at: 0, duration: 0.5,
+      args: { target: lines(2) } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `code` | `string` | Source code to display |
+| `fontFamily` | `string` | The monospaced face, `'Fira Mono'` by default. Your project must list it: see [The monospaced face](#the-monospaced-face) |
+| `fontSize` | `number` | Font size in pixels |
+| `showLineNumbers` | `boolean` | Show line number gutter |
+
+The highlighted language and color theme are configured via the `@motionscript/code` package settings. Themes are Lezer-based highlight styles (e.g. `github-dark`, `github-light`, `vscode-dark`, `vscode-light`) rather than Shiki themes.
+
+## The monospaced face
+
+`Code` measures and draws every token in its `fontFamily`, `'Fira Mono'` unless you set another, and lines its columns up on that face's advances. The component ships no font file and names no URL: supplying the face is the host's job. List a monospaced face under that family in the font record of the engine's asset manifest, alongside registering the node:
+
+```ts
+const engine = await createBrowserEngine({
+  nodes: [Code],
+  manifest: {
+    image: {}, video: {}, audio: {},
+    font: {
+      'Fira Mono@400': {
+        fontFamily: 'Fira Mono', fontWeight: 400,
+        src: '/fonts/FiraMono-Regular.ttf', sizeBytes: 0,
+      },
+    },
+  },
+});
+```
+
+The key is `family@weight`. A server render passes the same record as the `manifest` option of `createServerEngine`.
+
+A family the manifest does not list is never loaded. The loader warns once (`No font manifest entry for "Fira Mono"`), and the listing draws no text, or shapes in another face that happens to be loaded, and columns stop lining up. To use another face, set `fontFamily` on the node and list that family instead.
+
+## Animating to new code
+
+The simplest way to change a listing is to tween `code` like any other prop, with a `to` command:
+
+```tsx
+{ id: 'rewrite', type: 'to', targetId: 'listing', at: 0.5, duration: 1.2,
+  args: { code: `function greet(name: string) {
+  return \`Hi, \${name}.\`;
+}` } },
+```
+
+The node works out the difference for you. In the example above `function greet(name: string) {` and the closing brace never move, `Hello,` fades out where it stood, and `Hi,` fades in once the rest of the line has finished reflowing around it.
+
+New **rows** enter from the direction they arrived from — a row appended below the listing rises into place, a row inserted above it descends, and a row spliced between two existing rows slides in from the left. A row always moves as one piece.
+
+The named commands below are the same engine, expressed as an edit rather than as the whole source. Use whichever reads better: a `to` on `code` when you have the finished source, a named edit when the interesting thing is the edit itself.
+
+## Commands
+
+Each is a command type a document places on the timeline like any other, targeting the `code` node by id. Its `args` are keyed by name, and `duration` and `easing` sit on the command itself. The rows below continue [Basic usage](#basic-usage), whose node is `listing`.
+
+### `highlight`
+
+`args: { target, dim? }`. Dims everything outside `target` to `dim` (default `0.4`) and keeps it that way until a `resetHighlight`, or until another `highlight` cross-fades to a new range:
+
+```tsx
+{ id: 'focus-line', type: 'highlight', targetId: 'listing', at: 0, duration: 0.5,
+  args: { target: lines(2) } },
+{ id: 'focus-word', type: 'highlight', targetId: 'listing', at: 1, duration: 0.4,
+  args: { target: word(3, 10, 9) } },  // line 3, col 10, length 9
+```
+
+### `resetHighlight`
+
+`args: {}`. Remove all highlights:
+
+```tsx
+{ id: 'unfocus', type: 'resetHighlight', targetId: 'listing', at: 2, duration: 0.3, args: {} },
+```
+
+### `highlightRows`
+
+`args: { target, color?, radius? }`. Lays a band behind whole rows: every line a range touches, across the block, under the text. `color` defaults to `rgba(255, 255, 255, 0.12)` and `radius` to `6`. It is independent of `highlight`, so the two are often placed together: one dims the rest, the other marks the rows.
+
+```tsx
+{ id: 'mark', type: 'highlightRows', targetId: 'listing', at: 0, duration: 0.4,
+  args: { target: lines(2, 3), color: '#302FF680' } },
+{ id: 'move', type: 'highlightRows', targetId: 'listing', at: 1.5, duration: 0.4,
+  easing: { kind: 'inOut', args: 'cubic' }, args: { target: lines(5), color: '#302FF680' } },
+```
+
+A second `highlightRows` slides and resizes the band onto its new rows rather than cross-fading. Several ranges give one band each, paired with the previous bands in the order given; a band with no counterpart fades. A band keeps to its lines when an edit moves them.
+
+### `resetRowHighlight`
+
+`args: {}`. Fades every row band out:
+
+```tsx
+{ id: 'unmark', type: 'resetRowHighlight', targetId: 'listing', at: 3, duration: 0.3, args: {} },
+```
+
+### `replace`
+
+`args: { target, replacement }`. Replace a range of code with new text:
+
+```tsx
+{ id: 'retype', type: 'replace', targetId: 'listing', at: 0, duration: 0.3,
+  args: { target: word(1, 22, 6), replacement: 'string' } },
+```
+
+### `remove`
+
+`args: { target }`. Erase a range of code. A document has no structural
+`remove` command to shadow this one any more — a node leaves the scene at its
+row's `endAt` — so `type: 'remove'` on a `code` node reaches `Code`'s own erase
+edit. A range inside a line takes only the characters, and the rest of the line
+reflows around the hole. A range covering whole lines takes their line breaks
+too, so the rows below close up:
+
+```tsx
+// The row disappears
+{ id: 'drop-row', type: 'remove', targetId: 'listing', at: 0, duration: 0.4,
+  args: { target: lines(2) } },
+// The line closes over the gap
+{ id: 'close-gap', type: 'remove', targetId: 'listing', at: 0.4, duration: 0.4,
+  args: { target: word(1, 14, 3) } },
+```
+
+`replace` with an empty `replacement` erases the same way.
+
+### `insert`
+
+`args: { position, code }`. Insert code at a 1-indexed `[line, column]`. The
+column is the one the new text is inserted *before*, so `1` is the start of the
+line:
+
+```tsx
+{ id: 'add-param', type: 'insert', targetId: 'listing', at: 0, duration: 0.5,
+  args: { position: [1, 15], code: 'name: string' } },
+```
+
+### `append` / `prepend`
+
+`args: { code }`. Add code below or above the listing. Because the whole listing
+is re-highlighted, a line that closes a block re-colours the lines above it:
+
+```tsx
+{ id: 'call', type: 'append', targetId: 'listing', at: 0, duration: 0.6,
+  args: { code: '\ngreet("world");' } },
+{ id: 'import', type: 'prepend', targetId: 'listing', at: 0.6, duration: 0.6,
+  args: { code: 'import { greet } from "./greet";\n\n' } },
+```
+
+## Range helpers
+
+Import range helpers from `@motionscript/code`. Each returns a plain range
+object (`{ startLine, startCol, endLine, endCol }`), so it sits in a document
+like any other value. An open end is `Infinity`, which JSON stores as `null`
+and the node reads back the same way:
+
+```tsx
+import { lines, word } from '@motionscript/code/v1';
+
+// Select line 2 (1-indexed)
+lines(2)
+
+// Select lines 2 through 5
+lines(2, 5)
+
+// Select a word: line 3, starting at column 10, length 9
+word(3, 10, 9)
+```
+
+## Full example
+
+```tsx
+import { lines, word } from '@motionscript/code/v1';
+
+export default {
+  kind: 'composition',
+  duration: 5.5, // hold the last frame for a second
+  nodes: [
+    { id: 'listing', type: 'code', parentId: null, layerOrder: 0,
+      props: {
+        code: `function getUser(id: number) {
+  const user = db.find(id);
+  return user.name;
+}`,
+        fontSize: 32,
+        showLineNumbers: true,
+      } },
+  ],
+  commands: [
+    // Highlight line 2
+    { id: 'focus-line', type: 'highlight', targetId: 'listing', at: 0.5, duration: 0.5,
+      args: { target: lines(2) } },
+
+    // Highlight a specific word
+    { id: 'focus-word', type: 'highlight', targetId: 'listing', at: 1.6, duration: 0.4,
+      args: { target: word(3, 10, 9) } },
+
+    // Clear highlight
+    { id: 'unfocus', type: 'resetHighlight', targetId: 'listing', at: 2.6, duration: 0.4,
+      args: {} },
+
+    // Replace a token
+    { id: 'retype', type: 'replace', targetId: 'listing', at: 3.3, duration: 0.3,
+      easing: { kind: 'out', args: 'quad' },
+      args: { target: word(1, 22, 6), replacement: 'string' } },
+
+    // Remove a line
+    { id: 'drop-row', type: 'remove', targetId: 'listing', at: 4.1, duration: 0.4,
+      args: { target: lines(2) } },
+  ],
+};
+```

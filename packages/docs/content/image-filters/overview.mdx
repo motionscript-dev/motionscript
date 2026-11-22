@@ -1,0 +1,127 @@
+---
+sidebar_position: 1
+---
+
+# Image Filters Overview
+
+An image filter is a pixel operation applied to **one media layer's own pixels** —
+an `image` or `video` fill via its `preset.adjustments`, or a `Video` node via its
+`filters` prop. A [node effect](../effects/introduction) applies to a node *and
+everything drawn inside it*; a filter stops at the layer it is attached to.
+
+That difference is the whole point. To make a card's background image look like an oil
+painting, an effect would have to go on the card — and would paint the card's text and
+icons as brushwork too, so the background has to be split into its own node behind the
+content. As a filter it stays on the fill:
+
+```ts
+Rect({
+  width: 'fill',
+  height: 'fill',
+  cornerRadius: 32,
+  fill: Fills.image('./bg.jpg', { fit: 'fill', preset: { adjustments: Adjustments.oilPaint(4) } }),
+  children: [
+    Text({ text: 'still sharp', fontSize: 64 }),
+  ],
+})
+```
+
+A filter is also confined to the shape carrying it: it is clipped to the fill's own
+outline, corner radius and all.
+
+## Where filters apply
+
+```ts
+// On an image fill
+Rect({ fill: Fills.image('./photo.jpg', { preset: { adjustments: Adjustments.blur(5) } }), width: 600, height: 400 })
+
+// On a video fill — same filters, plus the video-only temporal ones
+Rect({ fill: Fills.video('./clip.mp4', { preset: { adjustments: VideoAdjustments.posterizeTime(6).halftone(8) } }) })
+
+// On a Video node, which paints its own frame rather than a fill
+Video({ src: './clip.mp4', filters: VideoAdjustments.grayscale(1) })
+```
+
+A saved document whose fill still carries the older `filters` key is migrated to
+`preset.adjustments` when it is opened.
+
+## Using the Adjustments builder
+
+`Adjustments` is an empty, immutable chain: each method returns a **new** chain with
+the filter appended, so chains are safe to share and branch.
+
+```ts
+import { Rect, Fills, Adjustments } from '@motionscript/sdk/v1';
+
+Rect({
+  width: 600,
+  height: 400,
+  fill: Fills.image('./photo.jpg', {
+    fit: 'fill',
+    preset: { adjustments: Adjustments.grayscale(1).blur(3).colorAdjustment({ brightness: 0.1 }) },
+  }),
+})
+```
+
+Filters interpolate, so a `to` on the fill tweens a chain like any other fill property:
+
+```tsx
+{ id: 'halftone', type: 'to', targetId: 'card', at: 0, duration: 2,
+  easing: { kind: 'inOut', args: 'quad' },
+  args: { fill: Fills.image('./bg.jpg', { preset: { adjustments: Adjustments.halftone(24) } }) } },
+```
+
+## Available filters
+
+Nearly every [node effect](../effects/introduction) is also a filter — same name, same
+options, same implementation — so `Adjustments.dither(…)` and `Effects.dither(…)` do
+the same thing to different things. See each effect's page for its options.
+
+| Group | Filters |
+|---|---|
+| Blur & light | `blur`, `directionalBlur`, `radialBlur`, `progressiveBlur`, `bloom`, `streak`, `sharpen` |
+| Colour | `grayscale`, `exposure`, `alpha`, `invert`, `vintage`, `duotone`, `posterize`, `threshold`, `bitCrush`, `curves`, `colorAdjustment`, `colorMatrix` |
+| Texture & pattern | `dither`, `halftone`, `grain`, `scanlines`, `pixelate`, `oilPaint`, `ascii`, `edges`, `vignette` |
+| Displacement & lens | `chromaticAberration`, `rgbShift`, `scatter`, `blockDisplace`, `bulge`, `twirl`, `wave`, `kaleidoscope`, `shader` (WGSL) |
+| Video only (`VideoAdjustments`) | `posterizeTime`, `echo` |
+
+Three effects are deliberately **not** filters, because a fill layer has nothing to give
+them: `magnify` samples the backdrop beneath the node, `motionBlur` is
+derived from the node's own velocity, and `outline` draws outside the silhouette a fill
+is clipped to. Use them as node effects.
+
+A filter takes the matching effect's options **minus `mode`** — a filter is on the fill's
+own pixels by definition, so there is no backdrop to point it at.
+
+## Chaining and order
+
+Filters apply in the order they are chained:
+
+```ts
+const look = Adjustments
+  .grayscale(0.6)
+  .colorAdjustment({ contrast: 1.2, highlights: -0.1 });
+
+Rect({ fill: Fills.image('./photo.jpg', { fit: 'fill', preset: { adjustments: look } }), width: 600, height: 400 })
+```
+
+One ordering caveat. Filters take one of two render paths: colour transforms compose
+into a single image filter, while the ones that *resample pixel positions* (`oilPaint`,
+`dither`, `halftone`, `twirl`, …) wrap the fill's shader. A resampler always runs before
+the composed colour pass, because a shader's output is what the image filter is applied
+to. So `oilPaint(4).grayscale(1)` is honoured exactly, while `grayscale(1).oilPaint(4)`
+*also* paints brushwork over grey — the difference being whether the brush windows saw
+colour. Put resamplers first when the distinction matters.
+
+## Raw objects
+
+A chain is sugar. Any filter can be written as a plain object, and arrays mix freely:
+
+```ts
+preset: {
+  adjustments: [
+    { type: 'grayscale', amount: 0.6 },
+    { type: 'oilPaint', radius: 4 },
+  ],
+}
+```

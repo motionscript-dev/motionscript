@@ -1,0 +1,37 @@
+---
+sidebar_position: 2
+---
+
+# Grayscale Filter
+
+Desaturates the image. `value` ranges from `0` (original colors) to `1` (fully grayscale).
+
+## Usage
+
+```ts
+import { Rect, Fills, Adjustments } from '@motionscript/sdk/v1';
+
+Rect({
+  width: 600,
+  height: 400,
+  fill: Fills.image('./photo.jpg', {
+    fit: 'fill',
+    preset: { adjustments: Adjustments.grayscale(1) },
+  }),
+})
+
+// Raw object
+preset: { adjustments: [{ type: 'grayscale', value: 0.7 }] }
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'grayscale'` | Filter identifier |
+| `value` | `number` | 0 = original, 1 = fully grayscale |
+
+## Notes
+
+- This filter operates on the image texture. For grayscale applied to an entire node (including children), use the [Grayscale Node Effect](../effects/implementations/grayscale) instead.
+- Animatable via `tween` with `lerpNumber`.

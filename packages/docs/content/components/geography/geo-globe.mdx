@@ -1,0 +1,101 @@
+---
+sidebar_position: 17
+---
+
+# GeoGlobe
+
+`GeoGlobe` paints the whole world on a sphere, the circle inscribed in the
+node's box, turned so a longitude and latitude face the viewer. There is no list
+of countries to give it: it reads every country file the data ships
+(`GEO_WORLD`). It turns with commands, so a globe that swings round to a place,
+or spins slowly behind a title, is one node and two rows. `GeoGlobe3d` is the
+same globe as a node of a 3D scene (see [In a 3D scene](#in-a-3d-scene)).
+
+It ships in `@motionscript/geography` beside [`GeoBorder`](./geo-border), and
+draws nothing until the data is registered the same way (see
+[Registering the data](./geo-border#registering-the-data)). Like `GeoBorder`, it
+draws once every file it needs has loaded.
+
+## Basic usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'earth', type: 'geoGlobe', parentId: null, layerOrder: 0,
+      props: { width: 640, height: 640, longitude: -20, latitude: 15,
+               fill: '#1f4e79', land: '#e9e4d4',
+               graticule: { weight: 1, fill: 'white/25' },
+               highlight: ['BR'], highlightFill: '#e4572e' } },
+  ],
+  commands: [
+    { id: 'turn', type: 'turnTo', targetId: 'earth', at: 0.5, duration: 2, args: { longitude: 105, latitude: 30 } },
+    { id: 'spin', type: 'spin', targetId: 'earth', at: 3, duration: 6, args: { degrees: 90 } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `fill` | `Fill` | `'#1f4e79'` | The ocean. |
+| `stroke` | `Stroke` | none | The sphere's rim. |
+| `land` | `Fill` | `'#e9e4d4'` | The countries. |
+| `coast` | `Stroke` | `{ weight: 1, fill: '#1b3a57' }` | Coastlines, and borders between countries when `borders` is `'all'`. |
+| `borders` | `'all' \| 'outline'` | `'outline'` | Stroke every border, or the coastlines alone. |
+| `graticule` | `Stroke` | none | Parallels and meridians, over the sea only. |
+| `graticuleStep` | `number` | `30` | Degrees between graticule lines. |
+| `longitude` | `number` | `0` | The longitude facing the viewer, in degrees. |
+| `latitude` | `number` | `20` | The latitude facing the viewer, from `-90` to `90`. |
+| `detail` | `number` | `0.45` | As on `GeoBorder`, relative to the whole world. |
+| `highlight` | `string \| string[]` | `[]` | ISO 3166 codes painted with `highlightFill`. |
+| `highlightFill` | `Fill` | `'#e4572e'` | The highlighted countries. |
+| `shading` | `'flat' \| 'lit'` | `'flat'` | `'flat'` shows every colour exactly as set; `'lit'` shades the ball under a light. |
+| `farSide` | `'hidden' \| 'shown'` | `'hidden'` | `'shown'` sees through a translucent ocean to the far side: a glass globe. |
+
+`start` and `end` trim the rim, the coastlines and the graticule, each along its
+own length, so `progressTo` draws the globe on; fade the land in with `landTo`.
+
+## The land is a picture on the sphere
+
+The ocean, the land and the highlighted countries are painted once into a
+picture wrapped round the sphere, so a pattern or a gradient turns with the
+countries instead of staying on the screen. Every country fills against the same
+360° square, so a `grid` fill lines up across borders and has square cells in
+degrees: `divisions: 180` is a cell every 2°. Cells narrow toward the poles, as
+the parallels do. A fill's pixels (a grid's `strokeWidth`) and a line's `weight`
+are screen pixels at the middle of the globe.
+
+## Commands
+
+Its own commands, beside `fillTo`, `strokeTo`, `shadowTo` and `progressTo`:
+
+| Command | Args | Animates |
+|---|---|---|
+| `turnTo` | `longitude`, `latitude` | Turns the shorter way until that point faces the viewer. An angle left out keeps its value |
+| `spin` | `degrees` (`360`) | `longitude` by `degrees`, the way the Earth turns when positive. Any number of turns |
+| `landTo` | `land` | `land` |
+| `coastTo` | `coast` | `coast` |
+| `graticuleTo` | `graticule` | `graticule` |
+| `highlightFillTo` | `highlightFill` | `highlightFill` |
+
+The picture and the lines are built once, so turning only turns the sphere. A
+tween of `fill`, `land` or `highlightFill` paints the picture again each frame.
+
+## In a 3D scene
+
+`geoGlobe3d` is the same globe as a child of a `canvas3d`: placed, rotated and
+scaled like any 3D node, lit with the rest of the scene, and seen through its
+camera. It takes every prop above except `stroke`, plus `radius` (scene units,
+default `1`). `turnTo` brings a place round to face +z before the node's own
+rotation, so `rotationZ: -23.4` tilts it like the Earth. A line's `weight` and a
+fill's pixels are thousandths of a scene unit, as for every 3D line.
+
+```tsx
+{ id: 'view', type: 'canvas3d', parentId: null, layerOrder: 0,
+  props: { width: 1920, height: 1080, orbit: 90, elevation: 0, zoom: 6 } },
+{ id: 'earth', type: 'geoGlobe3d', parentId: 'view', layerOrder: 0,
+  props: { rotationZ: -23.4, shading: 'lit', fill: '#1c4572', land: '#5c8c52',
+           coast: { weight: 4, fill: '#e8f0e0' } } },
+```

@@ -1,0 +1,139 @@
+---
+sidebar_position: 1
+---
+
+import { TextCanvas } from '@site/src/components/docs/node-scenes';
+
+# Text
+
+Renders a string with a single consistent style. Like all shape nodes it supports fills, strokes, and shadows.
+
+<TextCanvas />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'title', type: 'text', parentId: null, layerOrder: 0,
+      props: {
+        text: 'Motion Script',
+        fontSize: 96,
+        fontFamily: 'Inter',
+        fontWeight: 800,
+        fill: 'white',
+      } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `text` | `string` | `''` | The text content to display |
+| `fontSize` | `number \| 'autofit'` | `48` | Font size in pixels, or `'autofit'` to shrink-fit into the node's bounds |
+| `fontFamily` | `string` | none: [inherited](#font-family) | Font family name. There is no built-in default, and a `Text` that resolves no family fails to build |
+| `fontWeight` | `number` | `400` | Font weight (100–900) |
+| `fontStyle` | `'normal' \| 'italic'` | `'normal'` | Font style |
+| `letterSpacing` | `number` | `0` | Extra spacing between characters in pixels |
+| `lineHeight` | `number` | `1.2` | Line height multiplier |
+| `textAlign` | `'left' \| 'right' \| 'center' \| 'justify' \| 'start' \| 'end'` | `'center'` | Text alignment |
+| `verticalAlign` | `'top' \| 'center' \| 'bottom'` | `'center'` | Where the lines sit in a box taller than them — only a fixed or filled `height` leaves room |
+| `textDecoration` | `'none' \| 'underline' \| 'line-through'` | `'none'` | A line under or through the glyphs, painted with their fill and stroke |
+| `textCase` | `'none' \| 'upper' \| 'lower' \| 'title'` | `'none'` | Draws the text recased, leaving `text` as typed. `'title'` capitalises each word's first letter |
+| `wrap` | `boolean` | `false` | Enable word wrapping |
+| `minFontSize` | `number` | `12` | Minimum font size when using `'autofit'` |
+
+### Font family
+
+The engine ships no typeface, so `fontFamily` has no default value. A `Text` takes its family from the first of these that sets one:
+
+1. The node's own `fontFamily`.
+2. Its `variant`: the named preset in the theme's `typography`.
+3. The nearest enclosing `default-text-style` node (`DefaultTextStyle` in code).
+4. The theme's `typography.default` preset.
+5. A fallback family the host application declares for its own components, if it declares one.
+
+The other typography props (`fontSize`, `fontWeight`, `lineHeight`, …) resolve through steps 1 to 4 too, and only then fall back to the defaults in the table above. If no step supplies a family, the frame fails to build with `Text … has no fontFamily`, naming the text, rather than drawing in a face nobody chose.
+
+```tsx
+export default {
+  kind: 'still',
+  // Step 4: every text in the clip, unless something nearer says otherwise.
+  theme: { typography: { default: { fontFamily: 'Inter', fontWeight: 600 } } },
+  nodes: [
+    { id: 'title', type: 'text', parentId: null, layerOrder: 0,
+      props: { text: 'Motion Script', fontSize: 96, fill: 'white' } },
+
+    // Step 3: a subtree set in another face.
+    { id: 'quote', type: 'default-text-style', parentId: null, layerOrder: 1,
+      props: { fontFamily: 'Georgia', fontSize: 40 } },
+    { id: 'line', type: 'text', parentId: 'quote', layerOrder: 0,
+      props: { text: 'Set in Georgia', fill: 'white' } },
+
+    // Step 1: the node's own prop wins over both.
+    { id: 'code', type: 'text', parentId: 'quote', layerOrder: 1,
+      props: { text: 'Set in Andale Mono', fontFamily: 'Andale Mono', fill: 'white' } },
+  ],
+};
+```
+
+Naming a family is not enough to draw it: the family must be listed in the font record of the host's asset manifest, which is what loads the file. A family the manifest does not list is never fetched; the loader warns once (`No font manifest entry for "Inter"`) and the text is shaped against a fallback face instead of the one you named.
+
+### Size defaults
+
+| Condition | `width` default | `height` default |
+|---|---|---|
+| Normal | `'hug'` | `'hug'` |
+| `fontSize: 'autofit'` or `wrap: true` | `'fill'` | `'fill'` |
+
+## Animating
+
+All text props animate with a `to` command. The `append` and `prepend` commands animate characters being typed in:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'label', type: 'text', parentId: null, layerOrder: 0,
+      props: { text: '', fontSize: 96, fontFamily: 'Inter', fontWeight: 800, fill: 'white' } },
+  ],
+  commands: [
+    // Type "Motion Script" in, character by character
+    { id: 'type-in', type: 'append', targetId: 'label', at: 0, duration: 1.8,
+      easing: { kind: 'out' }, args: { text: 'Motion Script' } },
+
+    // Animate font size
+    { id: 'grow', type: 'to', targetId: 'label', at: 1.8, duration: 0.5,
+      easing: { kind: 'out' }, args: { fontSize: 120 } },
+  ],
+};
+```
+
+### Commands
+
+| Command | `args` | Description |
+|---|---|---|
+| `append` | `{ text }` | Animate adding text to the end |
+| `prepend` | `{ text }` | Animate adding text to the start |
+
+### Draw-on animation
+
+Animate `end` from `0` to `1` to trace the text outline character by character:
+
+```tsx
+nodes: [
+  { id: 'label', type: 'text', parentId: null, layerOrder: 0,
+    props: { text: 'Motion', fontSize: 80, fontWeight: 900, fill: 'white', end: 0 } },
+],
+commands: [
+  { id: 'draw-on', type: 'to', targetId: 'label', at: 0, duration: 1.2, args: { end: 1 } },
+],
+```
+
+## Notes
+
+- `fontFamily` must be available to the renderer: list the font in the host's asset manifest (see [Font family](#font-family)).
+- With `fontSize: 'autofit'`, the node defaults to `width: 'fill'` and `height: 'fill'` so it has bounds to shrink into. Set explicit pixel dimensions to constrain the fit area.

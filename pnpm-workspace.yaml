@@ -12,6 +12,7 @@ packages:
   - "packages/components/code"
   - "packages/components/math"
   - "packages/sdk"
+  - "packages/docs"
   - "packages/renderer"
 
 allowBuilds:

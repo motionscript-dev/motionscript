@@ -1,0 +1,164 @@
+---
+sidebar_position: 3
+---
+
+# Commands
+
+State says what a node **is**. A command says what it **does**. A custom node publishes its own commands the same way a built-in publishes `moveTo` or `fadeTo`, and a document places them on the timeline by name:
+
+```ts
+{ id: 'fill-up', type: 'fillUp', targetId: 'gauge', at: 0, duration: 1.2,
+  easing: { kind: 'inOut', args: 'quad' }, args: { value: 0.8 } },
+```
+
+There are no keyframes here. A command is an action placed at a time, carrying its own destination and parameters, and the node is whatever its state says until one runs.
+
+## Declaring one
+
+`commands` is a record of named commands. Each takes one of three shapes:
+
+```ts
+import { component2d, Graphics2D, Paint, Types } from '@motionscript/sdk/v1';
+
+export const Gauge = component2d({
+  key: 'gauge',
+  state: {
+    ...Paint.state,
+    value: Types.number(0, { min: 0, max: 1, step: 0.01, scale: 100, unit: '%' }),
+  },
+  commands: {
+    ...Paint.commands,
+
+    // 1. Tween entries to what the document asks for: no code.
+    /** Sweeps the gauge to a value. */
+    fillUp: { args: ['value'] },
+
+    // 2. A fixed action, with no arguments.
+    /** Empties the gauge. */
+    drain: (timeline) => timeline.tween({ value: 0 }),
+
+    // 3. Arguments of its own, and code that uses them.
+    /** Swings past the value and settles on it. */
+    overshoot: {
+      args: { by: Types.number(0.1, { min: 0, max: 0.5, step: 0.01 }) },
+      run: (timeline, state) => timeline.animate((t) => ({
+        value: state.value + timeline.args.by * Math.sin(Math.PI * t),
+      })),
+    },
+  },
+  render: (ctx, state) => Paint.draw(ctx, state, new Graphics2D().ellipse({
+    width: ctx.size.width, height: ctx.size.height, ratio: 0.75, startAngle: -90, sweep: 360 * state.value,
+  })),
+});
+```
+
+* **A list of entries** (`{ args: ['value'] }`) tweens the entries the document gives, and only those: one the document leaves out stays where it is. An argument means what its entry means, so put the hints (`min`, `step`, `unit`) on the entry. A list command with one argument also takes its value bare, which is how the global `fillTo` row reaches a component's own `fillTo`.
+* **A function** `(timeline, state, children) => piece` is an action with nothing to configure.
+* **A record with `run`** declares its own arguments as `Types` entries. One the document leaves out takes its default, so `timeline.args.by` is always a number.
+
+Each returns a **piece**, built with the `timeline` it is handed:
+
+| Builder | Piece |
+|---|---|
+| `timeline.tween(writes)` | Tweens entries from where they are to `writes` |
+| `timeline.animate(frame)` | Writes `frame(t)` at each point of the command, `t` eased from 0 to 1 |
+| `timeline.wait(seconds)` | Nothing, for a while |
+| `timeline.sound(src, options?)` | Plays a sound from here (see [Declaring assets](./declaring-assets#sound)) |
+| `timeline.together(pieces)` | Several pieces over the same span |
+| `timeline.sequence(pieces)` | One after another; pieces with no length of their own share what the `wait`s leave |
+| `timeline.stagger(pieces, { overlap })` | One after another, overlapping by `overlap` (0 to 1), spanning the command exactly |
+
+The timeline also carries `args`, `duration`, `easing` (the document's, or the command's own default), `ease(t)` and `node` (this node's `id` and `size`, read-only).
+
+Three rules make it a frame you can ask for at any time, in any order:
+
+* **`state` is where the command starts.** A command's `state` is a snapshot taken when it is built, so a frame function reading `state.value` reads the start, never its own writes.
+* **Assign from `t`, never accumulate.** `x += step` looks right played forwards and drifts the moment anything scrubs.
+* **Pieces run in order.** Each is built and run to its end before the next is built, so a piece reads where the one before it finished. That holds in `together` too: two pieces of one command that write the same entry are built in order, and the second starts from the first one's end.
+
+## Reaching children
+
+The third parameter is the node's own children, each a view: `child.to(writes)` and `child.run(name, args)` are pieces, and `child.children` reaches the parts nested inside it.
+
+```ts
+/** Fades the entries in one after another, across the whole slot. */
+enter: (timeline, state, children) =>
+  timeline.stagger(children.map((entry) => entry.to({ opacity: 1 })), { overlap: 0.5 }),
+```
+
+`X.is(child)` narrows a view to one component's, so `child.state` and `child.run` are typed by it. A child's `state` is read-only: a parent changes a child only through a piece.
+
+## What goes where
+
+| It is | Declare it as | Example |
+|---|---|---|
+| What the node looks like at rest | an entry | text, colours, sizes, counts |
+| A state a scene can start in, and a command moves | an entry, with a command of its own | an angle and `spinTo`, how much is drawn and `drawIn` |
+| Something that only describes a motion | an argument of the command that performs it | how far letters travel, a spring's frequency, where a dot flies in from |
+
+The last row is the one that is easy to get wrong. A node with a dozen entries that only matter while it is arriving has put a command's parameters in its state. Move them to the command, and keep them where the drawing can read them in a private entry:
+
+```ts
+state: {
+  risen: Types.number(0, { min: 0, max: 1 }),
+  travel: Types.number(1, { private: true }),
+},
+commands: {
+  /** Stands the letters in the box, each waiting `travel` heights below its place. */
+  riseIn: {
+    args: { travel: Types.number(1, { step: 0.01, unit: '×' }) },
+    run: (timeline, state) => timeline.animate((t) => ({
+      travel: timeline.args.travel,
+      risen: state.risen + (1 - state.risen) * t,
+    })),
+  },
+},
+```
+
+A private entry is restored on a seek like any entry, so the frame is still a function of its time. A host does not list it beside the node's own, and a document cannot set it.
+
+## Describing the arguments
+
+An argument takes the same vocabulary an entry does, so a host can draw the right control for it: `Types.number(d, { min, max, step, unit, scale })` (`unit` is `°`, `%`, `×`, `s`; `scale: 100` shows a 0 to 1 value as a percentage), `Types.text`, `Types.color`, `Types.oneOf(options)`, `Types.nodeRef()` and the rest. A list command's arguments are its entries, described where the entries are.
+
+## Naming
+
+* Commands have their own namespace, so a command may be called `remove` or `clear` without breaking the node.
+* Don't name one `to`, `set` or `save`: a document's row of that type runs the global command, never yours.
+* Name the state for what the node is (`risen`, `built`, `spin`) and the command for what it does (`riseIn`, `build`, `spinTo`).
+
+## Lists are arrays
+
+An entry that holds several things is an array (`Types.list(Types.number())`), not numbers typed into a string, and a sequence of values over time is a command for each move, not a track of keys inside an entry. The timeline is where time lives.
+
+## A node with a clock
+
+A spring, a burst or a blinking lamp runs on a clock of its own. Let a command run it, for as long as the command lasts, and say how fast:
+
+```ts
+springOpen: {
+  args: { speed: Types.number(1, { min: 0.05, step: 0.01, unit: '×' }) },
+  run: (timeline) => timeline.animate((t) => ({ sprung: timeline.args.speed * timeline.duration * t })),
+},
+```
+
+Commands are built in timeline order, each run to its end before the next is built, so a command that overlaps an earlier one reads that one's end state. Give a clock to one command; two that overlap cannot both advance it.
+
+## Easing per part
+
+`animate` hands its frame eased time. To ease each item on its own share of the span, ask for linear time and ease each share with `timeline.ease`:
+
+```ts
+state: { count: 5, levels: Types.list(Types.number(), { private: true }) },
+commands: {
+  /** Raises the bars in turn, each eased over its own share of the span. */
+  raise: (timeline, state) => timeline.animate((t) => ({
+    levels: Array.from({ length: state.count }, (_, i) =>
+      timeline.ease(Math.min(1, Math.max(0, t * state.count - i)))),
+  }), { eased: false }),
+},
+```
+
+A command written as an object, either form with `args`, takes `easing`: what it eases by when its row gives none, `{ args: ['value'], easing: easeOut() }`.
+
+It can also take `entrance: true`, for a command that brings the node in (a chart drawing on, a title writing itself). The node then holds that command's first frame from the moment it appears, instead of showing at rest until the command starts and then jumping back. Its first frame should arm everything the command animates, as `at(0)` would leave it.

@@ -1,0 +1,130 @@
+---
+sidebar_position: 2
+---
+
+import { AnimatingCanvas } from '@site/src/components/docs/getting-started-scenes';
+
+# Animating Your Node
+
+Right now our square just sits there. Let's make it move.
+
+## Target the node by id
+
+A command acts on a node by naming it. We gave the square `id: 'box'` when we added it, so any command with `targetId: 'box'` acts on it. There are no handles or references to keep around: the id is the handle, and it stays the same however you rearrange the document.
+
+## Animate with `to`
+
+The `to` command moves props from wherever they are to new values over a `duration`. Its `args` are the props to change:
+
+```ts
+{ id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1, args: { x: 400 } }
+```
+
+This slides the square 400 pixels to the right over 1 second, starting at 0 seconds. Every command has the same shape:
+
+- `id`: the command's own name, so a tool can find, move or delete it
+- `type`: what it does (`to` animates props)
+- `targetId`: which node it acts on (`null` means the scene itself)
+- `at`: when it happens, in seconds from the start
+- `args`: the details. For `to`, that's the props to change.
+
+You can animate more than one prop at once, including the fill color:
+
+```ts
+{ id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1,
+  args: { x: 400, rotation: 180, fill: '#e84393' } }
+```
+
+Here's our scene so far, with the square sliding and spinning into place:
+
+```ts title="src/scenes/my-scene.ts"
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 200, height: 200, fill: 'royalblue', cornerRadius: 16 } },
+  ],
+  commands: [
+    { id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1,
+      args: { x: 400, rotation: 180 } },
+  ],
+};
+```
+
+<AnimatingCanvas />
+
+Nodes have a few more commands besides `to`, such as `moveTo`, `fadeTo`, `rotateTo` and `scaleTo`, plus any a particular node type adds. Each [component reference page](/docs/components/basic/text) lists its own.
+
+## Make it feel natural with easing
+
+A plain animation moves at a constant speed, which can look robotic. An **easing** changes the pacing, like starting slow and speeding up. Give the command an `easing`:
+
+```ts
+{ id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1,
+  easing: { kind: 'out', args: 'back' }, args: { x: 400 } }
+```
+
+`{ kind: 'out', args: 'back' }` overshoots slightly and settles back, giving the motion a bit of life. `kind` is the direction (`'in'`, `'out'`, `'inOut'` or `'linear'`), and `args` names the curve, such as `'quad'`, `'cubic'`, `'back'`, `'elastic'` or `'bounce'`. Leave `args` off and you get `'quad'`. Try swapping them to see how the feel changes.
+
+## Pause between moves
+
+Every command says when it starts, so there's nothing to wait on. To hold for a moment, leave a gap:
+
+```ts
+{ id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1,
+  easing: { kind: 'out', args: 'back' }, args: { x: 400 } },
+
+// Nothing runs from 1s to 1.5s, so the square holds for half a second.
+
+{ id: 'back', type: 'to', targetId: 'box', at: 1.5, duration: 1,
+  easing: { kind: 'out', args: 'back' }, args: { x: 0 } },
+```
+
+To play moves **in sequence**, start each one where the last one ends: its `at` plus its `duration`.
+
+## Play moves at the same time
+
+To run moves together, give them the same `at`:
+
+```ts
+{ id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1, args: { x: 400 } },
+{ id: 'spin', type: 'to', targetId: 'box', at: 0, duration: 1, args: { rotation: 180 } },
+```
+
+Both run side by side. They don't have to share a duration, either; each one ends when its own does.
+
+## Repeat a move
+
+To play a move more than once, give the command a `loop`:
+
+```ts
+{ id: 'spin', type: 'to', targetId: 'box', at: 0, duration: 1,
+  loop: { count: 3 }, args: { rotation: 360 } }
+```
+
+`count` is how many times to **repeat**, so `3` plays four turns in all and `0`
+is the same as no loop. `duration` stays the length of one turn, so this runs for
+four seconds — looping repeats the move rather than squeezing it.
+
+`direction` says which way each pass goes. Leave it off for `'normal'`, or set
+`'alternate'` to go out and come back:
+
+```ts
+{ id: 'bounce', type: 'to', targetId: 'box', at: 0, duration: 0.5,
+  loop: { direction: 'alternate', count: 1 }, args: { y: -100 } }
+```
+
+That hops up over half a second and falls back over the next — one command, not
+two. `'reverse'` runs every pass end-to-start instead.
+
+For something that should just keep going — a spinner, a drifting background —
+set `count: null` and it repeats for the rest of the scene. It won't make the
+scene any longer: the rest of your commands decide that, and the loop fills it.
+
+## Why placement instead of order
+
+Because every command carries its own time, the document says what the scene looks like at any moment without playing it. Jumping to 4.2 seconds costs the same as jumping to 0.1, whether you scrub forwards or back. The scene's length is known up front, since it ends when its last command or node span does. And re-timing a move means editing one number rather than reordering everything after it.
+
+You now know enough to choreograph movement: animate with `to`, shape the feel with `easing`, and arrange timing with `at`. That's plenty to keep building.
+
+Next, let's give our animation something to say by adding text.

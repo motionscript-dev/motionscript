@@ -1,0 +1,99 @@
+---
+sidebar_position: 12
+---
+
+# NumberPlane
+
+Axes over a full grid, with square units: the plane vectors and linear
+transformations are drawn on. Send it through a matrix or bend it by a function,
+and the grid, the axes and everything on it go too. It ships in
+`@motionscript/math`; register the package's `NODES` ([overview](/docs/components/math/overview)).
+
+<ComponentClip file="plane" />
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'plane', type: 'numberPlane', parentId: null, layerOrder: 0,
+      props: { width: 860, height: 480, xRange: [-6, 6], fontFamily: 'Inter' } },
+    // The basis vectors, in graph units; they move with the plane.
+    { id: 'i', type: 'vectorArrow', parentId: 'plane', layerOrder: 0,
+      props: { head: { x: 1, y: 0 }, stroke: { fill: '#4ade80', weight: 4, endCap: 'triangle' } } },
+    { id: 'j', type: 'vectorArrow', parentId: 'plane', layerOrder: 1,
+      props: { head: { x: 0, y: 1 }, stroke: { fill: '#f87171', weight: 4, endCap: 'triangle' } } },
+  ],
+  commands: [
+    // A shear: (x, y) goes to (x + y, y).
+    { id: 'shear', type: 'transformTo', targetId: 'plane', at: 0, duration: 1,
+      args: { matrix: [[1, 1], [0, 1]] } },
+    { id: 'undo', type: 'transformTo', targetId: 'plane', at: 1.5, duration: 1,
+      args: { matrix: [[1, 0], [0, 1]] } },
+    { id: 'bend', type: 'warpTo', targetId: 'plane', at: 3, duration: 1.2,
+      args: { warp: '(x + sin(y), y + sin(x))' } },
+    { id: 'flat', type: 'warpTo', targetId: 'plane', at: 4.5, duration: 1, args: { warp: '' } },
+  ],
+};
+```
+
+## Props
+
+A number plane is an [`axes2d`](/docs/components/math/axes2d) and takes all of
+its props (`xRange`, `yRange`, steps, scaling, ticks, labels, titles). These are
+its own, or the ones it changes:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `grid` | `boolean` | `true` | Draw the grid |
+| `gridStroke` | `Stroke` | `{ weight: 1.5, fill: '#3b4658' }` | The line at every tick |
+| `minorStroke` | `Stroke` | `{ weight: 1, fill: '#232b38' }` | The lines between ticks, and the ghost |
+| `minorDivisions` | `number` | `2` | How many parts the space between two ticks is cut into, `1` to `10`. `1` draws no line between them |
+| `matrix` | `[[a, b], [c, d]]` | `[1, 0, 0, 1]` | A linear map of the plane, row by row: sends `(x, y)` to `(ax + by, cx + dy)`. Written nested or flat |
+| `warp` | `string` | `''` | Where each point of the plane is sent, two parts in x and y: `'(x + sin(y), y + sin(x))'`. Empty leaves the plane flat |
+| `ghost` | `boolean` | `true` | Leave the plane as it was, faintly, behind one that has been transformed or warped |
+| `squareUnits` | `boolean` | `true` | As on `axes2d`, but on: `yRange` keeps its centre and takes the span that makes a y unit as long as an x unit |
+| `stroke` | `Stroke` | `{ weight: 2, fill: '#9ca3af' }` | The axis lines and their ticks. Unlike `axes2d`, no tip by default |
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `transformTo` | `{ matrix }` | The plane through a matrix: a shear, a turn, a squeeze, a flip. Each entry tweens on its own |
+| `warpTo` | `{ warp }` | Bending the plane, each point travelling to where the warp sends it. `''` flattens it again |
+| `rangeTo` | `{ xRange?, yRange? }` | The window of values shown, as on `axes2d` |
+| `progressTo` | `{ start?, end? }` | Drawing the axes and grid lines on |
+
+```tsx
+// A quarter turn
+{ id: 'turn', type: 'transformTo', targetId: 'plane', at: 0, duration: 1, args: { matrix: [[0, -1], [1, 0]] } },
+```
+
+## Notes
+
+- Children sit in graph coordinates, `x` and `y` in graph units, y up, at their
+  own size. They are placed through the matrix and the warp: a node at `(1, 1)`
+  on a sheared plane is drawn where the shear sends `(1, 1)`. Plots, arrows and
+  other marks are drawn through the plane, so they shear and bend with it; any
+  other node keeps its own shape and is only moved.
+- Plots and marks go inside a number plane as they go inside an `axes2d`.
+- `matrix` is a prop like any other: set it to start the plane transformed, or
+  bind it. `transformTo` back to `[[1, 0], [0, 1]]` undoes a transform.
+- A `warp` names `x` and `y`. A point the warp has no value at stays where it is.
+  Mid-`warpTo`, each point is part of the way from where the old warp had it to
+  where the new one sends it.
+- The ghost is the flat plane's tick lines in `minorStroke`; it is drawn only
+  while the plane is transformed or warped, and not at all when `minorStroke` is
+  empty.
+- The grid reaches four times the plane's own ranges, so a matrix whose
+  determinant goes to zero folds it into a band along the line the plane is
+  squeezed onto.
+- A transformed plane reaches past its box, and so do its children. While it
+  does, the plane clips itself and what is on it to its plot area, unless `clip`
+  is set.
+- Manim's `NumberPlane` and `ComplexPlane`. `ApplyMatrix` and
+  `LinearTransformationScene` are `transformTo`; `ApplyPointwiseFunction` is
+  `warpTo`.
+- Related: [Axes2d](/docs/components/math/axes2d), [VectorArrow](/docs/components/math/vector-arrow),
+  [PolarPlane](/docs/components/math/polar-plane), [VectorField](/docs/components/math/vector-field).

@@ -1,0 +1,36 @@
+---
+sidebar_position: 4
+---
+
+# Alpha Filter
+
+Adjusts the transparency of the image texture. `value` `1` is unchanged; `0` is fully transparent.
+
+## Usage
+
+```ts
+import { Rect, Fills, Adjustments } from '@motionscript/sdk/v1';
+
+Rect({
+  width: 600,
+  height: 400,
+  fill: Fills.image('./photo.jpg', {
+    fit: 'fill',
+    preset: { adjustments: Adjustments.alpha(0.6) },
+  }),
+})
+
+// Raw object
+preset: { adjustments: [{ type: 'alpha', value: 0.6 }] }
+```
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `type` | `'alpha'` | Filter identifier |
+| `value` | `number` | 0 = transparent, 1 = unchanged |
+
+## Notes
+
+This is distinct from the `opacity` node prop, which affects the entire composited node. The alpha filter operates on the image texture itself before fills and strokes are applied.

@@ -1,0 +1,71 @@
+---
+sidebar_position: 64
+---
+
+# VectorArrow3d
+
+An arrow between two points of a 3D graph, a shaft with a cone for a tip. Reach
+for it to draw a vector, a basis or a force in space. It ships in
+`@motionscript/math`; register the package's `NODES`
+([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'axes', type: 'axes3d', parentId: null, layerOrder: 0,
+      props: { width: 960, height: 540, fontFamily: 'Inter' } },
+    // A vector from the origin.
+    { id: 'v', type: 'vectorArrow3d', parentId: 'axes', layerOrder: 0,
+      props: { head: { x: 2, y: 1, z: 1.5 }, fill: '#f97316' } },
+    // One between two points.
+    { id: 'w', type: 'vectorArrow3d', parentId: 'axes', layerOrder: 1,
+      props: { tail: { x: 0, y: -2, z: 0 }, head: { x: 0, y: -2, z: 1.5 }, thickness: 0.05,
+        fill: '#38bdf8' } },
+  ],
+  commands: [
+    { id: 'swing', type: 'endpointsTo', targetId: 'v', at: 0, duration: 1.5,
+      args: { head: { x: -1, y: 2, z: 1 } } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `tail` | `{ x, y, z }` | `{ x: 0, y: 0, z: 0 }` | Where the arrow starts, in graph units |
+| `head` | `{ x, y, z }` | `{ x: 1, y: 1, z: 1 }` | Where it points to, in graph units |
+| `thickness` | `number` | `0.035` | The radius of the shaft, in scene units; the tip is sized from it |
+| `tip` | `boolean` | `true` | A cone at the head. Off draws a plain shaft |
+
+It is a mesh: `fill` paints the shaft and the tip, and it takes the other mesh
+material props (see [Materials](/docs/custom-node/graphics-3d/materials)).
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `endpointsTo` | `{ tail?, head? }` | Either end, or both |
+
+```tsx
+{ id: 'grow', type: 'endpointsTo', targetId: 'w', at: 1.5, duration: 1,
+  args: { head: { x: 0, y: -2, z: -1.5 } } },
+```
+
+Like any 3D node it also has `moveTo`, `rotateTo` and `scaleTo`.
+
+## Notes
+
+- It goes inside an [`axes3d`](/docs/components/math/axes3d) and holds nothing.
+- `tail` and `head` are graph units, measured from the arrow's own position
+  (its `x`, `y`, `z`, the graph origin by default), so `rangeTo` on the axes
+  stretches the arrow with them. `thickness` is scene units and keeps its width.
+- The tip is eight times the shaft's radius long, and never longer than the
+  arrow. An arrow whose `tail` and `head` meet draws nothing.
+- **Give it a `fill`.** An unset `fill` in a document is a mesh's white.
+- Manim's `Arrow3D`.
+- Related: [`vectorArrow`](/docs/components/math/vector-arrow), the 2D arrow;
+  [`plotPoint3d`](/docs/components/math/plot-point3d).

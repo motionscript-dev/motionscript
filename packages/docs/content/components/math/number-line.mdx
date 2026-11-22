@@ -1,0 +1,77 @@
+---
+sidebar_position: 10
+---
+
+# NumberLine
+
+One axis with ticks and numbers. Reach for it to show a value moving along a
+line, an interval, or a count. It ships in `@motionscript/math`; register the
+package's `NODES` ([overview](/docs/components/math/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'line', type: 'numberLine', parentId: null, layerOrder: 0,
+      props: { width: 800, height: 120, range: [0, 10], step: 1, longTicks: [0, 5, 10], fontFamily: 'Inter', end: 0 } },
+    // x is a value on the line; y is pixels above it.
+    { id: 'dot', type: 'plotPoint', parentId: 'line', layerOrder: 0,
+      props: { x: 2, y: 0, label: 'a', fontFamily: 'Inter' } },
+  ],
+  commands: [
+    { id: 'draw', type: 'progressTo', targetId: 'line', at: 0, duration: 1, args: { end: 1 } },
+    { id: 'slide', type: 'moveTo', targetId: 'dot', at: 1, duration: 1, args: { x: 7, y: 0 } },
+    { id: 'zoom', type: 'rangeTo', targetId: 'line', at: 2, duration: 1, args: { range: [4, 8] } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `range` | `[number, number]` | `[-5, 5]` | The values the line shows, as `[min, max]` |
+| `step` | `number` | `0` | The spacing of the ticks. `0` picks a tidy one for the line's length |
+| `scaling` | `'linear' \| 'log'` | `'linear'` | `'log'` spreads the line by the decade and marks the powers of ten |
+| `ticks` | `boolean` | `true` | Draw a tick at each step |
+| `tickSize` | `number` | `12` | The length of a tick, in pixels |
+| `longTicks` | `number[]` | `[]` | Values whose ticks are drawn twice as long |
+| `labels` | `boolean` | `true` | Write the number at each tick |
+| `labelExclude` | `number[]` | `[]` | Values left without a number |
+| `labelSide` | `'below' \| 'above'` | `'below'` | Which side of the line the numbers go |
+| `labelSize` | `number` | `18` | The numbers' font size, in pixels |
+| `labelColor` | `Color` | `'#9ca3af'` | The numbers' colour |
+| `fontFamily` | `string` | `''` | The numbers' font |
+| `stroke` | `Stroke` | `{ weight: 2, fill: '#9ca3af' }` | The line and its ticks. An `endCap` tips the line; the ticks never take one |
+
+`fill` paints a backdrop behind the box (none by default). `start` and `end`
+trim the line, as on any [stroke](/docs/attributes/strokes).
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `rangeTo` | `{ range }` | The span of values shown: a pan when both ends move alike, a zoom when they do not |
+| `progressTo` | `{ start?, end? }` | Drawing the line on. A tick and its number appear as the line reaches them |
+
+```tsx
+{ id: 'pan', type: 'rangeTo', targetId: 'line', at: 0, duration: 1, args: { range: [5, 15] } },
+```
+
+## Notes
+
+- A child's `x` is a value on the line and its `y` is pixels above it (negative
+  below), so a dot or a label sits on a number. Children keep their own size, and
+  `rangeTo` carries them with the values they sit on.
+- Plots and marks that go in a coordinate system (`functionPlot`, `pointsPlot`,
+  `plotPoint`, `vectorArrow`, `dropLines`, `curveArea`, `riemannSum`, ...) accept
+  a number line as their parent. Any other node can go inside it too.
+- Unlike [axes](/docs/components/math/axes2d), a number line marks every step,
+  zero included; use `labelExclude` to leave a number out.
+- The line runs across the plot area, the box less its `padding`
+  ([layout](/docs/attributes/layout)), through its vertical middle.
+- Manim's `NumberLine` and `UnitInterval` (a `range` of `[0, 1]`).
+- Related: [Axes2d](/docs/components/math/axes2d), [PlotPoint](/docs/components/math/plot-point),
+  [DropLines](/docs/components/math/drop-lines).

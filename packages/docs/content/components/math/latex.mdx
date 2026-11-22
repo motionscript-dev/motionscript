@@ -1,0 +1,195 @@
+---
+sidebar_position: 3
+---
+
+import { LatexCanvas } from '@site/src/components/docs/node-scenes';
+
+# LaTeX
+
+The `Latex` node renders mathematical equations using MathJax.
+
+<LatexCanvas />
+
+It ships in `@motionscript/math`; register the package's `NODES`
+([overview](/docs/components/math/overview)) so documents can name it as `latex`.
+
+## Basic equation
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'eq', type: 'latex', parentId: null, layerOrder: 0,
+      props: { latex: 'E = mc^2', fontSize: 96, fill: 'white', opacity: 0 } },
+  ],
+  commands: [
+    { id: 'fade-in', type: 'to', targetId: 'eq', at: 0, duration: 0.6, args: { opacity: 1 } },
+  ],
+};
+```
+
+## LaTeX syntax
+
+Pass any valid LaTeX math expression. Wrap display-mode equations in `$$...$$` delimiters:
+
+```ts
+// Inline
+Latex({ latex: String.raw`x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}` })
+
+// Display math (centered, larger)
+Latex({ latex: String.raw`$$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$` })
+
+// Matrix
+Latex({ latex: String.raw`\begin{pmatrix} a & b \\ c & d \end{pmatrix}` })
+
+// Summation
+Latex({ latex: String.raw`\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}` })
+```
+
+Those are `String.raw` templates, where a backslash is literal. Inside a quoted
+string, in code or in a document, double each one: `'\\frac{1}{2}'`.
+
+## Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `latex` | `string` | LaTeX math expression |
+| `fontSize` | `number` | Font size (node bounds adjust automatically) |
+| `fill` | `FillProp \| FillProp[]` | Fill color(s) |
+
+The node auto-sizes to fit the rendered equation.
+
+## Animating
+
+Animate standard node properties like `opacity`, `x`, `y`, `scale`:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'formula', type: 'latex', parentId: null, layerOrder: 0,
+      props: {
+        latex: '\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}',
+        fontSize: 60,
+        fill: 'white',
+        opacity: 0,
+        x: -100,
+      } },
+  ],
+  commands: [
+    { id: 'enter', type: 'to', targetId: 'formula', at: 0, duration: 0.6,
+      args: { opacity: 1, x: 0 } },
+
+    // Animate to a different equation
+    { id: 'morph', type: 'to', targetId: 'formula', at: 0.6, duration: 0.5,
+      args: { latex: 'F = ma', fontSize: 80 } },
+  ],
+};
+```
+
+## Morphing between equations
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'eq', type: 'latex', parentId: null, layerOrder: 0,
+      props: { latex: 'a^2 + b^2', fontSize: 64, fill: '#4f80ff' } },
+  ],
+  commands: [
+    { id: 'morph', type: 'to', targetId: 'eq', at: 0, duration: 0.5,
+      args: { latex: 'c^2', fontSize: 64 } },
+  ],
+};
+```
+
+`morphTo` (`args: { latex }`) is the same morph under its own name, for when the formula is the only thing changing.
+
+A term both formulas write travels as one: the `x^2` of `x^2 + 1` goes to the
+`x^2` of `y = x^2` with its exponent, rather than lending it to the first `2`
+it finds.
+
+## Parts
+
+Every piece of a formula's source is a part, named by that source: `a^2`,
+`\frac{d}{dx}`, a lone `+`, or neighbours that spell it together
+(`b^2 = c^2`). Spacing and grouping braces are not part of the name, so `x^2`
+names `x^{2}`.
+
+```tsx
+{ id: 'eq', type: 'latex', parentId: null, layerOrder: 0,
+  props: {
+    latex: 'a^2 + b^2 = c^2',
+    fontSize: 80,
+    fill: 'white',
+    partFills: [{ part: 'c^2', fill: '#facc15' }],
+  } },
+```
+
+| | |
+|---|---|
+| `partFills` | `[{ part, fill, occurrence? }]`. `fill` is any paint a node's `fill` takes, layers and gradients included. `occurrence` counts from 1; left out, every place the part is written is painted |
+| `partFillTo({ part, fill, occurrence? })` | Paints one part, leaving the others as they are |
+| `written` | How much of the formula is written, 0 to 1: its glyphs one after another, each outlined and then filled |
+| `writeTo({ written })` | Writes it on, or off |
+
+A part's fill follows it through a morph into a formula that still writes it.
+
+A formula has no outline trim (`start`, `end`, `progressTo`): `written` is how it
+appears.
+
+## Matrices
+
+`latexMatrix` typesets a matrix from its entries:
+
+```tsx
+{ id: 'm', type: 'latexMatrix', parentId: null, layerOrder: 0,
+  props: { entries: [['1', '0'], ['0', '1']], brackets: 'round', fontSize: 64, fill: 'white' } },
+```
+
+`brackets` is `square`, `round`, `bar`, `double`, `curly` or `none`. Each entry
+is a part, so `partFills: [{ part: '1', occurrence: 2, fill: 'red' }]` paints
+the second `1`, and `entriesTo({ entries })` morphs to new ones.
+
+## Marks on a formula
+
+Three nodes annotate. `curlyBrace` and `emphasisMark` are drawn on another node
+named in `on`, or on one `part` of a formula, wherever they are in the tree:
+
+```tsx
+{ id: 'box', type: 'emphasisMark', parentId: null, layerOrder: 1,
+  props: { on: 'eq', part: 'a^2', end: 0 } },
+{ id: 'brace', type: 'curlyBrace', parentId: null, layerOrder: 2,
+  props: { on: 'eq', part: 'a^2', label: '$\\text{a term}$' } },
+```
+
+| Node | Draws | Key props |
+|---|---|---|
+| `emphasisMark` | A `box`, `circle`, `underline` or `cross` | `on`, `part`, `occurrence`, `shape`, `clearance` |
+| `curlyBrace` | A brace along one `side`, with a label at its tip | `on`, `part`, `side`, `clearance`, `reach`, `label`; with no `on`, the span from `tail` to `head` |
+| `angleMark` | An arc from `fromAngle` to `toAngle` at its own position, or a right angle's square | `radius`, `corner`, `label` (`°` shows the angle) |
+
+`progressTo` draws any of them on, `retargetTo({ on, part })` slides a mark to
+another node or part, and `flash` sends a stretch of an outline round it. A
+label written between dollar signs is typeset, here and on a plot point or an
+axis.
+
+## Combining with other nodes
+
+`Latex` is a full scene node: place it in layouts, masks, or alongside shapes.
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'card', type: 'rect', parentId: null, layerOrder: 0,
+      props: { flow: 'vertical', width: 'hug', height: 'hug', gap: 20, padding: 32, fill: '#1e293b', cornerRadius: 16 } },
+    { id: 'newton', type: 'latex', parentId: 'card', layerOrder: 0,
+      props: { latex: 'F = ma', fontSize: 72, fill: 'white' } },
+    { id: 'rule', type: 'rect', parentId: 'card', layerOrder: 1,
+      props: { width: 'fill', height: 3, fill: '#4f80ff' } },
+    { id: 'einstein', type: 'latex', parentId: 'card', layerOrder: 2,
+      props: { latex: 'E = mc^2', fontSize: 72, fill: '#4f80ff' } },
+  ],
+};
+```

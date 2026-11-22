@@ -1,0 +1,8 @@
+{
+  "label": "Code",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Components in @motionscript/code: animated, syntax-highlighted code blocks."
+  }
+}

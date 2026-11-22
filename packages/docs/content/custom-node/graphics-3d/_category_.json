@@ -1,0 +1,8 @@
+{
+  "label": "3D Graphics",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Meshes and materials written as a node tree, on a stage that holds the camera and lights, painted into a 2D scene."
+  }
+}

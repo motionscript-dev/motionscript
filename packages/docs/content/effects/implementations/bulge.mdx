@@ -1,0 +1,57 @@
+---
+sidebar_position: 6
+---
+
+# Bulge
+
+Applies a barrel or pincushion lens distortion to the node's own content. A positive `strength` magnifies the centre and pins the edges (barrel); a negative value pinches the centre inward (pincushion).
+
+![Bulge effect demo](/effects/bulge.webp)
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+// Barrel distortion
+Rect({ effects: Effects.bulge(0.6) })
+
+// Pincushion distortion
+Rect({ effects: Effects.bulge(-0.4) })
+
+// Raw object
+Rect({ effects: [{ type: 'bulge', strength: 0.6, center: { x: 0.5, y: 0.5 } }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'bulge'` | – | Effect identifier |
+| `strength` | `number` | – | Distortion amount: positive = barrel (centre magnified), negative = pincushion (centre pinched). Typical range `−1` to `1` |
+| `center` | `{ x: number; y: number }` | `{ x: 0.5, y: 0.5 }` | Lens centre in `0`–`1` layer coordinates |
+
+## Animating
+
+```tsx
+import { Effects } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'card', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 400, height: 400, fill: '#4f46e5', effects: Effects.bulge(0) } },
+  ],
+  commands: [
+    { id: 'swell', type: 'to', targetId: 'card', at: 0, duration: 1.2,
+      easing: { kind: 'inOut' }, args: { effects: Effects.bulge(0.8) } },
+  ],
+};
+```
+
+## Stacking with other effects
+
+```ts
+// Bulge with chromatic aberration for a lens-like look
+Rect({ effects: Effects.bulge(0.5).chromaticAberration(4) })
+```

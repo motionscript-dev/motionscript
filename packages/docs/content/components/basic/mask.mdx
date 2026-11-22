@@ -1,0 +1,81 @@
+---
+sidebar_position: 11
+---
+
+# Mask
+
+Shows its content only through the shape of its first child. Reach for it for reveals, wipes, an iris opening, or colour showing through the letters of a word. This page is the reference; [Revealing with Masks](/docs/getting-started/masks) walks through building one.
+
+## Usage
+
+The first child (`layerOrder: 0`) is the mask. Every child after it is content, clipped to it.
+
+```tsx
+export default {
+  kind: 'still',
+  nodes: [
+    { id: 'mask', type: 'mask', parentId: null, layerOrder: 0,
+      props: { mode: 'alpha' } },
+
+    // The mask: a word
+    { id: 'word', type: 'text', parentId: 'mask', layerOrder: 0,
+      props: { text: 'MOTION', fontFamily: 'Inter', fontSize: 160, fontWeight: 900, fill: 'white' } },
+
+    // The content: a gradient that shows through the letters
+    { id: 'wash', type: 'rect', parentId: 'mask', layerOrder: 1,
+      props: { width: 900, height: 300,
+        fill: { type: 'linear-gradient', colors: ['#6990DD', '#E8617C'] } } },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `mode` | `'alpha' \| 'vector' \| 'luminance'` | `'alpha'` | How the mask decides what shows. See [Modes](#modes) |
+| `inverted` | `boolean` | `false` | Show the content where the mask is not, instead of where it is |
+
+## Modes
+
+| `mode` | Content shows where the mask is… | Use it for |
+|---|---|---|
+| `'alpha'` | opaque. Partial transparency gives partial visibility | Text, gradients, soft or feathered edges |
+| `'vector'` | inside its outline. Colour and transparency are ignored | Hard-edged shapes; the fastest mode |
+| `'luminance'` | bright: white shows, black hides, greys in between | Masking with an image or a black-and-white gradient |
+
+`inverted` flips any of the three, which turns an iris that opens into a hole that grows.
+
+## Animating
+
+The mask child is an ordinary node, so animate it like one. Grow a circle from nothing to open an iris on the content:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'mask', type: 'mask', parentId: null, layerOrder: 0,
+      props: { mode: 'vector' } },
+    { id: 'iris', type: 'ellipse', parentId: 'mask', layerOrder: 0,
+      props: { width: 0, height: 0, fill: 'white' } },
+    { id: 'card', type: 'rect', parentId: 'mask', layerOrder: 1,
+      props: { width: 640, height: 360, fill: '#6990DD', cornerRadius: 24 } },
+  ],
+  commands: [
+    { id: 'reveal', type: 'to', targetId: 'iris', at: 0, duration: 1.2,
+      easing: { kind: 'inOut' }, args: { width: 800, height: 800 } },
+  ],
+};
+```
+
+Slide a `rect` mask across the content with `x` for a wipe, or animate the content instead and leave the mask still.
+
+## Notes
+
+- Only the first child is the mask; reorder the children with `layerOrder` to change which one it is. The mask itself is never drawn.
+- With a single child there is nothing to clip, and that child draws normally. This lets you set up the mask before adding content.
+- A mask is not a shape: it has no fill or stroke of its own. It does honour `effects`, which apply to the masked result as a whole.
+- Children are centred in the mask and offset by their own `x`/`y`, as in a freeform [Rect](/docs/components/basic/rect). The mask runs no flex layout.
+- The node's selection box and hit area are the mask child's extent, since that is where its pixels can be.
+- Inside a [shared 3D space](/docs/attributes/transform-3d#a-shared-3d-space), a mask's children are composited in its own plane.
+- To combine shapes into one outline rather than clip one node by another, use a [Boolean](/docs/components/basic/boolean). A [Camera](/docs/components/basic/camera) also clips its children, to its own card.

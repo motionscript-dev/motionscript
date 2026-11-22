@@ -1,0 +1,411 @@
+---
+sidebar_position: 1
+---
+
+# Introduction
+
+The built-in nodes cover most of what a scene needs. When they do not, you write your own. A custom node is a **component**: one object handed to a factory (`component2d`, `component3d` or `componentAudio`), which paints whatever it likes during the render pass while still laying out, animating and nesting like any other node.
+
+A custom node is also the one place code joins a scene. A document is plain JSON, so anything it can't express, such as a computed lookup table, a generated point cloud or a drawing built from a formula, belongs in a component that documents name by key.
+
+There are two things a custom node can draw:
+
+* **2D figures**, with the [Graphics2D](./graphics/overview) API. Shapes, paints, cuts and masks recorded into one list.
+* **3D scenes**, with the [Graphics3D](./graphics-3d/overview) API. Meshes, lights and a camera.
+
+Both work the same way. You build a value, then hand it over in `render`.
+
+## Your first custom node
+
+```ts
+import { component2d, Graphics2D } from '@motionscript/sdk/v1';
+
+export const Blob = component2d({
+  key: 'blob',
+  render: (ctx) => {
+    ctx.draw(new Graphics2D().ellipse({ width: 200, height: 200 }).fill('tomato'));
+    ctx.children();
+  },
+});
+```
+
+`key` is the type's document key. Writing the component only declares it; the type becomes available when you hand it to an engine:
+
+```ts
+import { createBrowserEngine } from '@motionscript/browser';
+
+const engine = await createBrowserEngine({ nodes: [Blob] });
+```
+
+Any document opened on that engine can now use it like a built-in node:
+
+```ts
+{ id: 'blob', type: 'blob', parentId: null, layerOrder: 0,
+  props: { width: 400, height: 400 } },
+{ id: 'hello', type: 'text', parentId: 'blob', layerOrder: 0,
+  props: { text: 'hello', fontSize: 48 } },
+```
+
+`render` draws this node, and `ctx.children()` draws its children where you call it, so the text sits over the blob. A component with no `render` draws only its children. Every 2D component has placement built in: `x`, `y`, `width`, `height`, `rotation`, `scale`, `opacity`, `pivot`, `padding`, `effects`, `blend`, `clip` and `flex`, with `moveTo`, `fadeTo`, `rotateTo`, `scaleTo`, `layoutTo`, `effectTo`, `pulse` and `wiggle`.
+
+The key is written out rather than taken from the variable name because documents store it: a minifier is free to rename the variable, and every saved document would silently stop matching. In a project, list your node types in the `nodes` export of `src/project.ts`, so every host that opens your documents is given them (see [Your First Scene](/docs/getting-started/scene)).
+
+Calling a component builds a node, so code can nest it like any other: `Blob({ width: 400, children: [Text({ text: 'hello' })] })`. A call is typed: an entry the component doesn't have, or a value of the wrong type, is a compile error.
+
+## Behaviour comes from modules
+
+There is no base class to extend. A component gets behaviour by spreading a module's `state` and `commands` in, and calling its helpers:
+
+| Module | Spread in | Call | Use when |
+|---|---|---|---|
+| none | | `ctx.draw` | The drawing is entirely yours |
+| `Paint` | `fill`, `stroke`, `shadow`, `overlay`, `start`/`end`, and `fillTo`, `strokeTo`, `shadowTo`, `overlayTo`, `progressTo`, `flash` | `Paint.draw(ctx, state, shape)` | You want the standard paint props on your figure |
+| `Flow` | `flow`, `gap`, `wrap`, `crossGap`, `columns`, `align` | `Flow.measure`, `Flow.layout` | Your children lay out the way a `Rect`'s do |
+| `Shapes` | `Shapes.corners` (`cornerRadius`, `cornerStyle`) | `Shapes.rect`, `ellipse`, `polygon`, `unitPath`, … | You want a built-in outline |
+| `View3D` | the viewport's camera, lights and render settings | `View3D.draw` | You are building a 3D viewport (see [Canvas3D](./graphics-3d/canvas3d)) |
+
+`Typeface` and `TextLayout` (text), `Aim` (a 2D camera) and `Material` (a 3D surface) work the same way.
+
+Spreading `Paint` gives your node `fill`/`stroke`/`shadow` entries, already resolved, that `Paint.draw` paints in the built-in order: shadow and fill, the children, then overlay and stroke, all trimmed by `start`/`end`:
+
+```ts
+import { component2d, Graphics2D, Paint, Types } from '@motionscript/sdk/v1';
+
+export const Gauge = component2d({
+  key: 'gauge',
+  state: { ...Paint.state, value: Types.number(0, { min: 0, max: 1 }) },
+  commands: { ...Paint.commands },
+  render: (ctx, state) => Paint.draw(ctx, state, new Graphics2D().ellipse({
+    width: ctx.size.width, height: ctx.size.height, ratio: 0.75,
+    startAngle: -90, sweep: 360 * state.value,
+  })),
+});
+```
+
+```ts
+{ id: 'gauge', type: 'gauge', parentId: null, layerOrder: 0,
+  props: { value: 0.35, fill: '#6990DD', width: 300, height: 300 } }
+```
+
+Spread a module's `commands` with its `state`. Leaving out `...Paint.commands` drops `fillTo` and the rest without a warning.
+
+## Adding state
+
+`state` declares what a node holds. A plain number, string or boolean is an entry with that default; a `Types` builder says more:
+
+```ts
+state: {
+  value: 0,
+  label: 'Score',
+  glow: Types.fill('white/10'),
+  rule: Types.stroke({ weight: 2, fill: 'white' }),
+},
+```
+
+Paint an area with a `Types.fill` and a line with a `Types.stroke`, never a colour beside a width: see [Paint with fills and strokes](./properties#paint-with-fills-and-strokes).
+
+`render` reads them from `state`, resolved and typed: `state.glow` is a resolved fill array, with no cast. That is all a number needs. Anything richer, such as a fill, a colour or a corner radius, needs to know how it resolves and how it interpolates, or `to` will snap instead of animating; the `Types` builders carry the right pair for you. See [State](./properties) for the full set and the rules around it.
+
+## Animating a drawing
+
+You cannot animate a recorded drawing command, because the list is already built. Animation comes from the fact that **`render` runs every frame**, so the figure is rebuilt from whatever the current values are.
+
+### From node state
+
+```ts
+nodes: [
+  { id: 'gauge', type: 'gauge', parentId: null, layerOrder: 0,
+    props: { value: 0, fill: '#6990DD' } },
+],
+commands: [
+  { id: 'fill-up', type: 'to', targetId: 'gauge', at: 0, duration: 1.2,
+    easing: { kind: 'inOut', args: 'quad' }, args: { value: 0.8 } },
+],
+```
+
+An entry tweened with `to` is the least a node can offer. A reusable component publishes [commands of its own](./commands), as the built-ins do with `moveTo` and `fadeTo`: `fillUp` says what happens, takes its own parameters, and shows on a timeline under its own name.
+
+### From a binding
+
+An entry in a call can hold a **function** instead of a value, and it is re-evaluated every time it is read. That is how one value drives several figures without each of them being tweened separately. Inside a composite node's `children`, one piece can follow its parent's state:
+
+```ts
+export const Trace = component2d({
+  key: 'trace',
+  state: { progress: 0 },
+  render: (ctx, state) => ctx.draw(
+    new Graphics2D().path({ data: route, end: state.progress }).stroke({ weight: 8, fill: 'white' }),
+  ),
+});
+
+export const Traces = component2d({
+  key: 'traces',
+  state: { progress: 0 },
+  children: (state) => [
+    Trace({ progress: () => state.progress }),
+    Trace({ progress: () => state.progress * 0.5 }),   // follows, at half speed
+  ],
+});
+```
+
+In a document, the same job belongs to a **variable**: one `variableTo` command, and any number of props bound to it with an expression (`"end": "=[progress]"`).
+
+### From the clock
+
+For motion that is not driven by a tween, read the node's clock in `render`:
+
+```ts
+render: (ctx) => {
+  const t = ctx.time.elapsed;
+  ctx.draw(new Graphics2D().rect({ rotation: t * 90, width: 100, height: 100 }).fill('white'));
+},
+```
+
+:::tip
+A tweened entry is usually better, because the motion is then described in the
+document and shows up on the timeline as something you can see and re-time,
+rather than being derived from how long the node has existed.
+:::
+
+## Never accumulate
+
+Build a new value every frame. Do not keep one outside `render` and append to it:
+
+```ts
+// Wrong. Commands pile up forever, and the figure depends on how the
+// playhead got here rather than where it is.
+const g = new Graphics2D();
+render: (ctx) => {
+  g.rect({ /* ... */ });
+  ctx.draw(g);
+},
+```
+
+```ts
+// Right. Frame 10 looks the same however you reached it.
+render: (ctx) => {
+  ctx.draw(new Graphics2D().rect({ /* ... */ }));
+},
+```
+
+Rebuilding is cheap. A drawing is an array of plain objects, and the renderer does the expensive work.
+
+## Standing in a 2.5D space
+
+Inside an `OrbitCamera` (or anything else that stands its children in one space), a node's own paint is cut at the lens. `Paint.draw` does that for you. A component that draws with `ctx.draw` directly wraps its own paint in `ctx.inFront`:
+
+```ts
+render: (ctx) => {
+  ctx.inFront(() => ctx.draw(new Graphics2D().ellipse({ width: 200, height: 200 }).fill('tomato')));
+  ctx.children();
+},
+```
+
+## Composite nodes
+
+If your component is really several nodes arranged together, do not draw it. Build the parts in `children`:
+
+```ts
+import { component2d, Rect, Text, Types } from '@motionscript/sdk/v1';
+
+export const BadgeGroup = component2d({
+  key: 'badgeGroup',
+  state: { labels: Types.list(Types.text()), spacing: 32 },
+  children: (state) => [
+    Rect({
+      flow: 'horizontal',
+      gap: () => state.spacing,
+      children: state.labels.map((label) => Rect({
+        width: 180, height: 180, cornerRadius: 24,
+        children: [Text({ text: label, fontSize: 56 })],
+      })),
+    }),
+  ],
+});
+```
+
+`children` runs once, when the node is built, so there is nothing to accumulate. A node made of other nodes hugs them unless its size is given.
+
+A document can't reach inside a composite: commands address nodes by id, and the parts `children` builds have none. So give the composite an entry for anything that should animate, and bind the part to it. `gap: () => state.spacing` is re-read every frame, so tweening `spacing` moves the row:
+
+```ts
+{ id: 'spread', type: 'to', targetId: 'badges', at: 0, duration: 1.2, args: { spacing: 80 } }
+```
+
+For choreography one entry can't express, give the component a [command](./commands). Its children are in reach there, the parts nested in them too.
+
+Rule of thumb: if the pieces need layout or independent animation, they are nodes. If they are one figure that happens to have many parts, they are drawing commands.
+
+## Nodes that take only certain children
+
+`allowedChildren` says what a node takes: `[]` for nothing, a list of components for only those, or whole trees (`['2d', '3d']`). Left out, it takes anything of its own tree.
+
+```ts
+export const Chart = component2d({
+  key: 'seriesChart',
+  allowedChildren: [BarSeries, Axis],
+  // …
+});
+```
+
+A call is checked at compile time: `Chart({ children: [Rect({})] })` is a type error. Anywhere else, adding a child the list does not name throws, so a document row placed under the wrong parent fails its track's build rather than drawing nothing.
+
+`allowedParents` is the same rule from the child's side, for an open family: anyone can add a mark to a graph without editing the graph. A mark put anywhere else throws, naming where it goes.
+
+```ts
+export const Tick = component2d({
+  key: 'tick',
+  allowedParents: [Graph],
+  // …
+});
+```
+
+## Every field
+
+| Field | What it is |
+|---|---|
+| `key` | The document key |
+| `state` | The entries: literals and `Types` builders, spread modules ([State](./properties)) |
+| `defaults` | New defaults for built-in or spread entries; a function is a binding |
+| `allowedChildren` | What it takes as children |
+| `allowedParents` | The components it goes only inside |
+| `children` | The parts it is made of, built once |
+| `provide` | Values its subtree inherits ([State](./properties#inherited-entries)) |
+| `load` | Assets beyond its typed entries ([Declaring assets](./declaring-assets)) |
+| `commands` | What it does ([Commands](./commands)) |
+| `measure` | `(measurer, state, children)`: its natural size |
+| `layout` | `(box, state, children)`: one placement per child |
+| `render` | `(ctx, state)`: what it draws |
+| `plane`, `handles`, `bounds`, `space` | For an editor and for 3D children: the units a child's `x`/`y` are in, points to drag, the box selection takes, the units of its 3D children |
+
+Write `children` before the fields that read the built children (`commands`, `measure`, `layout`). TypeScript infers in reading order, so out of order a child's command names fall back to plain `string`.
+
+## A custom layout
+
+`measure` returns the natural size, and the engine applies `width` and `height` to it: `'hug'` keeps it, a number or `'fill'` replaces it. `layout` returns one placement per child, `{ x, y, width, height }`, centred on the node, **y up**:
+
+```ts
+export const Ring = component2d({
+  key: 'ringLayout',
+  state: { radius: 200 },
+  layout: (box, state, children) => children.map((child, i) => {
+    const angle = (2 * Math.PI * i) / children.length;
+    return { x: Math.cos(angle) * state.radius, y: Math.sin(angle) * state.radius, ...child.size };
+  }),
+});
+```
+
+A placement can also carry `rotation`, `scale`, `opacity` and `depth`, a slot the child is turned, scaled and faded in. Angles from `Math.cos`/`Math.sin` count counter-clockwise, while `rotation` turns clockwise on screen, so a slot that faces outward is `rotation: -angleInDegrees`.
+
+## A worked example
+
+A bar chart node: gridlines, bars and labels, all drawn, with one entry that animates the whole thing.
+
+```ts
+import { component2d, Fills, Graphics2D, Types } from '@motionscript/sdk/v1';
+
+export const BarChart = component2d({
+  key: 'barChart',
+  state: {
+    data: Types.list(Types.number()),
+    /** 0 is flat, 1 is full height. Animate this to grow the bars in. */
+    progress: 1,
+  },
+  render: (ctx, state) => {
+    const data = state.data;
+    if (data.length === 0) return;
+
+    const { width: w, height: h } = ctx.size;
+    const max = Math.max(...data);
+    const slot = w / data.length;
+    const barWidth = slot * 0.6;
+
+    // Gridlines. Open outlines take one stroke each, see Painting.
+    for (let i = 0; i <= 4; i++) {
+      const y = -h / 2 + (h * i) / 4;
+      ctx.draw(
+        new Graphics2D()
+          .line({ points: [{ x: -w / 2, y }, { x: w / 2, y }] })
+          .stroke({ weight: 2, fill: 'white/25' }),
+      );
+    }
+
+    // Bars, as one family with a single gradient across all of them.
+    const bars = new Graphics2D();
+    data.forEach((value, i) => {
+      bars.rect({
+        bottomCenter: { x: -w / 2 + slot * (i + 0.5), y: -h / 2 },
+        width: barWidth,
+        height: (value / max) * h * state.progress,
+        cornerRadius: 8,
+      });
+    });
+    ctx.draw(bars.fill(Fills.linearGradient(['#6990DD', '#E8617C'])));
+
+    // Labels, in their own group so the gradient does not reach them.
+    const labels = new Graphics2D();
+    data.forEach((value, i) => {
+      labels.text({
+        text: String(value),
+        x: -w / 2 + slot * (i + 0.5),
+        y: -h / 2 - 36,
+        fontSize: 28,
+      });
+    });
+    ctx.draw(labels.fill('white/70'));
+  },
+});
+```
+
+Hand `BarChart` to the engine, and a document grows the bars in with one command:
+
+```ts
+nodes: [
+  { id: 'chart', type: 'barChart', parentId: null, layerOrder: 0,
+    props: { data: [3, 7, 5, 9, 4, 6], progress: 0, width: 900, height: 500 } },
+],
+commands: [
+  { id: 'grow', type: 'to', targetId: 'chart', at: 0, duration: 1.4,
+    easing: { kind: 'out', args: 'quad' }, args: { progress: 1 } },
+],
+```
+
+## Shipping nodes as a package
+
+A node is written against `@motionscript/sdk` whether it lives in your project or in a package of its own. A package of nodes takes the SDK as a **peer dependency**, so it shares the one copy of the engine the project installs: two copies in one module graph would leave the renderer unable to recognise the other copy's node types.
+
+```json title="package.json"
+{
+  "peerDependencies": { "@motionscript/sdk": "^0.1.0-alpha.1" },
+  "devDependencies": { "@motionscript/sdk": "^0.1.0-alpha.1" }
+}
+```
+
+Import from `@motionscript/sdk/v1`, never from `@motionscript/core`, which is the engine and its host machinery as well as everything here. What a component package needs beyond that, a scene does not, so it sits on a subpath, `@motionscript/sdk/v1/component`: number formatting, text defaults, the named shape outlines and the orbit-camera lerps. A kit's components come from its own `/v1` path, such as `@motionscript/math/v1`.
+
+### Why `/v1`
+
+`/v1` names the version of the component API a node is written against, not a package version: `@motionscript/sdk` 0.4 and every later release ship `/v1`. When a release changes the component API, it adds `/v2` and keeps `/v1` working inside the same engine, so a node written today keeps building in a project that also holds nodes written against `/v2`. The bare `@motionscript/sdk` always means the newest API, for code that follows every release.
+
+Code that holds a built node names its type with `NodeOf`, beside the component:
+
+```ts
+export const Gauge = component2d({ /* … */ });
+export type Gauge = NodeOf<typeof Gauge>;
+```
+
+A component value is callable and constructible (`Gauge({ … })`, `new Gauge({ … })`), and `instanceof Gauge` works.
+
+Export your components as one array, so a host hands them to its engine as values rather than importing the package for its side effects:
+
+```ts
+export const NODES = [BarChart, Gauge];
+```
+
+## Next
+
+* [State](./properties) for the knobs a node exposes, and how to make them animate.
+* [Commands](./commands) for what a node does on the timeline.
+* [Declaring assets](./declaring-assets) for images, fonts, data and sound your node loads.
+* [Graphics2D](./graphics/overview) for the 2D drawing API.
+* [3D Graphics](./graphics-3d/overview) for meshes, lights and cameras.

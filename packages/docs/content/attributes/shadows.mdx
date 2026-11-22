@@ -1,0 +1,106 @@
+---
+sidebar_position: 3
+---
+
+# Shadows
+
+Every shape node accepts a `shadow` prop. Shadows render as drop shadows or inner (inset) shadows using the same fill system as shape fills.
+
+## Basic usage
+
+```ts
+Rect({ shadow: { blur: 20, fill: 'black/40' } })
+
+// Offset shadow. `offset.y` is positive-up, like every other scene coordinate.
+Rect({ shadow: { blur: 16, fill: 'black/35', offset: { x: 0, y: -8 } } })
+
+// Colored glow
+Rect({ shadow: { blur: 40, fill: '#4f80ff/60' } })
+```
+
+A shadow's `fill` is the **whole** fill vocabulary, exactly as a stroke's is —
+the silhouette is painted with it before being offset and blurred, so a card can
+cast the picture above it rather than a flat smudge:
+
+```ts
+Rect({ shadow: { blur: 24, offset: { x: 0, y: -16 }, fill: Fills.image('poster.jpg') } })
+```
+
+---
+
+## Strength
+
+A shadow has no `opacity` of its own: it paints at the alpha of its `fill`, so a shadow whose fill is plain `'black'` is solid black. Put the strength in the colour with a percentage suffix (`'black/40'` is black at 40%), or with any colour string that carries alpha (`'rgb(0 0 0 / 0.4)'`, `'#00000066'`). A gradient carries it in its stops' colours.
+
+A fill object's own `opacity` multiplies the colour's alpha once, as it does on a node's fill, so `{ type: 'solid', color: 'black', opacity: 0.4 }` paints the same as `'black/40'`.
+
+---
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `blur` | `number` | `0` | Blur radius in pixels |
+| `offset` | `Vector2` | `{ x: 0, y: 0 }` | Offset from the shape, in px. Positive `y` is up |
+| `fill` | `Fill` | none | Any fill: a colour, gradient, image, video, shader, pattern, 3D scene, or a stack of them. Carries the shadow's alpha too (see [Strength](#strength)). A shadow with no `fill` paints nothing |
+| `spread` | `number` | `0` | Grow (positive) or shrink (negative) the shadow shape before blurring. Only supported on `Rect` and `Ellipse`. |
+| `inner` | `boolean` | `false` | Inset shadow, paints inside the shape rather than outside |
+
+---
+
+## Spread
+
+`spread` expands or contracts the shadow silhouette before the blur is applied, matching CSS `box-shadow` spread. Only `Rect` and `Ellipse` support it:
+
+```ts
+// Shadow grows 12px beyond the shape before blurring
+Rect({ shadow: { blur: 20, fill: 'black/40', spread: 12 } })
+
+// Negative spread shrinks first — shadow stays tight near the edges
+Rect({ shadow: { blur: 24, fill: '#000/50', spread: -8 } })
+```
+
+---
+
+## Inner shadows
+
+Set `inner: true` to paint the shadow inside the shape (inset shadow):
+
+```ts
+Rect({ shadow: { blur: 12, fill: 'black/50', offset: { x: 0, y: -4 }, inner: true } })
+```
+
+---
+
+## Multiple shadows
+
+Pass an array to combine drop shadows, glows, or layered insets:
+
+```ts
+Rect({ shadow: [
+  { blur: 10, fill: 'black/30', offset: { x: 4, y: -4 } },
+  { blur: 40, fill: '#4f80ff/25' },
+] })
+```
+
+---
+
+## Animating shadows
+
+All shadow props are animatable with a `to` command:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'card', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 320, height: 200, fill: '#1e293b', cornerRadius: 16,
+        shadow: { blur: 8, fill: 'black/20', offset: { x: 0, y: -4 } } } },
+  ],
+  commands: [
+    // Lift the card — deepen the shadow
+    { id: 'lift', type: 'to', targetId: 'card', at: 0, duration: 0.4,
+      easing: { kind: 'out' }, args: { shadow: { blur: 32, fill: 'black/40', offset: { x: 0, y: -16 } } } },
+  ],
+};
+```

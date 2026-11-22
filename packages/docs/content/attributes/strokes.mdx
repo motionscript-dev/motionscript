@@ -1,0 +1,178 @@
+---
+sidebar_position: 2
+---
+
+# Strokes
+
+Every shape node accepts a `stroke` prop. Strokes paint a border along the shape's path using the same fill system as shape fills.
+
+## Basic usage
+
+```ts
+// Solid stroke
+Rect({ stroke: { weight: 3, fill: 'white' } })
+
+// Gradient stroke
+Rect({ stroke: {
+  weight: 4,
+  fill: { type: 'linear-gradient', colors: ['#4f80ff', '#e84393'], stops: [0, 1] },
+} })
+```
+
+A stroke's `fill` is the **whole** fill vocabulary, not just colours and
+gradients — it is the same prop a node's own `fill` is, painted by the same
+renderer. An image, a playing video, a custom shader or a generated pattern all
+work on a band, and so does a stack of them:
+
+```ts
+Rect({ stroke: { weight: 24, fill: Fills.image('marble.jpg', { fit: 'fill' }) } })
+Rect({ stroke: { weight: 24, fill: Fills.video('reel.mp4') } })
+Rect({ stroke: { weight: 24, fill: [Fills.stripe({ color: 'white' }), 'black/20'] } })
+```
+
+---
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `weight` | `number` | `1` | Stroke width in pixels |
+| `fill` | `Fill` | | Any fill: a colour, gradient, image, video, shader, pattern, 3D scene, or a stack of them |
+| `dash` | `number \| number[]` | | Dash pattern (e.g. `[10, 5]` for 10px on, 5px off) |
+| `dashOffset` | `number` | `0` | Offset into the dash pattern |
+| `align` | `number \| 'inside' \| 'center' \| 'outside'` | `'center'` | Where the stroke sits relative to the path edge |
+| `cap` | `'butt' \| 'round' \| 'square'` | `'butt'` | Shape of dash ends, and of open-path ends |
+| `startCap` | a cap, or a [marker](#end-markers) | `cap` | Shape of each open contour's start |
+| `endCap` | a cap, or a [marker](#end-markers) | `cap` | Shape of each open contour's end |
+| `capScale` | `number` | `4` | A marker's length, as a multiple of `weight` |
+| `join` | `'miter' \| 'round' \| 'bevel'` | `'miter'` | Shape of corners where segments meet |
+| `miterLimit` | `number` | `4` | Max miter-length / width ratio before a `'miter'` join bevels |
+
+---
+
+## Caps and joins
+
+`cap` controls how the **ends** of an open stroke (and the end of each dash) are shaped; `join` controls how **corners** are shaped where two segments meet:
+
+```ts
+// Cap — only visible on open paths and dashes
+Path({ data: 'M 0 0 L 200 0', stroke: { weight: 16, fill: 'white', cap: 'round' } })
+Path({ data: 'M 0 0 L 200 0', stroke: { weight: 16, fill: 'white', cap: 'square' } })
+
+// Join — visible at every corner
+Rect({ stroke: { weight: 16, fill: 'royalblue', join: 'round' } })
+Rect({ stroke: { weight: 16, fill: 'royalblue', join: 'bevel' } })
+```
+
+`startCap` and `endCap` give an open path's two ends their own caps, leaving `cap` to shape every dash in between. An open path's dashes are fit to start and end on a dash, so both caps show; a `dashOffset` that slides a gap over an end leaves it bare:
+
+```ts
+// Round at the start, square at the end
+Path({ data: 'M 0 0 L 200 0', stroke: { weight: 16, fill: 'white', startCap: 'round', endCap: 'square' } })
+
+// Round dashes, flush at the start
+Path({ data: 'M 0 0 L 200 0', stroke: { weight: 8, fill: 'white', dash: [16, 8], cap: 'round', startCap: 'butt' } })
+```
+
+A sharp `'miter'` join on a tight corner can spike far past the path; `miterLimit` caps that. Once the miter would be longer than `miterLimit × weight`, the join falls back to a bevel.
+
+### End markers
+
+`startCap` and `endCap` also take a marker, which is how a path becomes an arrow:
+
+| Marker | Shape |
+|---|---|
+| `'arrow'` | Open chevron, as thick as the stroke |
+| `'triangle'` | Filled head |
+| `'stealth'` | Filled head with a notched base |
+| `'dot'` | Disc centred on the end |
+| `'box'` | Square centred on the end |
+| `'diamond'` | Diamond centred on the end |
+| `'bar'` | Line across the end |
+
+```ts
+// An arrow, and one with a head on both ends
+Path({ data: 'M 0 0 L 200 0', stroke: { weight: 6, fill: 'white', endCap: 'triangle' } })
+Path({ data: 'M 0 0 L 200 0', stroke: { weight: 6, fill: 'white', startCap: 'stealth', endCap: 'stealth' } })
+
+// A bigger head on a thin line
+Path({ data: 'M 0 0 L 200 0', stroke: { weight: 2, fill: 'white', endCap: 'arrow', capScale: 8 } })
+```
+
+- A pointed head (`arrow`, `triangle`, `stealth`) has its tip exactly on the path's end and turns with the path, so it follows a curve.
+- A marker is `capScale × weight` long and as wide as it is long. It never outgrows its contour: on a short one it shrinks to fit, which is what makes an arrow grow from nothing as `end` goes from `0` to `1`.
+- A marker rides `start`/`end`, is drawn even where a dash pattern leaves the end bare, and takes the stroke's fill.
+- A stroke with a marker is centred on its path, whatever its `align`. `cap` itself takes no marker: dashes keep plain caps.
+
+---
+
+## Alignment
+
+`align` controls whether the stroke grows inward, outward, or straddles the path edge:
+
+```ts
+Rect({ stroke: { weight: 8, fill: 'royalblue', align: 'inside' } })
+Rect({ stroke: { weight: 8, fill: 'royalblue', align: 'center' } })
+Rect({ stroke: { weight: 8, fill: 'royalblue', align: 'outside' } })
+
+// Numeric — any value from -1 (fully inside) to 1 (fully outside)
+Rect({ stroke: { weight: 8, fill: 'royalblue', align: 0.5 } })
+```
+
+---
+
+## Dashed strokes
+
+```ts
+// Equal dashes and gaps
+Rect({ stroke: { weight: 2, fill: '#aaa', dash: 10 } })
+
+// Custom pattern: 12px dash, 4px gap, 4px dash, 4px gap
+Rect({ stroke: { weight: 2, fill: 'white', dash: [12, 4, 4, 4] } })
+```
+
+The pattern is stretched slightly so it fits the path: a closed contour takes a whole number of cycles, so its seam falls between them, and an open one takes whole cycles less the final gap, so it starts and ends on a dash.
+
+### Animated dash offset
+
+Animating `dashOffset` is a clean way to produce a draw-on or marching-ants effect:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 300, height: 200, cornerRadius: 12,
+        stroke: { weight: 3, fill: 'white', dash: [16, 8], dashOffset: 0 } } },
+  ],
+  commands: [
+    // March the ants
+    { id: 'march', type: 'to', targetId: 'box', at: 0, duration: 2,
+      args: { stroke: { dashOffset: 100 } } },
+  ],
+};
+```
+
+---
+
+## Multiple strokes
+
+Pass an array to layer strokes. They paint in order, bottom to top:
+
+```ts
+Rect({ stroke: [
+  { weight: 8, fill: 'black', align: 'outside' },
+  { weight: 4, fill: 'white', align: 'outside' },
+] })
+```
+
+---
+
+## Animating strokes
+
+All stroke props are animatable with a `to` command:
+
+```tsx
+{ id: 'restyle', type: 'to', targetId: 'box', at: 0, duration: 0.6,
+  args: { stroke: { weight: 8, fill: '#e84393' } } },
+```

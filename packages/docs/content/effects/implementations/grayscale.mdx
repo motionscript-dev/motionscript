@@ -1,0 +1,66 @@
+---
+sidebar_position: 2
+---
+
+# Grayscale
+
+Desaturates any node. `amount` ranges from `0` (full color) to `1` (fully grayscale).
+
+![Grayscale effect demo](/effects/grayscale.webp)
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+// Fully grayscale
+Rect({ effects: Effects.grayscale(1) })
+
+// Partial desaturation
+Rect({ effects: Effects.grayscale(0.5) })
+
+// Raw object
+Rect({ effects: [{ type: 'grayscale', amount: 0.8 }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'grayscale'` | – | Effect identifier |
+| `amount` | `number` | – | Desaturation amount: `0` = full color, `1` = fully grayscale |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` desaturates the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
+
+## Animating
+
+Tween `amount` with a `to` command to animate between color and grayscale:
+
+```tsx
+import { Effects, Fills } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'photo', type: 'rect', parentId: null, layerOrder: 0,
+      props: {
+        width: 600, height: 400, fill: Fills.image('./photo.jpg', { fit: 'fill' }),
+        effects: Effects.grayscale(1),
+      } },
+  ],
+  commands: [
+    // Colorize over 1.5 seconds
+    { id: 'colorize', type: 'to', targetId: 'photo', at: 0, duration: 1.5,
+      easing: { kind: 'inOut' }, args: { effects: Effects.grayscale(0) } },
+  ],
+};
+```
+
+## Stacking with other effects
+
+```ts
+// Grayscale then blur
+Rect({ effects: Effects.grayscale(1).blur(4) })
+
+// Grayscale with pixelate
+Rect({ effects: Effects.grayscale(0.8).pixelate(60) })
+```

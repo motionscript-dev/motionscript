@@ -1,0 +1,8 @@
+{
+  "label": "Framework Quickstarts",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Get a scene on screen in the host you already have: React in the browser, or Node on a server."
+  }
+}

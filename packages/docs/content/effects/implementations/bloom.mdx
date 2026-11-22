@@ -1,0 +1,67 @@
+---
+sidebar_position: 5
+---
+
+# Bloom
+
+Adds a soft glow to bright areas of any node. Pixels above `threshold` luminance bleed outward via a screen-blend of a blurred bright-pass onto the layer.
+
+![Bloom effect demo](/effects/bloom.webp)
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+// Default bloom
+Rect({ effects: Effects.bloom() })
+
+// Custom threshold, spread, and intensity
+Rect({ effects: Effects.bloom({ threshold: 0.6, radius: 24, intensity: 1.5 }) })
+
+// Raw object
+Rect({ effects: [{ type: 'bloom', threshold: 0.7, radius: 12, intensity: 1 }] })
+```
+
+## Props
+
+The builder takes a single options object — these are its fields, and also the
+fields of the effect object it produces.
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'bloom'` | – | Effect identifier |
+| `threshold` | `number` | `0.7` | Luminance cutoff `0`–`1`: only pixels brighter than this contribute to the bloom |
+| `radius` | `number` | `12` | Glow spread in pixels |
+| `intensity` | `number` | `1` | Additive multiplier for the bloom pass; higher values make the glow brighter |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` blooms the content beneath the node, clipped to its silhouette, leaving the node's own content untouched |
+
+## Animating
+
+Animate `intensity` to fade a glow on or off:
+
+```tsx
+import { Effects } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'light', type: 'rect', parentId: null, layerOrder: 0,
+      props: {
+        width: 200, height: 200, fill: 'white',
+        effects: Effects.bloom({ threshold: 0.5, radius: 40, intensity: 0 }),
+      } },
+  ],
+  commands: [
+    { id: 'bloom-on', type: 'to', targetId: 'light', at: 0, duration: 1,
+      easing: { kind: 'out' }, args: { effects: Effects.bloom({ threshold: 0.5, radius: 40, intensity: 2 }) } },
+  ],
+};
+```
+
+## Stacking with other effects
+
+```ts
+// Bloom on top of a vintage grade
+Rect({ effects: Effects.vintage(0.8).bloom({ threshold: 0.6, radius: 20, intensity: 1.2 }) })
+```

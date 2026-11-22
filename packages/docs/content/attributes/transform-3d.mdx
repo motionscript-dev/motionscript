@@ -1,0 +1,323 @@
+---
+sidebar_position: 10
+---
+
+# Mirrors and 3D
+
+Every node is a flat plane, and these props are the transforms a browser applies
+to a flat `<div>`: the two mirrors, the two out-of-plane rotations, a push along
+the view axis, and the perspective that makes the last two read as depth rather
+than as squashing.
+
+Nothing here turns a node into a 3D object. The node keeps its box, its layout
+cell and its children; what changes is how that plane is *projected*. Text,
+strokes, corner radii and nested nodes all come along with it — for real geometry
+in a lit 3D world, see the `Canvas3D` node instead.
+
+---
+
+## Mirrors
+
+`flipHorizontal` reflects the node across its vertical centre line;
+`flipVertical` across its horizontal one. They are CSS's `scaleX(-1)` and
+`scaleY(-1)`: the node's box does not move and its layout is untouched, but its
+content — including every child — comes out reversed.
+
+```ts
+Rect({ flipHorizontal: true, width: 200, height: 120, fill: 'royalblue', children: [
+  Text({ text: 'Mirror', fontFamily: 'Inter', fontSize: 40 }),
+] })
+```
+
+They mirror about the node's **own centre**, and are the one part of this page
+that does not turn about `pivot`/`transformOrigin`. That is deliberate: a flip is
+an in-place reflection. Composed with the pivot the way CSS's `scaleX(-1)` is, a
+node hinged anywhere but its middle would *swing* when flipped — its position
+would change, and its handles with it — so the gesture would stop meaning
+"mirror this" and start meaning "mirror this and move it". A flip here never
+moves a node.
+
+---
+
+## rotationX, rotationY and rotationZ
+
+Three rotation axes, in degrees:
+
+- **`rotationX`** tilts about the horizontal axis — positive tips the **top edge
+  away** from the viewer.
+- **`rotationY`** tilts about the vertical axis — positive swings the **right
+  edge away**.
+- **`rotationZ`** turns the node in its own plane, like `rotation` does.
+
+```ts
+Rect({ rotationX: 25, rotationY: -40, rotationZ: 12, width: 260, height: 340, fill: 'tomato' })
+```
+
+They apply in CSS's own order, `rotateX · rotateY · rotateZ`, with the in-plane
+rotation innermost — so adding a tilt never changes what a Z rotation already
+meant.
+
+**`rotationZ` is not `rotation` under another name.** They are two independent
+numbers, and editing one never moves the other. What separates them is which
+side of the geometry/paint line they fall on (see [Geometry stays
+flat](#geometry-stays-flat) below): `rotation` turns the node's *shape*, so its
+box turns with it and everything reading that box follows, while `rotationZ` is
+part of the projection. Turning a node with `rotation` turns its selection
+outline; turning it with `rotationZ` spins the picture inside a box that stays
+where it was. Set both and they compose the only way two rotations about one
+axis can — they add.
+
+With no `perspective` the projection is parallel: a tilt foreshortens the node
+evenly and both edges shrink by the same factor. That is a valid look, and it is
+also the reason the next prop exists.
+
+---
+
+## perspective
+
+`perspective` is the distance from the viewer to the plane the node sits in, in
+pixels. `0` (the default) means no perspective at all. With one set, the edge that
+swung away recedes and the edge that swung toward you grows — which is what makes
+a tilt read as depth.
+
+```ts
+Rect({ rotationY: 52, perspective: 900, width: 260, height: 340, fill: 'tomato' })
+```
+
+Smaller values are more dramatic: the node subtends more of the field of view, so
+the convergence is stronger. Around 800–1500 reads like a page lying on a desk;
+a few hundred reads like a wide-angle lens.
+
+Unlike CSS, perspective is declared **per node** rather than inherited from an
+ancestor. A scene graph has no viewport element to hang it on, and a node that
+carries its own can be nested, reused and animated without its depth depending on
+where it was dropped.
+
+---
+
+## depth
+
+`depth` pushes the node along the view axis, in pixels — CSS's `translateZ`.
+Positive brings it toward the viewer, so it projects larger.
+
+```ts
+Rect({ depth: 380, perspective: 900, width: 220, height: 300, fill: 'royalblue' })
+```
+
+It is **inert without `perspective`**: a parallel projection has no viewpoint for
+a thing to be nearer to, so `z` is simply dropped. This matches CSS, and it is
+worth knowing before spending time wondering why a `depth` did nothing.
+
+---
+
+## backfaceVisible
+
+Whether the node still paints once a tilt has carried it past edge-on and it is
+showing its back. Defaults to `true`, as CSS's `backface-visibility` does.
+
+Set it `false` for a card flip — two nodes back to back, each hidden exactly
+while the other faces out. The two flips share an `at`, so they turn together:
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'card', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 220, height: 300, flow: 'freeform' } },
+    { id: 'front', type: 'rect', parentId: 'card', layerOrder: 0,
+      props: { fill: 'royalblue', transform3D: { perspective: 1200, backfaceVisible: false } } },
+    { id: 'back', type: 'rect', parentId: 'card', layerOrder: 1,
+      props: { fill: 'tomato', transform3D: { rotationY: 180, perspective: 1200, backfaceVisible: false } } },
+  ],
+  commands: [
+    { id: 'flip-front', type: 'to', targetId: 'front', at: 0.5, duration: 1.4,
+      easing: { kind: 'inOut', args: 'quad' }, args: { transform3D: { rotationY: 180 } } },
+    { id: 'flip-back', type: 'to', targetId: 'back', at: 0.5, duration: 1.4,
+      easing: { kind: 'inOut', args: 'quad' }, args: { transform3D: { rotationY: 360 } } },
+  ],
+};
+```
+
+The test is the **tilt alone**: a `flipHorizontal` mirrors a node without turning
+it around, so it never hides it. (CSS derives the answer from the whole
+accumulated matrix, where a `scaleX(-1)` inverts orientation and takes the
+element with it — a surprising way to lose a node you only meant to flip.)
+
+A hidden node skips its whole subtree, so a face-down card costs nothing to draw.
+Its assets are still discovered, so the frame it turns back on is not the frame
+its images start loading.
+
+---
+
+## transformOrigin
+
+The point the whole transform turns about — CSS's `transform-origin`, in the same
+`[-1, 1]` vocabulary as [`pivot`](./position#pivot): a named anchor, or a
+`{ x, y }` where `(0, 0)` is the centre.
+
+Left unset it *is* the pivot, so a node goes on turning about whatever its anchor
+positioning gave it. Set, it wins for the whole transform rather than for the 3D
+half of it — one origin, the way CSS has one.
+
+```ts
+// Hinged on its left edge: a door rather than a turntable.
+Rect({
+  rotationY: 52,
+  perspective: 900,
+  transformOrigin: 'centerLeft',
+  width: 260,
+  height: 340,
+  fill: 'tomato',
+})
+```
+
+---
+
+## The `transform3D` shorthand
+
+All of the above in one bag, expanded onto the individual props before anything
+reads them — exactly as `size` is expanded into `width`/`height`. It works in a
+node's props, in a `set` and in a `to`, and an explicitly named prop in the same
+object wins over the bag's field.
+
+```ts
+Rect({ transform3D: { rotationX: 45, rotationY: -17, perspective: 900 } })
+```
+
+```tsx
+{ id: 'flip', type: 'to', targetId: 'card', at: 0, duration: 0.8,
+  easing: { kind: 'inOut', args: 'quad' }, args: { transform3D: { rotationY: 180 } } },
+```
+
+Because it is only sugar, each field has exactly one storage location: a tween of
+`transform3D.rotationY` and a tween of `rotationY` are the same tween, and the two
+forms can be mixed freely without either shadowing the other.
+
+---
+
+## A shared 3D space
+
+Everything above projects each node on its own: its `perspective` is its own, a
+card at `depth: -800` never goes behind one at `depth: 0`, and siblings paint in
+the order they were written. Setting `space3D` on the stage changes that. Its
+children, and theirs, are placed in **one** 3D space and seen through the
+stage's camera, the way layers sit in an After Effects composition:
+
+```jsonc
+{ "id": "", "type": "canvas2d", "parentId": null, "layerOrder": 0,
+  "props": { "fill": "#0b0d12", "space3D": true, "perspective": 1000 } },
+{ "id": "sky",   "type": "rect", "parentId": null, "layerOrder": 0,
+  "props": { "width": 5800, "height": 3300, "fill": "#141a2b", "depth": -2000 } },
+{ "id": "title", "type": "rect", "parentId": null, "layerOrder": 1,
+  "props": { "width": 520, "height": 300, "fill": "tomato", "depth": 150 } }
+```
+
+Inside the space:
+
+- `x`/`y` and `depth` are a node's position in its parent's 3D frame, and
+  `rotationX/Y/Z` turn it there. Groups nest in full 3D: turn a group and its
+  children ride along at their own depths.
+- **Siblings paint far to near.** Parallel layers always sort exactly; coplanar
+  ones keep their authored order. Planes that cut through each other cannot be
+  sorted by any painter, so keep things that must interleave as siblings, and
+  know that a group sorts against its siblings as one unit.
+- `backfaceVisible` is judged against the camera: orbit half way round and every
+  node shows its back.
+- A node's own `perspective` is ignored — the camera owns perspective.
+- A mask, a boolean or a nested `camera` composites its children itself, so its
+  subtree flattens into its own plane and the per-node rules above apply there.
+
+### The camera
+
+The stage's camera props, all animatable:
+
+| prop | meaning |
+| --- | --- |
+| `perspective` | The camera's distance from `lookAt`, in px. The plane through `lookAt` draws 1:1, as in CSS. `0` is a parallel projection. |
+| `orbit` | Degrees about the vertical axis through `lookAt`. `0` is head-on; positive moves the camera right. |
+| `elevation` | Degrees above the layers; positive looks down on them. |
+| `dolly` | Px the camera has moved in toward `lookAt`. Inert without perspective. |
+| `lookAt` | What the camera aims at and orbits: `{ x, y, z }`, where a negative `z` is deeper in, like `depth`. |
+| `zoom`, `heading` | Unchanged — lens zoom and roll, applied after the projection. |
+
+`orbit` and `elevation` mean exactly what they mean on an
+[OrbitCamera](/docs/components/basic/orbit-camera), so the same numbers look at
+a scene from the same side in either. (A `Canvas3D`'s `orbit` is measured from
++X instead, so `90` there is head-on.) The stage's own
+`rotationX`, `depth` and friends are unused while `space3D` is on — tilting the
+root would only turn the whole scene as one flat card. The background `fill`
+stays on screen, behind the space.
+
+Three commands move it, beside `panTo`, `zoomTo` and `headingTo`:
+
+```jsonc
+{ "id": "rise",  "type": "orbitTo", "targetId": null, "at": 0, "duration": 2,
+  "easing": { "kind": "inOut", "args": "cubic" }, "args": { "orbit": 30, "elevation": 15 } },
+{ "id": "push",  "type": "dollyTo", "targetId": null, "at": 0, "duration": 2,
+  "args": { "dolly": 400 } },
+{ "id": "fly",   "type": "panTo",   "targetId": null, "at": 2, "duration": 3,
+  "args": { "lookAt": { "x": 0, "y": 0, "z": -2400 } } }
+```
+
+Panning alone gives parallax: a layer at `depth: -2000` under a `perspective` of
+`1000` moves a third as far as one at `0`. It also draws a third the size, so a
+backdrop that should fill the frame needs `size × (1 + |depth| / perspective)`.
+Layers the camera flies past stop drawing rather than flipping round behind it,
+and one the camera is passing through is cut at the lens.
+
+Turning `space3D` on changes nothing by itself: with the camera at rest and every
+node at `depth: 0`, the picture is the one the stage drew before. It is a switch
+rather than something read off the camera's numbers so that it can never jump a
+tween.
+
+`perspective: 0` with `orbit: 45` and `elevation: 35.26` is the isometric view.
+Lay a floor down with `rotationX: 90` and its children's `depth` is their height
+above it.
+
+For real geometry, lights and materials, reach for `Canvas3D`; a space is for
+flat layers — text, shapes, images — placed in depth.
+
+| field | prop it expands to |
+| --- | --- |
+| `rotationX` | `rotationX` |
+| `rotationY` | `rotationY` |
+| `rotationZ` | `rotationZ` |
+| `depth` | `depth` |
+| `perspective` | `perspective` |
+| `backfaceVisible` | `backfaceVisible` |
+| `flipHorizontal` | `flipHorizontal` |
+| `flipVertical` | `flipVertical` |
+| `origin` | `transformOrigin` |
+
+---
+
+## Geometry stays flat
+
+The projection is **paint, not shape**. A mirrored or tilted node goes on
+measuring, reporting and hit-testing as the upright rectangle it was:
+`node.global` gives the un-tilted corners, `node.measuredWidth` the un-projected
+width, and a click lands where the flat box is. Only what is *drawn* is
+projected — `rotationZ` included, which is the whole difference between it and
+`rotation`.
+
+That is deliberate. Everything that reads a node's box reads it in order to put
+a handle on: a selection outline, a resize grip, a rotation dial,
+`other.global.topRight` as an alignment target. All of those mean something on a
+rectangle and stop meaning it on a trapezoid — a "width" handle on a
+foreshortened edge corresponds to no number anyone could type, and a corner that
+has swung behind the viewer has no screen position at all. Letting the
+projection through would make a tilt something that quietly breaks every other
+tool around it.
+
+`transformOrigin` is the exception, and only because it is not part of the
+projection: it moves where the ordinary 2D rotation turns about, so the node
+genuinely ends up somewhere else and every box says so.
+
+If you need the projected corners, compose the matrix yourself from the same
+fields — but the usual answer is that you want the flat box, which is what you
+already have.
+
+A node in a [shared 3D space](#a-shared-3d-space) is the exception for picking.
+The camera there moves a node across the picture, not just repaints it, so an
+editor's selection box and hit test follow the projection. `node.global` still
+reports the flat box in the parent's plane.

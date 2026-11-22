@@ -1,0 +1,178 @@
+---
+sidebar_position: 4
+---
+
+# Declaring assets
+
+A node that paints a photo, shapes text in a webfont, loads a data file or plays a sound has to say so. The engine loads those ahead of the frames that need them, so a frame never draws with a hole where a picture is still on its way. It learns what a node loads from its typed entries and its `load` field, and what it plays from its commands.
+
+Most custom nodes never write `load`. The entries declare themselves:
+
+| Entry | Declares |
+|---|---|
+| `Types.fill`, `Types.stroke`, `Types.shadow` (and so `...Paint.state`) | every image, video and font their paints reference |
+| `Types.image`, `Types.video` | its file |
+| `Types.font` | its family |
+| the built-in `effects` | images its effects use |
+| `Text`, `RichText`, and `TextLayout.load` | the font family, and the fonts and paints of any run |
+| `Video` | its source |
+| a 3D component | whatever its `render` draws: textures, models, an environment (`ctx.declaring` is true on that pass, so costly geometry can be left out) |
+
+You only declare what your node adds on top: a file named somewhere that isn't an entry of its own kind, or something your node computes.
+
+## An image entry
+
+```ts
+import { component2d, Fills, Graphics2D, Types } from '@motionscript/sdk/v1';
+
+export const Polaroid = component2d({
+  key: 'polaroid',
+  state: { photo: Types.image() },
+  render: (ctx, state) => {
+    ctx.draw(new Graphics2D().rect({ width: ctx.size.width, height: ctx.size.height }).fill('white'));
+    if (state.photo) ctx.draw(new Graphics2D().rect({ width: 280, height: 280 }).fill(Fills.image(state.photo)));
+    ctx.children();
+  },
+});
+```
+
+`photo` is a `Types.image` entry, so it declares itself: there is nothing to write. A plain string entry (`photo: ''`) holding the same path would not, and the picture would never load.
+
+A `src` the asset manifest has never heard of throws when it is declared, so a typo is reported against the node that declared it rather than showing up later as a picture that never paints. An empty `src` declares nothing: an unset media slot paints a placeholder, not a missing asset.
+
+## `load`
+
+For anything an entry can't say, `load(loader, state)` declares it. The loader has one method per kind of asset:
+
+| Method | Declares |
+|---|---|
+| `loader.image(src)` | an image |
+| `loader.video(src, { start?, end? })` | a video, optionally trimmed |
+| `loader.font(family, weight?)` | a font family. Gates layout |
+| `loader.fill(fills)` | everything a resolved fill or an array of fills references, for a paint your node works out itself |
+| `loader.task(key, load, { before? })` | anything else, loaded by your own function. A function it resolves to frees what it loaded when the frame window closes |
+
+```ts
+export const Badge = component2d({
+  key: 'badge',
+  state: { label: 'NEW' },
+  load: (loader) => loader.image('badges/star.png'),
+  render: (ctx, state) => { /* … draws Fills.image('badges/star.png') … */ },
+});
+```
+
+## When it runs
+
+Not every frame. A node declares when it enters the tree, and again only on the frames where a command writes one of the entries that declaration read. You don't list those entries anywhere: the engine watches what `load` reads and works it out.
+
+So a document that tweens a polaroid's `x`, `opacity` or `width` never re-declares it. A `set` that swaps `photo` at 3s loads the new picture from 3s and lets the old one go after it. A custom command that swaps `photo` five times partway through its duration is followed frame by frame, for exactly the frames that command runs.
+
+That only works if a declaration is a **pure function of its state**:
+
+* **Read `state`, nothing else.** A value the engine can't see change is a change nobody will ask your declaration about.
+* **There is no size to declare.** How big an image is decoded follows how big the frame actually draws it, zoom and export scale included.
+* **Don't read the clock.** The declaration isn't re-run as the clock moves.
+* **Don't write anything**, and keep nothing between calls.
+
+## Assets chosen over time
+
+A slideshow shows one of several images. Declare **all** of them:
+
+```ts
+export const Slideshow = component2d({
+  key: 'slideshow',
+  state: { slides: Types.list(Types.image()), index: 0 },
+  load: (loader, state) => {
+    for (const src of state.slides) loader.image(src);
+  },
+  render: (ctx, state) => {
+    const src = state.slides[Math.round(state.index)];
+    if (!src) return;
+    ctx.draw(new Graphics2D().rect({ width: ctx.size.width, height: ctx.size.height }).fill(Fills.image(src)));
+  },
+});
+```
+
+A list of images declares nothing by itself, so this one needs its `load`. Declaring only `state.slides[Math.round(state.index)]` would still be correct while a document tweens `index`: the engine sees `index` change and re-declares on each of those frames. But every switch then becomes a separate load, and a slideshow that advances on its own, picking its slide from `ctx.time` in `render`, would be invisible to it entirely. Declaring the whole set is right either way, and lets every slide be ready before it is shown.
+
+## Computed assets: tasks
+
+For something that isn't an image, video or font, such as a data file, a parser or a lookup table, declare a task. It takes a key, the function that loads it, and optionally what it holds back:
+
+```ts
+const lutLoaders = new Map<string, () => Promise<void>>();
+
+// One function per key, created once and shared by every node that needs it.
+function lutLoader(name: string) {
+  let load = lutLoaders.get(name);
+  if (!load) {
+    load = () => loadLut(name);
+    lutLoaders.set(name, load);
+  }
+  return load;
+}
+
+export const Graded = component2d({
+  key: 'graded',
+  state: { lut: 'neutral' },
+  load: (loader, state) => loader.task(`lut:${state.lut}`, lutLoader(state.lut)),
+  // …
+});
+```
+
+Three rules keep tasks cheap:
+
+* **The key is the identity.** Every node declaring `lut:warm` shares one load. Put everything that makes two loads different into the key.
+* **Hoist the function.** Declaring the same key with a different function keeps the first one and warns, and a fresh arrow function on every call looks like a new declaration each time the node re-declares. A module-level map, as above, gives each key exactly one function.
+* **Never capture `state`.** A load outlives the node that declared it, and `state` is a live view of that node, so `() => loadLut(state.lut)` keeps a discarded node alive. Build the function from the same values the key is built from, as `lutLoader(name)` does.
+
+### Gating layout
+
+By default a task only has to finish before the frame **draws**. If your node *measures* with what it loads, for instance a syntax grammar that decides how text is split into tokens before it is laid out, pass `before: 'layout'`:
+
+```ts
+loader.task(`grammar:${state.language}`, grammarLoader(state.language), { before: 'layout' });
+```
+
+`loader.font(...)` always gates layout, because text is measured against its face. A layout gate is loaded before the node's track is measured, so a heading is never laid out in a fallback font and then drawn in the real one.
+
+## Sound
+
+A node plays sound from its commands. `timeline.sound(src, options)` is a piece like any other, so it composes with the motion it belongs to:
+
+```ts
+import { component2d, Paint, Types } from '@motionscript/sdk/v1';
+
+export const Stinger = component2d({
+  key: 'stinger',
+  state: { ...Paint.state, hit: Types.audio(), whoosh: Types.audio() },
+  commands: {
+    ...Paint.commands,
+    /** Lands with a hit, and a whoosh 0.4s later. */
+    land: (timeline, state) => timeline.together([
+      timeline.tween({ opacity: 1 }),
+      timeline.sound(state.hit, { trimEnd: 1.5 }),
+      timeline.sequence([timeline.wait(0.4), timeline.sound(state.whoosh, { transitionOut: { duration: 0.3 } })]),
+    ]),
+  },
+});
+```
+
+| Option | Default | Meaning |
+|---|---|---|
+| `trimStart` / `trimEnd` | whole file | Which part of the file plays |
+| `loop` | `false` | Repeat until cut |
+| `volume`, `speed` | `1` | A number or a ramp |
+| `effects` | none | Gain, EQ, tremolo, echo |
+| `transitionIn`, `transitionOut` | none | Fades over the sound's first and last seconds |
+| `bus` | – | The id of the bus it feeds. A `sound` node feeds the buses it sits in |
+| `optional` | `false` | Missing from the catalog, it is skipped rather than an error |
+| `closed` | `false` | It ends with its source rather than staying open |
+
+A sound starts where its piece sits in the command, and is cut when the command ends; in a command with no length it plays to the end of its file. An empty `src` plays nothing.
+
+Sound is scheduled ahead of time rather than written frame by frame, so it is worked out when the command is built: a later `set` of `hit` changes the next command's sound, not one already placed. Automate a level with a ramp (`ramp`, `hold`) on `volume`, or fade it with a transition. The built-in `sound` node plays from its own `play` command, and a `sound` row with none gets one over its span.
+
+## If you forget
+
+An image or font nothing declared throws `AssetNotLoadedError` when the frame reaches for it, naming the asset and the node drawing it. In the player it is loaded on the spot and the frame painted again, so the mistake can look harmless while you work. An export stops on it. Treat the error as a missing entry type or `load`, not as something to retry.

@@ -1,0 +1,64 @@
+---
+sidebar_position: 25
+---
+
+# Curves
+
+Remaps tones along a curve defined by control points. This is the same adjustment `Adjustments.curves` applies to an image fill, available on **any node** — so a group of shapes or a text block can be graded the way a photo can.
+
+![Curves effect demo](/effects/curves.webp)
+
+## Usage
+
+```ts
+import { Rect, Effects } from '@motionscript/sdk/v1';
+
+// Lift the shadows, roll off the highlights
+Rect({ effects: Effects.curves({ points: [[0, 0.15], [0.5, 0.55], [1, 0.9]] }) })
+
+// Target a single channel
+Rect({ effects: Effects.curves({ points: [[0, 0], [1, 0.8]], channel: 'b' }) })
+
+// Raw object
+Rect({ effects: [{ type: 'curves', points: [[0, 0], [1, 1]], channel: 'rgb' }] })
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `type` | `'curves'` | – | Effect identifier |
+| `points` | `[number, number][]` | – | Control points as `[input, output]` pairs in 0–1 |
+| `channel` | `'rgb' \| 'r' \| 'g' \| 'b' \| 'a'` | `'rgb'` | Channel(s) the curve applies to |
+| `mode` | `'foreground' \| 'backdrop'` | `'foreground'` | `'backdrop'` grades the content beneath the node |
+
+Points do not need to be sorted; they are ordered by input before evaluation.
+
+## How the curve is applied
+
+The curve is resampled to 33 evenly spaced values and applied per channel, linearly between them, so S-curves and other non-monotonic shapes keep their crossover. The image-fill filter and this node effect share one implementation deliberately, so `Adjustments.curves` and `Effects.curves` can never mean two different curves.
+
+## Animating
+
+Points move pairwise, so two curves with the same number of points morph smoothly. `channel` snaps at the midpoint.
+
+```tsx
+import { Effects } from '@motionscript/sdk/v1';
+
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'card', type: 'rect', parentId: null, layerOrder: 0,
+      props: { effects: Effects.curves({ points: [[0, 0], [0.5, 0.5], [1, 1]] }) } },
+  ],
+  commands: [
+    { id: 'lift', type: 'to', targetId: 'card', at: 0, duration: 1.2,
+      easing: { kind: 'inOut', args: 'quad' },
+      args: { effects: Effects.curves({ points: [[0, 0.3], [0.5, 0.6], [1, 0.85]] }) } },
+  ],
+};
+```
+
+## See also
+
+**`colorAdjustment`** covers brightness, contrast, saturation and white balance with named knobs, and composes with this one.

@@ -86,6 +86,7 @@ This is a pnpm + Turborepo monorepo. The published pieces:
 | [`@motionscript/react`](packages/react) | React bindings: a hook that owns a session and a component that draws it. |
 | [`@motionscript/headless`](packages/headless) | Renders projects to stills and video from Node, through the browser engine in a headless Chromium page. |
 | [`packages/components/*`](packages/components) | Component kits: `charts`, `code`, `geography` and `math`. |
+| [`packages/docs`](packages/docs) | The documentation pages behind motionscript.dev/docs; edit a page here. |
 
 Plus internal workspaces: [`e2e`](packages/e2e) (visual regression tests), and the example apps under
 [`apps/`](apps).

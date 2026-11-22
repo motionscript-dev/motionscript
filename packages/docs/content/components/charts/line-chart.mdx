@@ -1,0 +1,134 @@
+---
+sidebar_position: 2
+---
+
+# LineChart
+
+A multi-series line or area chart: one curve per series over a shared x column,
+with a value axis, an x axis and a legend. Reach for it for anything measured over
+time or over a continuous x. Area charts are the same node with `style.area` set.
+It ships in `@motionscript/charts`; register the package's `NODES`
+([overview](/docs/components/charts/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'chart', type: 'lineChart', parentId: null, layerOrder: 0,
+      props: {
+        width: 760, height: 460,
+        data: [
+          { year: 2019, revenue: 10, cost: 4 },
+          { year: 2020, revenue: 14, cost: 6 },
+          { year: 2021, revenue: 12, cost: 9 },
+          { year: 2022, revenue: 18, cost: 10 },
+          { year: 2023, revenue: 24, cost: 12 },
+        ],
+        xField: 'year',
+        series: [
+          { field: 'revenue', label: 'Revenue' },
+          { field: 'cost', label: 'Cost' },
+        ],
+        yAxis: { label: 'USD (k)', format: '$#,##0' },
+        // An area chart: a gradient under each line.
+        style: { fontFamily: 'Inter', area: 'gradient' },
+      } },
+  ],
+  commands: [
+    // Axes, then the lines trace, then the legend rises.
+    { id: 'in', type: 'enter', targetId: 'chart', at: 0, duration: 1.6, args: {} },
+    // Dashed rules on 2021 and 2023; both lines fade outside the band.
+    { id: 'band', type: 'spotlightRegion', targetId: 'chart', at: 2, duration: 0.5,
+      args: { region: { x: [2021, 2023] } } },
+    { id: 'clear', type: 'clearRegion', targetId: 'chart', at: 3.5, duration: 0.5, args: {} },
+    // Rescale the y axis so 10 to 25 fills the plot, then come back out.
+    { id: 'zoom', type: 'zoomTo', targetId: 'chart', at: 4.5, duration: 0.8,
+      args: { region: { y: [10, 25] } } },
+    { id: 'back', type: 'resetZoom', targetId: 'chart', at: 6, duration: 0.8, args: {} },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `data` | `DataRecord[]` | `[]` | The table, one row per sample |
+| `xField` | `string` | `''` | The column holding each row's x value, shared by every series |
+| `series` | `{ field, label?, fill?, enabled? }[]` | `[]` | One curve per entry: the column it plots, its legend caption (the column's name when left out), a paint override, and whether it shows at first |
+| `stack` | `'none' \| 'stacked' \| 'percent'` | `'none'` | `'stacked'` puts each series on the sum of those before it; `'percent'` reads every row as shares of 100 |
+| `xAxis` | `{ label?, range?, ticks?, format? }` | `{}` | The x axis's domain. `range` and `ticks` are in the x column's units (see Notes) |
+| `yAxis` | `{ label?, range?, ticks?, format? }` | `{}` | The value axis's domain. `range` defaults to the data's bounds rounded out to tidy values, `ticks` to five across it |
+| `style` | chart style | the default style | Colours, type, grid, curve, area, dots and legend; see [Style](#style) |
+| `region` | `{ x?: [min, max], y?: [min, max] } \| null` | `null` | A slice of the plot to spotlight, in data units. One axis alone is a band, both a box |
+| `regionReveal` | `number` | `0` | How far the `region` call-out is drawn in, `0` to `1`. At `0` a chart with a `region` looks like one without |
+
+The axis domain fields are described on the [overview](/docs/components/charts/overview#the-value-axis).
+
+## Style
+
+The line chart draws the shared colour, text, grid and legend groups (see
+[Styling](/docs/components/charts/styling)) plus these:
+
+| Field | Default | |
+|---|---|---|
+| `strokeWidth` | `4` | Line weight in px; `0` draws no line |
+| `curve` | `'smooth'` | `'smooth'` (monotone, never overshooting a sample), `'linear'` or `'step'` |
+| `dots` | `false` | A dot on every sample |
+| `dotSize` | `12` | Dot diameter in px |
+| `area` | `'none'` | Fill under each line: `'none'`, `'solid'` (the series colour) or `'gradient'` (the colour fading to nothing at the baseline). `'gradient'` is the area chart |
+| `areaOpacity` | `0.4` | The fill's opacity at the line |
+| `values` | `'none'` | Print each point's value `'above'` or `'below'` it. Read once, when the node is built |
+
+```tsx
+// A stepped line with dots and no gridlines.
+props: { style: { curve: 'step', dots: true, grid: 'none' } }
+```
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `enter` | none | The whole entrance: the axis markers stagger in, the lines trace left to right, the legend rises. With a `region` set and `regionReveal` at `0`, the call-out draws on in the last quarter |
+| `spotlightRegion` | `region: { x?, y? }` | Draws a region's dashed rules on while every line fades outside it. A region already up retracts first, over the first half. Default 0.5 s |
+| `clearRegion` | none | Retracts the call-out and brings every line back to full. Default 0.5 s |
+| `zoomTo` | `region: { x?, y? }` | Rescales the named axes so the slice fills the plot; the grid, the markers and the lines follow. An axis left out stays as it is. Default 0.8 s |
+| `resetZoom` | none | Returns to the domain the chart had when `zoomTo` first ran. Default 0.8 s |
+| `showSeries` | `seriesIndex` | Traces a hidden series in with its legend entry. Default 0.35 s |
+| `hideSeries` | `seriesIndex` | Retraces a series out with its legend entry. Default 0.35 s |
+| `spotlightSeries` | `seriesIndex` | Fades every other series and its legend entry to `0.2`. Default 0.35 s |
+
+Every command eases out unless the command row sets an `easing`.
+
+```tsx
+{ id: 'only-cost', type: 'spotlightSeries', targetId: 'chart', at: 2, duration: 0.35,
+  args: { seriesIndex: 1 } },
+```
+
+A `to` command that restates `xAxis` or `yAxis` `range` or `ticks` tweens from
+the axis as drawn, so an auto axis rescales without a cut:
+
+```tsx
+{ id: 'rescale', type: 'to', targetId: 'chart', at: 2, duration: 1,
+  args: { yAxis: { range: [0, 40] } } },
+```
+
+A `to` on `style` restyles the chart in place:
+
+```tsx
+{ id: 'fill', type: 'to', targetId: 'chart', at: 2, duration: 1,
+  args: { style: { area: 'gradient', areaOpacity: 0.6 } } },
+```
+
+## Notes
+
+- Place it anywhere in a 2D scene. It takes children, laid out freeform over the chart. A new one in an editor starts 760 x 460.
+- The x column decides its own scale. Numbers plot as numbers. Dates and month names (`Jan`, `2026-03`, `2026-W12`, `2026-03-14`) plot as time, so a gap in the samples reads as a gap. Anything else plots by row position, evenly spaced. Up to twelve samples of a time or name column each get a tick, captioned with the cell as written.
+- `xAxis.range`, `xAxis.ticks` and a region's `x` are in the x scale's units: the number for a numeric column, UTC epoch milliseconds for a time column, the row index for any other column. A spotlight or zoom on x is simplest on a numeric column.
+- A region is clamped to the plot, and a range written back to front reads as the same span. A region that bounds neither axis (`{}`) is no call-out: `spotlightRegion` with it clears.
+- `zoomTo` remembers the domain it started from the first time it runs, and `resetZoom` restores it and forgets it, so the two are order dependent. A `resetZoom` with no earlier `zoomTo`, or a `zoomTo` naming neither axis, holds its slot and changes nothing. A zoom keeps the tick count, so each marker slides to its new value. A spotlit region follows a zoom.
+- A series with `enabled: false` starts hidden; `showSeries` traces it in. The series list itself is read once, so adding a series means editing the document, not a `set`.
+- With `area` on and `stack` of `'stacked'` or `'percent'`, the areas stack and fill to the one below.
+- Related: [BarChart](/docs/components/charts/bar-chart), [RadarChart](/docs/components/charts/radar-chart), [Styling](/docs/components/charts/styling).

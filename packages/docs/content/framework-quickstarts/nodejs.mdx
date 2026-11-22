@@ -1,0 +1,151 @@
+---
+sidebar_position: 2
+title: Node.js
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Node.js quickstart
+
+Render a scene to an MP4 or a PNG from a script, a queue worker or an HTTP handler — no browser window, no dev server.
+
+## 1. Install
+
+<Tabs groupId="package-manager">
+  <TabItem value="npm" label="npm">
+
+```bash
+npm install @motionscript/core @motionscript/sdk @motionscript/headless
+npx playwright install chromium
+```
+
+  </TabItem>
+  <TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @motionscript/core @motionscript/sdk @motionscript/headless
+pnpm exec playwright install chromium
+```
+
+  </TabItem>
+  <TabItem value="yarn" label="yarn">
+
+```bash
+yarn add @motionscript/core @motionscript/sdk @motionscript/headless
+yarn playwright install chromium
+```
+
+  </TabItem>
+</Tabs>
+
+`@motionscript/core` is a peer dependency of the SDK, so it is listed explicitly. The second command downloads the Chromium build Playwright drives; run it once per machine (on a fresh Linux box or CI image, add `--with-deps` to install Chromium's system libraries too).
+
+`@motionscript/headless` drives the **browser** engine inside a headless Chromium page. That is not an implementation detail: a server export and a reader's preview are the same code, so they are the same picture — 3D and audio included.
+
+## 2. Add a project entry
+
+A document names its node types by key, and an engine only knows the ones it has been given. A component is code, and code does not survive a process boundary, so the entry is a **file** that gets bundled into the page rather than an object you pass across:
+
+```ts title="src/project.ts"
+// Node types your documents may name, by `type`. Empty is fine — the built-in
+// nodes are always available, so you only need this file once you write one.
+export const nodes = [];
+
+// Shader packs your documents may name.
+export const shaders = {};
+```
+
+`createServerEngine` looks for it at `src/project.ts` under `projectRoot`; pass `entry` to point at another file.
+
+## 3. Render
+
+```ts title="render.ts"
+import { writeFile } from 'node:fs/promises';
+import { createServerEngine } from '@motionscript/headless';
+
+const scene = {
+  kind: 'composition',
+  nodes: [
+    { id: 'box', type: 'rect', parentId: null, layerOrder: 0,
+      props: { width: 200, height: 200, fill: 'royalblue', cornerRadius: 16 } },
+  ],
+  commands: [
+    { id: 'slide', type: 'to', targetId: 'box', at: 0, duration: 1, args: { x: 400 } },
+  ],
+};
+
+const engine = createServerEngine({ projectRoot: '.' });
+
+try {
+  const video = await engine.renderVideo({ document: scene });
+  await writeFile('out.mp4', video);
+
+  const still = await engine.renderImage({ document: scene, frame: 'last' });
+  await writeFile('out.png', still.bytes);
+} finally {
+  await engine.close();
+}
+```
+
+```bash
+node --experimental-strip-types render.ts
+```
+
+`renderVideo` hands back the encoded bytes; `renderImage` hands back `{ bytes, frame, totalFrames }`. `frame` takes a number or one of `'first'` / `'mid'` / `'last'`.
+
+## 4. Serve it
+
+One engine is warm and serves many renders. Documents are data and arrive per request, which is the whole reason the node types are bundled and the document is not:
+
+```ts title="server.ts"
+import { createServer } from 'node:http';
+import { createServerEngine, isEngineError } from '@motionscript/headless';
+
+const engine = createServerEngine({ projectRoot: '.' });
+
+createServer(async (req, res) => {
+  if (req.method !== 'POST') {
+    res.writeHead(405).end();
+    return;
+  }
+
+  const body: Buffer[] = [];
+  for await (const chunk of req) body.push(chunk);
+
+  try {
+    const document = JSON.parse(Buffer.concat(body).toString());
+    const image = await engine.renderImage({ document, frame: 'last' });
+    res.writeHead(200, { 'content-type': 'image/png' }).end(image.bytes);
+  } catch (error) {
+    // Failures are coded rather than prose, so a service maps a code onto a
+    // response instead of matching on a message that may be reworded.
+    const status = isEngineError(error) ? 422 : 500;
+    res.writeHead(status, { 'content-type': 'application/json' })
+      .end(JSON.stringify({ error: isEngineError(error) ? error.code : 'INTERNAL' }));
+  }
+}).listen(3000);
+```
+
+Build the engine **once**, outside the handler. Starting one per request pays for a Chromium launch and a bundle build on every call.
+
+## Things to know
+
+- **`close()` matters.** The engine owns a browser process; a script that exits without closing it leaves one behind.
+- **GPU and software frames differ.** Pass `softwareRender: true` (or set `MS_SOFTWARE_RENDER=1`) for anything that pixel-diffs renders, and record which mode produced a baseline. Leave it off for speed.
+- **Assets resolve against `assetsDir`**, served at the page's origin root. A scene naming `images/logo.png` finds it there.
+- **Option parsers are exported** — `parseBitrate`, `parseCodec`, `parseScale`, `parseTimeout` and friends — so a service validating a request body can apply the same rules at its edge and fail with `INVALID_OPTION` rather than mid-render.
+
+## Where to go next
+
+<DocsGrid columns={3}>
+  <DocsCard title="React quickstart" href="/docs/framework-quickstarts/react">
+    The same documents, playing in a browser.
+  </DocsCard>
+  <DocsCard title="Custom nodes" href="/docs/custom-node/introduction">
+    Write a node type, and list it in your project entry.
+  </DocsCard>
+  <DocsCard title="Your first scene" href="/docs/getting-started/scene">
+    What a document is, one page at a time.
+  </DocsCard>
+</DocsGrid>

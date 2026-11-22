@@ -1,0 +1,8 @@
+{
+  "label": "Math",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Components in @motionscript/math: coordinate systems, plots, 3D graphs and LaTeX formulas."
+  }
+}

@@ -1,0 +1,109 @@
+---
+sidebar_position: 4
+---
+
+# PieChart
+
+A pie or donut chart: one wedge per row of the table, sized by its share of the
+total, with labels and a legend. Reach for it to show parts of a whole. It ships in
+`@motionscript/charts`; register the package's `NODES`
+([overview](/docs/components/charts/overview)).
+
+## Usage
+
+```tsx
+export default {
+  kind: 'composition',
+  nodes: [
+    { id: 'chart', type: 'pieChart', parentId: null, layerOrder: 0,
+      props: {
+        width: 680, height: 480,
+        data: [
+          { channel: 'Search', share: 48 },
+          { channel: 'Social', share: 27 },
+          { channel: 'Email', share: 15 },
+          { channel: 'Direct', share: 10 },
+        ],
+        categoryField: 'channel',
+        valueField: 'share',
+        centerLabel: '48%',
+        centerCaption: 'from search',
+        // Keep the hole clear until revealCenter lands the conclusion.
+        showCenter: false,
+        // A donut, with the legend on the right.
+        style: { fontFamily: 'Inter', innerRadius: 0.6, legend: 'right' },
+      } },
+  ],
+  commands: [
+    // The wedges sweep in, then the labels and the legend arrive together.
+    { id: 'in', type: 'enter', targetId: 'chart', at: 0, duration: 1.4, args: {} },
+    // Search swells out of the ring and the rest dim behind it.
+    { id: 'pick', type: 'selectSlice', targetId: 'chart', at: 2, duration: 0.45,
+      args: { sliceIndex: 0 } },
+    { id: 'answer', type: 'revealCenter', targetId: 'chart', at: 2.5, duration: 0.6, args: {} },
+  ],
+};
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `data` | `DataRecord[]` | `[]` | The table, one row per slice |
+| `categoryField` | `string` | `''` | The column naming each slice, on its label and legend row |
+| `valueField` | `string` | `''` | The column sizing each slice. Negative and non-finite values count as `0` |
+| `style` | chart style | the default style | Colours, type, ring geometry, label placement and legend; see [Style](#style) |
+| `labelMode` | `'both' \| 'category' \| 'percent' \| 'none'` | `'percent'` | What a slice's label says. `'both'` is the category and the percentage on two lines |
+| `gap` | `number` | `40` | Space between the ring and the legend, in px |
+| `centerLabel` | `string` | `''` | Text set in the ring's hole |
+| `centerCaption` | `string` | `''` | A smaller second line under `centerLabel` |
+| `showCenter` | `boolean` | `true` | Draw the hole's text at rest. Set `false` to hold it for `revealCenter`. Read once, when the node is built |
+| `pops` | `number[]` | `[]` | How far each slice is pushed out of the ring, `0` to `1`. The selection commands move it; the chart starts every slice flush |
+
+`labelMode`, `gap`, `centerLabel` and `centerCaption` are read once, when the node
+is built.
+
+## Style
+
+The pie chart draws the shared colour, text and legend groups
+(see [Styling](/docs/components/charts/styling)) plus these:
+
+| Field | Default | |
+|---|---|---|
+| `innerRadius` | `0` | The hole as a fraction of the outer radius, `0` to `0.9`. `0` is a solid pie, about `0.6` a donut |
+| `sliceGap` | `3` | The channel between wedges, in px |
+| `sliceRadius` | `4` | Corner rounding of each wedge, in px |
+| `labelPlacement` | `'inside'` | `'inside'` the wedge, `'outside'` on a leader line, or `'none'`. Read once, when the node is built |
+
+```tsx
+// A donut with outside labels.
+props: { style: { innerRadius: 0.6, labelPlacement: 'outside' } }
+```
+
+## Commands
+
+| Command | Args | Animates |
+|---|---|---|
+| `enter` | none | The whole entrance: the wedges sweep in clockwise from 12 o'clock, then the labels fade up as the legend staggers in |
+| `revealCenter` | none | Fades the hole's text up. Not part of `enter`. Default 0.6 s |
+| `selectSlice` | `sliceIndex` | Swells one slice out past the rim and dims the rest; other selected slices stay out. Default 0.45 s |
+| `deselectSlice` | `sliceIndex` | Settles one slice back flush. Default 0.45 s |
+| `selectOnlySlice` | `sliceIndex` | Swells one slice out and settles every other. Default 0.45 s |
+| `clearSelection` | none | Settles every slice and brings the chart back to full. Default 0.45 s |
+
+Every command eases out unless the command row sets an `easing`.
+
+```tsx
+{ id: 'move', type: 'selectOnlySlice', targetId: 'chart', at: 3, duration: 0.45,
+  args: { sliceIndex: 2 } },
+```
+
+## Notes
+
+- Place it anywhere in a 2D scene. It takes children, laid out freeform over the chart. A new one in an editor starts 680 x 480.
+- A pie plots rows, not series, so it has no `series` prop and no show or hide commands: dropping a slice would re-cut every other one. Selection is what it has instead. A selected slice keeps its hole edge where it is.
+- The centre text shows only with a hole: with `innerRadius` at `0` the text has nowhere to go.
+- `'inside'` labels cost no gutter, so the ring draws larger; `'outside'` suits slices too narrow to hold text.
+- The number of labels and legend rows is fixed when the node is built. A `set` of `data` with the same number of rows re-cuts the wedges.
+- The selection commands read where each slice stands when the command is built, so one that follows another starts where that one left the ring. One that would move nothing still holds its slot.
+- Related: [RadialChart](/docs/components/charts/radial-chart), [BarChart](/docs/components/charts/bar-chart), [Styling](/docs/components/charts/styling), [Ellipse](/docs/components/basic/ellipse) for a single arc or progress ring.
