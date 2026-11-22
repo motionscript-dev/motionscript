@@ -78,7 +78,11 @@ defaults to beside the module.
   bytes for (`localBytes` answers `null`) at an `http(s)` address is read in ranges
   as frames are asked for (mediabunny `UrlSource`, each request at the source's
   current address), not downloaded whole before its first frame; a server that
-  will not serve ranges gets the whole download.
+  will not serve ranges gets the whole download. Each video's frames come off
+  one forward decode stream (`VideoReader`, `engine/video.ts`) that later
+  frames read on from; a step back, or a jump past a key frame, opens a new
+  one there. While playing it keeps a few frames ahead of the playhead
+  decoded; a render's misses are kept only until the next render starts.
 - `WgpuSurfaceContext` is the adapter's render context mounted on a canvas,
   with the preview knobs a host sets (`pixelRatio`, `view`, `frame`,
   `clipToFrame`, `frameBackground`). Mounting is asynchronous (WebGPU device

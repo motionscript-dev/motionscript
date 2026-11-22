@@ -18,9 +18,10 @@ the frame goes to the encoder.
   `hardwareAcceleration: no-preference`.
 - **Supersampling.** The default `supersample: 2` renders 4× the pixels and
   lets the encoder's `transform` scale the canvas down to the output size.
-- **Video frames** are WebCodecs decodes at each frame's time (mediabunny
-  `VideoSampleSink`, `engine/storage.ts`), then `createImageBitmap` and a
-  re-upload.
+- **Video frames** are read off one forward WebCodecs stream per video
+  (mediabunny `VideoSampleSink.samples`, `engine/video.ts`), so each costs one
+  decode, then `createImageBitmap` and a re-upload. Asking for each frame on
+  its own (`getSample`) decoded again from the previous key frame every time.
 
 ## Where the time goes
 

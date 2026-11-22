@@ -137,6 +137,8 @@ export interface VideoFrames {
     videoFrame(src: string, time: number): ImageBitmap | null;
     /** A draw of image `src` `edge` device px along its long side. */
     wantImageEdge?(src: string, edge: number): void;
+    /** A render starts: frames earlier ones asked for are no longer wanted. */
+    beginPass?(): void;
 }
 
 interface Scope {
@@ -240,6 +242,7 @@ export class WgpuRenderContext extends CanvasRenderContext2D {
         // the pixel ratio by scaling the doc to the canvas).
         this.doc = new Doc(this.width, this.height, this.clearColor());
         this.frameImages.clear();
+        this.storage?.beginPass?.();
         // Only the settled pass counts (earlier passes wait on decodes).
         this.missing.clear();
         this.shaderIssues.length = 0;

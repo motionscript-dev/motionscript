@@ -309,6 +309,8 @@ export class PlaybackController {
         this.masterClock.onPause(() => {
             this.audioDevice.stop();
             this.storageAdapter.setPlaying(false);
+            // A tick draws what is decoded so far; the frame left on screen is settled.
+            this.settleTrailing();
         });
         this.masterClock.onTick(async (currentTime: number) => {
             /**

@@ -4,24 +4,20 @@
 // the host's `loadBytes` (a plain fetch by default), so a local store is honoured.
 
 import { type AssetCatalog, type Size2D, StorageAdapter } from "@motionscript/core";
-import { ALL_FORMATS, BlobSource, Input, type InputVideoTrack, UrlSource, VideoSampleSink } from "mediabunny";
+import { ALL_FORMATS, BlobSource, EncodedPacketSink, Input, type InputVideoTrack, UrlSource, VideoSampleSink } from "mediabunny";
 import type { VideoFrames } from "../adapter/context";
 import { assetKey, type Decoded } from "../adapter/driver";
+import { VideoReader } from "./video";
 
 /** WebGPU's guaranteed texture edge; larger images are downscaled to fit. */
 const MAX_TEXTURE_EDGE = 8192;
-/** Decoded frames kept per video (scrubbing back and forth reuses them). */
-const FRAMES_PER_VIDEO = 12;
 /** Addresses a video is read from in ranges rather than downloaded whole. */
 const STREAMABLE = /^https?:/i;
 
 interface VideoTrack {
     duration: number;
-    sink: VideoSampleSink;
+    reader: VideoReader;
     input: Input;
-    /** Decoded frames by time key, oldest first. */
-    frames: Map<string, ImageBitmap>;
-    last: ImageBitmap | null;
 }
 
 export interface FontFile {
@@ -74,7 +70,10 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
     readonly fonts: FontFile[] = [];
     private fontListeners = new Set<(font: FontFile) => void>();
     private registeredFamilies = new Set<string>();
-    private pending = new Map<string, { src: string; time: number }>();
+    /** The video frames the latest render drew without (by source, then time). */
+    private pending = new Map<string, Map<string, number>>();
+    private pass = 0;
+    private playing = false;
     /** SVGs by asset key, kept to rasterize again at the edge a draw needs. */
     private vectors = new Map<string, { img: HTMLImageElement; edge: number }>();
     /** Vector keys a draw wants sharper, and the long edge (px) it wants. */
@@ -86,7 +85,6 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
     private imageLoads = new Map<string, Promise<void>>();
     private videoLoads = new Map<string, Promise<void>>();
     private fontLoads = new Map<string, Promise<boolean>>();
-    private frameDecodes = new Map<string, Promise<void>>();
     private readonly loadBytes: LoadBytes;
 
     constructor(
@@ -159,8 +157,15 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
 
     private async openVideo(src: string, key: string): Promise<void> {
         const { input, track } = await this.openVideoInput(src, () => this.url(src, (c) => c.getVideoMeta(src)));
-        const duration = await input.computeDuration();
-        this.videos.set(key, { duration, sink: new VideoSampleSink(track), input, frames: new Map(), last: null });
+        const [duration, width, height] = await Promise.all([input.computeDuration(), track.getDisplayWidth(), track.getDisplayHeight()]);
+        const sink = new VideoSampleSink(track);
+        const packets = new EncodedPacketSink(track);
+        const reader = new VideoReader(duration, {
+            samples: (start) => sink.samples(start),
+            keyFrameAt: async (time) => (await packets.getKeyPacket(time, { metadataOnly: true }))?.timestamp ?? null,
+        }, width * height * 4);
+        reader.setPlaying(this.playing);
+        this.videos.set(key, { duration, reader, input });
     }
 
     /**
@@ -196,13 +201,27 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
         const key = assetKey(src);
         const video = this.videos.get(key);
         if (!video) return null;
-        const exact = video.frames.get(timeKey(time));
+        if (this.playing) video.reader.follow(time, this.pass);
+        const exact = video.reader.frameAt(time);
         if (exact) return exact;
         // By time as well: an echo asks for several frames of one clip at once.
-        this.pending.set(`${key}@${timeKey(time)}`, { src: key, time });
-        // The nearest earlier answer keeps playback from flashing empty while
-        // the exact frame decodes; a settled render waits for it.
-        return video.last;
+        let times = this.pending.get(key);
+        if (!times) this.pending.set(key, (times = new Map()));
+        times.set(timeKey(time), time);
+        // The nearest answer keeps playback from flashing empty while the
+        // exact frame decodes; a settled render waits for it.
+        return video.reader.nearest(time);
+    }
+
+    /** A render starts: what an earlier one drew without is no longer wanted. */
+    beginPass(): void {
+        this.pass++;
+        this.pending.clear();
+    }
+
+    override setPlaying(playing: boolean): void {
+        this.playing = playing;
+        for (const video of this.videos.values()) video.reader.setPlaying(playing);
     }
 
     /**
@@ -251,33 +270,10 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
     override async warmPendingDecodes(): Promise<boolean> {
         const other = [...this.settlers].map((s) => s()).filter((p) => p !== null);
         if (this.pending.size === 0 && other.length === 0) return false;
-        const jobs = [...this.pending.values()];
+        const jobs = [...this.pending];
         this.pending.clear();
-        await Promise.all([...jobs.map(({ src, time }) => once(this.frameDecodes, `${src}@${timeKey(time)}`, () => this.decodeFrame(src, time))), ...other]);
+        await Promise.all([...jobs.map(([src, times]) => this.videos.get(src)?.reader.decode([...times.values()])), ...other]);
         return true;
-    }
-
-    private async decodeFrame(src: string, time: number): Promise<void> {
-        const video = this.videos.get(src);
-        if (!video || video.frames.has(timeKey(time))) return;
-        const sample = await video.sink.getSample(time);
-        if (!sample) return;
-        const frame = sample.toVideoFrame();
-        let bitmap: ImageBitmap;
-        try {
-            bitmap = await createImageBitmap(frame);
-        } finally {
-            frame.close();
-            sample.close();
-        }
-        video.frames.set(timeKey(time), bitmap);
-        video.last = bitmap;
-        while (video.frames.size > FRAMES_PER_VIDEO) {
-            const [oldest, old] = video.frames.entries().next().value!;
-            video.frames.delete(oldest);
-            // Still painted by a doc until the next frame replaces it.
-            if (old !== video.last) queueMicrotask(() => old.close());
-        }
     }
 
     async loadAudio(): Promise<void> {}
@@ -328,7 +324,7 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
         for (const image of this.images.values()) image.bitmap.close();
         this.images.clear();
         for (const video of this.videos.values()) {
-            for (const frame of video.frames.values()) frame.close();
+            video.reader.close();
             video.input.dispose();
         }
         this.videos.clear();
@@ -339,7 +335,6 @@ export class WgpuStorageAdapter extends StorageAdapter implements VideoFrames {
         this.imageLoads.clear();
         this.videoLoads.clear();
         this.fontLoads.clear();
-        this.frameDecodes.clear();
         super.dispose();
     }
 

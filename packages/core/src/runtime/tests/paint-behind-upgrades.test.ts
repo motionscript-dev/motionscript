@@ -156,4 +156,16 @@ describe("PlaybackController – upgrades are painted behind, not waited for", (
         await flush();
         expect(rc.renderCount).toBe(renders);
     });
+
+    it("pausing repaints behind what the last tick drew without", async () => {
+        const { controller, rc, storage, clock } = await parked();
+        clock.play(1, false);
+        storage.pendingUpgrades = true;
+        const renders = rc.renderCount;
+
+        clock.pause();
+        await flush();
+        expect(rc.renderCount).toBe(renders + 1);
+        expect(controller.isPlaying).toBe(false);
+    });
 });
