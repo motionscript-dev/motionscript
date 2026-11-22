@@ -1,0 +1,453 @@
+{
+  "kind": "project",
+  "name": "still-2d",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "still-2d-0",
+      "clip": {
+        "kind": "still",
+        "variables": [
+          {
+            "id": "tint",
+            "value": "#44aa88"
+          },
+          {
+            "id": "size",
+            "value": 24
+          }
+        ],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "rect-0",
+            "type": "rect",
+            "parentId": null,
+            "layerOrder": 1,
+            "props": {
+              "width": 600,
+              "height": 400,
+              "flow": "row",
+              "gap": 8,
+              "padding": 12,
+              "fill": [
+                "primary",
+                {
+                  "type": "linear-gradient",
+                  "colors": [
+                    "#ff0000",
+                    "#0000ff"
+                  ],
+                  "angle": 45
+                },
+                {
+                  "type": "radial-gradient",
+                  "colors": [
+                    "white",
+                    "black/50"
+                  ]
+                }
+              ],
+              "cornerRadius": 12
+            }
+          },
+          {
+            "id": "rect-1",
+            "type": "rect",
+            "parentId": "rect-0",
+            "layerOrder": 2,
+            "props": {
+              "width": 120,
+              "height": 80,
+              "fill": "=[tint]",
+              "stroke": {
+                "weight": 2,
+                "fill": "accent"
+              },
+              "shadow": {
+                "blur": 8,
+                "y": 4,
+                "color": "black/40"
+              }
+            },
+            "key": "card"
+          },
+          {
+            "id": "ellipse-8",
+            "type": "ellipse",
+            "parentId": "rect-0",
+            "layerOrder": 9,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "fill": "primary",
+              "sweep": 270,
+              "ratio": 0.5
+            }
+          },
+          {
+            "id": "polygon-9",
+            "type": "polygon",
+            "parentId": "rect-0",
+            "layerOrder": 10,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "sides": 6,
+              "fill": "accent",
+              "cornerRadius": 6
+            }
+          },
+          {
+            "id": "polygram-10",
+            "type": "polygram",
+            "parentId": "rect-0",
+            "layerOrder": 11,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "points": 5,
+              "ratio": 0.5,
+              "fill": "primary"
+            }
+          },
+          {
+            "id": "path-11",
+            "type": "path",
+            "parentId": "rect-0",
+            "layerOrder": 12,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "data": "M0 0 L1 0 L0.5 1 Z",
+              "fill": "accent"
+            }
+          },
+          {
+            "id": "triangle-12",
+            "type": "triangle",
+            "parentId": "rect-0",
+            "layerOrder": 13,
+            "props": {
+              "width": 80,
+              "height": 70,
+              "fill": "primary",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rightTriangle-13",
+            "type": "rightTriangle",
+            "parentId": "rect-0",
+            "layerOrder": 14,
+            "props": {
+              "width": 80,
+              "height": 70,
+              "fill": "accent"
+            }
+          },
+          {
+            "id": "pentagon-14",
+            "type": "pentagon",
+            "parentId": "rect-0",
+            "layerOrder": 15,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "fill": "primary"
+            }
+          },
+          {
+            "id": "hexagon-15",
+            "type": "hexagon",
+            "parentId": "rect-0",
+            "layerOrder": 16,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "fill": "accent",
+              "cornerStyle": "angled",
+              "cornerRadius": 6
+            }
+          },
+          {
+            "id": "octagon-16",
+            "type": "octagon",
+            "parentId": "rect-0",
+            "layerOrder": 17,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "fill": "primary"
+            }
+          },
+          {
+            "id": "star-17",
+            "type": "star",
+            "parentId": "rect-0",
+            "layerOrder": 18,
+            "props": {
+              "width": 80,
+              "height": 80,
+              "points": 6,
+              "ratio": 0.45,
+              "fill": "accent"
+            }
+          },
+          {
+            "id": "boolean-2",
+            "type": "boolean",
+            "parentId": "rect-0",
+            "layerOrder": 3,
+            "props": {
+              "op": "subtract",
+              "fill": "accent"
+            }
+          },
+          {
+            "id": "rect-18",
+            "type": "rect",
+            "parentId": "boolean-2",
+            "layerOrder": 19,
+            "props": {
+              "width": 60,
+              "height": 60
+            }
+          },
+          {
+            "id": "ellipse-19",
+            "type": "ellipse",
+            "parentId": "boolean-2",
+            "layerOrder": 20,
+            "props": {
+              "width": 40,
+              "height": 40
+            }
+          },
+          {
+            "id": "mask-3",
+            "type": "mask",
+            "parentId": "rect-0",
+            "layerOrder": 4,
+            "props": {
+              "mode": "alpha"
+            }
+          },
+          {
+            "id": "ellipse-20",
+            "type": "ellipse",
+            "parentId": "mask-3",
+            "layerOrder": 21,
+            "props": {
+              "width": 60,
+              "height": 60
+            }
+          },
+          {
+            "id": "rect-21",
+            "type": "rect",
+            "parentId": "mask-3",
+            "layerOrder": 22,
+            "props": {
+              "width": 60,
+              "height": 60,
+              "fill": {
+                "type": "linear-gradient",
+                "colors": [
+                  "#ff0000",
+                  "#0000ff"
+                ],
+                "angle": 45
+              }
+            }
+          },
+          {
+            "id": "repeater-4",
+            "type": "repeater",
+            "parentId": "rect-0",
+            "layerOrder": 5,
+            "props": {
+              "copies": 4,
+              "stepPosition": {
+                "x": 20,
+                "y": 0
+              },
+              "stepRotation": 15,
+              "endOpacity": 0.5
+            }
+          },
+          {
+            "id": "ellipse-22",
+            "type": "ellipse",
+            "parentId": "repeater-4",
+            "layerOrder": 23,
+            "props": {
+              "width": 30,
+              "height": 30,
+              "fill": "accent"
+            }
+          },
+          {
+            "id": "camera-5",
+            "type": "camera",
+            "parentId": "rect-0",
+            "layerOrder": 6,
+            "props": {
+              "width": 200,
+              "height": 120,
+              "zoom": 1.5
+            }
+          },
+          {
+            "id": "rect-23",
+            "type": "rect",
+            "parentId": "camera-5",
+            "layerOrder": 24,
+            "props": {
+              "width": 40,
+              "height": 40,
+              "fill": "primary",
+              "x": "=[card.x] + 10"
+            }
+          },
+          {
+            "id": "orbitCamera-24",
+            "type": "orbitCamera",
+            "parentId": "rect-0",
+            "layerOrder": 25,
+            "props": {
+              "orbit": 20,
+              "elevation": 10
+            }
+          },
+          {
+            "id": "rotated-box-25",
+            "type": "rotated-box",
+            "parentId": "rect-0",
+            "layerOrder": 26,
+            "props": {
+              "angle": 45
+            }
+          },
+          {
+            "id": "provider-26",
+            "type": "provider",
+            "parentId": "rect-0",
+            "layerOrder": 27,
+            "props": {}
+          },
+          {
+            "id": "theme-provider-6",
+            "type": "theme-provider",
+            "parentId": "rect-0",
+            "layerOrder": 7,
+            "props": {
+              "theme": {
+                "colors": {
+                  "ink": "#ffcc00"
+                }
+              }
+            }
+          },
+          {
+            "id": "default-text-style-7",
+            "type": "default-text-style",
+            "parentId": "theme-provider-6",
+            "layerOrder": 8,
+            "props": {
+              "fontSize": 18,
+              "fill": "white"
+            }
+          },
+          {
+            "id": "text-27",
+            "type": "text",
+            "parentId": "default-text-style-7",
+            "layerOrder": 28,
+            "props": {
+              "text": "Hello",
+              "fill": "ink",
+              "fontSize": "=[size]",
+              "effects": [
+                {
+                  "type": "glow",
+                  "radius": 6
+                }
+              ]
+            }
+          },
+          {
+            "id": "richtext-28",
+            "type": "richtext",
+            "parentId": "theme-provider-6",
+            "layerOrder": 29,
+            "props": {
+              "spans": [
+                {
+                  "text": "Rich "
+                },
+                {
+                  "text": "text",
+                  "fontWeight": 700
+                }
+              ]
+            }
+          },
+          {
+            "id": "number-29",
+            "type": "number",
+            "parentId": "theme-provider-6",
+            "layerOrder": 30,
+            "props": {
+              "value": 1234.5,
+              "format": "currency",
+              "fractionDigits": 2
+            }
+          },
+          {
+            "id": "rect-30",
+            "type": "rect",
+            "parentId": "rect-0",
+            "layerOrder": 31,
+            "props": {
+              "width": 60,
+              "height": 60,
+              "fill": "card",
+              "blend": "multiply",
+              "opacity": 0.8,
+              "effects": [
+                {
+                  "type": "blur",
+                  "radius": 4
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "startAt": 0,
+      "duration": 2
+    }
+  ],
+  "formatVersion": 5
+}
