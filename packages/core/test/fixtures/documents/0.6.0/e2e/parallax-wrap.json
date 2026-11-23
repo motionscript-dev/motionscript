@@ -1,0 +1,140 @@
+{
+  "kind": "project",
+  "name": "parallax-wrap",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "parallax-wrap",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "#0b0d12"
+            }
+          },
+          {
+            "id": "parallax0",
+            "type": "parallax",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "farSpeed": 0.15,
+              "nearSpeed": 1,
+              "wrap": "horizontal"
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "parallax0",
+            "layerOrder": 0,
+            "props": {
+              "width": "fill",
+              "height": "fill",
+              "fill": "#141a2b"
+            }
+          },
+          {
+            "id": "triangle0",
+            "type": "triangle",
+            "parentId": "parallax0",
+            "layerOrder": 1,
+            "props": {
+              "width": 320,
+              "height": 200,
+              "y": -40,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "parallax0",
+            "layerOrder": 2,
+            "props": {
+              "width": 260,
+              "height": 120,
+              "y": -170,
+              "fill": "#4f8a5b"
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "parallax0",
+            "layerOrder": 3,
+            "props": {
+              "width": 210,
+              "height": 200,
+              "y": -170,
+              "fill": "black/0"
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "y": -75,
+              "width": 210,
+              "height": 50,
+              "fill": "#2b4a2f"
+            }
+          },
+          {
+            "id": "triangle1",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "x": -40,
+              "width": 60,
+              "height": 110,
+              "fill": "#1f3a24"
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "scrollTo",
+            "targetId": "parallax0",
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "linear"
+            },
+            "args": {
+              "scroll": {
+                "x": 2000,
+                "y": 0
+              }
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 5
+}

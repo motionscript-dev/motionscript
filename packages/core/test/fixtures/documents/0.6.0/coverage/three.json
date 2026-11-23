@@ -1,0 +1,509 @@
+{
+  "kind": "project",
+  "name": "three",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "three-0",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "bg"
+            }
+          },
+          {
+            "id": "canvas3d-43",
+            "type": "canvas3d",
+            "parentId": null,
+            "layerOrder": 44,
+            "props": {
+              "width": 800,
+              "height": 450,
+              "orbit": 30,
+              "elevation": 20
+            }
+          },
+          {
+            "id": "group3d-44",
+            "type": "group3d",
+            "parentId": "canvas3d-43",
+            "layerOrder": 45,
+            "props": {
+              "y": 0.5
+            }
+          },
+          {
+            "id": "box3d-45",
+            "type": "box3d",
+            "parentId": "group3d-44",
+            "layerOrder": 46,
+            "props": {
+              "fill": "primary"
+            }
+          },
+          {
+            "id": "sphere3d-48",
+            "type": "sphere3d",
+            "parentId": "group3d-44",
+            "layerOrder": 49,
+            "props": {
+              "x": -2,
+              "z": -1
+            }
+          },
+          {
+            "id": "plane3d-49",
+            "type": "plane3d",
+            "parentId": "group3d-44",
+            "layerOrder": 50,
+            "props": {
+              "x": -1,
+              "z": -1
+            }
+          },
+          {
+            "id": "circle3d-50",
+            "type": "circle3d",
+            "parentId": "group3d-44",
+            "layerOrder": 51,
+            "props": {
+              "x": 0,
+              "z": -1
+            }
+          },
+          {
+            "id": "cylinder3d-51",
+            "type": "cylinder3d",
+            "parentId": "group3d-44",
+            "layerOrder": 52,
+            "props": {
+              "x": 1,
+              "z": -1
+            }
+          },
+          {
+            "id": "cone3d-52",
+            "type": "cone3d",
+            "parentId": "group3d-44",
+            "layerOrder": 53,
+            "props": {
+              "x": 2,
+              "z": -1
+            }
+          },
+          {
+            "id": "capsule3d-53",
+            "type": "capsule3d",
+            "parentId": "group3d-44",
+            "layerOrder": 54,
+            "props": {
+              "x": -2,
+              "z": 0
+            }
+          },
+          {
+            "id": "torus3d-54",
+            "type": "torus3d",
+            "parentId": "group3d-44",
+            "layerOrder": 55,
+            "props": {
+              "x": -1,
+              "z": 0
+            }
+          },
+          {
+            "id": "torus-knot3d-55",
+            "type": "torus-knot3d",
+            "parentId": "group3d-44",
+            "layerOrder": 56,
+            "props": {
+              "x": 0,
+              "z": 0
+            }
+          },
+          {
+            "id": "ring3d-56",
+            "type": "ring3d",
+            "parentId": "group3d-44",
+            "layerOrder": 57,
+            "props": {
+              "x": 1,
+              "z": 0
+            }
+          },
+          {
+            "id": "polyhedron3d-57",
+            "type": "polyhedron3d",
+            "parentId": "group3d-44",
+            "layerOrder": 58,
+            "props": {
+              "x": 2,
+              "z": 0
+            }
+          },
+          {
+            "id": "points3d-58",
+            "type": "points3d",
+            "parentId": "group3d-44",
+            "layerOrder": 59,
+            "props": {
+              "x": -2,
+              "z": 1
+            }
+          },
+          {
+            "id": "sprite3d-59",
+            "type": "sprite3d",
+            "parentId": "group3d-44",
+            "layerOrder": 60,
+            "props": {
+              "x": -1,
+              "z": 1
+            }
+          },
+          {
+            "id": "instances3d-60",
+            "type": "instances3d",
+            "parentId": "group3d-44",
+            "layerOrder": 61,
+            "props": {
+              "x": 0,
+              "z": 1
+            }
+          },
+          {
+            "id": "mesh3d-61",
+            "type": "mesh3d",
+            "parentId": "group3d-44",
+            "layerOrder": 62,
+            "props": {
+              "x": 1,
+              "z": 1
+            }
+          },
+          {
+            "id": "canvas3d-46",
+            "type": "canvas3d",
+            "parentId": null,
+            "layerOrder": 47,
+            "props": {
+              "width": 400,
+              "height": 300,
+              "projection": "orthographic",
+              "frustumHeight": 6,
+              "target": [
+                0,
+                0.5,
+                0
+              ],
+              "lights": [
+                {
+                  "type": "ambient",
+                  "intensity": 0.3
+                },
+                {
+                  "type": "sun",
+                  "orbit": 40,
+                  "elevation": 50,
+                  "shadow": true
+                },
+                {
+                  "type": "sky",
+                  "sky": "#bcd",
+                  "ground": "#432"
+                },
+                {
+                  "type": "lamp",
+                  "position": [
+                    1,
+                    2,
+                    1
+                  ]
+                },
+                {
+                  "type": "spot",
+                  "position": [
+                    0,
+                    4,
+                    2
+                  ],
+                  "angle": 25
+                },
+                {
+                  "type": "softBox",
+                  "position": [
+                    0,
+                    3,
+                    3
+                  ],
+                  "width": 2
+                }
+              ],
+              "fog": "bg",
+              "fogNear": 4,
+              "fogFar": 20,
+              "shadows": true
+            }
+          },
+          {
+            "id": "line3d-47",
+            "type": "line3d",
+            "parentId": "canvas3d-46",
+            "layerOrder": 48,
+            "props": {
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  2,
+                  0,
+                  0
+                ]
+              ],
+              "stroke": [
+                {
+                  "fill": "accent",
+                  "weight": 20
+                }
+              ]
+            }
+          },
+          {
+            "id": "lathe3d-62",
+            "type": "lathe3d",
+            "parentId": "group3d-44",
+            "layerOrder": 63,
+            "props": {
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  0.5,
+                  0.5
+                ],
+                [
+                  0.2,
+                  1
+                ]
+              ]
+            }
+          },
+          {
+            "id": "tube3d-63",
+            "type": "tube3d",
+            "parentId": "group3d-44",
+            "layerOrder": 64,
+            "props": {
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  2,
+                  0,
+                  1
+                ]
+              ],
+              "radius": 0.1
+            }
+          },
+          {
+            "id": "extrude3d-64",
+            "type": "extrude3d",
+            "parentId": "group3d-44",
+            "layerOrder": 65,
+            "props": {
+              "path": "M0 0 L1 0 L1 1 Z",
+              "depth": 0.2
+            }
+          },
+          {
+            "id": "line3d-65",
+            "type": "line3d",
+            "parentId": "group3d-44",
+            "layerOrder": 66,
+            "props": {
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "stroke": {
+                "color": "accent",
+                "width": 2
+              }
+            }
+          },
+          {
+            "id": "model3d-66",
+            "type": "model3d",
+            "parentId": "group3d-44",
+            "layerOrder": 67,
+            "props": {
+              "src": "robot.glb",
+              "scaleX": 0.5,
+              "scaleY": 0.5,
+              "scaleZ": 0.5
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "c31",
+            "type": "moveTo",
+            "targetId": "box3d-45",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "x": 1,
+              "y": 0.5,
+              "z": 0
+            }
+          },
+          {
+            "id": "c32",
+            "type": "rotateTo",
+            "targetId": "box3d-45",
+            "at": 0.5,
+            "duration": 0.5,
+            "args": {
+              "rotationY": 90
+            }
+          },
+          {
+            "id": "c33",
+            "type": "scaleTo",
+            "targetId": "box3d-45",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "scale": 1.5
+            }
+          },
+          {
+            "id": "c34",
+            "type": "orbitTo",
+            "targetId": "canvas3d-43",
+            "at": 0,
+            "duration": 2,
+            "args": {
+              "orbit": 90,
+              "elevation": 30
+            }
+          },
+          {
+            "id": "c35",
+            "type": "lookTo",
+            "targetId": "canvas3d-43",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "target": [
+                0,
+                1,
+                0
+              ]
+            }
+          },
+          {
+            "id": "c36",
+            "type": "orbitTo",
+            "targetId": "canvas3d-43",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "orbit": 10
+            }
+          },
+          {
+            "id": "c37",
+            "type": "lightTo",
+            "targetId": "canvas3d-46",
+            "at": 0,
+            "duration": 1,
+            "args": {
+              "light": 1,
+              "orbit": 120,
+              "intensity": 1
+            }
+          },
+          {
+            "id": "c38",
+            "type": "lookTo",
+            "targetId": "canvas3d-46",
+            "at": 1,
+            "duration": 0.5,
+            "args": {
+              "target": [
+                0,
+                0,
+                0
+              ]
+            }
+          },
+          {
+            "id": "c39",
+            "type": "strokeTo",
+            "targetId": "line3d-47",
+            "at": 0,
+            "duration": 0.5,
+            "args": {
+              "stroke": [
+                {
+                  "fill": "primary",
+                  "weight": 10
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "startAt": 0,
+      "duration": 2
+    }
+  ],
+  "formatVersion": 5
+}

@@ -1,0 +1,506 @@
+{
+  "kind": "project",
+  "name": "parallax-layers",
+  "fps": 30,
+  "viewport": {
+    "width": 960,
+    "height": 540
+  },
+  "theme": {
+    "colors": {
+      "bg": "#0d0f15",
+      "card": "#161a21",
+      "primary": "#6990dd",
+      "accent": "#e8617c"
+    }
+  },
+  "tracks": [
+    {
+      "id": "parallax-layers",
+      "clip": {
+        "kind": "composition",
+        "duration": 2,
+        "variables": [],
+        "nodes": [
+          {
+            "id": "",
+            "type": "canvas2d",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "fill": "#0b0d12"
+            }
+          },
+          {
+            "id": "parallax0",
+            "type": "parallax",
+            "parentId": null,
+            "layerOrder": 0,
+            "props": {
+              "farSpeed": 0.1,
+              "nearSpeed": 1
+            }
+          },
+          {
+            "id": "rect0",
+            "type": "rect",
+            "parentId": "parallax0",
+            "layerOrder": 0,
+            "props": {
+              "width": 1400,
+              "height": 540,
+              "fill": "#1d2b4f"
+            }
+          },
+          {
+            "id": "ellipse0",
+            "type": "ellipse",
+            "parentId": "rect0",
+            "layerOrder": 0,
+            "props": {
+              "x": 150,
+              "y": 120,
+              "width": 110,
+              "height": 110,
+              "fill": "#f5c451"
+            }
+          },
+          {
+            "id": "rect1",
+            "type": "rect",
+            "parentId": "parallax0",
+            "layerOrder": 1,
+            "props": {
+              "width": 1600,
+              "height": 180,
+              "y": -90,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle0",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 0,
+            "props": {
+              "x": -800,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle1",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 1,
+            "props": {
+              "x": -600,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle2",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 2,
+            "props": {
+              "x": -400,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle3",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 3,
+            "props": {
+              "x": -200,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle4",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 4,
+            "props": {
+              "x": 0,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle5",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 5,
+            "props": {
+              "x": 200,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle6",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 6,
+            "props": {
+              "x": 400,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle7",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 7,
+            "props": {
+              "x": 600,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "triangle8",
+            "type": "triangle",
+            "parentId": "rect1",
+            "layerOrder": 8,
+            "props": {
+              "x": 800,
+              "y": 170,
+              "width": 220,
+              "height": 160,
+              "fill": "#3b4d7a"
+            }
+          },
+          {
+            "id": "rect2",
+            "type": "rect",
+            "parentId": "parallax0",
+            "layerOrder": 2,
+            "props": {
+              "width": 1800,
+              "height": 130,
+              "y": -165,
+              "fill": "#4f8a5b"
+            }
+          },
+          {
+            "id": "ellipse1",
+            "type": "ellipse",
+            "parentId": "rect2",
+            "layerOrder": 0,
+            "props": {
+              "x": -700,
+              "y": 50,
+              "width": 240,
+              "height": 120,
+              "fill": "#4f8a5b"
+            }
+          },
+          {
+            "id": "ellipse2",
+            "type": "ellipse",
+            "parentId": "rect2",
+            "layerOrder": 1,
+            "props": {
+              "x": -420,
+              "y": 50,
+              "width": 240,
+              "height": 120,
+              "fill": "#4f8a5b"
+            }
+          },
+          {
+            "id": "ellipse3",
+            "type": "ellipse",
+            "parentId": "rect2",
+            "layerOrder": 2,
+            "props": {
+              "x": -140,
+              "y": 50,
+              "width": 240,
+              "height": 120,
+              "fill": "#4f8a5b"
+            }
+          },
+          {
+            "id": "ellipse4",
+            "type": "ellipse",
+            "parentId": "rect2",
+            "layerOrder": 3,
+            "props": {
+              "x": 140,
+              "y": 50,
+              "width": 240,
+              "height": 120,
+              "fill": "#4f8a5b"
+            }
+          },
+          {
+            "id": "ellipse5",
+            "type": "ellipse",
+            "parentId": "rect2",
+            "layerOrder": 4,
+            "props": {
+              "x": 420,
+              "y": 50,
+              "width": 240,
+              "height": 120,
+              "fill": "#4f8a5b"
+            }
+          },
+          {
+            "id": "ellipse6",
+            "type": "ellipse",
+            "parentId": "rect2",
+            "layerOrder": 5,
+            "props": {
+              "x": 700,
+              "y": 50,
+              "width": 240,
+              "height": 120,
+              "fill": "#4f8a5b"
+            }
+          },
+          {
+            "id": "rect3",
+            "type": "rect",
+            "parentId": "parallax0",
+            "layerOrder": 3,
+            "props": {
+              "width": 2200,
+              "height": 70,
+              "y": -235,
+              "fill": "#2b4a2f"
+            }
+          },
+          {
+            "id": "rect4",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 0,
+            "props": {
+              "x": -1080,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect5",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 1,
+            "props": {
+              "x": -900,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect6",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 2,
+            "props": {
+              "x": -720,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect7",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 3,
+            "props": {
+              "x": -540,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect8",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 4,
+            "props": {
+              "x": -360,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect9",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 5,
+            "props": {
+              "x": -180,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect10",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 6,
+            "props": {
+              "x": 0,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect11",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 7,
+            "props": {
+              "x": 180,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect12",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 8,
+            "props": {
+              "x": 360,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect13",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 9,
+            "props": {
+              "x": 540,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect14",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 10,
+            "props": {
+              "x": 720,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect15",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 11,
+            "props": {
+              "x": 900,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          },
+          {
+            "id": "rect16",
+            "type": "rect",
+            "parentId": "rect3",
+            "layerOrder": 12,
+            "props": {
+              "x": 1080,
+              "y": 60,
+              "width": 18,
+              "height": 80,
+              "fill": "#f2c14e",
+              "cornerRadius": 4
+            }
+          }
+        ],
+        "commands": [
+          {
+            "id": "step0",
+            "type": "scrollTo",
+            "targetId": "parallax0",
+            "at": 0,
+            "duration": 1.6,
+            "easing": {
+              "kind": "inOut",
+              "args": "quad"
+            },
+            "args": {
+              "scroll": {
+                "x": 600,
+                "y": 0
+              }
+            }
+          }
+        ]
+      },
+      "duration": 2
+    }
+  ],
+  "formatVersion": 5
+}
