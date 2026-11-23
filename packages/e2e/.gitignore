@@ -12,3 +12,7 @@ out/
 # Golden frames for scripts/golden.ts — local scratch, never committed.
 golden/
 baseline-*/
+
+# Renders and fonts the zz-* scratch loops write or pull locally.
+zz-*/out*/
+zz-*/fonts/

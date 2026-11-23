@@ -1,0 +1,22 @@
+import fs from "node:fs"
+import { it } from "vitest"
+
+import { THEME_PRESETS } from "@/features/editor/themes/lib/preset-themes"
+import { presetAsScenes, presetAsTheme } from "@/features/editor/themes/lib/template-catalog"
+import { templateSceneDocument } from "@/features/editor/themes/lib/template-preview"
+
+it("dumps a preset's layouts", () => {
+  const preset = THEME_PRESETS.find((p) => p.key === process.env.ZZ_PRESET)
+  if (!preset) throw new Error("no preset " + process.env.ZZ_PRESET)
+  const theme = presetAsTheme(preset)
+  let n = 0
+  for (const scene of presetAsScenes(preset)) {
+    const built = templateSceneDocument({ scene, theme, describe: () => undefined })
+    if (!built) throw new Error("no document " + scene.name)
+    const slug = String(++n) + '-' + scene.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+    fs.writeFileSync(
+      `${process.env.ZZ_OUT}/${preset.key}--${slug}.json`,
+      JSON.stringify({ ...built.document, viewport: scene.payload.viewport, thumbnailAt: scene.payload.thumbnailAt, duration: built.seconds })
+    )
+  }
+})
