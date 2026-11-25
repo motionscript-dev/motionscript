@@ -1,5 +1,13 @@
 # @motionscript/browser
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies [b05007b]
+  - @motionscript/core@1.0.0
+  - @motionscript/renderer@1.0.0
+
 ## 0.6.0
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @motionscript/react
 
+## 1.0.0
+
+### Patch Changes
+
+- Updated dependencies [b05007b]
+  - @motionscript/core@1.0.0
+
 ## 0.6.0
 
 ## 0.5.2
