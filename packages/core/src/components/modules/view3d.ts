@@ -18,7 +18,7 @@ import { Types } from "@/components/factory/types";
 import { internalsOf } from "@/components/factory/views";
 import * as Corners from "@/components/modules/corners";
 import * as Paint from "@/components/modules/paint";
-import { lightsEntry, lightStage, lightTo, lightToFrame, stageRig } from "@/components/modules/lights3d";
+import { lightsEntry, lightStage, lightTo, lightToFrame } from "@/components/modules/lights3d";
 
 export { STAGE_LIGHT_DEFAULTS, STAGE_LIGHT_TYPES, stageRig } from "@/components/modules/lights3d";
 import { optional, optionalVector3 } from "@/components/modules/three-entries";
@@ -84,28 +84,6 @@ export const commands = commandsFor(state, {
         },
     },
 });
-
-/** The four lighting keys before `lights`: each becomes the whole list a row's four described, so they agree in any order. */
-export const renamed = {
-    ambientIntensity: "lights",
-    ambientColor: "lights",
-    keyIntensity: "lights",
-    keyColor: "lights",
-} as const;
-
-const fromRig = (_value: unknown, row: Readonly<Record<string, unknown>>) => stageRig({
-    ambient: typeof row.ambientIntensity === "number" ? row.ambientIntensity : undefined,
-    ambientColor: row.ambientColor as never,
-    key: typeof row.keyIntensity === "number" ? row.keyIntensity : undefined,
-    keyColor: row.keyColor as never,
-});
-
-export const migrate = {
-    ambientIntensity: fromRig,
-    ambientColor: fromRig,
-    keyIntensity: fromRig,
-    keyColor: fromRig,
-};
 
 type ViewState = Values<typeof state> & { readonly fill: FillResolved[] };
 

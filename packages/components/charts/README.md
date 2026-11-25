@@ -42,8 +42,7 @@ is out.
 The style kit exports `CHART_STYLE_FAMILY` (`"chart"`), `CHART_STYLE_PRESETS`,
 `CHART_PALETTE_DEFAULT`, the shared field groups (`CHART_SERIES`,
 `CHART_BACKGROUND`, `GRID_BACKGROUND`, `CARTESIAN_AXES`, `VALUE_TEXT`,
-`CARTESIAN_GRID`, `CHART_LEGEND`) and `migrateChartStyle`, each chart's
-`migrate` hook for styles written before 0.1.1-alpha.2.
+`CARTESIAN_GRID`, `CHART_LEGEND`).
 
 ## Nodes
 

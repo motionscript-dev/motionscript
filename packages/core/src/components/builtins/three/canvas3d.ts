@@ -19,8 +19,6 @@ export const Canvas3D = component2d({
     key: "canvas3d",
     state: { ...Paint.state, ...Flow.state, ...Corners.state, ...View3D.state },
     defaults: { width: "fill", height: "fill" },
-    renamed: View3D.renamed,
-    migrate: View3D.migrate,
     commands: { ...Paint.commands, ...View3D.commands },
     allowedChildren: ["2d", "3d"],
     load: (loader) => View3D.load(loader),

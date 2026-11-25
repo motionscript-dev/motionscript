@@ -55,7 +55,6 @@ import {
   GRID_BACKGROUND,
   axisConfigOf,
   legendConfigOf,
-  migrateChartStyle,
   seriesFill,
   sizeOf,
   valueText,
@@ -356,7 +355,6 @@ export const LineChart = component2d({
     height: "fill",
     weights: (state) => state.series.map((s) => ((s.enabled ?? true) ? 1 : 0)),
   },
-  migrate: { style: migrateChartStyle("cartesian") },
   allowedChildren: [],
   children: (state) => {
     const style = () => state.style

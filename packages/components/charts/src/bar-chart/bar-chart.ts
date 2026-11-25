@@ -56,7 +56,6 @@ import {
   CHART_STYLE_PRESETS,
   GRID_BACKGROUND,
   axisConfigOf,
-  migrateChartStyle,
   legendConfigOf,
   seriesFill,
   valueText,
@@ -291,7 +290,6 @@ export const BarChart = component2d({
     weights: (state) => state.series.map((s) => ((s.enabled ?? true) ? 1 : 0)),
     showing: (state) => state.series.map((s) => s.enabled ?? true),
   },
-  migrate: { style: migrateChartStyle("cartesian") },
   allowedChildren: [],
   children: (state) => {
     const style = () => state.style

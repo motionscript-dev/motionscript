@@ -144,8 +144,7 @@ means). Such a change ships with a way forward and a marked changeset:
 
 Hosts read that marker in the installed packages' changelogs to know which
 releases need a migration of what they have stored, so a document-breaking change
-without it reaches users silently. Below 1.0 such a change still ships in a minor
-release; a host migrates it forward.
+without it reaches users silently. From 1.0 such a change is a major release.
 
 Two checks hold this. `scripts/check-changesets.mjs` (CI) fails a note that says
 "breaking" without opening with the marker, or a marked note without
@@ -164,9 +163,8 @@ project), `coverage/` (every built-in node type and command family, stills,
 audio, 3D, expressions) and `vocabulary.json`. Core's `fixture-corpus.test.ts`
 migrates, validates (strictly, against a registry) and builds every document in
 every set, forever. **A set is never edited or deleted**: a document that stops
-building needs a migration, not a new fixture. `0.1.0-alpha.7` was taken from the
-tree at that release plus its pending changes, before `formatVersion` existed
-(`--unstamped`).
+building needs a migration, not a new fixture. The corpus starts at `1.0.0`: the
+0.x sets were deleted with the 0.x formats, which 1.0 does not read.
 
 **Each release snapshots a new set.** `release.mjs`'s snapshot step does it
 right after publishing, at the release commit (`packages/core/package.json`

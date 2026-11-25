@@ -8,7 +8,6 @@ import { ChartCanvas } from "./chart-canvas"
 import { RadarChart } from "../radar-chart"
 import { RadarGrid } from "../radar-chart/radar-grid"
 import { partOf, partsOf } from "./tests/parts"
-import { migrateChartStyle } from "./style"
 
 const BOX = { width: 760, height: 460 }
 const ROWS = [
@@ -22,47 +21,6 @@ function bar(props: Record<string, unknown> = {}): BarChart {
   layOut(node, BOX)
   return node
 }
-
-describe("a chart style from before every text had its own field", () => {
-  it("moves the palette, the shared type and the two inks onto the cartesian fields", () => {
-    const out = migrateChartStyle("cartesian")({
-      palette: ["#111111"],
-      foreground: "#ffffff",
-      muted: "#888888",
-      fontFamily: "Inter",
-      fontSize: 20,
-      fontWeight: 400,
-      background: "#000000",
-      barRadius: 6,
-      legend: "top",
-    })
-    expect(out).toEqual({
-      seriesFills: ["#111111"],
-      gridBackground: "#000000",
-      barCornerRadius: { topLeft: 6, topRight: 6, bottomRight: 0, bottomLeft: 0 },
-      legend: "top",
-      legendText: { fontFamily: "Inter", fontSize: 20, fontWeight: 400, fill: "#ffffff" },
-      xLabelText: { fontFamily: "Inter", fontSize: 20, fontWeight: 400, fill: "#888888" },
-      yLabelText: { fontFamily: "Inter", fontSize: 20, fontWeight: 400, fill: "#888888" },
-      xTitleText: { fontFamily: "Inter", fontSize: 22, fontWeight: 500, fill: "#888888" },
-      yTitleText: { fontFamily: "Inter", fontSize: 22, fontWeight: 500, fill: "#888888" },
-      valueText: { fontFamily: "Inter", fontSize: 17, fontWeight: 500, fill: "#ffffff" },
-    })
-  })
-
-  it("keeps a pie's background on the whole chart and writes only what was stated", () => {
-    expect(migrateChartStyle("pie")({ background: "#000000", muted: "#888888" })).toEqual({
-      background: "#000000",
-      labelText: { fill: "#888888" },
-    })
-  })
-
-  it("hands a current style back untouched", () => {
-    const current = { seriesFills: ["#111111"], background: "#000000", gridBackground: [] }
-    expect(migrateChartStyle("cartesian")(current)).toBe(current)
-    expect(migrateChartStyle("pie")({ background: "#000" })).toEqual({ background: "#000" })
-  })
-})
 
 describe("chart and grid backgrounds", () => {
   it("paints the plot from gridBackground and the whole chart from background", () => {

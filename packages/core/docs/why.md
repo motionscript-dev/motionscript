@@ -165,11 +165,11 @@ A document is stored by hosts for as long as their users keep work, and is opene
 
 ### Decision
 
-- **A document says its format.** `formatVersion` on a still, composition, audio clip and project. Absent is format 0, which is every document written before the field. A clip in a project without its own reads at the project's.
+- **A document says its format.** `formatVersion` on a still, composition, audio clip and project. Absent is the current format. 1.0.0 started the count again at 1: the 0.x formats and their steps are gone, and no 0.x document is read. A clip in a project without its own reads at the project's.
 - **Core owns the migrations.** `DOCUMENT_MIGRATIONS` is an ordered list of steps from format *n* to *n + 1*; each is a pure JSON → JSON function with a test, needing no registry, so a host can run it over a stored row it never opens. `migrateDocument` runs them and reports what each changed. `resolveProjectDocument`, which every way of opening a document goes through, migrates before it validates. A format above the engine's throws `DocumentTooNewError` instead of being read as whatever it resembles.
 - **A component's props evolve in its spec.** `renamed`, `deprecated` and `migrate` sit beside `defaults` and apply wherever a row's props become a node, and through `migrateNodeProps` for a host rewriting rows. They have no version: a rule must leave a current value alone, which is why a unit change rides on a rename.
 - **An unknown type costs one node.** A build stands an empty placeholder of the row's tree in for it, keeping its id, props and children, skips every command aimed at it and any command no type publishes, and records each as a coded `BuildError`. `validateDocument(doc, { registry })` reports the same up front, and a strict registry restores the throw for a caller that wants it.
-- **Saved documents are a corpus.** Each release snapshots documents into `packages/core/test/fixtures/documents/<version>/`, and every set is migrated, validated and built by the test suite from then on. The set's vocabulary snapshot makes a changed default or a removed prop of a built-in fail the suite until a `**Breaking:**` changeset names it, which a rename-only convention never caught.
+- **Saved documents are a corpus.** Each release from 1.0.0 snapshots documents into `packages/core/test/fixtures/documents/<version>/`, and every set is migrated, validated and built by the test suite from then on. The set's vocabulary snapshot makes a changed default or a removed prop of a built-in fail the suite until a `**Breaking:**` changeset names it, which a rename-only convention never caught.
 
 ### Consequences
 

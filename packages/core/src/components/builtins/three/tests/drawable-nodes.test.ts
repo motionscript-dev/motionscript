@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { Scene3D, type Scene3DOp } from '@/render3d/scene3d';
 import { Instances3D, Line3D, Model3D, ModelView3D, Points3D, Sprite3D } from "@/components/builtins/three/three";
 import { Mat, Geo } from '@/render3d/builders';
-import { applyPropEvolution, propEvolutionOf } from '@/document/prop-evolution';
 import type { Node3D } from '@/components/trees/three/node3d';
 
 /** Every op a node records, group scope included. */
@@ -102,13 +101,6 @@ describe('Line3D', () => {
         const points = [[0, 0, 0], [1, 0, 0]];
         expect(drawn(new Line3D({ points, stroke: [{ fill: 'red', weight: 5 }, { fill: 'blue', weight: 2 }] } as never))).toHaveLength(2);
         expect(drawn(new Line3D({ points, stroke: [] } as never))).toEqual([]);
-    });
-
-    it('reads a stroke written as the old LineStroke3D: pixel weight, world-unit dash', () => {
-        const { props } = applyPropEvolution(propEvolutionOf(Line3D.node)!, { stroke: { fill: 'white', dash: [0.2, 0.1] } });
-        expect(props.stroke).toEqual([{ fill: 'white', weight: 10, dash: [200, 100] }]);
-        const current = [{ fill: 'white', weight: 3 }];
-        expect(applyPropEvolution(propEvolutionOf(Line3D.node)!, { stroke: current }).props.stroke).toBe(current);
     });
 
     it('prefers a geometry over points, drawn as a GPU line in the stroke\'s colour', () => {

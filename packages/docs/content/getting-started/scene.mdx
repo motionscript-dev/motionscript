@@ -184,7 +184,7 @@ const { bytes } = await server.renderImage({ document: myScene, frame: 'last' })
 
 ## Saving documents
 
-A document you store should say which format it was written in. Give it `formatVersion: DOCUMENT_FORMAT_VERSION` when you save it; one without the field is read as format 0, the format before the field existed. When an engine opens a document it brings an older one up to date first, so a scene saved by last year's release still opens. You can do the same yourself, to rewrite what you have stored:
+A document you store should say which format it was written in. Give it `formatVersion: DOCUMENT_FORMAT_VERSION` when you save it; one without the field is read as the engine's own format. When an engine opens a document it brings one from an older 1.x format up to date first, so a scene saved by an earlier 1.x release still opens. Documents written by a 0.x engine are not supported. You can do the same yourself, to rewrite what you have stored:
 
 ```ts
 import { DOCUMENT_FORMAT_VERSION, DocumentTooNewError, migrateDocument } from '@motionscript/sdk/v1';

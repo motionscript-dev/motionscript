@@ -8,8 +8,7 @@ import * as Corners from "@/components/modules/corners";
 import * as Flow from "@/components/modules/flow";
 import * as Paint from "@/components/modules/paint";
 import * as View3D from "@/components/modules/view3d";
-import { lightToFrame, stageRig } from "@/components/modules/lights3d";
-import { applyPropEvolution } from "@/document/prop-evolution";
+import { lightToFrame } from "@/components/modules/lights3d";
 import { Graphics3D } from '@/render3d/graphics3d';
 import { Scene3D, type Scene3DOp } from '@/render3d/scene3d';
 import { resetInertWarnings3D } from '@/render3d/inert';
@@ -185,18 +184,6 @@ describe('Canvas3D scene composition', () => {
         expect(half[0]).toBe(from[0]);
     });
 
-    it('reads the four lighting keys it had before `lights` as the rig they described', () => {
-        const { props } = applyPropEvolution(
-            { renamed: View3D.renamed, deprecated: {}, migrate: View3D.migrate },
-            { keyIntensity: 4, keyColor: '#ff0000', ambientIntensity: 0.1, ambientColor: '#00ff00', orbit: 3 },
-        );
-        expect(props).toEqual({ orbit: 3, lights: stageRig({ key: 4, keyColor: '#ff0000', ambient: 0.1, ambientColor: '#00ff00' }) });
-        const rig = lights(new Canvas3D({ ...props, children: [new Box3D()] })._scene3D());
-        expect(rig[0].light).toMatchObject({ intensity: 0.1, color: parseColor('#00ff00') });
-        expect(rig[1].light).toMatchObject({ intensity: 4, color: parseColor('#ff0000') });
-        expect(rig[2].light).toMatchObject({ intensity: 1.4, color: parseColor('#ff0000') });
-    });
-
     it('leaves the rig out as soon as any child records a light', () => {
         const withAmbient = new Canvas3D({ children: [new Box3D(), new SceneLight({ type: 'ambient', intensity: 1 })] })._scene3D();
         expect(lights(withAmbient)).toHaveLength(1);
@@ -366,7 +353,7 @@ describe('Canvas3D grid', () => {
         expect(gridOp(canvas).geometry).toBe(first);
 
         // Unrelated fields do not rebuild it.
-        canvas.set({ orbit: 80, keyIntensity: 1 } as never);
+        canvas.set({ orbit: 80, exposure: 1.2 } as never);
         expect(gridOp(canvas).geometry).toBe(first);
 
         // One of its own does, so a tween through gridFade needs no invalidation.

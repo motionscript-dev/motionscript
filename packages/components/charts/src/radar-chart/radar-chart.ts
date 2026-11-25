@@ -31,7 +31,6 @@ import {
   CHART_STYLE_PRESETS,
   GRID_BACKGROUND,
   legendConfigOf,
-  migrateChartStyle,
   placedText,
   seriesFill,
   sizeOf,
@@ -138,7 +137,6 @@ export const RadarChart = component2d({
   },
   // A node made of parts that fill would otherwise hug them.
   defaults: { width: "fill", height: "fill" },
-  migrate: { style: migrateChartStyle("radar") },
   allowedChildren: [],
   children: (state) => {
     const style = () => state.style

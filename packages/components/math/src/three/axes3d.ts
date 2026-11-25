@@ -102,8 +102,6 @@ export const Axes3d = component2d({
     key: "axes3d",
     state: { ...Paint.state, ...Flow.state, ...Shapes.corners, ...View3D.state, ...own },
     defaults: { width: "fill", height: "fill" },
-    renamed: View3D.renamed,
-    migrate: View3D.migrate,
     commands: {
         ...Paint.commands,
         ...View3D.commands,

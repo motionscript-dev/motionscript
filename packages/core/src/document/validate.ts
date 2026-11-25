@@ -589,8 +589,8 @@ function checkRetiredFields(doc: object, issues: ValidationIssue[]): void {
 function checkFormatVersion(doc: object, issues: ValidationIssue[]): void {
     const version = (doc as { formatVersion?: unknown }).formatVersion;
     if (version === undefined) return;
-    if (typeof version !== "number" || !Number.isInteger(version) || version < 0) {
-        issues.push({ path: "formatVersion", message: "formatVersion must be a whole number >= 0 when present." });
+    if (typeof version !== "number" || !Number.isInteger(version) || version < 1) {
+        issues.push({ path: "formatVersion", message: "formatVersion must be a whole number >= 1 when present." });
     } else if (version > DOCUMENT_FORMAT_VERSION) {
         issues.push({
             path: "formatVersion",

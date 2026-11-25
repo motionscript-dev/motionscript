@@ -169,22 +169,6 @@ export const Points3D = component3d({
 });
 export type Points3D = NodeOf<typeof Points3D>;
 
-/** How thick a line drawn before `stroke` was a paint is, in thousandths of a unit: about a pixel at a stage's default framing. */
-const LEGACY_LINE_WEIGHT = 10;
-
-/**
- * `stroke` was one `LineStroke3D` (a pixel `weight`, a world-unit `dash`); it is a paint now, a list of layers in
- * thousandths of a unit. A single object of only those three keys is the old form; anything else is current.
- */
-function legacyLineStroke(value: unknown): unknown {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
-    const keys = Object.keys(value);
-    if (keys.length === 0 || keys.some((key) => key !== "fill" && key !== "weight" && key !== "dash")) return value;
-    const old = value as { fill?: unknown; weight?: number; dash?: readonly [number, number?] };
-    const dash = Array.isArray(old.dash) && old.dash.length > 0 ? [old.dash[0] * 1000, (old.dash[1] ?? old.dash[0]) * 1000] : undefined;
-    return [{ fill: old.fill ?? "#ffffff", weight: (old.weight ?? 1) * LEGACY_LINE_WEIGHT, ...(dash ? { dash } : {}) }];
-}
-
 /** Consecutive points as segments (pairs of them with `pairs`), and the last back to the first when `closed`. */
 function lineSegments(points: readonly Vector3Input[], closed: boolean, pairs: boolean): Paint3D.Segment3D[] {
     const at = points.map((p): Paint3D.Vec3 => {
@@ -220,7 +204,6 @@ export const Line3D = component3d({
         material: optional<Material3D>(),
     },
     defaults: { stroke: { fill: "#ffffff", weight: 20 } },
-    migrate: { stroke: legacyLineStroke },
     commands: { strokeTo: Paint3D.commands.strokeTo },
     render: (ctx, s) => {
         if (s.geometry || s.material) {

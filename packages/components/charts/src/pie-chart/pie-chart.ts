@@ -19,7 +19,7 @@ import { asParts, fresh } from "../kit/entries"
 import { beats, type AnyTimeline, type Beat } from "../kit/motion"
 import { PieLegend } from "../kit/pie-legend"
 import { PieRing } from "./pie-ring"
-import { CHART_STYLE_FAMILY, CHART_STYLE_PRESETS, migrateChartStyle, paletteFill } from "../kit/style"
+import { CHART_STYLE_FAMILY, CHART_STYLE_PRESETS, paletteFill } from "../kit/style"
 import {
   PIE_SPOTLIGHT_DIM,
   PIE_STYLE_GROUPS,
@@ -128,7 +128,6 @@ export const PieChart = component2d({
     height: "fill",
     pops: (state) => slicesOf(state).map(() => 0),
   },
-  migrate: { style: migrateChartStyle("pie") },
   allowedChildren: [],
   // The structure (a label and legend row per row) is read once; slices, paint and selection are bound, so a theme tween re-paints and a `set` of `data` re-cuts.
   children: (state) => {
